@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* PowerOps color tokens */
+  --color-primary: #2b7cee;
+  --color-bg-dark: #101822;
+  --color-surface-dark: #16202e;
+  --color-surface-highlight: #1f2b3e;
+  --color-text-secondary: #92a9c9;
+  /* Legacy tokens kept for compatibility */
+  --color-bg-primary: #101822;
+  --color-bg-card: #16202e;
+  --color-bg-card-hover: #1f2b3e;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #101822;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2b3d52;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2b7cee;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, box-shadow;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
+}
+
+/* Pulse animation for critical alerts */
+@keyframes alertPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-alert-pulse {
+  animation: alertPulse 1.5s ease-in-out infinite;
+}
+
+/* Liquid wave animation */
+@keyframes liquidWave {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-5px); }
+}
+
+body {
+  background-color: #101822;
+  color: #f8fafc;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  zoom: 0.75;
+}

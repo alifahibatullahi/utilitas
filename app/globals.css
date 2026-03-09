@@ -65,5 +65,14 @@ body {
   background-color: #101822;
   color: #f8fafc;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  zoom: 0.75;
+  zoom: 90%;
+}
+
+/* Scrollbar-hide utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

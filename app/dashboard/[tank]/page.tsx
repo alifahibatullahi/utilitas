@@ -78,10 +78,10 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
                         <p className="text-3xl font-bold text-white">{data.level.toFixed(1)}%</p>
                         <span
                             className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${alertStatus === 'critical'
-                                    ? 'bg-red-500/20 text-red-400'
-                                    : alertStatus === 'warning'
-                                        ? 'bg-yellow-500/20 text-yellow-400'
-                                        : 'bg-green-500/20 text-green-400'
+                                ? 'bg-red-500/20 text-red-400'
+                                : alertStatus === 'warning'
+                                    ? 'bg-yellow-500/20 text-yellow-400'
+                                    : 'bg-green-500/20 text-green-400'
                                 }`}
                         >
                             {alertStatus === 'critical' ? '⚠️ CRITICAL' : alertStatus === 'warning' ? '⚡ WARNING' : '✅ NORMAL'}
@@ -164,7 +164,7 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
                                         fontSize: '12px',
                                         color: '#f8fafc',
                                     }}
-                                    formatter={(value: number) => [`${value.toFixed(1)}%`, 'Level']}
+                                    formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}%`, 'Level']}
                                 />
                                 <Area
                                     type="monotone"

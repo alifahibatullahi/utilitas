@@ -4,224 +4,212 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 
-// ─── Full Report Data Shape ───
+// ─── Data Interfaces ───
 interface BoilerData {
-    pressureSteam: number;
-    tempSteam: number;
     flowSteam: number;
-    totalizerSteam: number;
-    pressureSteamDrum: number;
-    pressureBFW: number;
-    flowBFW: number;
-    tempBFW: number;
-    tempFurnace: number;
-    tempFlueGas: number;
-    o2: number;
-    airHeater: number;
-    totalizerBatubara: number;
-    penggunaanSolar: number;
+    furnace: number;
+    flueGas: number;
+    batubara: number;
+    tempSteam: number;
+    cr: number;
+    lifetime: number;
+}
+
+interface CriticalEquipment {
+    date: string;
+    item: string;
+    uraian: string;
+    scope: string;
+}
+
+interface MaintenanceItem {
+    date: string;
+    item: string;
+    uraian: string;
+    scope: string;
+    status: string;
 }
 
 interface ShiftReport {
     id: number;
-    shift: string;
+    shift: 'pagi' | 'sore' | 'malam';
     date: string;
+    group: string;
+    supervisor: string;
     operator: string;
-    status: 'pending' | 'approved' | 'rejected';
-    // Boiler
     boilerA: BoilerData;
     boilerB: BoilerData;
-    // Coal Feeder
-    coalFeeder: { id: string; flow: number; totalizer: number }[];
-    // Coal Bunker
-    coalBunker: { id: string; level: number }[];
-    // Turbin
     turbin: {
-        flowSteamInlet: number;
-        flowCondensate: number;
-        pressureSteamInlet: number;
-        tempSteamInlet: number;
-        tempExhaustSteam: number;
-        vacuum: number;
+        loadTG: number;
+        internalUBB: number;
+        pln: number;
         durasiHPO: number;
-        tempThrustBearing: number;
-        tempMetalBearing: number;
-        vibrasi: number;
-        tempWinding: number;
-        axialDisplacement: number;
-        levelCondenser: number;
         tempCWIn: number;
         tempCWOut: number;
-        pressureDeaerator: number;
-        tempDeaerator: number;
+        tempThrustBrg: number;
+        axialDispl: number;
     };
-    // Distribusi Steam
-    distribusiSteam: { pabrik: string; flow: number; temp: number; totalizer: number }[];
-    // Generator
-    generator: {
-        loadSTG: number;
-        ampere: number;
-        ampReact: number;
-        cosTeta: number;
-        tegangan: number;
-        frequency: number;
+    power: { name: string; value: number }[];
+    distribusiSteam: { pabrik: string; value: number }[];
+    tankYard: { rcw: number; demin: number; solarAB: number; siloA: number; siloB: number };
+    lab: {
+        boilerFeedWater: { tempBFW: number; pH: number; conduct: number; silica: number; nh4: number; chz: number };
+        tk1250: { pH: number; conduct: number; silica: number };
+        productSteam: { pH: number; conduct: number; silica: number };
+        boilerWaterA: { pH: number; cond: number; sio2: number; po4: number };
+        boilerWaterB: { pH: number; cond: number; sio2: number; po4: number };
     };
-    // Gardu Induk
-    garduInduk: { sigmaP: number; sigmaQ: number; cosTeta: number };
-    // Distribusi Power
-    distribusiPower: { name: string; value: number }[];
-    // ESP
-    esp: {
-        trafoA: number[];
-        trafoB: number[];
-        ashSiloA: number;
-        ashSiloB: number;
-        unloadingRate: number;
-        tujuanTruk: string;
-    };
-    // Handling
-    handling: {
-        totalLoading: number;
-        hopperAktif: string;
-        conveyorA: string;
-        conveyorB: string;
-        inBatubara: number;
-        outBatubara: number;
-    };
-    // Tank Yard
-    tankYard: { levelRCW: number; levelDemin: number; levelSolar: number };
+    criticalEquipment: CriticalEquipment[];
+    maintenance: MaintenanceItem[];
+    catatan: string;
+    catatanTime: string;
+    catatanAuthor: string;
+    catatanRole: string;
 }
+
+// ─── Dummy Data ───
+const SHIFT_LABELS: Record<string, string> = { pagi: 'Pagi', sore: 'Sore', malam: 'Malam' };
 
 const DUMMY_REPORTS: ShiftReport[] = [
     {
-        id: 1, shift: '1', date: '2026-02-25', operator: 'Budi Santoso', status: 'pending',
-        boilerA: { pressureSteam: 3.2, tempSteam: 420, flowSteam: 45.2, totalizerSteam: 1250, pressureSteamDrum: 3.5, pressureBFW: 4.2, flowBFW: 48.5, tempBFW: 165, tempFurnace: 870, tempFlueGas: 185, o2: 4.2, airHeater: 280, totalizerBatubara: 320, penggunaanSolar: 0.5 },
-        boilerB: { pressureSteam: 3.1, tempSteam: 418, flowSteam: 42.8, totalizerSteam: 1180, pressureSteamDrum: 3.4, pressureBFW: 4.1, flowBFW: 46.2, tempBFW: 162, tempFurnace: 845, tempFlueGas: 180, o2: 4.5, airHeater: 278, totalizerBatubara: 305, penggunaanSolar: 0.3 },
-        coalFeeder: [
-            { id: 'A', flow: 12.5, totalizer: 185 }, { id: 'B', flow: 13.0, totalizer: 192 }, { id: 'C', flow: 0, totalizer: 0 },
-            { id: 'D', flow: 12.2, totalizer: 178 }, { id: 'E', flow: 11.8, totalizer: 172 }, { id: 'F', flow: 0, totalizer: 0 },
+        id: 1, shift: 'pagi', date: '2026-03-14', group: 'C', supervisor: 'Bayu', operator: 'Budi Santoso',
+        boilerA: { flowSteam: 60, furnace: 620, flueGas: 63, batubara: 117, tempSteam: 501, cr: 0.20, lifetime: 90 },
+        boilerB: { flowSteam: 105, furnace: 755, flueGas: 125, batubara: 108, tempSteam: 520, cr: 0.19, lifetime: 12 },
+        turbin: { loadTG: 13, internalUBB: 5.2, pln: 10.4, durasiHPO: 45, tempCWIn: 28.5, tempCWOut: 34.2, tempThrustBrg: 72.4, axialDispl: 0.32 },
+        power: [{ name: 'Pabrik 3A', value: 7.2 }, { name: 'Pabrik 3B', value: 4.8 }, { name: 'PIU', value: 1.5 }, { name: 'Pabrik 2', value: 0 }],
+        distribusiSteam: [{ pabrik: 'Pabrik 1', value: 65 }, { pabrik: 'Pabrik 2', value: 0 }, { pabrik: 'Pabrik 3A', value: 50 }],
+        tankYard: { rcw: 4500, demin: 1000, solarAB: 154, siloA: 32, siloB: 15 },
+        lab: {
+            boilerFeedWater: { tempBFW: 132, pH: 8.5, conduct: 3.5, silica: 0.011, nh4: 0.06, chz: 0.838 },
+            tk1250: { pH: 7.7, conduct: 1.6, silica: 0.01 },
+            productSteam: { pH: 8.2, conduct: 2.5, silica: 0.012 },
+            boilerWaterA: { pH: 9, cond: 18.7, sio2: 1.01, po4: 3.12 },
+            boilerWaterB: { pH: 9.1, cond: 17.4, sio2: 0.94, po4: 2.9 },
+        },
+        criticalEquipment: [
+            { date: '14/03', item: 'BT-01A', uraian: 'Boiler Tube Leak', scope: 'Mekanik' },
+            { date: '14/03', item: 'TG-01', uraian: 'High Bearing Temp', scope: 'Instrumen' },
+            { date: '14/03', item: 'P-402', uraian: 'Seal Leakage', scope: 'Mekanik' },
+            { date: '14/03', item: 'BL-02', uraian: 'Vibration Alert', scope: 'Instrumen' },
+            { date: '14/03', item: 'CV-001', uraian: 'Belt Alignment', scope: 'Mekanik' },
+            { date: '14/03', item: 'ST-405', uraian: 'Trap Stuck Open', scope: 'Instrumen' },
+            { date: '13/03', item: 'P-201B', uraian: 'Mechanical Seal', scope: 'Mekanik' },
+            { date: '13/03', item: 'FN-103', uraian: 'Overload Trip', scope: 'Listrik' },
+            { date: '12/03', item: 'TK-12', uraian: 'Level Sensor', scope: 'Instrumen' },
+            { date: '12/03', item: 'V-909', uraian: 'Air Leakage', scope: 'Las' },
         ],
-        coalBunker: [
-            { id: 'A', level: 72 }, { id: 'B', level: 68 }, { id: 'C', level: 55 },
-            { id: 'D', level: 70 }, { id: 'E', level: 65 }, { id: 'F', level: 48 },
+        maintenance: [
+            { date: '14/03', item: 'L-08.12 E', uraian: 'Cek ampere motor', scope: 'Listrik', status: 'OK' },
+            { date: '14/03', item: 'B-12.01 A', uraian: 'Pelumasan bearing fan', scope: 'Mekanik', status: 'OK' },
+            { date: '14/03', item: 'M-04.05', uraian: 'Pembersihan area conveyor', scope: 'Mekanik', status: 'OK' },
+            { date: '14/03', item: 'P-101 C', uraian: 'Ganti oli pump', scope: 'Mekanik', status: 'OK' },
+            { date: '13/03', item: 'V-22.1', uraian: 'Kalibrasi valve', scope: 'Instrumen', status: 'OK' },
+            { date: '13/03', item: 'E-304', uraian: 'Check efficiency', scope: 'Utilitas', status: 'IP' },
+            { date: '12/03', item: 'C-12A', uraian: 'Greasing coupling', scope: 'Mekanik', status: 'OK' },
+            { date: '12/03', item: 'T-501', uraian: 'Drain condensate', scope: 'General', status: 'OK' },
+            { date: '12/03', item: 'R-102', uraian: 'Inspection lining', scope: 'Mekanik', status: 'OK' },
         ],
-        turbin: { flowSteamInlet: 88.0, flowCondensate: 85.2, pressureSteamInlet: 3.0, tempSteamInlet: 415, tempExhaustSteam: 82, vacuum: -0.085, durasiHPO: 0, tempThrustBearing: 65, tempMetalBearing: 72, vibrasi: 22, tempWinding: 98, axialDisplacement: 0.15, levelCondenser: 45, tempCWIn: 28, tempCWOut: 35, pressureDeaerator: 0.12, tempDeaerator: 105 },
-        distribusiSteam: [
-            { pabrik: '1', flow: 15.0, temp: 380, totalizer: 450 },
-            { pabrik: '2', flow: 18.5, temp: 375, totalizer: 520 },
-            { pabrik: '3', flow: 12.5, temp: 370, totalizer: 380 },
-        ],
-        generator: { loadSTG: 12.5, ampere: 520, ampReact: 180, cosTeta: 0.85, tegangan: 11.5, frequency: 50.02 },
-        garduInduk: { sigmaP: 10.2, sigmaQ: 5.8, cosTeta: 0.87 },
-        distribusiPower: [
-            { name: 'Internal UBB', value: 2.5 }, { name: 'Pabrik 2', value: 3.2 },
-            { name: 'Pabrik 3A', value: 2.8 }, { name: 'PIU', value: 1.0 }, { name: 'Pabrik 3B', value: 0.7 },
-        ],
-        esp: { trafoA: [32, 34, 31], trafoB: [33, 35, 32], ashSiloA: 45, ashSiloB: 38, unloadingRate: 5.2, tujuanTruk: 'Area Disposal A' },
-        handling: { totalLoading: 8, hopperAktif: 'A', conveyorA: 'aktif', conveyorB: 'standby', inBatubara: 250, outBatubara: 240 },
-        tankYard: { levelRCW: 72, levelDemin: 65, levelSolar: 80 },
+        catatan: 'Kondisi operasional Boiler A dan B terpantau stabil sepanjang shift pagi. Load TG dipertahankan pada level aman meskipun terdapat fluktuasi minor pada permintaan beban pabrik.\n\nLakukan pengecekan rutin pada area conveyor belt di shift selanjutnya karena ada indikasi penumpukan debu halus yang dapat mempengaruhi sensor alignment.\n\nSemua parameter lab berada dalam batas normal sesuai standar operasional prosedur.',
+        catatanTime: '14:00 WIB',
+        catatanAuthor: 'Budi Santoso',
+        catatanRole: 'Chief Operator Shift C',
     },
     {
-        id: 2, shift: '3', date: '2026-02-25', operator: 'Eko Prasetyo', status: 'approved',
-        boilerA: { pressureSteam: 3.1, tempSteam: 418, flowSteam: 43.5, totalizerSteam: 1220, pressureSteamDrum: 3.4, pressureBFW: 4.0, flowBFW: 47.0, tempBFW: 160, tempFurnace: 850, tempFlueGas: 182, o2: 4.3, airHeater: 275, totalizerBatubara: 310, penggunaanSolar: 0.4 },
-        boilerB: { pressureSteam: 3.0, tempSteam: 415, flowSteam: 42.0, totalizerSteam: 1150, pressureSteamDrum: 3.3, pressureBFW: 4.0, flowBFW: 45.0, tempBFW: 158, tempFurnace: 840, tempFlueGas: 178, o2: 4.6, airHeater: 272, totalizerBatubara: 298, penggunaanSolar: 0.2 },
-        coalFeeder: [
-            { id: 'A', flow: 12.0, totalizer: 180 }, { id: 'B', flow: 12.8, totalizer: 188 }, { id: 'C', flow: 0, totalizer: 0 },
-            { id: 'D', flow: 11.5, totalizer: 170 }, { id: 'E', flow: 12.0, totalizer: 175 }, { id: 'F', flow: 0, totalizer: 0 },
+        id: 2, shift: 'sore', date: '2026-03-14', group: 'C', supervisor: 'Bayu', operator: 'Eko Prasetyo',
+        boilerA: { flowSteam: 58, furnace: 615, flueGas: 61, batubara: 112, tempSteam: 498, cr: 0.21, lifetime: 90 },
+        boilerB: { flowSteam: 102, furnace: 748, flueGas: 122, batubara: 105, tempSteam: 515, cr: 0.20, lifetime: 12 },
+        turbin: { loadTG: 12.5, internalUBB: 5.0, pln: 10.0, durasiHPO: 30, tempCWIn: 29.0, tempCWOut: 34.8, tempThrustBrg: 71.8, axialDispl: 0.30 },
+        power: [{ name: 'Pabrik 3A', value: 6.8 }, { name: 'Pabrik 3B', value: 4.5 }, { name: 'PIU', value: 1.4 }, { name: 'Pabrik 2', value: 0 }],
+        distribusiSteam: [{ pabrik: 'Pabrik 1', value: 62 }, { pabrik: 'Pabrik 2', value: 0 }, { pabrik: 'Pabrik 3A', value: 48 }],
+        tankYard: { rcw: 4350, demin: 980, solarAB: 148, siloA: 28, siloB: 12 },
+        lab: {
+            boilerFeedWater: { tempBFW: 130, pH: 8.4, conduct: 3.4, silica: 0.010, nh4: 0.05, chz: 0.830 },
+            tk1250: { pH: 7.6, conduct: 1.5, silica: 0.01 },
+            productSteam: { pH: 8.1, conduct: 2.4, silica: 0.011 },
+            boilerWaterA: { pH: 8.9, cond: 18.2, sio2: 0.98, po4: 3.05 },
+            boilerWaterB: { pH: 9.0, cond: 17.0, sio2: 0.90, po4: 2.85 },
+        },
+        criticalEquipment: [
+            { date: '14/03', item: 'BT-01A', uraian: 'Boiler Tube Leak', scope: 'Mekanik' },
+            { date: '14/03', item: 'TG-01', uraian: 'High Bearing Temp', scope: 'Instrumen' },
         ],
-        coalBunker: [
-            { id: 'A', level: 68 }, { id: 'B', level: 64 }, { id: 'C', level: 50 },
-            { id: 'D', level: 66 }, { id: 'E', level: 60 }, { id: 'F', level: 44 },
+        maintenance: [
+            { date: '14/03', item: 'L-08.12 E', uraian: 'Cek ampere motor', scope: 'Listrik', status: 'OK' },
+            { date: '14/03', item: 'B-12.01 A', uraian: 'Pelumasan bearing fan', scope: 'Mekanik', status: 'OK' },
         ],
-        turbin: { flowSteamInlet: 85.5, flowCondensate: 83.0, pressureSteamInlet: 2.9, tempSteamInlet: 412, tempExhaustSteam: 80, vacuum: -0.083, durasiHPO: 0, tempThrustBearing: 64, tempMetalBearing: 70, vibrasi: 20, tempWinding: 96, axialDisplacement: 0.14, levelCondenser: 44, tempCWIn: 27, tempCWOut: 34, pressureDeaerator: 0.11, tempDeaerator: 104 },
-        distribusiSteam: [
-            { pabrik: '1', flow: 14.5, temp: 378, totalizer: 440 },
-            { pabrik: '2', flow: 17.8, temp: 372, totalizer: 510 },
-            { pabrik: '3', flow: 12.0, temp: 368, totalizer: 370 },
+        catatan: 'Operasi shift sore berjalan normal. Semua parameter dalam batas aman.',
+        catatanTime: '22:00 WIB', catatanAuthor: 'Eko Prasetyo', catatanRole: 'Chief Operator Shift C',
+    },
+    {
+        id: 3, shift: 'malam', date: '2026-03-14', group: 'C', supervisor: 'Bayu', operator: 'Agus Wijaya',
+        boilerA: { flowSteam: 55, furnace: 610, flueGas: 60, batubara: 110, tempSteam: 495, cr: 0.22, lifetime: 90 },
+        boilerB: { flowSteam: 100, furnace: 742, flueGas: 120, batubara: 103, tempSteam: 510, cr: 0.21, lifetime: 12 },
+        turbin: { loadTG: 12, internalUBB: 4.8, pln: 9.5, durasiHPO: 20, tempCWIn: 27.5, tempCWOut: 33.5, tempThrustBrg: 70.2, axialDispl: 0.28 },
+        power: [{ name: 'Pabrik 3A', value: 6.5 }, { name: 'Pabrik 3B', value: 4.2 }, { name: 'PIU', value: 1.2 }, { name: 'Pabrik 2', value: 0 }],
+        distribusiSteam: [{ pabrik: 'Pabrik 1', value: 58 }, { pabrik: 'Pabrik 2', value: 0 }, { pabrik: 'Pabrik 3A', value: 45 }],
+        tankYard: { rcw: 4200, demin: 950, solarAB: 140, siloA: 25, siloB: 10 },
+        lab: {
+            boilerFeedWater: { tempBFW: 128, pH: 8.3, conduct: 3.3, silica: 0.010, nh4: 0.05, chz: 0.825 },
+            tk1250: { pH: 7.5, conduct: 1.4, silica: 0.01 },
+            productSteam: { pH: 8.0, conduct: 2.3, silica: 0.010 },
+            boilerWaterA: { pH: 8.8, cond: 17.8, sio2: 0.95, po4: 3.00 },
+            boilerWaterB: { pH: 8.9, cond: 16.8, sio2: 0.88, po4: 2.80 },
+        },
+        criticalEquipment: [
+            { date: '14/03', item: 'BT-01A', uraian: 'Boiler Tube Leak', scope: 'Mekanik' },
         ],
-        generator: { loadSTG: 12.3, ampere: 510, ampReact: 175, cosTeta: 0.86, tegangan: 11.4, frequency: 50.01 },
-        garduInduk: { sigmaP: 10.0, sigmaQ: 5.5, cosTeta: 0.88 },
-        distribusiPower: [
-            { name: 'Internal UBB', value: 2.4 }, { name: 'Pabrik 2', value: 3.1 },
-            { name: 'Pabrik 3A', value: 2.7 }, { name: 'PIU', value: 0.9 }, { name: 'Pabrik 3B', value: 0.6 },
+        maintenance: [
+            { date: '14/03', item: 'M-04.05', uraian: 'Pembersihan area conveyor', scope: 'Mekanik', status: 'OK' },
         ],
-        esp: { trafoA: [31, 33, 30], trafoB: [32, 34, 31], ashSiloA: 42, ashSiloB: 35, unloadingRate: 4.8, tujuanTruk: 'Area Disposal B' },
-        handling: { totalLoading: 7, hopperAktif: 'A', conveyorA: 'aktif', conveyorB: 'standby', inBatubara: 240, outBatubara: 235 },
-        tankYard: { levelRCW: 70, levelDemin: 62, levelSolar: 78 },
+        catatan: 'Shift malam berjalan lancar tanpa kendala berarti. Monitoring dilanjutkan.',
+        catatanTime: '06:00 WIB', catatanAuthor: 'Agus Wijaya', catatanRole: 'Chief Operator Shift C',
     },
 ];
 
-type ReportStatus = 'pending' | 'approved' | 'rejected';
+// ─── Lab Table (Dark Theme) ───
+function LabTable({ title, color, headers, values }: { title: string; color: string; headers: string[]; values: (string | number)[] }) {
+    const colorMap: Record<string, { header: string; subhead: string; border: string }> = {
+        blue: { header: 'bg-blue-600', subhead: 'bg-blue-900/40 text-blue-300', border: 'border-blue-800/50' },
+        cyan: { header: 'bg-cyan-600', subhead: 'bg-cyan-900/40 text-cyan-300', border: 'border-cyan-800/50' },
+        green: { header: 'bg-green-600', subhead: 'bg-green-900/40 text-green-300', border: 'border-green-800/50' },
+        'blue-dark': { header: 'bg-blue-800', subhead: 'bg-blue-900/40 text-blue-300', border: 'border-blue-800/50' },
+        'green-dark': { header: 'bg-green-800', subhead: 'bg-green-900/40 text-green-300', border: 'border-green-800/50' },
+    };
+    const c = colorMap[color] || colorMap.blue;
+    return (
+        <div>
+            <div className={`${c.header} text-white text-[9px] font-bold uppercase text-center py-1.5 rounded-t-lg`}>{title}</div>
+            <table className="w-full border-collapse">
+                <thead><tr className={`${c.subhead} text-[9px] font-bold uppercase text-center`}>
+                    {headers.map(h => <th key={h} className={`py-1.5 px-1 border ${c.border}`}>{h}</th>)}
+                </tr></thead>
+                <tbody><tr className="bg-surface-dark text-white text-xs font-bold text-center">
+                    {values.map((v, i) => <td key={i} className={`py-2 px-1 border ${c.border}`}>{v}</td>)}
+                </tr></tbody>
+            </table>
+        </div>
+    );
+}
 
-const STATUS_CONFIG: Record<ReportStatus, { label: string; icon: string; className: string }> = {
-    pending: { label: 'Menunggu', icon: 'schedule', className: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-    approved: { label: 'Approved', icon: 'check_circle', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-    rejected: { label: 'Rejected', icon: 'cancel', className: 'bg-red-500/15 text-red-400 border-red-500/30' },
-};
-
-// ─── Collapsible Section ───
-function Section({ title, icon, iconColor, defaultOpen, children }: {
-    title: string; icon: string; iconColor: string; defaultOpen?: boolean; children: React.ReactNode;
+// ─── Cylinder Tank (Dark Theme) ───
+function CylinderTank({ label, value, unit, color, fillPercent }: {
+    label: string; value: string; unit: string; color: string; fillPercent: number;
 }) {
-    const [open, setOpen] = useState(defaultOpen ?? false);
+    const colorMap: Record<string, string> = {
+        blue: 'bg-blue-500',
+        'light-blue': 'bg-cyan-400',
+        orange: 'bg-orange-500',
+    };
     return (
-        <div className="border border-slate-700/40 rounded-xl overflow-hidden">
-            <button
-                onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between px-4 py-2.5 bg-surface-highlight/30 hover:bg-surface-highlight/50 transition-colors cursor-pointer"
-            >
-                <span className="flex items-center gap-2 text-xs font-semibold text-white">
-                    <span className={`material-symbols-outlined text-sm ${iconColor}`}>{icon}</span>
-                    {title}
-                </span>
-                <span className={`material-symbols-outlined text-sm text-text-secondary transition-transform ${open ? 'rotate-180' : ''}`}>
-                    expand_more
-                </span>
-            </button>
-            {open && <div className="px-4 py-3 bg-surface-dark/50">{children}</div>}
-        </div>
-    );
-}
-
-// ─── Data Display Grid ───
-function DataRow({ label, value, unit }: { label: string; value: string | number; unit: string }) {
-    return (
-        <div className="flex items-baseline justify-between py-1 border-b border-slate-800/50 last:border-0">
-            <span className="text-[10px] text-text-secondary">{label}</span>
-            <span className="text-xs font-bold text-white tabular-nums">
-                {value} <span className="text-[9px] text-slate-400 font-normal">{unit}</span>
-            </span>
-        </div>
-    );
-}
-
-// ─── Boiler Detail ───
-function BoilerDetail({ name, data }: { name: string; data: BoilerData }) {
-    return (
-        <div className="grid grid-cols-2 gap-x-6">
-            <div>
-                <p className="text-[9px] uppercase text-primary font-bold mb-1">Steam</p>
-                <DataRow label="Pressure Steam" value={data.pressureSteam} unit="MPa" />
-                <DataRow label="Temp Steam" value={data.tempSteam} unit="°C" />
-                <DataRow label="Flow Steam" value={data.flowSteam} unit="t/h" />
-                <DataRow label="Totalizer Steam" value={data.totalizerSteam} unit="ton" />
-                <DataRow label="Pressure Drum" value={data.pressureSteamDrum} unit="MPa" />
+        <div className="flex flex-col gap-1">
+            <div className="text-center">
+                <p className="text-[9px] text-text-secondary uppercase font-bold">{label}</p>
+                <p className="text-xs text-white font-black">{value} <span className="text-[8px] font-normal text-slate-500">{unit}</span></p>
             </div>
-            <div>
-                <p className="text-[9px] uppercase text-blue-400 font-bold mb-1">BFW</p>
-                <DataRow label="Pressure BFW" value={data.pressureBFW} unit="MPa" />
-                <DataRow label="Flow BFW" value={data.flowBFW} unit="t/h" />
-                <DataRow label="Temp BFW" value={data.tempBFW} unit="°C" />
-            </div>
-            <div className="col-span-2 mt-2">
-                <p className="text-[9px] uppercase text-orange-400 font-bold mb-1">Temperatur & Parameter</p>
-                <div className="grid grid-cols-2 gap-x-6">
-                    <DataRow label="Temp Furnace" value={data.tempFurnace} unit="°C" />
-                    <DataRow label="Temp Flue Gas" value={data.tempFlueGas} unit="°C" />
-                    <DataRow label="O₂" value={data.o2} unit="%" />
-                    <DataRow label="Air Heater" value={data.airHeater} unit="°C" />
-                    <DataRow label="Tot. Batubara" value={data.totalizerBatubara} unit="ton" />
-                    <DataRow label="Solar" value={data.penggunaanSolar} unit="m³" />
+            <div className="relative w-full h-20 bg-surface-highlight/30 rounded p-1 border border-slate-700/50">
+                <div className="relative w-full h-full bg-surface-dark border border-slate-600/40 rounded-sm overflow-hidden">
+                    <div className={`absolute bottom-0 left-0 w-full ${colorMap[color] || 'bg-blue-500'} opacity-80`} style={{ height: `${fillPercent}%` }} />
+                    <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(0deg, rgba(45,62,86,0.5) 1px, transparent 1px)', backgroundSize: '100% 20%' }} />
                 </div>
             </div>
         </div>
@@ -229,11 +217,10 @@ function BoilerDetail({ name, data }: { name: string; data: BoilerData }) {
 }
 
 export default function LaporanShiftPage() {
-    const { operator, canApprove } = useOperator();
+    const { operator } = useOperator();
     const router = useRouter();
-    const [filterStatus, setFilterStatus] = useState<ReportStatus | 'all'>('all');
-    const [selectedReport, setSelectedReport] = useState<ShiftReport | null>(null);
-    const [approvalNote, setApprovalNote] = useState('');
+    const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
+    const [selectedDate, setSelectedDate] = useState('2026-03-14');
 
     useEffect(() => {
         if (!operator) router.push('/');
@@ -241,321 +228,346 @@ export default function LaporanShiftPage() {
 
     if (!operator) return null;
 
-    const filtered = filterStatus === 'all' ? DUMMY_REPORTS : DUMMY_REPORTS.filter(r => r.status === filterStatus);
-    const r = selectedReport;
+    const report = DUMMY_REPORTS.find(r => r.shift === activeShift) || DUMMY_REPORTS[0];
+    const dateObj = new Date(selectedDate + 'T00:00:00');
+    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateFormatted = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     return (
-        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto space-y-4">
-            {/* Header */}
-            <header className="flex items-center gap-4">
-                <div className="p-3 bg-primary/20 rounded-xl">
-                    <span className="material-symbols-outlined text-primary text-2xl">description</span>
+        <div className="flex-1 p-4 lg:p-6 flex flex-col max-w-[1400px] mx-auto w-full space-y-4">
+            {/* Week Strip - Centered */}
+            <div className="flex items-center gap-1 justify-center">
+                <button onClick={() => { const d = new Date(selectedDate + 'T00:00:00'); d.setDate(d.getDate() - 7); setSelectedDate(d.toISOString().split('T')[0]); }}
+                    className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-surface-highlight transition-all cursor-pointer">
+                    <span className="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+                {Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date(selectedDate + 'T00:00:00');
+                    d.setDate(d.getDate() - 3 + i);
+                    const iso = d.toISOString().split('T')[0];
+                    const isActive = iso === selectedDate;
+                    const isToday = iso === new Date().toISOString().split('T')[0];
+                    const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
+                    const dayNum = d.getDate();
+                    return (
+                        <button key={iso} onClick={() => setSelectedDate(iso)}
+                            className={`flex flex-col items-center w-10 py-1 rounded-lg cursor-pointer transition-all
+                                ${isActive
+                                    ? 'bg-primary text-white shadow-[0_0_12px_rgba(43,124,238,0.35)]'
+                                    : isToday
+                                        ? 'text-primary hover:bg-surface-highlight'
+                                        : 'text-text-secondary hover:text-white hover:bg-surface-highlight'
+                                }`}>
+                            <span className="text-[9px] font-semibold uppercase leading-none">{dayShort}</span>
+                            <span className={`text-sm font-bold leading-tight ${isActive ? 'text-white' : ''}`}>{dayNum}</span>
+                        </button>
+                    );
+                })}
+                <button onClick={() => { const d = new Date(selectedDate + 'T00:00:00'); d.setDate(d.getDate() + 7); setSelectedDate(d.toISOString().split('T')[0]); }}
+                    className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-surface-highlight transition-all cursor-pointer">
+                    <span className="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+                <div className="relative ml-1">
+                    <input type="date" value={selectedDate} onChange={e => e.target.value && setSelectedDate(e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                    <div className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-surface-highlight transition-all cursor-pointer">
+                        <span className="material-symbols-outlined text-sm">calendar_today</span>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="text-xl font-black tracking-tight text-white">Laporan Shift</h2>
-                    <p className="text-text-secondary text-xs mt-1">Daftar laporan shift dan proses approval</p>
-                </div>
-            </header>
-
-            {/* Filters */}
-            <div className="flex flex-wrap gap-2">
-                {(['all', 'pending', 'approved', 'rejected'] as const).map(s => (
-                    <button
-                        key={s}
-                        onClick={() => setFilterStatus(s)}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border
-                            ${filterStatus === s
-                                ? 'bg-primary/20 text-primary border-primary/30'
-                                : 'bg-surface-dark text-text-secondary border-slate-800 hover:bg-surface-highlight'
-                            }`}
-                    >
-                        {s === 'all' ? 'Semua' : (
-                            <span className="flex items-center gap-1">
-                                <span className="material-symbols-outlined text-xs">{STATUS_CONFIG[s].icon}</span>
-                                {STATUS_CONFIG[s].label}
-                            </span>
-                        )}
-                    </button>
-                ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                {/* Report list */}
-                <div className="lg:col-span-2 space-y-2">
-                    {filtered.map(report => (
-                        <button
-                            key={report.id}
-                            onClick={() => setSelectedReport(report)}
-                            className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer
-                                ${selectedReport?.id === report.id
-                                    ? 'bg-primary/10 border-primary/30'
-                                    : 'bg-surface-dark border-slate-800 hover:bg-surface-highlight hover:border-slate-700'
-                                }`}
+            {/* Shift Selector - Centered */}
+            <div className="flex items-center gap-2 justify-center">
+                {(['pagi', 'sore', 'malam'] as const).map(s => {
+                    const icons: Record<string, string> = { pagi: 'wb_sunny', sore: 'wb_twilight', malam: 'dark_mode' };
+                    const activeColors: Record<string, string> = {
+                        pagi: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)]',
+                        sore: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]',
+                        malam: 'bg-gradient-to-r from-indigo-600 to-blue-700 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]',
+                    };
+                    return (
+                        <button key={s} onClick={() => setActiveShift(s)}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-1.5
+                                ${activeShift === s ? activeColors[s] : 'bg-surface-dark text-text-secondary border border-slate-800 hover:text-white hover:bg-surface-highlight'}`}
                         >
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-semibold text-white">Shift {report.shift}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold border flex items-center gap-1 ${STATUS_CONFIG[report.status].className}`}>
-                                    <span className="material-symbols-outlined text-[10px]">{STATUS_CONFIG[report.status].icon}</span>
-                                    {STATUS_CONFIG[report.status].label}
-                                </span>
-                            </div>
-                            <p className="text-[10px] text-text-secondary">{new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                            <p className="text-[10px] text-text-secondary/60 mt-0.5">{report.operator}</p>
-                            {/* Quick summary */}
-                            <div className="flex gap-3 mt-2 pt-2 border-t border-slate-700/30">
-                                <span className="text-[9px] text-text-secondary">Steam A: <b className="text-white">{report.boilerA.flowSteam}</b> t/h</span>
-                                <span className="text-[9px] text-text-secondary">Steam B: <b className="text-white">{report.boilerB.flowSteam}</b> t/h</span>
-                                <span className="text-[9px] text-text-secondary">Load: <b className="text-primary">{report.generator.loadSTG}</b> MW</span>
-                            </div>
+                            <span className="material-symbols-outlined text-sm">{icons[s]}</span>
+                            {SHIFT_LABELS[s]}
                         </button>
-                    ))}
+                    );
+                })}
+            </div>
+
+            {/* Header */}
+            <header className="text-center">
+                <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Laporan Akhir Shift {SHIFT_LABELS[activeShift]}</h2>
+                <p className="text-primary font-bold text-sm tracking-widest uppercase mt-1">Utilitas Batubara</p>
+            </header>
+
+            {/* Info Bar - Full Width */}
+            <div className="grid grid-cols-4 divide-x divide-cyan-800/60 bg-cyan-950 py-4 px-6 rounded-xl border border-cyan-900 shadow-md w-full">
+                <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hari</span><span className="text-sm font-black text-white">{dayName}</span></div>
+                <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tanggal</span><span className="text-sm font-black text-white">{dateFormatted}</span></div>
+                <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Grup</span><span className="text-sm font-black text-white">{report.group}</span></div>
+                <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Supervisor</span><span className="text-sm font-black text-white">{report.supervisor}</span></div>
+            </div>
+
+            {/* Main 2-Column Grid (matching PDF preview layout) */}
+            <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+
+                {/* Left Column (48%) */}
+                <div className="lg:w-[48%] flex flex-col gap-4 overflow-y-auto min-h-0">
+
+                    {/* Parameter Operasional */}
+                    <section>
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-1.5 h-4 bg-blue-500 rounded-full" />
+                            <h3 className="text-xs font-bold text-white uppercase tracking-widest">Parameter Operasional</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Boiler A */}
+                            <div className="bg-blue-950/30 p-4 rounded-xl border border-blue-900/40">
+                                <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-800/40">
+                                    <span className="text-blue-400 font-black text-xs tracking-tighter">BOILER A</span>
+                                    <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full text-[10px] font-bold">Lifetime: <strong className="text-white">{report.boilerA.lifetime}</strong> hari</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-y-3 gap-x-2 text-center">
+                                    <div><p className="text-[9px] text-blue-300/60 uppercase font-bold">Flow Steam</p><p className="text-sm font-black text-white">{report.boilerA.flowSteam} <span className="text-[10px] font-normal text-slate-500">T/j</span></p></div>
+                                    <div><p className="text-[9px] text-blue-300/60 uppercase font-bold">Furnace</p><p className="text-sm font-black text-white">{report.boilerA.furnace} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                    <div><p className="text-[9px] text-blue-300/60 uppercase font-bold">Flue Gas</p><p className="text-sm font-black text-white">{report.boilerA.flueGas} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                    <div><p className="text-[9px] text-blue-300/60 uppercase font-bold">Batubara</p><p className="text-sm font-black text-white">{report.boilerA.batubara} <span className="text-[10px] font-normal text-slate-500">Ton</span></p></div>
+                                    <div><p className="text-[9px] text-blue-300/60 uppercase font-bold">Temp Steam</p><p className="text-sm font-black text-white">{report.boilerA.tempSteam} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                    <div><p className="text-[9px] text-blue-300/60 uppercase font-bold">CR A</p><p className="text-sm font-black text-white">{report.boilerA.cr}</p></div>
+                                </div>
+                            </div>
+                            {/* Boiler B */}
+                            <div className="bg-green-950/30 p-4 rounded-xl border border-green-900/40">
+                                <div className="flex justify-between items-center mb-3 pb-2 border-b border-green-800/40">
+                                    <span className="text-green-400 font-black text-xs tracking-tighter">BOILER B</span>
+                                    <span className="bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full text-[10px] font-bold">Lifetime: <strong className="text-white">{report.boilerB.lifetime}</strong> hari</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-y-3 gap-x-2 text-center">
+                                    <div><p className="text-[9px] text-green-300/60 uppercase font-bold">Flow Steam</p><p className="text-sm font-black text-white">{report.boilerB.flowSteam} <span className="text-[10px] font-normal text-slate-500">T/j</span></p></div>
+                                    <div><p className="text-[9px] text-green-300/60 uppercase font-bold">Furnace</p><p className="text-sm font-black text-white">{report.boilerB.furnace} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                    <div><p className="text-[9px] text-green-300/60 uppercase font-bold">Flue Gas</p><p className="text-sm font-black text-white">{report.boilerB.flueGas} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                    <div><p className="text-[9px] text-green-300/60 uppercase font-bold">Batubara</p><p className="text-sm font-black text-white">{report.boilerB.batubara} <span className="text-[10px] font-normal text-slate-500">Ton</span></p></div>
+                                    <div><p className="text-[9px] text-green-300/60 uppercase font-bold">Temp Steam</p><p className="text-sm font-black text-white">{report.boilerB.tempSteam} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                    <div><p className="text-[9px] text-green-300/60 uppercase font-bold">CR B</p><p className="text-sm font-black text-white">{report.boilerB.cr}</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Turbin + Power + Distribusi Steam */}
+                    <div className="grid grid-cols-12 gap-4">
+                        <div className="col-span-12 lg:col-span-9 space-y-4">
+                            {/* Turbin Generator */}
+                            <div className="bg-surface-dark rounded-xl border border-slate-800 overflow-hidden">
+                                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 py-2 px-4">
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Turbin Generator</p>
+                                </div>
+                                <div className="p-4">
+                                    <div className="grid grid-cols-4 gap-y-4 gap-x-2 text-center">
+                                        <div><p className="text-[9px] text-text-secondary uppercase font-bold">Load TG</p><p className="text-sm font-black text-white">{report.turbin.loadTG} <span className="text-[10px] font-normal text-slate-500">MW</span></p></div>
+                                        <div><p className="text-[9px] text-text-secondary uppercase font-bold">Internal UBB</p><p className="text-sm font-black text-white">{report.turbin.internalUBB} <span className="text-[10px] font-normal text-slate-500">MW</span></p></div>
+                                        <div><p className="text-[9px] text-text-secondary uppercase font-bold">PLN</p><p className="text-sm font-black text-white">{report.turbin.pln} <span className="text-[10px] font-normal text-slate-500">MW</span></p></div>
+                                        <div><p className="text-[9px] text-text-secondary uppercase font-bold">Durasi HPO</p><p className="text-sm font-black text-white">{report.turbin.durasiHPO} <span className="text-[10px] font-normal text-slate-500">S</span></p></div>
+                                        <div><p className="text-[9px] text-text-secondary uppercase font-bold">Temp CW In</p><p className="text-sm font-black text-white">{report.turbin.tempCWIn} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                        <div><p className="text-[9px] text-text-secondary uppercase font-bold">Temp CW Out</p><p className="text-sm font-black text-white">{report.turbin.tempCWOut} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                        <div><p className="text-[9px] text-text-secondary uppercase font-bold">Thrust Brg</p><p className="text-sm font-black text-white">{report.turbin.tempThrustBrg} <span className="text-[10px] font-normal text-slate-500">°C</span></p></div>
+                                        <div><p className="text-[9px] text-text-secondary uppercase font-bold">Axial Displ</p><p className="text-sm font-black text-white">{report.turbin.axialDispl} <span className="text-[10px] font-normal text-slate-500">mm</span></p></div>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Power */}
+                            <div className="bg-surface-dark rounded-xl border border-slate-800 overflow-hidden">
+                                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 py-2 px-4">
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Power Distribution</p>
+                                </div>
+                                <div className="p-4">
+                                    <div className="grid grid-cols-4 gap-y-3 gap-x-2 text-center">
+                                        {report.power.map(p => (
+                                            <div key={p.name}><p className="text-[9px] text-text-secondary uppercase font-bold">{p.name}</p><p className="text-sm font-black text-white">{p.value} <span className="text-[10px] font-normal text-slate-500">MW</span></p></div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Distribusi Steam */}
+                        <div className="col-span-12 lg:col-span-3">
+                            <div className="bg-surface-dark rounded-xl border border-slate-800 h-full flex flex-col overflow-hidden">
+                                <div className="bg-gradient-to-r from-orange-500 to-amber-500 py-2 px-4">
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Distribusi Steam</p>
+                                </div>
+                                <div className="p-4 space-y-4 flex-1 flex flex-col justify-center">
+                                    {report.distribusiSteam.map((d, i) => (
+                                        <div key={d.pabrik} className={`flex items-center justify-between ${i < report.distribusiSteam.length - 1 ? 'border-b border-slate-700/50 pb-3' : ''}`}>
+                                            <p className="text-[10px] text-text-secondary uppercase font-bold">{d.pabrik}</p>
+                                            <p className="text-lg font-black text-white">{d.value} <span className="text-xs font-normal text-slate-500">T/j</span></p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tank Yard & Silo */}
+                    <div className="bg-surface-dark rounded-xl border border-slate-800 overflow-hidden">
+                        <div className="bg-gradient-to-r from-yellow-600 to-amber-600 py-2 px-4">
+                            <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Tank Yard &amp; Silo</p>
+                        </div>
+                        <div className="p-4">
+                        <div className="flex gap-4">
+                            <div className="grid grid-cols-3 gap-4 flex-1">
+                                <CylinderTank label="TK RCW" value={report.tankYard.rcw.toLocaleString()} unit="m³" color="blue" fillPercent={93} />
+                                <CylinderTank label="TK Demin" value={report.tankYard.demin.toLocaleString()} unit="m³" color="light-blue" fillPercent={83} />
+                                <CylinderTank label="TK Solar AB" value={report.tankYard.solarAB.toString()} unit="m³" color="orange" fillPercent={77} />
+                            </div>
+                            <div className="flex flex-col gap-2 w-24">
+                                <div className="flex-1 flex flex-col justify-center items-center bg-surface-highlight/30 rounded-lg p-2 border border-slate-700/50">
+                                    <p className="text-[9px] text-text-secondary uppercase font-bold mb-1">Silo A</p>
+                                    <p className="text-2xl font-black text-white">{report.tankYard.siloA}<span className="text-xs font-normal text-slate-500 ml-0.5">%</span></p>
+                                </div>
+                                <div className="flex-1 flex flex-col justify-center items-center bg-surface-highlight/30 rounded-lg p-2 border border-slate-700/50">
+                                    <p className="text-[9px] text-text-secondary uppercase font-bold mb-1">Silo B</p>
+                                    <p className="text-2xl font-black text-white">{report.tankYard.siloB}<span className="text-xs font-normal text-slate-500 ml-0.5">%</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+
+                    {/* Parameter Lab / QC */}
+                    <section className="bg-surface-dark rounded-xl border border-slate-800 overflow-hidden">
+                        <div className="bg-gradient-to-r from-purple-600 to-violet-600 py-2 px-4">
+                            <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Parameter Lab / QC</p>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <LabTable title="Boiler Feed Water" color="blue"
+                                headers={['Temp. BFW', 'pH', 'Conduct', 'Silica', 'NH4', 'CHZ']}
+                                values={[report.lab.boilerFeedWater.tempBFW, report.lab.boilerFeedWater.pH, report.lab.boilerFeedWater.conduct, report.lab.boilerFeedWater.silica, report.lab.boilerFeedWater.nh4, report.lab.boilerFeedWater.chz]} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <LabTable title="TK-1250" color="cyan"
+                                    headers={['pH', 'Conduct', 'Silica']}
+                                    values={[report.lab.tk1250.pH, report.lab.tk1250.conduct, report.lab.tk1250.silica]} />
+                                <LabTable title="Product Steam" color="green"
+                                    headers={['pH', 'Conduct', 'Silica']}
+                                    values={[report.lab.productSteam.pH, report.lab.productSteam.conduct, report.lab.productSteam.silica]} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <LabTable title="Boiler Water A" color="blue-dark"
+                                    headers={['pH', 'Cond', 'SiO2', 'PO4']}
+                                    values={[report.lab.boilerWaterA.pH, report.lab.boilerWaterA.cond, report.lab.boilerWaterA.sio2, report.lab.boilerWaterA.po4]} />
+                                <LabTable title="Boiler Water B" color="green-dark"
+                                    headers={['pH', 'Cond', 'SiO2', 'PO4']}
+                                    values={[report.lab.boilerWaterB.pH, report.lab.boilerWaterB.cond, report.lab.boilerWaterB.sio2, report.lab.boilerWaterB.po4]} />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Catatan Shift */}
+                    <div className="bg-surface-dark rounded-xl border border-slate-800 overflow-hidden">
+                        <div className="bg-gradient-to-r from-amber-600 to-orange-600 py-2 px-4">
+                            <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Catatan Shift</p>
+                        </div>
+                        <div className="p-4">
+                            <div className="text-sm text-slate-300 leading-relaxed space-y-3 italic">
+                                {report.catatan.split('\n\n').map((p, i) => <p key={i}>&ldquo;{p}&rdquo;</p>)}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Detail panel */}
-                <div className="lg:col-span-3">
-                    {r ? (
-                        <div className="space-y-3">
-                            {/* Header */}
-                            <div className="bg-surface-dark rounded-xl border border-slate-800 p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div>
-                                        <h3 className="text-base font-bold text-white">Shift {r.shift} — {new Date(r.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</h3>
-                                        <p className="text-xs text-text-secondary">Operator: {r.operator}</p>
-                                    </div>
-                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border flex items-center gap-1 ${STATUS_CONFIG[r.status].className}`}>
-                                        <span className="material-symbols-outlined text-xs">{STATUS_CONFIG[r.status].icon}</span>
-                                        {STATUS_CONFIG[r.status].label}
-                                    </span>
-                                </div>
+                {/* Right Column (flex-1) */}
+                <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0">
 
-                                {/* Summary cards */}
-                                <div className="grid grid-cols-4 gap-2">
-                                    <div className="bg-surface-highlight/30 rounded-lg p-2.5 border border-slate-700/30">
-                                        <p className="text-[9px] text-text-secondary uppercase tracking-wider">Steam A</p>
-                                        <p className="text-lg font-bold text-white tabular-nums">{r.boilerA.flowSteam} <span className="text-[9px] text-slate-400 font-normal">t/h</span></p>
-                                    </div>
-                                    <div className="bg-surface-highlight/30 rounded-lg p-2.5 border border-slate-700/30">
-                                        <p className="text-[9px] text-text-secondary uppercase tracking-wider">Steam B</p>
-                                        <p className="text-lg font-bold text-white tabular-nums">{r.boilerB.flowSteam} <span className="text-[9px] text-slate-400 font-normal">t/h</span></p>
-                                    </div>
-                                    <div className="bg-surface-highlight/30 rounded-lg p-2.5 border border-slate-700/30">
-                                        <p className="text-[9px] text-text-secondary uppercase tracking-wider">Load STG</p>
-                                        <p className="text-lg font-bold text-primary tabular-nums">{r.generator.loadSTG} <span className="text-[9px] text-primary/60 font-normal">MW</span></p>
-                                    </div>
-                                    <div className="bg-surface-highlight/30 rounded-lg p-2.5 border border-slate-700/30">
-                                        <p className="text-[9px] text-text-secondary uppercase tracking-wider">Freq</p>
-                                        <p className="text-lg font-bold text-emerald-400 tabular-nums">{r.generator.frequency} <span className="text-[9px] text-emerald-400/60 font-normal">Hz</span></p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Foreman Boiler Sections */}
-                            <div>
-                                <p className="text-[9px] uppercase tracking-widest font-bold text-orange-400 mb-2 px-1">Foreman Boiler</p>
-                                <div className="space-y-2">
-                                    <Section title="Boiler A" icon="local_fire_department" iconColor="text-orange-400" defaultOpen>
-                                        <BoilerDetail name="A" data={r.boilerA} />
-                                    </Section>
-                                    <Section title="Boiler B" icon="local_fire_department" iconColor="text-orange-400">
-                                        <BoilerDetail name="B" data={r.boilerB} />
-                                    </Section>
-                                    <Section title="Coal Feeder" icon="local_fire_department" iconColor="text-amber-400">
-                                        <div className="grid grid-cols-2 gap-x-6">
-                                            <div>
-                                                <p className="text-[9px] uppercase text-orange-400 font-bold mb-1">Boiler A (A/B/C)</p>
-                                                {r.coalFeeder.slice(0, 3).map(f => (
-                                                    <div key={f.id} className={`${f.flow > 0 ? '' : 'opacity-40'}`}>
-                                                        <DataRow label={`Feeder ${f.id} Flow`} value={f.flow} unit="t/h" />
-                                                        <DataRow label={`Feeder ${f.id} Tot.`} value={f.totalizer} unit="ton" />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] uppercase text-teal-400 font-bold mb-1">Boiler B (D/E/F)</p>
-                                                {r.coalFeeder.slice(3).map(f => (
-                                                    <div key={f.id} className={`${f.flow > 0 ? '' : 'opacity-40'}`}>
-                                                        <DataRow label={`Feeder ${f.id} Flow`} value={f.flow} unit="t/h" />
-                                                        <DataRow label={`Feeder ${f.id} Tot.`} value={f.totalizer} unit="ton" />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </Section>
-                                    <Section title="Coal Bunker" icon="inventory_2" iconColor="text-amber-400">
-                                        <div className="grid grid-cols-2 gap-x-6">
-                                            <div>
-                                                <p className="text-[9px] uppercase text-orange-400 font-bold mb-1">Boiler A</p>
-                                                {r.coalBunker.slice(0, 3).map(b => (
-                                                    <DataRow key={b.id} label={`Bunker ${b.id}`} value={b.level} unit="%" />
-                                                ))}
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] uppercase text-teal-400 font-bold mb-1">Boiler B</p>
-                                                {r.coalBunker.slice(3).map(b => (
-                                                    <DataRow key={b.id} label={`Bunker ${b.id}`} value={b.level} unit="%" />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </Section>
-                                </div>
-                            </div>
-
-                            {/* Foreman Turbin Sections */}
-                            <div>
-                                <p className="text-[9px] uppercase tracking-widest font-bold text-teal-400 mb-2 px-1">Foreman Turbin</p>
-                                <div className="space-y-2">
-                                    <Section title="Turbin" icon="settings" iconColor="text-cyan-400">
-                                        <div className="grid grid-cols-2 gap-x-6">
-                                            <div>
-                                                <p className="text-[9px] uppercase text-primary font-bold mb-1">Steam & Condensate</p>
-                                                <DataRow label="Flow Steam Inlet" value={r.turbin.flowSteamInlet} unit="t/h" />
-                                                <DataRow label="Flow Condensate" value={r.turbin.flowCondensate} unit="t/h" />
-                                                <DataRow label="Press. Steam Inlet" value={r.turbin.pressureSteamInlet} unit="MPa" />
-                                                <DataRow label="Temp Steam Inlet" value={r.turbin.tempSteamInlet} unit="°C" />
-                                                <DataRow label="Temp Exhaust" value={r.turbin.tempExhaustSteam} unit="°C" />
-                                                <DataRow label="Vacuum" value={r.turbin.vacuum} unit="MPa" />
-                                                <DataRow label="Durasi HPO" value={r.turbin.durasiHPO} unit="jam" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] uppercase text-orange-400 font-bold mb-1">Bearing & Vibrasi</p>
-                                                <DataRow label="Temp Thrust Bearing" value={r.turbin.tempThrustBearing} unit="°C" />
-                                                <DataRow label="Temp Metal Bearing" value={r.turbin.tempMetalBearing} unit="°C" />
-                                                <DataRow label="Vibrasi" value={r.turbin.vibrasi} unit="µm" />
-                                                <DataRow label="Temp Winding" value={r.turbin.tempWinding} unit="°C" />
-                                                <DataRow label="Axial Displ." value={r.turbin.axialDisplacement} unit="mm" />
-                                                <p className="text-[9px] uppercase text-blue-400 font-bold mt-2 mb-1">Condenser & CW</p>
-                                                <DataRow label="Level Condenser" value={r.turbin.levelCondenser} unit="%" />
-                                                <DataRow label="Temp CW In" value={r.turbin.tempCWIn} unit="°C" />
-                                                <DataRow label="Temp CW Out" value={r.turbin.tempCWOut} unit="°C" />
-                                                <DataRow label="Press. Deaerator" value={r.turbin.pressureDeaerator} unit="MPa" />
-                                                <DataRow label="Temp Deaerator" value={r.turbin.tempDeaerator} unit="°C" />
-                                            </div>
-                                        </div>
-                                    </Section>
-                                    <Section title="Distribusi Steam" icon="factory" iconColor="text-purple-400">
-                                        <div className="grid grid-cols-3 gap-x-4">
-                                            {r.distribusiSteam.map(d => (
-                                                <div key={d.pabrik}>
-                                                    <p className="text-[9px] uppercase text-purple-400 font-bold mb-1">Pabrik {d.pabrik}</p>
-                                                    <DataRow label="Flow" value={d.flow} unit="t/h" />
-                                                    <DataRow label="Temp" value={d.temp} unit="°C" />
-                                                    <DataRow label="Totalizer" value={d.totalizer} unit="ton" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </Section>
-                                    <Section title="Generator" icon="electric_bolt" iconColor="text-primary">
-                                        <div className="grid grid-cols-2 gap-x-6">
-                                            <DataRow label="Load STG" value={r.generator.loadSTG} unit="MW" />
-                                            <DataRow label="Ampere" value={r.generator.ampere} unit="A" />
-                                            <DataRow label="Amp Reactive" value={r.generator.ampReact} unit="kVAR" />
-                                            <DataRow label="Cos θ" value={r.generator.cosTeta} unit="" />
-                                            <DataRow label="Tegangan" value={r.generator.tegangan} unit="kV" />
-                                            <DataRow label="Frequency" value={r.generator.frequency} unit="Hz" />
-                                        </div>
-                                    </Section>
-                                    <Section title="Gardu Induk" icon="electrical_services" iconColor="text-yellow-400">
-                                        <div className="grid grid-cols-3 gap-x-4">
-                                            <DataRow label="Σ P" value={r.garduInduk.sigmaP} unit="MW" />
-                                            <DataRow label="Σ Q" value={r.garduInduk.sigmaQ} unit="MVAR" />
-                                            <DataRow label="Cos θ" value={r.garduInduk.cosTeta} unit="" />
-                                        </div>
-                                    </Section>
-                                    <Section title="Distribusi Power" icon="bolt" iconColor="text-cyan-400">
-                                        <div className="grid grid-cols-2 gap-x-6">
-                                            {r.distribusiPower.map(d => (
-                                                <DataRow key={d.name} label={d.name} value={d.value} unit="MW" />
-                                            ))}
-                                        </div>
-                                    </Section>
-                                    <Section title="ESP (Electrostatic Precipitator)" icon="air" iconColor="text-orange-400">
-                                        <div className="grid grid-cols-2 gap-x-6">
-                                            <div>
-                                                <p className="text-[9px] uppercase text-orange-400 font-bold mb-1">ESP A</p>
-                                                {r.esp.trafoA.map((v, i) => (
-                                                    <DataRow key={i} label={`Trafo A${i + 1}`} value={v} unit="kV" />
-                                                ))}
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] uppercase text-teal-400 font-bold mb-1">ESP B</p>
-                                                {r.esp.trafoB.map((v, i) => (
-                                                    <DataRow key={i} label={`Trafo B${i + 1}`} value={v} unit="kV" />
-                                                ))}
-                                            </div>
-                                            <div className="col-span-2 mt-2">
-                                                <p className="text-[9px] uppercase text-amber-400 font-bold mb-1">Ash Silo & Unloading</p>
-                                                <div className="grid grid-cols-2 gap-x-6">
-                                                    <DataRow label="Ash Silo A" value={r.esp.ashSiloA} unit="%" />
-                                                    <DataRow label="Ash Silo B" value={r.esp.ashSiloB} unit="%" />
-                                                    <DataRow label="Unloading Rate" value={r.esp.unloadingRate} unit="ton/h" />
-                                                    <div className="flex items-baseline justify-between py-1">
-                                                        <span className="text-[10px] text-text-secondary">Tujuan Truk</span>
-                                                        <span className="text-xs font-bold text-white">{r.esp.tujuanTruk}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Section>
-                                </div>
-                            </div>
-
-                            {/* Shared Sections */}
-                            <div>
-                                <p className="text-[9px] uppercase tracking-widest font-bold text-slate-400 mb-2 px-1">Umum</p>
-                                <div className="space-y-2">
-                                    <Section title="Handling Batubara" icon="local_shipping" iconColor="text-amber-400">
-                                        <div className="grid grid-cols-2 gap-x-6">
-                                            <DataRow label="Total Loading" value={r.handling.totalLoading} unit="shovel" />
-                                            <DataRow label="Hopper Aktif" value={r.handling.hopperAktif} unit="" />
-                                            <DataRow label="Conveyor A" value={r.handling.conveyorA} unit="" />
-                                            <DataRow label="Conveyor B" value={r.handling.conveyorB} unit="" />
-                                            <DataRow label="In Batubara" value={r.handling.inBatubara} unit="ton" />
-                                            <DataRow label="Out Batubara" value={r.handling.outBatubara} unit="ton" />
-                                        </div>
-                                    </Section>
-                                    <Section title="Tank Yard" icon="water_drop" iconColor="text-teal-400">
-                                        <div className="grid grid-cols-3 gap-x-4">
-                                            <DataRow label="RCW" value={r.tankYard.levelRCW} unit="%" />
-                                            <DataRow label="Demin" value={r.tankYard.levelDemin} unit="%" />
-                                            <DataRow label="Solar" value={r.tankYard.levelSolar} unit="%" />
-                                        </div>
-                                    </Section>
-                                </div>
-                            </div>
-
-                            {/* Approval */}
-                            {canApprove && r.status === 'pending' && (
-                                <div className="bg-surface-dark rounded-xl border border-slate-800 p-4">
-                                    <p className="text-[10px] uppercase tracking-wider text-text-secondary font-semibold mb-3 flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-xs">approval</span>
-                                        Approval
-                                    </p>
-                                    <textarea
-                                        value={approvalNote}
-                                        onChange={e => setApprovalNote(e.target.value)}
-                                        placeholder="Catatan approval (opsional)..."
-                                        rows={2}
-                                        className="w-full px-3 py-2.5 bg-surface-highlight border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-slate-600 resize-none mb-3"
-                                    />
-                                    <div className="flex gap-3">
-                                        <button className="flex-1 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-1">
-                                            <span className="material-symbols-outlined text-sm">check_circle</span>
-                                            Approve
-                                        </button>
-                                        <button className="flex-1 py-2 rounded-xl text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all cursor-pointer flex items-center justify-center gap-1">
-                                            <span className="material-symbols-outlined text-sm">cancel</span>
-                                            Reject
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                    {/* Maintenance Logs */}
+                    <section className="flex-1 flex flex-col">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-1.5 h-4 bg-green-500 rounded-full" />
+                            <h3 className="text-xs font-bold text-white uppercase tracking-widest">Maintenance Logs</h3>
                         </div>
-                    ) : (
-                        <div className="bg-surface-dark rounded-xl border border-slate-800 h-64 flex items-center justify-center">
-                            <p className="text-xs text-text-secondary/40">Pilih laporan untuk melihat detail</p>
+                        <div className="bg-surface-dark rounded-xl border border-slate-800 flex flex-col flex-1 overflow-hidden">
+                            <div className="bg-green-600 p-2.5">
+                                <p className="text-[10px] font-bold text-white uppercase tracking-widest text-center">Maintenance Activities</p>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        <tr className="text-[10px] text-green-300 font-bold uppercase bg-green-900/30 tracking-tighter">
+                                            <th className="py-2 px-1 w-[8%] border-b border-green-800/40 text-center">Tgl</th>
+                                            <th className="py-2 px-2 w-[14%] border-b border-green-800/40 text-left">Item</th>
+                                            <th className="py-2 px-1 w-[43%] border-b border-green-800/40 text-left">Uraian</th>
+                                            <th className="py-2 px-1 w-[18%] border-b border-green-800/40 text-center">Scope</th>
+                                            <th className="py-2 px-2 w-[12%] border-b border-green-800/40 text-center">Ket</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {report.maintenance.map((m, i) => (
+                                            <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
+                                                <td className="text-[10px] py-2 px-1 text-center text-slate-400">{m.date}</td>
+                                                <td className="text-[10px] py-2 px-2 font-mono font-bold text-primary">{m.item}</td>
+                                                <td className="text-[10px] py-2 px-1 text-slate-300">{m.uraian}</td>
+                                                <td className="text-[10px] py-2 px-1 text-center text-slate-400">{m.scope}</td>
+                                                <td className="text-center py-2 px-2">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${m.status === 'OK' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{m.status}</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    )}
+                    </section>
+
+                    {/* Critical Equipment */}
+                    <section className="flex-1 flex flex-col">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-1.5 h-4 bg-red-500 rounded-full" />
+                            <h3 className="text-xs font-bold text-white uppercase tracking-widest">Critical Equipment</h3>
+                        </div>
+                        <div className="bg-surface-dark rounded-xl border border-slate-800 flex flex-col flex-1 overflow-hidden">
+                            <div className="bg-red-600 p-2.5">
+                                <p className="text-[10px] font-bold text-white uppercase tracking-widest text-center">Equipment Watchlist</p>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        <tr className="text-[10px] text-red-300 font-bold uppercase bg-red-900/30 tracking-tighter text-center">
+                                            <th className="py-2 px-1 w-[10%] border-b border-red-800/40">Tgl</th>
+                                            <th className="py-2 px-1 w-[15%] border-b border-red-800/40">Item</th>
+                                            <th className="py-2 px-1 w-[45%] border-b border-red-800/40">Uraian</th>
+                                            <th className="py-2 px-2 w-[30%] border-b border-red-800/40">Scope</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-center">
+                                        {report.criticalEquipment.map((eq, i) => (
+                                            <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
+                                                <td className="text-[10px] py-2 px-1 text-slate-400">{eq.date}</td>
+                                                <td className="text-[10px] py-2 px-1 font-mono font-bold text-rose-400">{eq.item}</td>
+                                                <td className="text-[10px] py-2 px-1 text-left text-slate-300">{eq.uraian}</td>
+                                                <td className="text-[10px] py-2 px-2 text-slate-400">{eq.scope}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
                 </div>
+            </div>
+
+            {/* Footer */}
+            <footer className="flex justify-center items-center py-3 border-t border-slate-800 flex-shrink-0 pb-20">
+                <p className="text-slate-500 text-[10px]">&copy; 2026 PowerOps Control Systems. Generated from Shift {report.group} Terminal.</p>
+            </footer>
+
+            {/* Floating Print PDF Button */}
+            <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30">
+                <button onClick={() => window.open('/laporan-shift/preview', '_blank')}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(43,124,238,0.5)] hover:shadow-[0_4px_32px_rgba(43,124,238,0.7)] hover:scale-105">
+                    <span className="material-symbols-outlined text-lg">print</span>
+                    Print PDF
+                </button>
             </div>
         </div>
     );

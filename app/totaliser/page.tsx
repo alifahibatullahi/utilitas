@@ -22,11 +22,11 @@ interface TotaliserRecord {
 
 const dummyRecords: TotaliserRecord[] = [
     { id: 1, date: '2025-02-24', tankId: 'DEMIN', sourceId: 'demin_utilitas1', sourceLabel: 'Utilitas 1', value: 15420, operator: 'Budi Santoso', timestamp: '2025-02-24T23:00:00' },
-    { id: 2, date: '2025-02-24', tankId: 'DEMIN', sourceId: 'demin_su3a', sourceLabel: 'SU 3A', value: 8230, operator: 'Budi Santoso', timestamp: '2025-02-24T23:00:00' },
+    { id: 2, date: '2025-02-24', tankId: 'DEMIN', sourceId: 'demin_3a', sourceLabel: 'Demin 3A', value: 8230, operator: 'Budi Santoso', timestamp: '2025-02-24T23:00:00' },
     { id: 3, date: '2025-02-24', tankId: 'RCW', sourceId: 'rcw_utilitas1', sourceLabel: 'Utilitas 1', value: 22100, operator: 'Ahmad Fauzi', timestamp: '2025-02-24T23:00:00' },
     { id: 4, date: '2025-02-24', tankId: 'SOLAR', sourceId: 'solar_unloading', sourceLabel: 'Unloading Truk', value: 5600, operator: 'Dewi Kartika', timestamp: '2025-02-24T23:00:00' },
     { id: 5, date: '2025-02-23', tankId: 'DEMIN', sourceId: 'demin_utilitas1', sourceLabel: 'Utilitas 1', value: 15200, operator: 'Budi Santoso', timestamp: '2025-02-23T23:00:00' },
-    { id: 6, date: '2025-02-23', tankId: 'DEMIN', sourceId: 'demin_su3a', sourceLabel: 'SU 3A', value: 8100, operator: 'Budi Santoso', timestamp: '2025-02-23T23:00:00' },
+    { id: 6, date: '2025-02-23', tankId: 'DEMIN', sourceId: 'demin_3a', sourceLabel: 'Demin 3A', value: 8100, operator: 'Budi Santoso', timestamp: '2025-02-23T23:00:00' },
     { id: 7, date: '2025-02-23', tankId: 'RCW', sourceId: 'rcw_utilitas1', sourceLabel: 'Utilitas 1', value: 21850, operator: 'Ahmad Fauzi', timestamp: '2025-02-23T23:00:00' },
     { id: 8, date: '2025-02-23', tankId: 'SOLAR', sourceId: 'solar_unloading', sourceLabel: 'Unloading Truk', value: 5450, operator: 'Dewi Kartika', timestamp: '2025-02-23T23:00:00' },
 ];

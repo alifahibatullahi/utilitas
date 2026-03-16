@@ -4,7 +4,7 @@ import CylinderTank from '@/components/ui/CylinderTank';
 import SparklineTrend from '@/components/ui/SparklineTrend';
 import { TANKS, TankId } from '@/lib/constants';
 import { formatRelativeTime, getAlertStatus } from '@/lib/utils';
-import { FlowRate } from '@/hooks/useTankData';
+import { FlowRate, SolarUnloading } from '@/hooks/useTankData';
 import { useRouter } from 'next/navigation';
 
 interface CylinderTankCardProps {
@@ -14,7 +14,7 @@ interface CylinderTankCardProps {
     timestamp: string;
     trendData: { time: string; level: number }[];
     flowRates: FlowRate[];
-    solarUnloadingNote?: string;
+    solarUnloadings?: SolarUnloading[];
 }
 
 export default function CylinderTankCard({
@@ -24,7 +24,7 @@ export default function CylinderTankCard({
     timestamp,
     trendData,
     flowRates,
-    solarUnloadingNote,
+    solarUnloadings,
 }: CylinderTankCardProps) {
     const tank = TANKS[tankId];
     const router = useRouter();
@@ -70,10 +70,10 @@ export default function CylinderTankCard({
                 <SparklineTrend data={trendData} color={tank.liquidColor} height={50} />
             </div>
 
-            {/* Flow source info with live rates (DEMIN & RCW) */}
+            {/* Input flow source info with live rates (DEMIN & RCW) */}
             {flowRates.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-slate-700/30">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Sumber Flow</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Input Flow</p>
                     <div className="space-y-1.5">
                         {flowRates.map((flow) => (
                             <div
@@ -96,13 +96,14 @@ export default function CylinderTankCard({
                 </div>
             )}
 
-            {/* Solar unloading note (only for SOLAR) */}
+            {/* Solar unloading info (only for SOLAR) */}
             {tankId === 'SOLAR' && (
                 <div className="mt-3 pt-3 border-t border-slate-700/30">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Catatan Unloading</p>
-                    {solarUnloadingNote ? (
+                    {solarUnloadings && solarUnloadings.length > 0 ? (
                         <div className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                            <p className="text-xs text-amber-300 font-medium">🚛 {solarUnloadingNote}</p>
+                            <p className="text-xs text-amber-300 font-medium">🚛 {solarUnloadings[0].supplier}</p>
+                            <p className="text-[10px] text-slate-400">{solarUnloadings[0].date} — {solarUnloadings[0].liters.toLocaleString('id-ID')} liter</p>
                         </div>
                     ) : (
                         <p className="text-xs text-slate-600 italic">Tidak ada unloading</p>

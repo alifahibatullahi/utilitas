@@ -1,38 +1,69 @@
+// ─── Output Destination type ───
+export interface OutputDestination {
+    name: string;
+    hasFlow: boolean;       // true = has flow rate data
+    pumps?: string[];       // optional pump choices (e.g. Demin Revamp)
+}
+
 // Tank definitions and configuration
-export const TANKS = {
+export const TANKS: Record<string, {
+    id: string;
+    name: string;
+    capacity: string;
+    capacityM3: number;
+    liquidColor: string;
+    liquidColorLight: string;
+    gradientFrom: string;
+    gradientTo: string;
+    inputSources: string[];
+    outputDestinations: OutputDestination[];
+}> = {
     DEMIN: {
         id: 'demin',
         name: 'DEMIN',
-        capacity: '500 m³',
+        capacity: '1.200 m³',
+        capacityM3: 1200,
         liquidColor: '#38bdf8',       // sky-400
         liquidColorLight: '#7dd3fc',  // sky-300
         gradientFrom: '#0284c7',      // sky-600
         gradientTo: '#38bdf8',        // sky-400
-        flowSources: ['Utilitas 1', 'SU 3A'],
+        inputSources: ['Utilitas 1', 'Demin 3A'],
+        outputDestinations: [
+            { name: 'Internal UBB', hasFlow: true },
+            { name: 'Demin Revamp', hasFlow: true, pumps: ['P-1000A', 'P-1000B', 'Demin B'] },
+        ],
     },
     RCW: {
         id: 'rcw',
         name: 'RCW',
-        capacity: '300 m³',
+        capacity: '4.600 m³',
+        capacityM3: 4600,
         liquidColor: '#2dd4bf',       // teal-400
         liquidColorLight: '#5eead4',  // teal-300
         gradientFrom: '#0d9488',      // teal-600
         gradientTo: '#2dd4bf',        // teal-400
-        flowSources: ['Utilitas 1'],
+        inputSources: ['Utilitas 1'],
+        outputDestinations: [
+            { name: 'Make UP Cooling Tower', hasFlow: false },
+            { name: 'Hydrant', hasFlow: false },
+            { name: 'Service', hasFlow: false },
+        ],
     },
     SOLAR: {
         id: 'solar',
         name: 'SOLAR',
-        capacity: '200 m³',
+        capacity: '2x200 m³',
+        capacityM3: 400,
         liquidColor: '#fbbf24',       // amber-400
         liquidColorLight: '#fcd34d',  // amber-300
         gradientFrom: '#d97706',      // amber-600
         gradientTo: '#fbbf24',        // amber-400
-        flowSources: [],              // manual unloading truk
+        inputSources: [],
+        outputDestinations: [],
     },
-} as const;
+};
 
-export type TankId = keyof typeof TANKS;
+export type TankId = 'DEMIN' | 'RCW' | 'SOLAR';
 export const TANK_IDS: TankId[] = ['DEMIN', 'RCW', 'SOLAR'];
 
 // Alert thresholds (default, can be overridden per tank)
@@ -66,13 +97,13 @@ export const ALERT_COLORS = {
 export const TOTALISER_SOURCES = {
     DEMIN: [
         { id: 'demin_utilitas1', label: 'Utilitas 1', unit: 'm³' },
-        { id: 'demin_su3a', label: 'SU 3A', unit: 'm³' },
+        { id: 'demin_3a', label: 'Demin 3A', unit: 'm³' },
     ],
     RCW: [
         { id: 'rcw_utilitas1', label: 'Utilitas 1', unit: 'm³' },
     ],
     SOLAR: [
-        { id: 'solar_unloading', label: 'Unloading Truk', unit: 'm³' },
+        { id: 'solar_unloading', label: 'Unloading Truk', unit: 'liter' },
     ],
 } as const;
 

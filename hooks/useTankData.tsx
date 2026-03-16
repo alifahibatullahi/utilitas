@@ -10,9 +10,18 @@ export interface FlowRate {
     rate: number; // ton/h
 }
 
-// Solar unloading note
+// Output flow rate (with optional pump for Demin Revamp)
+export interface OutputFlowRate {
+    destinationLabel: string;
+    rate: number;       // ton/h
+    pump?: string;      // e.g. 'P-1000A', 'P-1000B', 'Demin B'
+}
+
+// Solar unloading entry
 export interface SolarUnloading {
-    note: string; // e.g. "Unloading 5.000 liter" or empty
+    date: string;       // ISO date string (tanggal unloading)
+    liters: number;     // jumlah liter
+    supplier: string;   // perusahaan pengirim
 }
 
 export interface TankLevel {
@@ -37,10 +46,12 @@ interface TankDataContextType {
     history: TankLevelHistory[];
     trendData: Record<TankId, { time: string; level: number }[]>;
     flowRates: Record<TankId, FlowRate[]>;
-    solarUnloading: SolarUnloading;
-    setSolarUnloading: (note: string) => void;
+    outputFlowRates: Record<TankId, OutputFlowRate[]>;
+    solarUnloadings: SolarUnloading[];
     submitLevel: (tankId: TankId, level: number, operator: string, note?: string) => void;
     submitFlowRates: (tankId: TankId, rates: FlowRate[]) => void;
+    submitOutputFlowRates: (tankId: TankId, rates: OutputFlowRate[]) => void;
+    submitSolarUnloading: (entry: SolarUnloading) => void;
 }
 
 // Initial dummy data
@@ -65,11 +76,11 @@ const initialHistory: TankLevelHistory[] = [
     { id: 12, tankId: 'DEMIN', level: 70.5, operator: 'Dewi Kartika', timestamp: new Date(Date.now() - 330 * 60 * 1000).toISOString() },
 ];
 
-// Initial dummy flow rates
+// Initial dummy input flow rates
 const initialFlowRates: Record<TankId, FlowRate[]> = {
     DEMIN: [
         { sourceLabel: 'Utilitas 1', rate: 12.5 },
-        { sourceLabel: 'SU 3A', rate: 8.3 },
+        { sourceLabel: 'Demin 3A', rate: 8.3 },
     ],
     RCW: [
         { sourceLabel: 'Utilitas 1', rate: 15.7 },
@@ -77,13 +88,31 @@ const initialFlowRates: Record<TankId, FlowRate[]> = {
     SOLAR: [],
 };
 
+// Initial dummy output flow rates
+const initialOutputFlowRates: Record<TankId, OutputFlowRate[]> = {
+    DEMIN: [
+        { destinationLabel: 'Internal UBB', rate: 10.2 },
+        { destinationLabel: 'Demin Revamp', rate: 6.8, pump: 'P-1000A' },
+    ],
+    RCW: [],   // no flow info on outputs
+    SOLAR: [],
+};
+
+// Initial dummy solar unloading history
+const initialSolarUnloadings: SolarUnloading[] = [
+    { date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], liters: 5000, supplier: 'PT Pertamina' },
+    { date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], liters: 8000, supplier: 'PT AKR Corporindo' },
+    { date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], liters: 6500, supplier: 'PT Shell Indonesia' },
+];
+
 const TankDataContext = createContext<TankDataContextType | null>(null);
 
 export function TankDataProvider({ children }: { children: ReactNode }) {
     const [currentLevels, setCurrentLevels] = useState(initialLevels);
     const [history, setHistory] = useState(initialHistory);
     const [flowRates, setFlowRates] = useState(initialFlowRates);
-    const [solarUnloading, setSolarUnloadingState] = useState<SolarUnloading>({ note: 'Unloading 5.000 liter dari truk pagi' });
+    const [outputFlowRates, setOutputFlowRates] = useState(initialOutputFlowRates);
+    const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloading[]>(initialSolarUnloadings);
     const [trendData, setTrendData] = useState<Record<TankId, { time: string; level: number }[]>>(() => {
         const data: Record<string, { time: string; level: number }[]> = {};
         TANK_IDS.forEach((id) => {
@@ -119,12 +148,16 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         setFlowRates(prev => ({ ...prev, [tankId]: rates }));
     }, []);
 
-    const setSolarUnloading = useCallback((note: string) => {
-        setSolarUnloadingState({ note });
+    const submitOutputFlowRates = useCallback((tankId: TankId, rates: OutputFlowRate[]) => {
+        setOutputFlowRates(prev => ({ ...prev, [tankId]: rates }));
+    }, []);
+
+    const submitSolarUnloading = useCallback((entry: SolarUnloading) => {
+        setSolarUnloadings(prev => [entry, ...prev]);
     }, []);
 
     return (
-        <TankDataContext.Provider value={{ currentLevels, history, trendData, flowRates, solarUnloading, setSolarUnloading, submitLevel, submitFlowRates }}>
+        <TankDataContext.Provider value={{ currentLevels, history, trendData, flowRates, outputFlowRates, solarUnloadings, submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading }}>
             {children}
         </TankDataContext.Provider>
     );

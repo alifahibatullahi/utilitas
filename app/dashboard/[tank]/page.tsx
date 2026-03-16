@@ -104,12 +104,12 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
                     ))}
                 </div>
 
-                {/* Flow sources */}
-                {tank.flowSources.length > 0 && (
+                {/* Input sources */}
+                {tank.inputSources.length > 0 && (
                     <div className="bg-slate-800/40 rounded-xl border border-slate-700/30 p-4 mb-6">
-                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Sumber Flow Input</p>
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Input Sources</p>
                         <div className="flex flex-wrap gap-2">
-                            {tank.flowSources.map((source) => (
+                            {tank.inputSources.map((source) => (
                                 <span
                                     key={source}
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium"
@@ -121,6 +121,34 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
                                 >
                                     ⚡ {source}
                                 </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Output destinations */}
+                {tank.outputDestinations.length > 0 && (
+                    <div className="bg-slate-800/40 rounded-xl border border-slate-700/30 p-4 mb-6">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Output Destinations</p>
+                        <div className="space-y-2">
+                            {tank.outputDestinations.map((dest) => (
+                                <div key={dest.name} className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-700/30 border border-slate-600/30">
+                                    <span className="text-sm text-slate-300 font-medium">{dest.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        {dest.hasFlow ? (
+                                            <span className="text-xs text-emerald-400 font-medium">Flow ✓</span>
+                                        ) : (
+                                            <span className="text-[10px] text-slate-500 italic">tanpa flow</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            {/* Show pump choices if applicable */}
+                            {tank.outputDestinations.filter(d => d.pumps).map(dest => (
+                                <div key={`pumps-${dest.name}`} className="ml-2 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-xs text-slate-500">engineering</span>
+                                    <span className="text-[11px] text-slate-400">Pompa {dest.name}: {dest.pumps!.join(' / ')}</span>
+                                </div>
                             ))}
                         </div>
                     </div>

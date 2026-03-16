@@ -13,8 +13,8 @@ export default function AppShell({ children }: AppShellProps) {
     const pathname = usePathname();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-    // Don't show shell on login page
-    if (pathname === '/') {
+    // Don't show shell on login page or fullscreen preview pages
+    if (pathname === '/' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview') {
         return <>{children}</>;
     }
 

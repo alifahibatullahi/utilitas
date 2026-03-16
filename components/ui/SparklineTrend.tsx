@@ -24,7 +24,7 @@ export default function SparklineTrend({ data, color, height = 60 }: SparklineTr
                             fontSize: '12px',
                             color: '#f8fafc',
                         }}
-                        formatter={(value: number) => [`${value.toFixed(1)}%`, 'Level']}
+                        formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}%`, 'Level']}
                         labelFormatter={(label) => `${label}`}
                     />
                     <Line

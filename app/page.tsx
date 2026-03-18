@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
-import { OPERATORS, Operator, ROLE_LABELS, ROLE_ICONS, ROLE_COLORS, ROLE_DOT_COLORS, OperatorRole } from '@/lib/constants';
+import { Operator, ROLE_LABELS, ROLE_ICONS, ROLE_COLORS, ROLE_DOT_COLORS } from '@/lib/constants';
 
 const GROUP_ORDER: { group: string; label: string }[] = [
   { group: 'A', label: '🅰️ Group A' },
@@ -14,10 +14,21 @@ const GROUP_ORDER: { group: string; label: string }[] = [
 
 export default function LoginPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const { login } = useOperator();
+  const { operator, operators, loading, login } = useOperator();
   const router = useRouter();
 
-  const selectedOp = OPERATORS.find(o => o.id === selectedId) || null;
+  // Auto-redirect if already logged in (from localStorage)
+  useEffect(() => {
+    if (!loading && operator) {
+      if (operator.role === 'handling') {
+        router.replace('/tank-level');
+      } else {
+        router.replace('/dashboard');
+      }
+    }
+  }, [loading, operator, router]);
+
+  const selectedOp = operators.find(o => o.id === selectedId) || null;
 
   const handleLogin = () => {
     if (!selectedOp) return;
@@ -28,6 +39,18 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   };
+
+  // Show nothing while checking localStorage
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-dark">
+        <div className="animate-pulse text-text-secondary">Loading...</div>
+      </div>
+    );
+  }
+
+  // If already logged in, show nothing (will redirect)
+  if (operator) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-bg-dark relative overflow-hidden">
@@ -63,7 +86,7 @@ export default function LoginPage() {
               >
                 <option value="" disabled>-- Pilih Nama --</option>
                 {GROUP_ORDER.map(g => {
-                  const ops = OPERATORS.filter(o => o.group === g.group);
+                  const ops = operators.filter(o => o.group === g.group);
                   if (ops.length === 0) return null;
                   return (
                     <optgroup key={g.group} label={g.label}>
@@ -77,12 +100,12 @@ export default function LoginPage() {
                 })}
                 {/* Handling & Admin */}
                 <optgroup label="🔩 Handling">
-                  {OPERATORS.filter(o => o.role === 'handling').map(op => (
+                  {operators.filter(o => o.role === 'handling').map(op => (
                     <option key={op.id} value={op.id}>{op.name}</option>
                   ))}
                 </optgroup>
                 <optgroup label="🔑 Admin">
-                  {OPERATORS.filter(o => o.role === 'admin').map(op => (
+                  {operators.filter(o => o.role === 'admin').map(op => (
                     <option key={op.id} value={op.id}>{op.name}</option>
                   ))}
                 </optgroup>
@@ -124,7 +147,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-text-secondary/40 mt-6">
-          © 2023 PowerOps Control Systems. All systems operational.
+          © 2025 PowerOps Control Systems. All systems operational.
         </p>
       </div>
     </div>

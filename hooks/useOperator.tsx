@@ -1,10 +1,16 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { Operator, OperatorRole, SHIFT_INPUT_ROLES } from '@/lib/constants';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { Operator, OperatorRole, SHIFT_INPUT_ROLES, OPERATORS } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
+import type { OperatorRow } from '@/lib/supabase/types';
+
+const STORAGE_KEY = 'powerops_operator';
 
 interface OperatorContextType {
     operator: Operator | null;
+    operators: Operator[];
+    loading: boolean;
     login: (op: Operator) => void;
     logout: () => void;
     isGroupOperator: boolean;
@@ -23,6 +29,8 @@ const FOREMAN_ROLES: OperatorRole[] = ['foreman_boiler', 'foreman_turbin'];
 
 const OperatorContext = createContext<OperatorContextType>({
     operator: null,
+    operators: [],
+    loading: true,
     login: () => { },
     logout: () => { },
     isGroupOperator: false,
@@ -36,15 +44,63 @@ const OperatorContext = createContext<OperatorContextType>({
     canManageUsers: false,
 });
 
+function getStoredOperator(): Operator | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) return JSON.parse(stored);
+    } catch { /* ignore */ }
+    return null;
+}
+
 export function OperatorProvider({ children }: { children: ReactNode }) {
     const [operator, setOperator] = useState<Operator | null>(null);
+    const [operators, setOperators] = useState<Operator[]>(OPERATORS);
+    const [loading, setLoading] = useState(true);
+
+    // On mount: restore from localStorage
+    useEffect(() => {
+        const stored = getStoredOperator();
+        if (stored) setOperator(stored);
+        setLoading(false);
+    }, []);
+
+    // Fetch operators from Supabase (fallback to constants)
+    useEffect(() => {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (!supabaseUrl || supabaseUrl.includes('YOUR_PROJECT_ID')) return;
+
+        const supabase = createClient();
+        supabase
+            .from('operators')
+            .select('*')
+            .order('name')
+            .then(({ data, error }) => {
+                if (!error && data && data.length > 0) {
+                    const rows = data as unknown as OperatorRow[];
+                    setOperators(rows.map((op, idx) => ({
+                        id: idx + 1,
+                        supabaseId: op.id,
+                        name: op.name,
+                        role: op.role as OperatorRole,
+                        group: op.group_name || undefined,
+                    })));
+                }
+            });
+    }, []);
 
     const login = useCallback((op: Operator) => {
         setOperator(op);
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(op));
+        } catch { /* ignore */ }
     }, []);
 
     const logout = useCallback(() => {
         setOperator(null);
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch { /* ignore */ }
     }, []);
 
     const role = operator?.role;
@@ -58,6 +114,8 @@ export function OperatorProvider({ children }: { children: ReactNode }) {
         <OperatorContext.Provider
             value={{
                 operator,
+                operators,
+                loading,
                 login,
                 logout,
                 isGroupOperator,

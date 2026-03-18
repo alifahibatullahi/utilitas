@@ -1,8 +1,10 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { TankId, TANK_IDS, TANKS } from '@/lib/constants';
 import { generateTrendData } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+import type { TankLevelRow, SolarUnloadingRow } from '@/lib/supabase/types';
 
 // Flow rate per source (ton/h)
 export interface FlowRate {
@@ -54,7 +56,7 @@ interface TankDataContextType {
     submitSolarUnloading: (entry: SolarUnloading) => void;
 }
 
-// Initial dummy data
+// Initial dummy data (fallback when Supabase not connected)
 const initialLevels: Record<TankId, TankLevel> = {
     DEMIN: { tankId: 'DEMIN', level: 78.4, operator: 'Budi Santoso', timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(), note: '' },
     RCW: { tankId: 'RCW', level: 65.2, operator: 'Ahmad Fauzi', timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), note: '' },
@@ -76,7 +78,6 @@ const initialHistory: TankLevelHistory[] = [
     { id: 12, tankId: 'DEMIN', level: 70.5, operator: 'Dewi Kartika', timestamp: new Date(Date.now() - 330 * 60 * 1000).toISOString() },
 ];
 
-// Initial dummy input flow rates
 const initialFlowRates: Record<TankId, FlowRate[]> = {
     DEMIN: [
         { sourceLabel: 'Utilitas 1', rate: 12.5 },
@@ -88,22 +89,25 @@ const initialFlowRates: Record<TankId, FlowRate[]> = {
     SOLAR: [],
 };
 
-// Initial dummy output flow rates
 const initialOutputFlowRates: Record<TankId, OutputFlowRate[]> = {
     DEMIN: [
         { destinationLabel: 'Internal UBB', rate: 10.2 },
         { destinationLabel: 'Demin Revamp', rate: 6.8, pump: 'P-1000A' },
     ],
-    RCW: [],   // no flow info on outputs
+    RCW: [],
     SOLAR: [],
 };
 
-// Initial dummy solar unloading history
 const initialSolarUnloadings: SolarUnloading[] = [
     { date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], liters: 5000, supplier: 'PT Pertamina' },
     { date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], liters: 8000, supplier: 'PT AKR Corporindo' },
     { date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], liters: 6500, supplier: 'PT Shell Indonesia' },
 ];
+
+function isSupabaseConfigured(): boolean {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    return !!url && !url.includes('YOUR_PROJECT_ID');
+}
 
 const TankDataContext = createContext<TankDataContextType | null>(null);
 
@@ -121,10 +125,112 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         return data as Record<TankId, { time: string; level: number }[]>;
     });
 
+    // Fetch from Supabase on mount
+    useEffect(() => {
+        if (!isSupabaseConfigured()) return;
+
+        const supabase = createClient();
+
+        // Fetch latest tank levels
+        const fetchLevels = async () => {
+            for (const tankId of TANK_IDS) {
+                const { data } = await supabase
+                    .from('tank_levels')
+                    .select('*, operators(name)')
+                    .eq('tank_id', tankId)
+                    .order('timestamp', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (data) {
+                    const row = data as unknown as TankLevelRow & { operators: { name: string } | null };
+                    const operatorName = row.operators?.name || 'Unknown';
+                    setCurrentLevels(prev => ({
+                        ...prev,
+                        [tankId]: {
+                            tankId,
+                            level: Number(row.level_percent),
+                            operator: operatorName,
+                            timestamp: row.timestamp,
+                            note: row.note || '',
+                        }
+                    }));
+                }
+            }
+        };
+
+        // Fetch history (last 20 entries)
+        const fetchHistory = async () => {
+            const { data } = await supabase
+                .from('tank_levels')
+                .select('*, operators(name)')
+                .order('timestamp', { ascending: false })
+                .limit(20);
+
+            if (data && data.length > 0) {
+                const rows = data as unknown as (TankLevelRow & { operators: { name: string } | null })[];
+                setHistory(rows.map((d, idx) => ({
+                    id: idx + 1,
+                    tankId: d.tank_id as TankId,
+                    level: Number(d.level_percent),
+                    operator: d.operators?.name || 'Unknown',
+                    timestamp: d.timestamp,
+                    note: d.note || undefined,
+                })));
+            }
+        };
+
+        // Fetch solar unloadings
+        const fetchSolar = async () => {
+            const { data } = await supabase
+                .from('solar_unloadings')
+                .select('*')
+                .order('date', { ascending: false })
+                .limit(10);
+
+            if (data && data.length > 0) {
+                const rows = data as unknown as SolarUnloadingRow[];
+                setSolarUnloadings(rows.map(d => ({
+                    date: d.date,
+                    liters: Number(d.liters),
+                    supplier: d.supplier,
+                })));
+            }
+        };
+
+        fetchLevels();
+        fetchHistory();
+        fetchSolar();
+
+        // Realtime subscription for tank levels
+        const channel = supabase
+            .channel('tank_levels_changes')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tank_levels' }, (payload: { new: Record<string, unknown> }) => {
+                const d = payload.new as { tank_id: string; level_percent: number; timestamp: string; note: string | null };
+                const tankId = d.tank_id as TankId;
+                setCurrentLevels(prev => ({
+                    ...prev,
+                    [tankId]: {
+                        tankId,
+                        level: Number(d.level_percent),
+                        operator: 'Realtime',
+                        timestamp: d.timestamp,
+                        note: d.note || '',
+                    }
+                }));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
     const submitLevel = useCallback((tankId: TankId, level: number, operator: string, note?: string) => {
         const timestamp = new Date().toISOString();
         const newEntry: TankLevel = { tankId, level, operator, timestamp, note };
 
+        // Update local state immediately
         setCurrentLevels(prev => ({ ...prev, [tankId]: newEntry }));
         setHistory(prev => [
             { id: prev.length + 1, ...newEntry },
@@ -142,6 +248,21 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                 [tankId]: [...existing.slice(-11), newPoint],
             };
         });
+
+        // Insert to Supabase
+        if (isSupabaseConfigured()) {
+            const supabase = createClient();
+            const levelM3 = (level / 100) * (TANKS[tankId]?.capacityM3 || 0);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            supabase.from('tank_levels').insert({
+                tank_id: tankId,
+                level_percent: level,
+                level_m3: levelM3,
+                note: note || null,
+            } as any).then(({ error }: { error: unknown }) => {
+                if (error) console.error('Failed to insert tank level:', error);
+            });
+        }
     }, []);
 
     const submitFlowRates = useCallback((tankId: TankId, rates: FlowRate[]) => {
@@ -154,6 +275,19 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
 
     const submitSolarUnloading = useCallback((entry: SolarUnloading) => {
         setSolarUnloadings(prev => [entry, ...prev]);
+
+        // Insert to Supabase
+        if (isSupabaseConfigured()) {
+            const supabase = createClient();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            supabase.from('solar_unloadings').insert({
+                date: entry.date,
+                liters: entry.liters,
+                supplier: entry.supplier,
+            } as any).then(({ error }: { error: unknown }) => {
+                if (error) console.error('Failed to insert solar unloading:', error);
+            });
+        }
     }, []);
 
     return (

@@ -173,16 +173,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     </div>
                 )}
 
-                {/* Logout */}
+                {/* Ganti Operator */}
                 <button
                     onClick={handleLogout}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary
-                        hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer
+                        hover:text-amber-400 hover:bg-amber-500/10 transition-all duration-200 cursor-pointer
                         ${collapsed ? 'justify-center' : ''}`}
-                    title="Keluar"
+                    title="Ganti Operator"
                 >
-                    <span className="material-symbols-outlined text-lg">logout</span>
-                    {!collapsed && <span>Keluar</span>}
+                    <span className="material-symbols-outlined text-lg">swap_horiz</span>
+                    {!collapsed && <span>Ganti Operator</span>}
                 </button>
 
                 {/* Toggle collapse */}

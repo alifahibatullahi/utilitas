@@ -8,6 +8,9 @@ import TabDistribusiSteam from '@/components/input-shift/TabDistribusiSteam';
 import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
+import { useShiftReport } from '@/hooks/useShiftReport';
+import { useOperator } from '@/hooks/useOperator';
+import type { ShiftType } from '@/lib/supabase/types';
 
 type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker';
 
@@ -26,22 +29,108 @@ export default function InputShiftPage() {
     const [activeTab, setActiveTab] = useState<TabId>('Boiler A');
     const [inputMode, setInputMode] = useState<'shift' | 'harian'>('shift');
     const [selectedShift, setSelectedShift] = useState<1 | 2 | 3>(2);
+    const [submitting, setSubmitting] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const today = new Date().toISOString().split('T')[0];
+    const [selectedDate] = useState(today);
+
+    // Form state
+    const [boilerA, setBoilerA] = useState<Record<string, number | null>>({});
+    const [boilerB, setBoilerB] = useState<Record<string, number | null>>({});
+    const [turbin, setTurbin] = useState<Record<string, number | null>>({});
+    const [steamDist, setSteamDist] = useState<Record<string, number | null>>({});
+    const [generatorGi, setGeneratorGi] = useState<Record<string, number | null>>({});
+    const [powerDist, setPowerDist] = useState<Record<string, number | null>>({});
+    const [espHandling, setEspHandling] = useState<Record<string, number | string | null>>({});
+    const [tankyard, setTankyard] = useState<Record<string, number | null>>({});
+    const [coalBunker, setCoalBunker] = useState<Record<string, number | null>>({});
+
+    const shiftMap: Record<number, ShiftType> = { 1: 'pagi', 2: 'sore', 3: 'malam' };
+    const { submitReport } = useShiftReport(selectedDate, shiftMap[selectedShift]);
+    const { operator } = useOperator();
+
+    // Generic change handlers
+    const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>
+        (name: string, value: number | string | null) => {
+            setter(prev => ({ ...prev, [name]: typeof value === 'string' ? parseFloat(value) || null : value }));
+        };
+
+    const makeMixedHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | string | null>>>) =>
+        (name: string, value: number | string | null) => {
+            setter(prev => ({ ...prev, [name]: value }));
+        };
+
+    const showToast = (message: string, type: 'success' | 'error') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    };
+
+    const handleSubmit = async () => {
+        if (submitting) return;
+        setSubmitting(true);
+        try {
+            const result = await submitReport({
+                group_name: operator?.group || 'A',
+                supervisor: 'Supervisor',
+                created_by: operator?.name || 'Unknown',
+                boilerA,
+                boilerB,
+                turbin,
+                steamDist,
+                generatorGi,
+                powerDist,
+                espHandling,
+                tankyard,
+                coalBunker,
+            });
+            if (result?.error) {
+                showToast('Error: ' + result.error, 'error');
+            } else {
+                showToast('Laporan berhasil disimpan!', 'success');
+            }
+        } catch (err) {
+            showToast('Terjadi kesalahan saat menyimpan laporan.', 'error');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleSaveDraft = async () => {
+        await handleSubmit();
+    };
 
     return (
         <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 flex flex-col gap-6 h-full overflow-hidden">
+            {/* Toast Notification */}
+            {toast && (
+                <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all ${
+                    toast.type === 'success'
+                        ? 'bg-emerald-600 border border-emerald-400/50 shadow-emerald-500/20'
+                        : 'bg-red-600 border border-red-400/50 shadow-red-500/20'
+                }`}>
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[18px]">
+                            {toast.type === 'success' ? 'check_circle' : 'error'}
+                        </span>
+                        {toast.message}
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <header className="flex flex-col items-center justify-center gap-4 shrink-0 mt-4 mb-2">
-                
+
                 {/* Mode & Shift Controls */}
                 <div className="flex items-center gap-3">
                     <div className="flex bg-[#16202e]/80 border border-slate-700/50 rounded-lg p-1">
-                        <button 
+                        <button
                             onClick={() => setInputMode('shift')}
                             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${inputMode === 'shift' ? 'bg-[#2b7cee] text-white shadow-[0_0_10px_rgba(43,124,238,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
                         >
                             Shift
                         </button>
-                        <button 
+                        <button
                             onClick={() => setInputMode('harian')}
                             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${inputMode === 'harian' ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
                         >
@@ -58,7 +147,7 @@ export default function InputShiftPage() {
                             ].map(shift => (
                                 <button
                                     key={shift.id}
-                                    onClick={() => setSelectedShift(shift.id as any)}
+                                    onClick={() => setSelectedShift(shift.id as 1 | 2 | 3)}
                                     className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${selectedShift === shift.id ? 'bg-amber-500 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
                                 >
                                     {shift.label}
@@ -93,13 +182,21 @@ export default function InputShiftPage() {
                     </div>
                 </div>
                 <div className="flex gap-3 shrink-0 mt-2">
-                    <button className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(37,99,235,0.3)] border border-blue-500/50">
+                    <button
+                        onClick={handleSaveDraft}
+                        disabled={submitting}
+                        className={`flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(37,99,235,0.3)] border border-blue-500/50 ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
                         <span className="material-symbols-outlined text-[14px]">drafts</span>
-                        Save Draft
+                        {submitting ? 'Saving...' : 'Save Draft'}
                     </button>
-                    <button className="flex justify-center items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(16,185,129,0.3)] border border-emerald-400/50">
+                    <button
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        className={`flex justify-center items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(16,185,129,0.3)] border border-emerald-400/50 ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
                         <span className="material-symbols-outlined text-[14px]">send</span>
-                        Submit Report
+                        {submitting ? 'Submitting...' : 'Submit Report'}
                     </button>
                 </div>
             </header>
@@ -114,7 +211,7 @@ export default function InputShiftPage() {
                             return (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
+                                    onClick={() => setActiveTab(tab.id as TabId)}
                                     className={`px-5 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-colors ${isActive
                                         ? 'font-bold bg-[#2b7cee]/20 text-[#2b7cee] border border-[#2b7cee]/30 shadow-inner shadow-[#2b7cee]/10'
                                         : 'font-medium text-[#92a9c9] hover:text-white hover:bg-[#1f2b3e] border border-transparent'
@@ -133,14 +230,14 @@ export default function InputShiftPage() {
 
             {/* Tab Content */}
             <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
-                {activeTab === 'Boiler A' && <TabBoiler boilerId="A" />}
-                {activeTab === 'Boiler B' && <TabBoiler boilerId="B" />}
-                {activeTab === 'Turbin' && <TabTurbin />}
-                {activeTab === 'Generator' && <TabGenerator />}
-                {activeTab === 'Distribusi Steam' && <TabDistribusiSteam />}
-                {activeTab === 'Handling' && <TabHandling />}
-                {activeTab === 'ESP' && <TabESP />}
-                {activeTab === 'Coal Bunker' && <TabCoalBunker />}
+                {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} />}
+                {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} />}
+                {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} />}
+                {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} />}
+                {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} />}
+                {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} />}
+                {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} />}
+                {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeNumberHandler(setCoalBunker)} />}
             </div>
         </div>
     );

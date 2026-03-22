@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
+import { useShiftReport, ShiftReportData } from '@/hooks/useShiftReport';
 
 // ─── Data Interfaces ───
 interface BoilerData {
@@ -166,6 +167,129 @@ const DUMMY_REPORTS: ShiftReport[] = [
     },
 ];
 
+// ─── Build Report from Supabase Data ───
+function buildReportFromSupabase(sr: ShiftReportData): ShiftReport {
+    const boilerA = sr.shift_boiler?.find(b => b.boiler === 'A');
+    const boilerB = sr.shift_boiler?.find(b => b.boiler === 'B');
+    const turbin = sr.shift_turbin?.[0];
+    const gen = sr.shift_generator_gi?.[0];
+    const pd = sr.shift_power_dist?.[0];
+    const sd = sr.shift_steam_dist?.[0];
+    const ty = sr.shift_tankyard?.[0];
+    const esp = sr.shift_esp_handling?.[0];
+    const wq = sr.shift_water_quality?.[0];
+    const note = sr.shift_notes?.[0];
+
+    const flowA = boilerA?.flow_steam ?? 0;
+    const batubaraA = boilerA?.batubara_ton ?? 0;
+    const flowB = boilerB?.flow_steam ?? 0;
+    const batubaraB = boilerB?.batubara_ton ?? 0;
+
+    return {
+        id: 0,
+        shift: sr.shift,
+        date: sr.date,
+        group: sr.group_name ?? '',
+        supervisor: sr.supervisor ?? '',
+        operator: sr.created_by ?? '',
+        boilerA: {
+            flowSteam: flowA,
+            furnace: boilerA?.temp_furnace ?? 0,
+            flueGas: boilerA?.temp_flue_gas ?? 0,
+            batubara: batubaraA,
+            tempSteam: boilerA?.temp_steam ?? 0,
+            cr: flowA > 0 ? +(batubaraA / flowA).toFixed(2) : 0,
+            lifetime: boilerA?.stream_days ?? 0,
+        },
+        boilerB: {
+            flowSteam: flowB,
+            furnace: boilerB?.temp_furnace ?? 0,
+            flueGas: boilerB?.temp_flue_gas ?? 0,
+            batubara: batubaraB,
+            tempSteam: boilerB?.temp_steam ?? 0,
+            cr: flowB > 0 ? +(batubaraB / flowB).toFixed(2) : 0,
+            lifetime: boilerB?.stream_days ?? 0,
+        },
+        turbin: {
+            loadTG: gen?.gen_load ?? 0,
+            internalUBB: pd?.power_ubb ?? 0,
+            pln: gen?.gi_sum_p ?? 0,
+            durasiHPO: turbin?.hpo_durasi ?? 0,
+            tempCWIn: turbin?.temp_cw_in ?? 0,
+            tempCWOut: turbin?.temp_cw_out ?? 0,
+            tempThrustBrg: turbin?.thrust_bearing ?? 0,
+            axialDispl: turbin?.axial_displacement ?? 0,
+        },
+        power: [
+            { name: 'Pabrik 3A', value: pd?.power_pabrik3a ?? 0 },
+            { name: 'Pabrik 3B', value: pd?.power_pabrik3b ?? 0 },
+            { name: 'PIU', value: pd?.power_pie ?? 0 },
+            { name: 'Pabrik 2', value: pd?.power_pabrik2 ?? 0 },
+        ],
+        distribusiSteam: [
+            { pabrik: 'Pabrik 1', value: sd?.pabrik1_flow ?? 0 },
+            { pabrik: 'Pabrik 2', value: sd?.pabrik2_flow ?? 0 },
+            { pabrik: 'Pabrik 3A', value: sd?.pabrik3a_flow ?? 0 },
+        ],
+        tankYard: {
+            rcw: ty?.tk_rcw ?? 0,
+            demin: ty?.tk_demin ?? 0,
+            solarAB: ty?.tk_solar_ab ?? 0,
+            siloA: esp?.silo_a ?? 0,
+            siloB: esp?.silo_b ?? 0,
+        },
+        lab: {
+            boilerFeedWater: {
+                tempBFW: wq?.bfw_th ?? 0,
+                pH: wq?.bfw_ph ?? 0,
+                conduct: wq?.bfw_conduct ?? 0,
+                silica: wq?.bfw_sio2 ?? 0,
+                nh4: wq?.bfw_nh4 ?? 0,
+                chz: wq?.bfw_chz ?? 0,
+            },
+            tk1250: {
+                pH: wq?.demin_1250_ph ?? 0,
+                conduct: wq?.demin_1250_conduct ?? 0,
+                silica: wq?.demin_1250_sio2 ?? 0,
+            },
+            productSteam: {
+                pH: wq?.product_steam_ph ?? 0,
+                conduct: wq?.product_steam_conduct ?? 0,
+                silica: wq?.product_steam_sio2 ?? 0,
+            },
+            boilerWaterA: {
+                pH: wq?.boiler_water_a_ph ?? 0,
+                cond: wq?.boiler_water_a_conduct ?? 0,
+                sio2: wq?.boiler_water_a_sio2 ?? 0,
+                po4: wq?.boiler_water_a_po4 ?? 0,
+            },
+            boilerWaterB: {
+                pH: wq?.boiler_water_b_ph ?? 0,
+                cond: wq?.boiler_water_b_conduct ?? 0,
+                sio2: wq?.boiler_water_b_sio2 ?? 0,
+                po4: wq?.boiler_water_b_po4 ?? 0,
+            },
+        },
+        criticalEquipment: (sr.critical_equipment ?? []).map(ce => ({
+            date: ce.date ?? '',
+            item: ce.item ?? '',
+            uraian: ce.scope ?? '',
+            scope: ce.scope ?? '',
+        })),
+        maintenance: (sr.maintenance_logs ?? []).map(ml => ({
+            date: '',
+            item: ml.item ?? '',
+            uraian: ml.uraian ?? '',
+            scope: ml.scope ?? '',
+            status: ml.status ?? '',
+        })),
+        catatan: note?.content ?? '',
+        catatanTime: note?.timestamp ?? '',
+        catatanAuthor: sr.created_by ?? '',
+        catatanRole: '',
+    };
+}
+
 // ─── Lab Table (Dark Theme) ───
 function LabTable({ title, color, headers, values }: { title: string; color: string; headers: string[]; values: (string | number)[] }) {
     const colorMap: Record<string, { header: string; subhead: string; border: string }> = {
@@ -220,15 +344,20 @@ export default function LaporanShiftPage() {
     const { operator } = useOperator();
     const router = useRouter();
     const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
-    const [selectedDate, setSelectedDate] = useState('2026-03-14');
+    const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+    const { report: supaReport, loading, error } = useShiftReport(selectedDate, activeShift);
+
+    const report = useMemo(() => {
+        if (supaReport) return buildReportFromSupabase(supaReport);
+        return DUMMY_REPORTS.find(r => r.shift === activeShift) || DUMMY_REPORTS[0];
+    }, [supaReport, activeShift]);
 
     useEffect(() => {
         if (!operator) router.push('/');
     }, [operator, router]);
 
     if (!operator) return null;
-
-    const report = DUMMY_REPORTS.find(r => r.shift === activeShift) || DUMMY_REPORTS[0];
     const dateObj = new Date(selectedDate + 'T00:00:00');
     const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
     const dateFormatted = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -302,6 +431,22 @@ export default function LaporanShiftPage() {
                 <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Laporan Akhir Shift {SHIFT_LABELS[activeShift]}</h2>
                 <p className="text-primary font-bold text-sm tracking-widest uppercase mt-1">Utilitas Batubara</p>
             </header>
+
+            {/* Loading State */}
+            {loading && (
+                <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+                    <span className="ml-3 text-sm text-slate-400">Memuat data shift...</span>
+                </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+                <div className="bg-red-950/40 border border-red-800/60 rounded-xl p-4 text-center">
+                    <p className="text-red-400 text-sm font-semibold">Gagal memuat data</p>
+                    <p className="text-red-500/70 text-xs mt-1">{error}</p>
+                </div>
+            )}
 
             {/* Info Bar - Full Width */}
             <div className="grid grid-cols-4 divide-x divide-cyan-800/60 bg-cyan-950 py-4 px-6 rounded-xl border border-cyan-900 shadow-md w-full">

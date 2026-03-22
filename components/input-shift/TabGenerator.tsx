@@ -2,7 +2,14 @@
 import React from 'react';
 import { Card, InputField } from './SharedComponents';
 
-export default function TabGenerator() {
+interface TabGeneratorProps {
+    generatorValues?: Record<string, number | string | null>;
+    powerValues?: Record<string, number | string | null>;
+    onGeneratorChange?: (name: string, value: number | string | null) => void;
+    onPowerChange?: (name: string, value: number | string | null) => void;
+}
+
+export default function TabGenerator({ generatorValues = {}, powerValues = {}, onGeneratorChange, onPowerChange }: TabGeneratorProps) {
     return (
         <>
             <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
@@ -10,29 +17,29 @@ export default function TabGenerator() {
 
                     <Card title="Generator Output" icon="flash_on" color="blue">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <InputField label="Load STG UBB" unit="MW" color="blue" />
-                            <InputField label="Ampere" unit="A" color="blue" />
-                            <InputField label="AMP React" unit="kVAR" color="blue" />
-                            <InputField label="Cos θ" color="blue" />
-                            <InputField label="Tegangan" unit="kV" color="blue" />
-                            <InputField label="Frekuensi" unit="Hz" color="blue" />
+                            <InputField label="Load STG UBB" unit="MW" color="blue" name="gen_load" value={generatorValues.gen_load} onChange={onGeneratorChange} />
+                            <InputField label="Ampere" unit="A" color="blue" name="gen_ampere" value={generatorValues.gen_ampere} onChange={onGeneratorChange} />
+                            <InputField label="AMP React" unit="kVAR" color="blue" name="gen_amp_react" value={generatorValues.gen_amp_react} onChange={onGeneratorChange} />
+                            <InputField label="Cos θ" color="blue" name="gen_cos_phi" value={generatorValues.gen_cos_phi} onChange={onGeneratorChange} />
+                            <InputField label="Tegangan" unit="kV" color="blue" name="gen_tegangan" value={generatorValues.gen_tegangan} onChange={onGeneratorChange} />
+                            <InputField label="Frekuensi" unit="Hz" color="blue" name="gen_frequensi" value={generatorValues.gen_frequensi} onChange={onGeneratorChange} />
                         </div>
                     </Card>
 
                     <Card title="Gardu Induk" icon="electrical_services" color="orange">
-                        <InputField label="Σ P" unit="MW" color="orange" />
-                        <InputField label="Σ Q" unit="MVAR" color="orange" />
-                        <InputField label="Cos θ" color="orange" />
+                        <InputField label="Σ P" unit="MW" color="orange" name="gi_sum_p" value={generatorValues.gi_sum_p} onChange={onGeneratorChange} />
+                        <InputField label="Σ Q" unit="MVAR" color="orange" name="gi_sum_q" value={generatorValues.gi_sum_q} onChange={onGeneratorChange} />
+                        <InputField label="Cos θ" color="orange" name="gi_cos_phi" value={generatorValues.gi_cos_phi} onChange={onGeneratorChange} />
                     </Card>
 
                     <Card title="Distribusi Power" icon="account_tree" color="emerald">
                         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                            <InputField label="Internal UBB" unit="MW" color="emerald" size="small" />
-                            <InputField label="Pabrik 2" unit="MW" color="emerald" size="small" />
-                            <InputField label="Pabrik 3A" unit="MW" color="emerald" size="small" />
-                            <InputField label="PIU" unit="MW" color="emerald" size="small" />
+                            <InputField label="Internal UBB" unit="MW" color="emerald" size="small" name="power_ubb" value={powerValues.power_ubb} onChange={onPowerChange} />
+                            <InputField label="Pabrik 2" unit="MW" color="emerald" size="small" name="power_pabrik2" value={powerValues.power_pabrik2} onChange={onPowerChange} />
+                            <InputField label="Pabrik 3A" unit="MW" color="emerald" size="small" name="power_pabrik3a" value={powerValues.power_pabrik3a} onChange={onPowerChange} />
+                            <InputField label="PIU" unit="MW" color="emerald" size="small" name="power_pie" value={powerValues.power_pie} onChange={onPowerChange} />
                             <div className="col-span-2 md:col-span-1">
-                                <InputField label="Pabrik 3B" unit="MW" color="emerald" size="small" />
+                                <InputField label="Pabrik 3B" unit="MW" color="emerald" size="small" name="power_pabrik3b" value={powerValues.power_pabrik3b} onChange={onPowerChange} />
                             </div>
                         </div>
                     </Card>

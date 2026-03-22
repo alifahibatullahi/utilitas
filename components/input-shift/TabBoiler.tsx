@@ -2,7 +2,13 @@
 import React from 'react';
 import { Card, InputField, CalculatedField } from './SharedComponents';
 
-export default function TabBoiler({ boilerId }: { boilerId: 'A' | 'B' }) {
+interface TabBoilerProps {
+    boilerId: 'A' | 'B';
+    values?: Record<string, number | string | null>;
+    onFieldChange?: (name: string, value: number | string | null) => void;
+}
+
+export default function TabBoiler({ boilerId, values = {}, onFieldChange }: TabBoilerProps) {
     const feeders = boilerId === 'A' ? ['A', 'B', 'C'] : ['D', 'E', 'F'];
 
     return (
@@ -11,27 +17,27 @@ export default function TabBoiler({ boilerId }: { boilerId: 'A' | 'B' }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Steam Parameters" icon="waves" color="blue">
-                        <InputField label="Pressure Steam" unit="MPa" color="blue" />
-                        <InputField label="Flow Steam" unit="t/h" color="blue" />
-                        <InputField label="Temp Steam" unit="°C" color="blue" />
-                        <InputField label="Totalizer Steam" unit="ton" color="blue" />
+                        <InputField label="Pressure Steam" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} />
+                        <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} />
+                        <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} />
+                        <InputField label="Totalizer Steam" unit="ton" color="blue" name="totalizer_steam" value={values.totalizer_steam} onChange={onFieldChange} />
                     </Card>
 
                     <Card title="Boiler Feed Water" icon="water_drop" color="cyan">
-                        <InputField label="Pressure BFW" unit="MPa" color="cyan" />
-                        <InputField label="Flow BFW" unit="t/h" color="cyan" />
-                        <InputField label="Temp BFW" unit="°C" color="cyan" />
+                        <InputField label="Pressure BFW" unit="MPa" color="cyan" name="bfw_press" value={values.bfw_press} onChange={onFieldChange} />
+                        <InputField label="Flow BFW" unit="t/h" color="cyan" name="flow_bfw" value={values.flow_bfw} onChange={onFieldChange} />
+                        <InputField label="Temp BFW" unit="°C" color="cyan" name="temp_bfw" value={values.temp_bfw} onChange={onFieldChange} />
                         <InputField label="Totalizer BFW" unit="ton" color="cyan" />
                     </Card>
 
                     <Card title="Furnace & Air" icon="local_fire_department" color="orange">
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Temp Furnace" unit="°C" color="orange" />
-                            <InputField label="Air Heater" unit="°C" color="orange" />
+                            <InputField label="Temp Furnace" unit="°C" color="orange" name="temp_furnace" value={values.temp_furnace} onChange={onFieldChange} />
+                            <InputField label="Air Heater" unit="°C" color="orange" name="air_heater_ti113" value={values.air_heater_ti113} onChange={onFieldChange} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Vacuum" unit="Pa" color="orange" />
-                            <InputField label="Temp Flue Gas" unit="°C" color="orange" />
+                            <InputField label="Vacuum" unit="Pa" color="orange" name="excess_air" value={values.excess_air} onChange={onFieldChange} />
+                            <InputField label="Temp Flue Gas" unit="°C" color="orange" name="temp_flue_gas" value={values.temp_flue_gas} onChange={onFieldChange} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <InputField label="Primary Air" unit="ton" color="orange" />
@@ -39,7 +45,7 @@ export default function TabBoiler({ boilerId }: { boilerId: 'A' | 'B' }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <InputField label="O2" unit="%" color="orange" />
-                            <InputField label="Pressure Drum" unit="MPa" color="orange" />
+                            <InputField label="Pressure Drum" unit="MPa" color="orange" name="steam_drum_press" value={values.steam_drum_press} onChange={onFieldChange} />
                         </div>
                     </Card>
 
@@ -55,7 +61,7 @@ export default function TabBoiler({ boilerId }: { boilerId: 'A' | 'B' }) {
                         ))}
                         <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Solar Usage</p>
-                            <InputField placeholder="0.00" unit="m³" color="emerald" size="small" />
+                            <InputField placeholder="0.00" unit="m³" color="emerald" size="small" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} />
                         </div>
                     </Card>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
+import { useDailyReport } from '@/hooks/useDailyReport';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -120,6 +121,7 @@ export default function LaporanHarianPage() {
     const { operator } = useOperator();
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState('2026-03-15');
+    const { report, prevReport, loading, error } = useDailyReport(selectedDate);
 
     useEffect(() => {
         if (!operator) router.push('/');
@@ -127,7 +129,176 @@ export default function LaporanHarianPage() {
 
     if (!operator) return null;
 
-    const r = DAILY_DATA;
+    // Helper: safe numeric value with fallback
+    const n = (v: number | null | undefined, fallback = 0) => v ?? fallback;
+    // Helper: compute delta between current and previous values
+    const delta = (cur: number | null | undefined, prev: number | null | undefined) =>
+        (cur != null && prev != null) ? cur - prev : 0;
+
+    // Shorthand accessors for child table rows
+    const stm = report?.daily_report_steam?.[0];
+    const pwr = report?.daily_report_power?.[0];
+    const coal = report?.daily_report_coal?.[0];
+    const turb = report?.daily_report_turbine_misc?.[0];
+    const tank = report?.daily_report_stock_tank?.[0];
+    const transfer = report?.daily_report_coal_transfer?.[0];
+    const totalizer = report?.daily_report_totalizer?.[0];
+
+    const pStm = prevReport?.daily_report_steam?.[0];
+    const pPwr = prevReport?.daily_report_power?.[0];
+    const pCoal = prevReport?.daily_report_coal?.[0];
+    const pTurb = prevReport?.daily_report_turbine_misc?.[0];
+    const pTank = prevReport?.daily_report_stock_tank?.[0];
+    const pTransfer = prevReport?.daily_report_coal_transfer?.[0];
+    const pTotalizer = prevReport?.daily_report_totalizer?.[0];
+
+    // Build the display data from Supabase report, with DAILY_DATA as fallback
+    const r = report ? {
+        date: report.date,
+        hari: HARI_ID[new Date(report.date).getDay()],
+        group: totalizer?.group_name ?? '-',
+        supervisor: totalizer?.kasi_name ?? '-',
+
+        // Produksi Steam 24 Jam (Ton)
+        steamBoilerA: n(stm?.prod_boiler_a_24),
+        deltaStmA: delta(stm?.prod_boiler_a_24, pStm?.prod_boiler_a_24),
+        steamBoilerB: n(stm?.prod_boiler_b_24),
+        deltaStmB: delta(stm?.prod_boiler_b_24, pStm?.prod_boiler_b_24),
+        steamTotal: n(stm?.prod_total_24),
+        deltaStmTotal: delta(stm?.prod_total_24, pStm?.prod_total_24),
+
+        // Distribusi Steam 24 Jam (Ton)
+        steamInletTurbine: n(stm?.inlet_turbine_24),
+        deltaInletTurbine: delta(stm?.inlet_turbine_24, pStm?.inlet_turbine_24),
+        steamCondensat: n(stm?.fully_condens_24),
+        deltaCondensat: delta(stm?.fully_condens_24, pStm?.fully_condens_24),
+        mpsTo1B: n(stm?.mps_i_24),
+        deltaMps1B: delta(stm?.mps_i_24, pStm?.mps_i_24),
+        mpsTo3A: n(stm?.mps_3a_24),
+        deltaMps3A: delta(stm?.mps_3a_24, pStm?.mps_3a_24),
+        lpsInternal: n(stm?.lps_ii_24),
+        deltaLps: delta(stm?.lps_ii_24, pStm?.lps_ii_24),
+
+        // Konsumsi Bahan Baku
+        loading: n(tank?.kedatangan_solar),
+        bfw: n(tank?.bfw_total),
+        deltaBfw: delta(tank?.bfw_total, pTank?.bfw_total),
+        phosphat: n(tank?.chemical_phosphat),
+        deltaPhosphat: delta(tank?.chemical_phosphat, pTank?.chemical_phosphat),
+        amine: n(tank?.chemical_amin),
+        deltaAmine: delta(tank?.chemical_amin, pTank?.chemical_amin),
+        hydrazine: n(tank?.chemical_hydrasin),
+        deltaHydrazine: delta(tank?.chemical_hydrasin, pTank?.chemical_hydrasin),
+        stockPhosphat: 0, stockAmine: 0, stockHydrazine: 0,
+
+        // Solar
+        solarLoading: n(tank?.kedatangan_solar),
+        solarBengkel: n(tank?.solar_bengkel),
+        solarPemakaian: n(tank?.solar_boiler),
+        solarRevamp: n(tank?.solar_3b),
+
+        // Power 24 Jam (MWh) & Jam 00 (MW)
+        powerTG: n(pwr?.gen_24),
+        deltaPowerTG: delta(pwr?.gen_24, pPwr?.gen_24),
+        powerInternalUBB: n(pwr?.internal_bus1_24),
+        deltaPowerUBB: delta(pwr?.internal_bus1_24, pPwr?.internal_bus1_24),
+        pieExport: n(pwr?.exsport_24),
+        deltaPieExport: delta(pwr?.exsport_24, pPwr?.exsport_24),
+        powerII: n(pwr?.dist_ii_24),
+        deltaPowerII: delta(pwr?.dist_ii_24, pPwr?.dist_ii_24),
+        powerIIIA: n(pwr?.dist_3a_24),
+        deltaPowerIIIA: delta(pwr?.dist_3a_24, pPwr?.dist_3a_24),
+
+        // Totalizer (kWh)
+        pieExportKwh: n(turb?.totalizer_export),
+        pieImportKwh: n(turb?.totalizer_import),
+
+        // Pemindahan Batubara
+        totalKePF1: n(tank?.total_pf1),
+        totalKePF2: n(tank?.total_pf2),
+
+        // Stock Batubara (Ton)
+        stockBatubara: n(tank?.stock_batubara),
+        deltaStockBatubara: delta(tank?.stock_batubara, pTank?.stock_batubara),
+
+        // RKAP (not stored in DB — keep hardcoded defaults)
+        rkapSteam: 569400,
+        steamProduct: n(stm?.prod_total_24) > 0 ? n(stm?.prod_total_24) : 221865,
+        crTahunan: n(turb?.consumption_rate_avg, 0.236),
+        crBoilerAB: n(turb?.consumption_rate_avg, 0.236),
+
+        // Stream Days (not in daily report tables — keep hardcoded defaults)
+        streamDays: 2201,
+        streamDaysReal: 425,
+
+        // Konsumsi Batubara (Ton) — Coal Mill A-F
+        coalMillA: n(coal?.coal_a_24),
+        deltaCoalA: delta(coal?.coal_a_24, pCoal?.coal_a_24),
+        coalMillB: n(coal?.coal_b_24),
+        deltaCoalB: delta(coal?.coal_b_24, pCoal?.coal_b_24),
+        coalMillC: n(coal?.coal_c_24),
+        deltaCoalC: delta(coal?.coal_c_24, pCoal?.coal_c_24),
+        totalCMBoilerA: n(coal?.total_boiler_a_24),
+        deltaTotalCMA: delta(coal?.total_boiler_a_24, pCoal?.total_boiler_a_24),
+        coalMillD: n(coal?.coal_d_24),
+        deltaCoalD: delta(coal?.coal_d_24, pCoal?.coal_d_24),
+        coalMillE: n(coal?.coal_e_24),
+        deltaCoalE: delta(coal?.coal_e_24, pCoal?.coal_e_24),
+        coalMillF: n(coal?.coal_f_24),
+        deltaCoalF: delta(coal?.coal_f_24, pCoal?.coal_f_24),
+        totalCMBoilerB: n(coal?.total_boiler_b_24),
+        deltaTotalCMB: delta(coal?.total_boiler_b_24, pCoal?.total_boiler_b_24),
+
+        // Consumption Rate Harian
+        crA: n(turb?.consumption_rate_a, 0.249),
+        crTarget: 0.210,
+        crB: n(turb?.consumption_rate_b, 0.222),
+
+        // Totalizer Demin & RCW (m3)
+        konsHarianDemin: n(totalizer?.konsumsi_demin),
+        konsHarianRCW: n(totalizer?.konsumsi_rcw),
+        penerimaanDemin3A: n(totalizer?.penerimaan_demin_3a),
+        penerimaanDemin1B: n(totalizer?.penerimaan_demin_1b),
+        penerimaanRCW1A: n(totalizer?.penerimaan_rcw_1a),
+
+        // Tank Level Jam 00.00 (m3 / %)
+        rcwTank: n(tank?.rcw_level_00, 3800),
+        rcwPct: tank?.rcw_level_00 != null ? Math.round((n(tank.rcw_level_00) / 5000) * 100) : 76,
+        deminTank: n(tank?.demin_level_00, 970),
+        deminPct: tank?.demin_level_00 != null ? Math.round((n(tank.demin_level_00) / 1250) * 100) : 78,
+        solarTank: n(tank?.solar_tank_total, 130),
+        solarPct: tank?.solar_tank_total != null ? Math.round((n(tank.solar_tank_total) / 200) * 100) : 65,
+
+        // Silo & Fly Ash
+        unloadingSiloA: n(tank?.unloading_fly_ash_a),
+        unloadingSiloB: n(tank?.unloading_fly_ash_b),
+        siloALevel: n(tank?.silo_a_pct, 76),
+        siloBLevel: n(tank?.silo_b_pct, 75),
+    } : DAILY_DATA;
+
+    // Loading & error states
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-text-secondary text-sm">Memuat laporan harian...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 max-w-md text-center">
+                    <span className="material-symbols-outlined text-red-400 text-3xl mb-2">error</span>
+                    <p className="text-red-400 font-semibold mb-1">Gagal memuat data</p>
+                    <p className="text-text-secondary text-sm">{error}</p>
+                </div>
+            </div>
+        );
+    }
 
     const dateObj = new Date(selectedDate);
     const hariStr = HARI_ID[dateObj.getDay()];

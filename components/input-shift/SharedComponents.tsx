@@ -1,12 +1,15 @@
 'use client';
 import React from 'react';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal" }: {
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name }: {
     label?: string;
     placeholder?: string;
     unit?: string;
     color?: string;
     size?: string;
+    value?: number | string | null;
+    onChange?: (name: string, value: number | string | null) => void;
+    name?: string;
 }) => (
     <div className="space-y-1.5 w-full">
         {label && (
@@ -19,6 +22,8 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                 className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} text-white placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all text-left`}
                 placeholder={placeholder}
                 type="number"
+                value={value ?? ''}
+                onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : parseFloat(e.target.value))}
             />
             {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
         </div>

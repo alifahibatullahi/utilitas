@@ -411,7 +411,7 @@ export default function DashboardPage() {
                     <div className="flex flex-wrap gap-3">
                         <button onClick={() => router.push('/input-shift')} className="flex-1 min-w-[140px] bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer">
                             <span className="material-symbols-outlined">edit_square</span>
-                            Input Shift
+                            Input Laporan
                         </button>
                         <button onClick={() => router.push('/laporan-shift')} className="flex-1 min-w-[140px] bg-surface-highlight hover:bg-slate-700 text-white border border-slate-600 px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer">
                             <span className="material-symbols-outlined">description</span>

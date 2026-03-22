@@ -1,5 +1,7 @@
 -- ============================================
--- Seed: Operators (23 personnel)
+-- PowerOps: Seed Operators
+-- Jalankan SETELAH powerops_schema.sql
+-- Edit file ini jika ada perubahan personel
 -- ============================================
 
 INSERT INTO operators (name, role, group_name) VALUES

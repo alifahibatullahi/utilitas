@@ -4,55 +4,70 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 
-// ─── Dummy Data ───
+// ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
-    date: '2026-03-15',
-    hari: 'Minggu',
-    group: 'D',
-    supervisor: 'Ade',
-    steamBoilerA: 1580, deltaStmA: -98,
-    steamBoilerB: 1605, deltaStmB: -513,
-    steamTotal: 3185, deltaStmTotal: -611,
-    steamInletTurbine: 525, deltaInletTurbine: -397,
-    steamCondensat: 513, deltaCondensat: -336,
-    mpsTo1B: 1365, deltaMps1B: -182,
-    mpsTo3A: 1172, deltaMps3A: -9,
-    lpsInternal: 12, deltaLps: -61,
-    loading: 233,
-    bfw: 3236, deltaBfw: -603,
-    phosphat: 3, deltaPhosphat: -2,
-    amine: 8, deltaAmine: 2,
-    hydrazine: 0.5, deltaHydrazine: 0.25,
+    date: '2026-01-09',
+    hari: 'Jumat',
+    group: 'B',
+    supervisor: 'Putra',
+    // Produksi Steam 24 Jam (Ton)
+    steamBoilerA: 1680, deltaStmA: 41,
+    steamBoilerB: 1747, deltaStmB: 44,
+    steamTotal: 3427, deltaStmTotal: 85,
+    // Distribusi Steam 24 Jam (Ton)
+    steamInletTurbine: 776, deltaInletTurbine: 67,
+    steamCondensat: 0, deltaCondensat: 0,
+    mpsTo1B: 1105, deltaMps1B: -40,
+    mpsTo3A: 806, deltaMps3A: 11,
+    lpsInternal: 45, deltaLps: -5,
+    // Konsumsi Bahan Baku
+    loading: 80,
+    bfw: 3438, deltaBfw: 74,
+    phosphat: 3.5, deltaPhosphat: 2.5,
+    amine: 7, deltaAmine: -1.5,
+    hydrazine: 0.25, deltaHydrazine: 0,
     stockPhosphat: 49, stockAmine: 26, stockHydrazine: 33,
+    // Solar
     solarLoading: 0, solarBengkel: 0, solarPemakaian: 0, solarRevamp: 0,
-    powerTG: 142, deltaPowerTG: -127,
-    powerInternalUBB: 105, deltaPowerUBB: -17,
-    pieExport: -0.3, deltaPieExport: -0.39,
-    powerII: 187, deltaPowerII: -38,
+    // Power 24 Jam (MWh) & Jam 00 (MW)
+    powerTG: 214, deltaPowerTG: 21,
+    powerInternalUBB: 105, deltaPowerUBB: -5,
+    pieExport: -0.3, deltaPieExport: -0.1,
+    powerII: 57, deltaPowerII: -3,
     powerIIIA: 38, deltaPowerIIIA: 2,
-    pieExportKwh: 111300,
-    pieImportKwh: 32374,
+    // Totalizer (kWh)
+    pieExportKwh: 10160,
+    pieImportKwh: 32356,
+    // Pemindahan Batubara
     totalKePF1: 0, totalKePF2: 0,
-    stockBatubara: 8411.46, deltaStockBatubara: -712.8,
+    // Stock Batubara (Ton)
+    stockBatubara: 30424.77, deltaStockBatubara: -806.3,
+    // RKAP
     rkapSteam: 569400, steamProduct: 221865,
-    crTahunan: 0.220, crBoilerAB: 0.224,
-    streamDays: 307, streamDaysReal: 425,
-    coalMillA: 171, deltaCoalA: -13,
-    coalMillB: 0, deltaCoalB: 0,
-    coalMillC: 145, deltaCoalC: -12,
-    totalCMBoilerA: 347.6, deltaTotalCMA: -27.5,
-    coalMillD: 164, deltaCoalD: -1,
-    coalMillE: 0, deltaCoalE: -89,
-    coalMillF: 168, deltaCoalF: 7,
-    totalCMBoilerB: 365.2, deltaTotalCMB: -91.3,
-    crA: 0.220, crTarget: 0.210, crB: 0.228,
-    konsHarianDemin: 2668, konsHarianRCW: 2410,
-    penerimaanDemin3A: 2356, penerimaanDemin1B: 521, penerimaanRCW1A: 1915,
-    rcwTank: 4650, rcwPct: 93,
-    deminTank: 1000, deminPct: 80,
-    solarTank: 152, solarPct: 76,
-    unloadingSiloA: 5, unloadingSiloB: 0,
-    siloALevel: 34, siloBLevel: 15,
+    crTahunan: 0.236, crBoilerAB: 0.236,
+    // Stream Days
+    streamDays: 2201, streamDaysReal: 425,
+    // Konsumsi Batubara (Ton) — Coal Mill A-F
+    coalMillA: 165, deltaCoalA: -8,
+    coalMillB: 90, deltaCoalB: 10,
+    coalMillC: 155, deltaCoalC: -5,
+    totalCMBoilerA: 410, deltaTotalCMA: -3,
+    coalMillD: 170, deltaCoalD: 5,
+    coalMillE: 78, deltaCoalE: -12,
+    coalMillF: 148, deltaCoalF: -3,
+    totalCMBoilerB: 396, deltaTotalCMB: -10,
+    // Consumption Rate Harian
+    crA: 0.249, crTarget: 0.210, crB: 0.222,
+    // Totalizer Demin & RCW (m³)
+    konsHarianDemin: 2419, konsHarianRCW: 3648,
+    penerimaanDemin3A: 1888, penerimaanDemin1B: 401, penerimaanRCW1A: 1621,
+    // Tank Level Jam 00.00 (m³ / %)
+    rcwTank: 3800, rcwPct: 76,
+    deminTank: 970, deminPct: 78,
+    solarTank: 130, solarPct: 65,
+    // Silo & Fly Ash
+    unloadingSiloA: 0, unloadingSiloB: 4,
+    siloALevel: 76, siloBLevel: 75,
 };
 
 function Delta({ value }: { value: number }) {

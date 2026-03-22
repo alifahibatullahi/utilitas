@@ -8,23 +8,40 @@
  * The CSV must have the same column layout as "Salinan dari DATA OPERASIONAL - Malam.csv"
  * (5 header rows, data starts at row 6).
  *
- * Requires: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars
- * (service role key needed for direct inserts bypassing RLS).
+ * Reads NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY from .env.local
  */
 
 import { createClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// ─── Load .env.local ───
+const envPath = path.resolve(__dirname, '..', '.env.local');
+if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    for (const line of envContent.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+            const key = trimmed.substring(0, eqIdx).trim();
+            const val = trimmed.substring(eqIdx + 1).trim();
+            if (!process.env[key]) process.env[key] = val;
+        }
+    }
+}
+
 // ─── Config ───
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.error('❌ Missing env vars: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+    console.error('❌ Missing env vars: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    console.error('   Make sure .env.local exists with these values');
     process.exit(1);
 }
 
+console.log(`🔗 Supabase: ${SUPABASE_URL}`);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ─── Helpers ───
@@ -509,21 +526,23 @@ async function importCsv(csvPath: string, shift: 'pagi' | 'sore' | 'malam') {
                 }, { onConflict: 'shift_report_id' }),
             ];
 
-            // Run all inserts in parallel
-            const results = await Promise.all(inserts);
-            const childErrors = results.filter(r => r.error);
-            if (childErrors.length > 0) {
-                console.error(`⚠️  Row ${f[0]} (${date}): ${childErrors.length} child insert errors`);
-                childErrors.forEach(e => console.error('  -', e.error?.message));
-                errors++;
-            } else {
-                imported++;
+            // Run inserts sequentially to avoid rate limits
+            for (const insert of inserts) {
+                const result = await insert;
+                if (result.error) {
+                    console.error(`⚠️  Row ${f[0]} (${date}): ${result.error.message}`);
+                    errors++;
+                }
+            }
+            imported++;
+
+            // Progress log every 50 rows
+            if (imported % 50 === 0 && imported > 0) {
+                console.log(`  ✅ ${imported} / ${dataLines.length} rows imported...`);
             }
 
-            // Progress log every 100 rows
-            if (imported % 100 === 0 && imported > 0) {
-                console.log(`  ✅ ${imported} rows imported...`);
-            }
+            // Throttle: 150ms delay between rows to avoid Supabase rate limits
+            await new Promise(resolve => setTimeout(resolve, 150));
         } catch (err) {
             console.error(`❌ Row ${f[0]} (${date}): unexpected error:`, err);
             errors++;

@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import { TankId, TANK_IDS, TANKS } from '@/lib/constants';
 import { generateTrendData } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import type { TankLevelRow, SolarUnloadingRow } from '@/lib/supabase/types';
+import type { SolarUnloadingRow } from '@/lib/supabase/types';
 
 // Flow rate per source (ton/h)
 export interface FlowRate {
@@ -131,52 +131,32 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
 
         const supabase = createClient();
 
-        // Fetch latest tank levels
+        // Fetch latest tankyard levels from most recent shift report
         const fetchLevels = async () => {
-            for (const tankId of TANK_IDS) {
-                const { data } = await supabase
-                    .from('tank_levels')
-                    .select('*, operators(name)')
-                    .eq('tank_id', tankId)
-                    .order('timestamp', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                if (data) {
-                    const row = data as unknown as TankLevelRow & { operators: { name: string } | null };
-                    const operatorName = row.operators?.name || 'Unknown';
-                    setCurrentLevels(prev => ({
-                        ...prev,
-                        [tankId]: {
-                            tankId,
-                            level: Number(row.level_percent),
-                            operator: operatorName,
-                            timestamp: row.timestamp,
-                            note: row.note || '',
-                        }
-                    }));
-                }
-            }
-        };
-
-        // Fetch history (last 20 entries)
-        const fetchHistory = async () => {
             const { data } = await supabase
-                .from('tank_levels')
-                .select('*, operators(name)')
-                .order('timestamp', { ascending: false })
-                .limit(20);
+                .from('shift_tankyard')
+                .select('*, shift_reports!inner(date, shift, group_name)')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
 
-            if (data && data.length > 0) {
-                const rows = data as unknown as (TankLevelRow & { operators: { name: string } | null })[];
-                setHistory(rows.map((d, idx) => ({
-                    id: idx + 1,
-                    tankId: d.tank_id as TankId,
-                    level: Number(d.level_percent),
-                    operator: d.operators?.name || 'Unknown',
-                    timestamp: d.timestamp,
-                    note: d.note || undefined,
-                })));
+            if (data) {
+                const row = data as unknown as {
+                    tk_rcw: number | null;
+                    tk_demin: number | null;
+                    tk_solar_ab: number | null;
+                    created_at: string;
+                };
+                const timestamp = row.created_at;
+                if (row.tk_demin != null) {
+                    setCurrentLevels(prev => ({ ...prev, DEMIN: { tankId: 'DEMIN', level: Number(row.tk_demin), operator: 'Shift Report', timestamp } }));
+                }
+                if (row.tk_rcw != null) {
+                    setCurrentLevels(prev => ({ ...prev, RCW: { tankId: 'RCW', level: Number(row.tk_rcw), operator: 'Shift Report', timestamp } }));
+                }
+                if (row.tk_solar_ab != null) {
+                    setCurrentLevels(prev => ({ ...prev, SOLAR: { tankId: 'SOLAR', level: Number(row.tk_solar_ab), operator: 'Shift Report', timestamp } }));
+                }
             }
         };
 
@@ -199,31 +179,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         };
 
         fetchLevels();
-        fetchHistory();
         fetchSolar();
-
-        // Realtime subscription for tank levels
-        const channel = supabase
-            .channel('tank_levels_changes')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tank_levels' }, (payload: { new: Record<string, unknown> }) => {
-                const d = payload.new as { tank_id: string; level_percent: number; timestamp: string; note: string | null };
-                const tankId = d.tank_id as TankId;
-                setCurrentLevels(prev => ({
-                    ...prev,
-                    [tankId]: {
-                        tankId,
-                        level: Number(d.level_percent),
-                        operator: 'Realtime',
-                        timestamp: d.timestamp,
-                        note: d.note || '',
-                    }
-                }));
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
     }, []);
 
     const submitLevel = useCallback((tankId: TankId, level: number, operator: string, note?: string) => {
@@ -249,20 +205,8 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             };
         });
 
-        // Insert to Supabase
-        if (isSupabaseConfigured()) {
-            const supabase = createClient();
-            const levelM3 = (level / 100) * (TANKS[tankId]?.capacityM3 || 0);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            supabase.from('tank_levels').insert({
-                tank_id: tankId,
-                level_percent: level,
-                level_m3: levelM3,
-                note: note || null,
-            } as any).then(({ error }: { error: unknown }) => {
-                if (error) console.error('Failed to insert tank level:', error);
-            });
-        }
+        // Tank levels are now stored via shift_tankyard in shift reports
+        // Local state is updated above for immediate UI feedback
     }, []);
 
     const submitFlowRates = useCallback((tankId: TankId, rates: FlowRate[]) => {

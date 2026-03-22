@@ -232,7 +232,7 @@ export const SHIFT_INPUT_ROLES: OperatorRole[] = ['group_a', 'group_b', 'group_c
 export const NAV_ITEMS: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/dashboard', roles: 'all' },
     { id: 'tank-level', label: 'Tank Level', icon: 'tank', path: '/tank-level', roles: 'all' },
-    { id: 'input-shift', label: 'Input Shift', icon: 'edit', path: '/input-shift', roles: [...SHIFT_INPUT_ROLES, 'supervisor'] },
+    { id: 'input-shift', label: 'Input Laporan', icon: 'edit', path: '/input-shift', roles: [...SHIFT_INPUT_ROLES, 'supervisor'] },
     { id: 'laporan-shift', label: 'Laporan Shift', icon: 'report', path: '/laporan-shift', roles: 'all' },
     { id: 'laporan-harian', label: 'Laporan Harian', icon: 'daily', path: '/laporan-harian', roles: 'all' },
     { id: 'history', label: 'History & Trend', icon: 'trend', path: '/history', roles: 'all' },

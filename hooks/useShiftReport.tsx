@@ -13,40 +13,144 @@ export interface ShiftReportData {
     status: ReportStatus;
     catatan: string | null;
     created_by: string;
-    boiler_params: {
+    shift_boiler: {
         boiler: 'A' | 'B';
-        main_steam_press: number | null;
-        main_steam_temp: number | null;
-        main_steam_flow: number | null;
-        feed_water_flow: number | null;
-        feed_water_temp: number | null;
+        press_steam: number | null;
+        temp_steam: number | null;
+        flow_steam: number | null;
+        totalizer_steam: number | null;
+        flow_bfw: number | null;
+        temp_bfw: number | null;
+        temp_furnace: number | null;
+        temp_flue_gas: number | null;
+        excess_air: number | null;
+        air_heater_ti113: number | null;
+        batubara_ton: number | null;
+        solar_m3: number | null;
+        stream_days: number | null;
         steam_drum_press: number | null;
+        bfw_press: number | null;
     }[];
-    turbin_params: {
-        load_mw: number | null;
-        main_steam_press: number | null;
-        main_steam_temp: number | null;
-        exhaust_press: number | null;
-        bearing_temp_1: number | null;
-        bearing_temp_2: number | null;
-        bearing_temp_3: number | null;
-        bearing_temp_4: number | null;
-        vibration: number | null;
-        lube_oil_temp: number | null;
+    shift_turbin: {
+        flow_steam: number | null;
+        flow_cond: number | null;
+        press_steam: number | null;
+        temp_steam: number | null;
+        exh_steam: number | null;
+        vacuum: number | null;
+        hpo_durasi: number | null;
+        thrust_bearing: number | null;
+        metal_bearing: number | null;
+        vibrasi: number | null;
+        winding: number | null;
+        axial_displacement: number | null;
+        level_condenser: number | null;
+        temp_cw_in: number | null;
+        temp_cw_out: number | null;
+        press_deaerator: number | null;
+        temp_deaerator: number | null;
+        stream_days: number | null;
     }[];
-    power_distribution: {
-        destination: string;
-        load_mw: number | null;
+    shift_steam_dist: {
+        pabrik1_flow: number | null;
+        pabrik1_temp: number | null;
+        pabrik2_flow: number | null;
+        pabrik2_temp: number | null;
+        pabrik3a_flow: number | null;
+        pabrik3a_temp: number | null;
+        pabrik3b_flow: number | null;
+        pabrik3b_temp: number | null;
     }[];
-    steam_distribution: {
-        destination: string;
-        flow_ton_h: number | null;
+    shift_generator_gi: {
+        gen_load: number | null;
+        gen_ampere: number | null;
+        gen_amp_react: number | null;
+        gen_cos_phi: number | null;
+        gen_tegangan: number | null;
+        gen_frequensi: number | null;
+        gi_sum_p: number | null;
+        gi_sum_q: number | null;
+        gi_cos_phi: number | null;
     }[];
-    lab_results: {
-        category: string;
-        parameter: string;
-        value: number | null;
-        unit: string | null;
+    shift_power_dist: {
+        power_ubb: number | null;
+        power_pabrik2: number | null;
+        power_pabrik3a: number | null;
+        power_pie: number | null;
+        power_pabrik3b: number | null;
+    }[];
+    shift_esp_handling: {
+        esp_a1: number | null;
+        esp_a2: number | null;
+        esp_a3: number | null;
+        esp_b1: number | null;
+        esp_b2: number | null;
+        esp_b3: number | null;
+        silo_a: number | null;
+        silo_b: number | null;
+        unloading_a: string | null;
+        unloading_b: number | null;
+        loading: string | null;
+        hopper: string | null;
+        conveyor: string | null;
+        pf1: number | null;
+        pf2: number | null;
+    }[];
+    shift_tankyard: {
+        tk_rcw: number | null;
+        tk_demin: number | null;
+        tk_solar_ab: number | null;
+    }[];
+    shift_personnel: {
+        turbin_grup: string | null;
+        turbin_karu: string | null;
+        turbin_kasi: string | null;
+        boiler_grup: string | null;
+        boiler_karu: string | null;
+        boiler_kasi: string | null;
+    }[];
+    shift_coal_bunker: {
+        feeder_a: number | null;
+        feeder_b: number | null;
+        feeder_c: number | null;
+        feeder_d: number | null;
+        feeder_e: number | null;
+        feeder_f: number | null;
+        bunker_a: number | null;
+        bunker_b: number | null;
+        bunker_c: number | null;
+        bunker_d: number | null;
+        bunker_e: number | null;
+        bunker_f: number | null;
+    }[];
+    shift_water_quality: {
+        demin_1250_ph: number | null;
+        demin_1250_conduct: number | null;
+        demin_1250_th: number | null;
+        demin_1250_sio2: number | null;
+        demin_750_ph: number | null;
+        demin_750_conduct: number | null;
+        demin_750_th: number | null;
+        demin_750_sio2: number | null;
+        bfw_ph: number | null;
+        bfw_conduct: number | null;
+        bfw_th: number | null;
+        bfw_sio2: number | null;
+        bfw_nh4: number | null;
+        bfw_chz: number | null;
+        boiler_water_a_ph: number | null;
+        boiler_water_a_conduct: number | null;
+        boiler_water_a_sio2: number | null;
+        boiler_water_a_po4: number | null;
+        boiler_water_b_ph: number | null;
+        boiler_water_b_conduct: number | null;
+        boiler_water_b_sio2: number | null;
+        boiler_water_b_po4: number | null;
+        product_steam_ph: number | null;
+        product_steam_conduct: number | null;
+        product_steam_th: number | null;
+        product_steam_sio2: number | null;
+        product_steam_nh4: number | null;
     }[];
     critical_equipment: {
         date: string;
@@ -93,11 +197,16 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 .from('shift_reports')
                 .select(`
                     *,
-                    boiler_params(*),
-                    turbin_params(*),
-                    power_distribution(*),
-                    steam_distribution(*),
-                    lab_results(*),
+                    shift_boiler(*),
+                    shift_turbin(*),
+                    shift_steam_dist(*),
+                    shift_generator_gi(*),
+                    shift_power_dist(*),
+                    shift_esp_handling(*),
+                    shift_tankyard(*),
+                    shift_personnel(*),
+                    shift_coal_bunker(*),
+                    shift_water_quality(*),
                     critical_equipment(*),
                     maintenance_logs(*),
                     shift_notes(*)
@@ -130,8 +239,14 @@ export function useShiftReport(date: string, shift: ShiftType) {
         boilerA?: Record<string, number | null>;
         boilerB?: Record<string, number | null>;
         turbin?: Record<string, number | null>;
-        powerDist?: { destination: string; load_mw: number | null }[];
-        steamDist?: { destination: string; flow_ton_h: number | null }[];
+        steamDist?: Record<string, number | null>;
+        generatorGi?: Record<string, number | null>;
+        powerDist?: Record<string, number | null>;
+        espHandling?: Record<string, number | string | null>;
+        tankyard?: Record<string, number | null>;
+        personnel?: Record<string, string | null>;
+        coalBunker?: Record<string, number | null>;
+        waterQuality?: Record<string, number | null>;
     }) => {
         if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
 
@@ -157,10 +272,10 @@ export function useShiftReport(date: string, shift: ShiftType) {
 
         const reportId = (sr as Record<string, unknown>).id as string;
 
-        // Insert boiler params
+        // Insert boiler data
         if (reportData.boilerA) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('boiler_params').upsert({
+            await supabase.from('shift_boiler').upsert({
                 shift_report_id: reportId,
                 boiler: 'A',
                 ...reportData.boilerA,
@@ -168,38 +283,92 @@ export function useShiftReport(date: string, shift: ShiftType) {
         }
         if (reportData.boilerB) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('boiler_params').upsert({
+            await supabase.from('shift_boiler').upsert({
                 shift_report_id: reportId,
                 boiler: 'B',
                 ...reportData.boilerB,
             } as any, { onConflict: 'shift_report_id,boiler' });
         }
 
-        // Insert turbin params
+        // Insert turbin data
         if (reportData.turbin) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('turbin_params').upsert({
+            await supabase.from('shift_turbin').upsert({
                 shift_report_id: reportId,
                 ...reportData.turbin,
             } as any, { onConflict: 'shift_report_id' });
         }
 
-        // Insert power distribution
-        if (reportData.powerDist) {
-            await supabase.from('power_distribution').delete().eq('shift_report_id', reportId);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('power_distribution').insert(
-                reportData.powerDist.map(p => ({ shift_report_id: reportId, ...p })) as any
-            );
-        }
-
         // Insert steam distribution
         if (reportData.steamDist) {
-            await supabase.from('steam_distribution').delete().eq('shift_report_id', reportId);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('steam_distribution').insert(
-                reportData.steamDist.map(s => ({ shift_report_id: reportId, ...s })) as any
-            );
+            await supabase.from('shift_steam_dist').upsert({
+                shift_report_id: reportId,
+                ...reportData.steamDist,
+            } as any, { onConflict: 'shift_report_id' });
+        }
+
+        // Insert generator & GI
+        if (reportData.generatorGi) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await supabase.from('shift_generator_gi').upsert({
+                shift_report_id: reportId,
+                ...reportData.generatorGi,
+            } as any, { onConflict: 'shift_report_id' });
+        }
+
+        // Insert power distribution
+        if (reportData.powerDist) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await supabase.from('shift_power_dist').upsert({
+                shift_report_id: reportId,
+                ...reportData.powerDist,
+            } as any, { onConflict: 'shift_report_id' });
+        }
+
+        // Insert ESP & handling
+        if (reportData.espHandling) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await supabase.from('shift_esp_handling').upsert({
+                shift_report_id: reportId,
+                ...reportData.espHandling,
+            } as any, { onConflict: 'shift_report_id' });
+        }
+
+        // Insert tankyard
+        if (reportData.tankyard) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await supabase.from('shift_tankyard').upsert({
+                shift_report_id: reportId,
+                ...reportData.tankyard,
+            } as any, { onConflict: 'shift_report_id' });
+        }
+
+        // Insert personnel
+        if (reportData.personnel) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await supabase.from('shift_personnel').upsert({
+                shift_report_id: reportId,
+                ...reportData.personnel,
+            } as any, { onConflict: 'shift_report_id' });
+        }
+
+        // Insert coal bunker
+        if (reportData.coalBunker) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await supabase.from('shift_coal_bunker').upsert({
+                shift_report_id: reportId,
+                ...reportData.coalBunker,
+            } as any, { onConflict: 'shift_report_id' });
+        }
+
+        // Insert water quality
+        if (reportData.waterQuality) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await supabase.from('shift_water_quality').upsert({
+                shift_report_id: reportId,
+                ...reportData.waterQuality,
+            } as any, { onConflict: 'shift_report_id' });
         }
 
         return { error: null, reportId };

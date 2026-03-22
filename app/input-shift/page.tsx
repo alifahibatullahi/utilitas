@@ -24,19 +24,64 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 
 export default function InputShiftPage() {
     const [activeTab, setActiveTab] = useState<TabId>('Boiler A');
+    const [inputMode, setInputMode] = useState<'shift' | 'harian'>('shift');
+    const [selectedShift, setSelectedShift] = useState<1 | 2 | 3>(2);
 
     return (
         <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 flex flex-col gap-6 h-full overflow-hidden">
             {/* Header */}
             <header className="flex flex-col items-center justify-center gap-4 shrink-0 mt-4 mb-2">
-                <div className="text-center flex flex-col items-center justify-center">
+                
+                {/* Mode & Shift Controls */}
+                <div className="flex items-center gap-3">
+                    <div className="flex bg-[#16202e]/80 border border-slate-700/50 rounded-lg p-1">
+                        <button 
+                            onClick={() => setInputMode('shift')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${inputMode === 'shift' ? 'bg-[#2b7cee] text-white shadow-[0_0_10px_rgba(43,124,238,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            Shift
+                        </button>
+                        <button 
+                            onClick={() => setInputMode('harian')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${inputMode === 'harian' ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            Harian
+                        </button>
+                    </div>
+
+                    {inputMode === 'shift' && (
+                        <div className="flex bg-[#16202e]/80 border border-slate-700/50 rounded-lg p-1">
+                            {[
+                                { id: 1, label: 'Pagi' },
+                                { id: 2, label: 'Sore' },
+                                { id: 3, label: 'Malam' }
+                            ].map(shift => (
+                                <button
+                                    key={shift.id}
+                                    onClick={() => setSelectedShift(shift.id as any)}
+                                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${selectedShift === shift.id ? 'bg-amber-500 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
+                                >
+                                    {shift.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="text-center flex flex-col items-center justify-center -mt-2">
                     <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-white dark:text-white mb-3">
-                        Input Laporan Shift
+                        {inputMode === 'shift' ? 'Input Laporan Shift' : 'Input Laporan Harian'}
                     </h2>
                     <div className="flex items-center justify-center gap-2 text-[#92a9c9]">
-                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-[#2b7cee]/20 text-[#2b7cee] border border-[#2b7cee]/20">
-                            SHIFT 2
-                        </span>
+                        {inputMode === 'shift' ? (
+                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-[#2b7cee]/20 text-[#2b7cee] border border-[#2b7cee]/20 uppercase">
+                                SHIFT {selectedShift} ({selectedShift === 1 ? 'PAGI' : selectedShift === 2 ? 'SORE' : 'MALAM'})
+                            </span>
+                        ) : (
+                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 uppercase">
+                                REPORT HARIAN
+                            </span>
+                        )}
                         <span className="w-1 h-1 rounded-full bg-slate-600"></span>
                         <span className="text-sm">
                             {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}

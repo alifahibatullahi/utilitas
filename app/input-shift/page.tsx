@@ -8,12 +8,13 @@ import TabDistribusiSteam from '@/components/input-shift/TabDistribusiSteam';
 import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
+import TabLab from '@/components/input-shift/TabLab';
 import { useShiftReport } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import type { ShiftType } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 
-type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker';
+type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker' | 'Lab';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
     { id: 'Boiler A', label: 'Boiler A', icon: 'factory' },
@@ -24,6 +25,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
     { id: 'Handling', label: 'Coal Handling', icon: 'local_shipping' },
     { id: 'ESP', label: 'ESP', icon: 'air' },
     { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2' },
+    { id: 'Lab', label: 'Lab / QC', icon: 'science' },
 ];
 
 export default function InputShiftPage() {
@@ -53,6 +55,8 @@ export default function InputShiftPage() {
     const [espHandling, setEspHandling] = useState<Record<string, number | string | null>>({});
     const [tankyard, setTankyard] = useState<Record<string, number | null>>({});
     const [coalBunker, setCoalBunker] = useState<Record<string, number | null>>({});
+    const [waterQuality, setWaterQuality] = useState<Record<string, number | null>>({});
+    const [chemicalDosing, setChemicalDosing] = useState<Record<string, number | null>>({});
 
     const shiftMap: Record<number, ShiftType> = { 1: 'pagi', 2: 'sore', 3: 'malam' };
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
@@ -92,6 +96,8 @@ export default function InputShiftPage() {
         setEspHandling({});
         setTankyard({});
         setCoalBunker({});
+        setWaterQuality({});
+        setChemicalDosing({});
         if (!report) return;
 
         const boilerAData = report.shift_boiler?.find((b: { boiler: string }) => b.boiler === 'A');
@@ -309,9 +315,9 @@ export default function InputShiftPage() {
             </header>
 
             {/* Tab Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 shrink-0">
-                <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl overflow-hidden p-1 flex items-center overflow-x-auto scrollbar-hide shrink-0 flex-1 w-full min-w-0">
-                    <div className="flex gap-1 min-w-max px-1">
+            <div className="shrink-0">
+                <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-1">
+                    <div className="flex flex-wrap gap-1">
                         {TABS.map((tab) => {
                             const isActive = activeTab === tab.id;
 
@@ -319,12 +325,12 @@ export default function InputShiftPage() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as TabId)}
-                                    className={`px-5 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-colors ${isActive
+                                    className={`px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap ${isActive
                                         ? 'font-bold bg-[#2b7cee]/20 text-[#2b7cee] border border-[#2b7cee]/30 shadow-inner shadow-[#2b7cee]/10'
                                         : 'font-medium text-[#92a9c9] hover:text-white hover:bg-[#1f2b3e] border border-transparent'
                                         }`}
                                 >
-                                    <span className={`material-symbols-outlined text-[20px] ${isActive ? 'text-[#2b7cee]' : ''}`}>
+                                    <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-[#2b7cee]' : ''}`}>
                                         {tab.icon}
                                     </span>
                                     {tab.label}
@@ -351,6 +357,7 @@ export default function InputShiftPage() {
                 {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} />}
                 {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} />}
                 {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeNumberHandler(setCoalBunker)} />}
+                {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} />}
             </div>
         </div>
     );

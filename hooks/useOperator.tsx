@@ -78,13 +78,22 @@ export function OperatorProvider({ children }: { children: ReactNode }) {
             .then(({ data, error }) => {
                 if (!error && data && data.length > 0) {
                     const rows = data as unknown as OperatorRow[];
-                    setOperators(rows.map((op, idx) => ({
-                        id: idx + 1,
-                        supabaseId: op.id,
-                        name: op.name,
-                        role: op.role as OperatorRole,
-                        group: op.group_name || undefined,
-                    })));
+                    setOperators(rows.map((op, idx) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const raw = op as any;
+                        // Try DB columns first, fallback to constants match
+                        const constant = OPERATORS.find(c => c.name === op.name && c.group === (op.group_name || undefined));
+                        return {
+                            id: idx + 1,
+                            supabaseId: op.id,
+                            name: op.name,
+                            role: op.role as OperatorRole,
+                            group: op.group_name || undefined,
+                            nik: raw.nik || constant?.nik,
+                            jabatan: raw.jabatan || constant?.jabatan,
+                            company: raw.company || constant?.company,
+                        };
+                    }));
                 }
             });
     }, []);

@@ -75,7 +75,7 @@ export default function AdminUsersPage() {
                                         </div>
                                     </td>
                                     <td className="py-3 px-3">
-                                        <span className="text-text-secondary text-xs">{op.shiftDefault ? `Shift ${op.shiftDefault}` : '—'}</span>
+                                        <span className="text-text-secondary text-xs">{op.jabatan || '—'}</span>
                                     </td>
                                     <td className="py-3 px-5 text-center">
                                         <div className="flex items-center justify-center gap-1">

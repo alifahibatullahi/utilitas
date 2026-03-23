@@ -6,10 +6,18 @@ interface TabBoilerProps {
     boilerId: 'A' | 'B';
     values?: Record<string, number | string | null>;
     onFieldChange?: (name: string, value: number | string | null) => void;
+    coalBunkerValues?: Record<string, number | null>;
+    onCoalBunkerChange?: (name: string, value: number | string | null) => void;
 }
 
-export default function TabBoiler({ boilerId, values = {}, onFieldChange }: TabBoilerProps) {
+export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBunkerValues = {}, onCoalBunkerChange }: TabBoilerProps) {
     const feeders = boilerId === 'A' ? ['A', 'B', 'C'] : ['D', 'E', 'F'];
+    const feederKeys = boilerId === 'A' ? ['feeder_a', 'feeder_b', 'feeder_c'] : ['feeder_d', 'feeder_e', 'feeder_f'];
+
+    // Calculate total batubara from feeders
+    const totalBatubara = feederKeys.reduce((sum, key) => sum + (Number(coalBunkerValues[key]) || 0), 0);
+    const totalSteam = Number(values.totalizer_steam) || 0;
+    const cr = totalSteam > 0 ? ((totalBatubara * 1000) / totalSteam) : 0;
 
     return (
         <>
@@ -40,22 +48,22 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange }: TabB
                             <InputField label="Temp Flue Gas" unit="°C" color="orange" name="temp_flue_gas" value={values.temp_flue_gas} onChange={onFieldChange} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Primary Air" unit="ton" color="orange" />
-                            <InputField label="Secondary Air" unit="ton" color="orange" />
+                            <InputField label="Primary Air" unit="ton" color="orange" name="primary_air" value={values.primary_air} onChange={onFieldChange} />
+                            <InputField label="Secondary Air" unit="ton" color="orange" name="secondary_air" value={values.secondary_air} onChange={onFieldChange} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="O2" unit="%" color="orange" />
+                            <InputField label="O2" unit="%" color="orange" name="o2" value={values.o2} onChange={onFieldChange} />
                             <InputField label="Pressure Drum" unit="MPa" color="orange" name="steam_drum_press" value={values.steam_drum_press} onChange={onFieldChange} />
                         </div>
                     </Card>
 
                     <Card title={`Coal Feeder ${feeders.join('-')}`} icon="precision_manufacturing" color="emerald">
-                        {feeders.map(feeder => (
+                        {feeders.map((feeder, idx) => (
                             <div key={feeder} className="space-y-2">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Feeder {feeder}</p>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <InputField placeholder="Total" unit="ton" color="emerald" size="small" />
-                                    <InputField placeholder="Flow" unit="t/h" color="emerald" size="small" />
+                                    <InputField placeholder="Total" unit="ton" color="emerald" size="small" name={feederKeys[idx]} value={coalBunkerValues[feederKeys[idx]]} onChange={onCoalBunkerChange} />
+                                    <InputField placeholder="Flow" unit="t/h" color="emerald" size="small" name={`${feederKeys[idx]}_flow`} value={values[`${feederKeys[idx]}_flow`]} onChange={onFieldChange} />
                                 </div>
                             </div>
                         ))}
@@ -70,19 +78,19 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange }: TabB
 
             <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
                 <Card title="Calculated Totals" icon="calculate" color="purple" isSidebar={true}>
-                    <CalculatedField label="TOTAL STEAM" value="0.00" unit="ton" variant="primary" size="large" />
-                    <CalculatedField label="TOTAL BOILER FEED WATER" value="0.00" unit="ton" variant="secondary" size="medium" />
+                    <CalculatedField label="TOTAL STEAM" value={totalSteam.toFixed(2)} unit="ton" variant="primary" size="large" />
+                    <CalculatedField label="TOTAL BOILER FEED WATER" value={(Number(values.flow_bfw) || 0).toFixed(2)} unit="ton" variant="secondary" size="medium" />
 
-                    {feeders.map(feeder => (
-                        <CalculatedField key={feeder} label={`Total Coal Feeder ${feeder}`} value="0.00" unit="ton" variant="small" size="small" />
+                    {feeders.map((feeder, idx) => (
+                        <CalculatedField key={feeder} label={`Total Coal Feeder ${feeder}`} value={(Number(coalBunkerValues[feederKeys[idx]]) || 0).toFixed(2)} unit="ton" variant="small" size="small" />
                     ))}
 
                     <div className="h-px bg-slate-700/80 w-full my-1"></div>
 
-                    <CalculatedField label="Total Batubara" value="0.00" unit="ton" variant="primary" size="large" />
+                    <CalculatedField label="Total Batubara" value={totalBatubara.toFixed(2)} unit="ton" variant="primary" size="large" />
 
                     <div className="mt-auto">
-                        <CalculatedField label="Consumption Rate" value="0.00" unit="kg/ton" variant="purple" size="large" />
+                        <CalculatedField label="Consumption Rate" value={cr.toFixed(2)} unit="kg/ton" variant="purple" size="large" />
                     </div>
                 </Card>
             </div>

@@ -16,7 +16,7 @@ const REPORT = {
     lab: {
         boilerFeedWater: { tempBFW: 132, pH: 8.5, conduct: 3.5, silica: 0.011, nh4: 0.06, chz: 0.838 },
         tk1250: { pH: 7.7, conduct: 1.6, silica: 0.01 },
-        productSteam: { pH: 8.2, conduct: 2.5, silica: 0.012 },
+        productSteam: { pH: 8.2, conduct: 2.5, silica: 0.012, nh4: 0.04 },
         boilerWaterA: { pH: 9, cond: 18.7, sio2: 1.01, po4: 3.12 },
         boilerWaterB: { pH: 9.1, cond: 17.4, sio2: 0.94, po4: 2.9 },
     },
@@ -299,10 +299,10 @@ export default function PreviewPdfPage() {
                                         <div className="bg-blue-600 text-white text-[9px] font-bold uppercase text-center py-1.5 rounded-t-lg">Boiler Feed Water</div>
                                         <table className="w-full border-collapse">
                                             <thead><tr className="bg-blue-50 text-blue-700 text-tiny font-bold uppercase text-center">
-                                                <th className="py-1.5 border border-blue-100">Temp. BFW</th><th className="py-1.5 border border-blue-100">pH</th><th className="py-1.5 border border-blue-100">Conduct</th><th className="py-1.5 border border-blue-100">Silica</th><th className="py-1.5 border border-blue-100">NH4</th><th className="py-1.5 border border-blue-100">CHZ</th>
+                                                <th className="py-1.5 border border-blue-100">pH</th><th className="py-1.5 border border-blue-100">Conduct</th><th className="py-1.5 border border-blue-100">Silica</th><th className="py-1.5 border border-blue-100">NH4</th><th className="py-1.5 border border-blue-100">CHZ</th>
                                             </tr></thead>
                                             <tbody className="bg-white text-slate-900 text-xs font-black text-center"><tr>
-                                                <td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.tempBFW}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.pH}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.conduct}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.silica}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.nh4}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.chz}</td>
+                                                <td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.pH}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.conduct}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.silica}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.nh4}</td><td className="py-2 border border-blue-100">{r.lab.boilerFeedWater.chz}</td>
                                             </tr></tbody>
                                         </table>
                                     </div>
@@ -323,10 +323,10 @@ export default function PreviewPdfPage() {
                                             <div className="bg-green-600 text-white text-[9px] font-bold uppercase text-center py-1.5 rounded-t-lg">Product Steam</div>
                                             <table className="w-full border-collapse">
                                                 <thead><tr className="bg-green-50 text-green-700 text-tiny font-bold uppercase text-center">
-                                                    <th className="py-1.5 border border-green-100">pH</th><th className="py-1.5 border border-green-100">Conduct</th><th className="py-1.5 border border-green-100">Silica</th>
+                                                    <th className="py-1.5 border border-green-100">pH</th><th className="py-1.5 border border-green-100">Conduct</th><th className="py-1.5 border border-green-100">Silica</th><th className="py-1.5 border border-green-100">NH4</th>
                                                 </tr></thead>
                                                 <tbody className="bg-white text-slate-900 text-xs font-black text-center"><tr>
-                                                    <td className="py-2 border border-green-100">{r.lab.productSteam.pH}</td><td className="py-2 border border-green-100">{r.lab.productSteam.conduct}</td><td className="py-2 border border-green-100">{r.lab.productSteam.silica}</td>
+                                                    <td className="py-2 border border-green-100">{r.lab.productSteam.pH}</td><td className="py-2 border border-green-100">{r.lab.productSteam.conduct}</td><td className="py-2 border border-green-100">{r.lab.productSteam.silica}</td><td className="py-2 border border-green-100">{r.lab.productSteam.nh4}</td>
                                                 </tr></tbody>
                                             </table>
                                         </div>

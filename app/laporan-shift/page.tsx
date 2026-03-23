@@ -56,7 +56,7 @@ interface ShiftReport {
     lab: {
         boilerFeedWater: { tempBFW: number; pH: number; conduct: number; silica: number; nh4: number; chz: number };
         tk1250: { pH: number; conduct: number; silica: number };
-        productSteam: { pH: number; conduct: number; silica: number };
+        productSteam: { pH: number; conduct: number; silica: number; nh4: number };
         boilerWaterA: { pH: number; cond: number; sio2: number; po4: number };
         boilerWaterB: { pH: number; cond: number; sio2: number; po4: number };
     };
@@ -68,104 +68,15 @@ interface ShiftReport {
     catatanRole: string;
 }
 
-// ─── Dummy Data ───
 const SHIFT_LABELS: Record<string, string> = { pagi: 'Pagi', sore: 'Sore', malam: 'Malam' };
 
-const DUMMY_REPORTS: ShiftReport[] = [
-    {
-        id: 1, shift: 'pagi', date: '2026-03-14', group: 'C', supervisor: 'Bayu', operator: 'Budi Santoso',
-        boilerA: { flowSteam: 60, furnace: 620, flueGas: 63, batubara: 117, tempSteam: 501, cr: 0.20, lifetime: 90 },
-        boilerB: { flowSteam: 105, furnace: 755, flueGas: 125, batubara: 108, tempSteam: 520, cr: 0.19, lifetime: 12 },
-        turbin: { loadTG: 13, internalUBB: 5.2, pln: 10.4, durasiHPO: 45, tempCWIn: 28.5, tempCWOut: 34.2, tempThrustBrg: 72.4, axialDispl: 0.32 },
-        power: [{ name: 'Pabrik 3A', value: 7.2 }, { name: 'Pabrik 3B', value: 4.8 }, { name: 'PIU', value: 1.5 }, { name: 'Pabrik 2', value: 0 }],
-        distribusiSteam: [{ pabrik: 'Pabrik 1', value: 65 }, { pabrik: 'Pabrik 2', value: 0 }, { pabrik: 'Pabrik 3A', value: 50 }],
-        tankYard: { rcw: 4500, demin: 1000, solarAB: 154, siloA: 32, siloB: 15 },
-        lab: {
-            boilerFeedWater: { tempBFW: 132, pH: 8.5, conduct: 3.5, silica: 0.011, nh4: 0.06, chz: 0.838 },
-            tk1250: { pH: 7.7, conduct: 1.6, silica: 0.01 },
-            productSteam: { pH: 8.2, conduct: 2.5, silica: 0.012 },
-            boilerWaterA: { pH: 9, cond: 18.7, sio2: 1.01, po4: 3.12 },
-            boilerWaterB: { pH: 9.1, cond: 17.4, sio2: 0.94, po4: 2.9 },
-        },
-        criticalEquipment: [
-            { date: '14/03', item: 'BT-01A', uraian: 'Boiler Tube Leak', scope: 'Mekanik' },
-            { date: '14/03', item: 'TG-01', uraian: 'High Bearing Temp', scope: 'Instrumen' },
-            { date: '14/03', item: 'P-402', uraian: 'Seal Leakage', scope: 'Mekanik' },
-            { date: '14/03', item: 'BL-02', uraian: 'Vibration Alert', scope: 'Instrumen' },
-            { date: '14/03', item: 'CV-001', uraian: 'Belt Alignment', scope: 'Mekanik' },
-            { date: '14/03', item: 'ST-405', uraian: 'Trap Stuck Open', scope: 'Instrumen' },
-            { date: '13/03', item: 'P-201B', uraian: 'Mechanical Seal', scope: 'Mekanik' },
-            { date: '13/03', item: 'FN-103', uraian: 'Overload Trip', scope: 'Listrik' },
-            { date: '12/03', item: 'TK-12', uraian: 'Level Sensor', scope: 'Instrumen' },
-            { date: '12/03', item: 'V-909', uraian: 'Air Leakage', scope: 'Las' },
-        ],
-        maintenance: [
-            { date: '14/03', item: 'L-08.12 E', uraian: 'Cek ampere motor', scope: 'Listrik', status: 'OK' },
-            { date: '14/03', item: 'B-12.01 A', uraian: 'Pelumasan bearing fan', scope: 'Mekanik', status: 'OK' },
-            { date: '14/03', item: 'M-04.05', uraian: 'Pembersihan area conveyor', scope: 'Mekanik', status: 'OK' },
-            { date: '14/03', item: 'P-101 C', uraian: 'Ganti oli pump', scope: 'Mekanik', status: 'OK' },
-            { date: '13/03', item: 'V-22.1', uraian: 'Kalibrasi valve', scope: 'Instrumen', status: 'OK' },
-            { date: '13/03', item: 'E-304', uraian: 'Check efficiency', scope: 'Utilitas', status: 'IP' },
-            { date: '12/03', item: 'C-12A', uraian: 'Greasing coupling', scope: 'Mekanik', status: 'OK' },
-            { date: '12/03', item: 'T-501', uraian: 'Drain condensate', scope: 'General', status: 'OK' },
-            { date: '12/03', item: 'R-102', uraian: 'Inspection lining', scope: 'Mekanik', status: 'OK' },
-        ],
-        catatan: 'Kondisi operasional Boiler A dan B terpantau stabil sepanjang shift pagi. Load TG dipertahankan pada level aman meskipun terdapat fluktuasi minor pada permintaan beban pabrik.\n\nLakukan pengecekan rutin pada area conveyor belt di shift selanjutnya karena ada indikasi penumpukan debu halus yang dapat mempengaruhi sensor alignment.\n\nSemua parameter lab berada dalam batas normal sesuai standar operasional prosedur.',
-        catatanTime: '14:00 WIB',
-        catatanAuthor: 'Budi Santoso',
-        catatanRole: 'Chief Operator Shift C',
-    },
-    {
-        id: 2, shift: 'sore', date: '2026-03-14', group: 'C', supervisor: 'Bayu', operator: 'Eko Prasetyo',
-        boilerA: { flowSteam: 58, furnace: 615, flueGas: 61, batubara: 112, tempSteam: 498, cr: 0.21, lifetime: 90 },
-        boilerB: { flowSteam: 102, furnace: 748, flueGas: 122, batubara: 105, tempSteam: 515, cr: 0.20, lifetime: 12 },
-        turbin: { loadTG: 12.5, internalUBB: 5.0, pln: 10.0, durasiHPO: 30, tempCWIn: 29.0, tempCWOut: 34.8, tempThrustBrg: 71.8, axialDispl: 0.30 },
-        power: [{ name: 'Pabrik 3A', value: 6.8 }, { name: 'Pabrik 3B', value: 4.5 }, { name: 'PIU', value: 1.4 }, { name: 'Pabrik 2', value: 0 }],
-        distribusiSteam: [{ pabrik: 'Pabrik 1', value: 62 }, { pabrik: 'Pabrik 2', value: 0 }, { pabrik: 'Pabrik 3A', value: 48 }],
-        tankYard: { rcw: 4350, demin: 980, solarAB: 148, siloA: 28, siloB: 12 },
-        lab: {
-            boilerFeedWater: { tempBFW: 130, pH: 8.4, conduct: 3.4, silica: 0.010, nh4: 0.05, chz: 0.830 },
-            tk1250: { pH: 7.6, conduct: 1.5, silica: 0.01 },
-            productSteam: { pH: 8.1, conduct: 2.4, silica: 0.011 },
-            boilerWaterA: { pH: 8.9, cond: 18.2, sio2: 0.98, po4: 3.05 },
-            boilerWaterB: { pH: 9.0, cond: 17.0, sio2: 0.90, po4: 2.85 },
-        },
-        criticalEquipment: [
-            { date: '14/03', item: 'BT-01A', uraian: 'Boiler Tube Leak', scope: 'Mekanik' },
-            { date: '14/03', item: 'TG-01', uraian: 'High Bearing Temp', scope: 'Instrumen' },
-        ],
-        maintenance: [
-            { date: '14/03', item: 'L-08.12 E', uraian: 'Cek ampere motor', scope: 'Listrik', status: 'OK' },
-            { date: '14/03', item: 'B-12.01 A', uraian: 'Pelumasan bearing fan', scope: 'Mekanik', status: 'OK' },
-        ],
-        catatan: 'Operasi shift sore berjalan normal. Semua parameter dalam batas aman.',
-        catatanTime: '22:00 WIB', catatanAuthor: 'Eko Prasetyo', catatanRole: 'Chief Operator Shift C',
-    },
-    {
-        id: 3, shift: 'malam', date: '2026-03-14', group: 'C', supervisor: 'Bayu', operator: 'Agus Wijaya',
-        boilerA: { flowSteam: 55, furnace: 610, flueGas: 60, batubara: 110, tempSteam: 495, cr: 0.22, lifetime: 90 },
-        boilerB: { flowSteam: 100, furnace: 742, flueGas: 120, batubara: 103, tempSteam: 510, cr: 0.21, lifetime: 12 },
-        turbin: { loadTG: 12, internalUBB: 4.8, pln: 9.5, durasiHPO: 20, tempCWIn: 27.5, tempCWOut: 33.5, tempThrustBrg: 70.2, axialDispl: 0.28 },
-        power: [{ name: 'Pabrik 3A', value: 6.5 }, { name: 'Pabrik 3B', value: 4.2 }, { name: 'PIU', value: 1.2 }, { name: 'Pabrik 2', value: 0 }],
-        distribusiSteam: [{ pabrik: 'Pabrik 1', value: 58 }, { pabrik: 'Pabrik 2', value: 0 }, { pabrik: 'Pabrik 3A', value: 45 }],
-        tankYard: { rcw: 4200, demin: 950, solarAB: 140, siloA: 25, siloB: 10 },
-        lab: {
-            boilerFeedWater: { tempBFW: 128, pH: 8.3, conduct: 3.3, silica: 0.010, nh4: 0.05, chz: 0.825 },
-            tk1250: { pH: 7.5, conduct: 1.4, silica: 0.01 },
-            productSteam: { pH: 8.0, conduct: 2.3, silica: 0.010 },
-            boilerWaterA: { pH: 8.8, cond: 17.8, sio2: 0.95, po4: 3.00 },
-            boilerWaterB: { pH: 8.9, cond: 16.8, sio2: 0.88, po4: 2.80 },
-        },
-        criticalEquipment: [
-            { date: '14/03', item: 'BT-01A', uraian: 'Boiler Tube Leak', scope: 'Mekanik' },
-        ],
-        maintenance: [
-            { date: '14/03', item: 'M-04.05', uraian: 'Pembersihan area conveyor', scope: 'Mekanik', status: 'OK' },
-        ],
-        catatan: 'Shift malam berjalan lancar tanpa kendala berarti. Monitoring dilanjutkan.',
-        catatanTime: '06:00 WIB', catatanAuthor: 'Agus Wijaya', catatanRole: 'Chief Operator Shift C',
-    },
-];
+/** Format a Date as YYYY-MM-DD in local timezone (avoids UTC shift from toISOString) */
+function toLocalDateStr(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
 
 // ─── Build Report from Supabase Data ───
 function buildReportFromSupabase(sr: ShiftReportData): ShiftReport {
@@ -256,6 +167,7 @@ function buildReportFromSupabase(sr: ShiftReportData): ShiftReport {
                 pH: wq?.product_steam_ph ?? 0,
                 conduct: wq?.product_steam_conduct ?? 0,
                 silica: wq?.product_steam_sio2 ?? 0,
+                nh4: wq?.product_steam_nh4 ?? 0,
             },
             boilerWaterA: {
                 pH: wq?.boiler_water_a_ph ?? 0,
@@ -344,14 +256,14 @@ export default function LaporanShiftPage() {
     const { operator } = useOperator();
     const router = useRouter();
     const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
-    const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(() => toLocalDateStr(new Date()));
 
     const { report: supaReport, loading, error } = useShiftReport(selectedDate, activeShift);
 
     const report = useMemo(() => {
         if (supaReport) return buildReportFromSupabase(supaReport);
-        return DUMMY_REPORTS.find(r => r.shift === activeShift) || DUMMY_REPORTS[0];
-    }, [supaReport, activeShift]);
+        return null;
+    }, [supaReport]);
 
     useEffect(() => {
         if (!operator) router.push('/');
@@ -366,16 +278,16 @@ export default function LaporanShiftPage() {
         <div className="flex-1 p-4 lg:p-6 flex flex-col max-w-[1400px] mx-auto w-full space-y-4">
             {/* Week Strip - Centered */}
             <div className="flex items-center gap-1 justify-center">
-                <button onClick={() => { const d = new Date(selectedDate + 'T00:00:00'); d.setDate(d.getDate() - 7); setSelectedDate(d.toISOString().split('T')[0]); }}
+                <button onClick={() => { const d = new Date(selectedDate + 'T00:00:00'); d.setDate(d.getDate() - 7); setSelectedDate(toLocalDateStr(d)); }}
                     className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-surface-highlight transition-all cursor-pointer">
                     <span className="material-symbols-outlined text-sm">chevron_left</span>
                 </button>
                 {Array.from({ length: 7 }, (_, i) => {
                     const d = new Date(selectedDate + 'T00:00:00');
                     d.setDate(d.getDate() - 3 + i);
-                    const iso = d.toISOString().split('T')[0];
+                    const iso = toLocalDateStr(d);
                     const isActive = iso === selectedDate;
-                    const isToday = iso === new Date().toISOString().split('T')[0];
+                    const isToday = iso === toLocalDateStr(new Date());
                     const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
                     const dayNum = d.getDate();
                     return (
@@ -392,7 +304,7 @@ export default function LaporanShiftPage() {
                         </button>
                     );
                 })}
-                <button onClick={() => { const d = new Date(selectedDate + 'T00:00:00'); d.setDate(d.getDate() + 7); setSelectedDate(d.toISOString().split('T')[0]); }}
+                <button onClick={() => { const d = new Date(selectedDate + 'T00:00:00'); d.setDate(d.getDate() + 7); setSelectedDate(toLocalDateStr(d)); }}
                     className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-surface-highlight transition-all cursor-pointer">
                     <span className="material-symbols-outlined text-sm">chevron_right</span>
                 </button>
@@ -448,16 +360,33 @@ export default function LaporanShiftPage() {
                 </div>
             )}
 
+            {/* Empty State */}
+            {!loading && !error && !report && (
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <span className="material-symbols-outlined text-6xl text-slate-600">description_off</span>
+                    <h3 className="text-xl font-bold text-slate-400">Belum Ada Data</h3>
+                    <p className="text-sm text-slate-500 text-center max-w-md">
+                        Belum ada laporan shift {SHIFT_LABELS[activeShift]} untuk tanggal {dateFormatted}.
+                        <br />Silakan input laporan terlebih dahulu di menu <strong>Input Laporan</strong>.
+                    </p>
+                    <button onClick={() => router.push('/input-shift')}
+                        className="mt-2 px-5 py-2.5 bg-primary hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(43,124,238,0.3)]">
+                        <span className="material-symbols-outlined text-lg">edit_note</span>
+                        Input Laporan
+                    </button>
+                </div>
+            )}
+
             {/* Info Bar - Full Width */}
-            <div className="grid grid-cols-4 divide-x divide-cyan-800/60 bg-cyan-950 py-4 px-6 rounded-xl border border-cyan-900 shadow-md w-full">
+            {report && (<div className="grid grid-cols-4 divide-x divide-cyan-800/60 bg-cyan-950 py-4 px-6 rounded-xl border border-cyan-900 shadow-md w-full">
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hari</span><span className="text-sm font-black text-white">{dayName}</span></div>
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tanggal</span><span className="text-sm font-black text-white">{dateFormatted}</span></div>
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Grup</span><span className="text-sm font-black text-white">{report.group}</span></div>
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Supervisor</span><span className="text-sm font-black text-white">{report.supervisor}</span></div>
-            </div>
+            </div>)}
 
             {/* Main 2-Column Grid (matching PDF preview layout) */}
-            <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+            {report && (<div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
 
                 {/* Left Column (48%) */}
                 <div className="lg:w-[48%] flex flex-col gap-4 overflow-y-auto min-h-0">
@@ -588,15 +517,15 @@ export default function LaporanShiftPage() {
                         </div>
                         <div className="p-4 space-y-4">
                             <LabTable title="Boiler Feed Water" color="blue"
-                                headers={['Temp. BFW', 'pH', 'Conduct', 'Silica', 'NH4', 'CHZ']}
-                                values={[report.lab.boilerFeedWater.tempBFW, report.lab.boilerFeedWater.pH, report.lab.boilerFeedWater.conduct, report.lab.boilerFeedWater.silica, report.lab.boilerFeedWater.nh4, report.lab.boilerFeedWater.chz]} />
+                                headers={['pH', 'Conduct', 'Silica', 'NH4', 'CHZ']}
+                                values={[report.lab.boilerFeedWater.pH, report.lab.boilerFeedWater.conduct, report.lab.boilerFeedWater.silica, report.lab.boilerFeedWater.nh4, report.lab.boilerFeedWater.chz]} />
                             <div className="grid grid-cols-2 gap-4">
                                 <LabTable title="TK-1250" color="cyan"
                                     headers={['pH', 'Conduct', 'Silica']}
                                     values={[report.lab.tk1250.pH, report.lab.tk1250.conduct, report.lab.tk1250.silica]} />
                                 <LabTable title="Product Steam" color="green"
-                                    headers={['pH', 'Conduct', 'Silica']}
-                                    values={[report.lab.productSteam.pH, report.lab.productSteam.conduct, report.lab.productSteam.silica]} />
+                                    headers={['pH', 'Conduct', 'Silica', 'NH4']}
+                                    values={[report.lab.productSteam.pH, report.lab.productSteam.conduct, report.lab.productSteam.silica, report.lab.productSteam.nh4]} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <LabTable title="Boiler Water A" color="blue-dark"
@@ -699,8 +628,9 @@ export default function LaporanShiftPage() {
                         </div>
                     </section>
                 </div>
-            </div>
+            </div>)}
 
+            {report && (<>
             {/* Footer */}
             <footer className="flex justify-center items-center py-3 border-t border-slate-800 flex-shrink-0 pb-20">
                 <p className="text-slate-500 text-[10px]">&copy; 2026 PowerOps Control Systems. Generated from Shift {report.group} Terminal.</p>
@@ -714,6 +644,7 @@ export default function LaporanShiftPage() {
                     Print PDF
                 </button>
             </div>
+            </>)}
         </div>
     );
 }

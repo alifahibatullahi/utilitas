@@ -180,6 +180,9 @@ export function useShiftReport(date: string, shift: ShiftType) {
     const [report, setReport] = useState<ShiftReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [fetchKey, setFetchKey] = useState(0);
+
+    const refetch = useCallback(() => setFetchKey(k => k + 1), []);
 
     useEffect(() => {
         if (!isSupabaseConfigured()) {
@@ -187,9 +190,11 @@ export function useShiftReport(date: string, shift: ShiftType) {
             return;
         }
 
+        let stale = false;
         const supabase = createClient();
 
         async function fetchReport() {
+            console.log(`[useShiftReport] fetch starting: date=${date}, shift=${shift}`);
             setLoading(true);
             setError(null);
 
@@ -213,23 +218,77 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 `)
                 .eq('date', date)
                 .eq('shift', shift)
-                .single();
+                .maybeSingle();
+
+            if (stale) {
+                console.log(`[useShiftReport] STALE fetch discarded: date=${date}, shift=${shift}`);
+                return;
+            }
 
             if (fetchError) {
-                if (fetchError.code === 'PGRST116') {
-                    setReport(null);
-                } else {
-                    setError(fetchError.message);
-                }
+                setError(fetchError.message);
             } else if (data) {
+                // PostgREST returns single objects for one-to-one relations (UNIQUE on FK)
+                // but our types/consumers expect arrays. Normalize here.
+                const oneToOneKeys = [
+                    'shift_turbin', 'shift_steam_dist', 'shift_generator_gi',
+                    'shift_power_dist', 'shift_esp_handling', 'shift_tankyard',
+                    'shift_coal_bunker', 'shift_personnel', 'shift_water_quality',
+                    'shift_notes',
+                ] as const;
+                for (const key of oneToOneKeys) {
+                    const val = (data as Record<string, unknown>)[key];
+                    if (val && !Array.isArray(val)) {
+                        (data as Record<string, unknown>)[key] = [val];
+                    }
+                }
+                console.log('[useShiftReport] fetch OK, child counts:', {
+                    boiler: data.shift_boiler?.length,
+                    turbin: (data as Record<string, unknown[]>).shift_turbin?.length,
+                    steamDist: (data as Record<string, unknown[]>).shift_steam_dist?.length,
+                    generatorGi: (data as Record<string, unknown[]>).shift_generator_gi?.length,
+                    powerDist: (data as Record<string, unknown[]>).shift_power_dist?.length,
+                    espHandling: (data as Record<string, unknown[]>).shift_esp_handling?.length,
+                    tankyard: (data as Record<string, unknown[]>).shift_tankyard?.length,
+                    coalBunker: (data as Record<string, unknown[]>).shift_coal_bunker?.length,
+                });
                 setReport(data as unknown as ShiftReportData);
+            } else {
+                console.log('[useShiftReport] fetch OK, no data found');
+                setReport(null);
             }
 
             setLoading(false);
         }
 
         fetchReport();
-    }, [date, shift]);
+
+        return () => { stale = true; };
+    }, [date, shift, fetchKey]);
+
+    // Valid DB columns per table (prevents unknown column errors)
+    const VALID_COLS: Record<string, string[]> = {
+        shift_boiler: ['press_steam','temp_steam','flow_steam','totalizer_steam','flow_bfw','temp_bfw','bfw_press','temp_furnace','temp_flue_gas','excess_air','air_heater_ti113','batubara_ton','solar_m3','stream_days','steam_drum_press'],
+        shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','stream_days'],
+        shift_steam_dist: ['pabrik1_flow','pabrik1_temp','pabrik2_flow','pabrik2_temp','pabrik3a_flow','pabrik3a_temp','pabrik3b_flow','pabrik3b_temp'],
+        shift_generator_gi: ['gen_load','gen_ampere','gen_amp_react','gen_cos_phi','gen_tegangan','gen_frequensi','gi_sum_p','gi_sum_q','gi_cos_phi'],
+        shift_power_dist: ['power_ubb','power_pabrik2','power_pabrik3a','power_pie','power_pabrik3b'],
+        shift_esp_handling: ['esp_a1','esp_a2','esp_a3','esp_b1','esp_b2','esp_b3','silo_a','silo_b','unloading_a','unloading_b','loading','hopper','conveyor','pf1','pf2'],
+        shift_tankyard: ['tk_rcw','tk_demin','tk_solar_ab'],
+        shift_personnel: ['turbin_grup','turbin_karu','turbin_kasi','boiler_grup','boiler_karu','boiler_kasi'],
+        shift_coal_bunker: ['feeder_a','feeder_b','feeder_c','feeder_d','feeder_e','feeder_f','bunker_a','bunker_b','bunker_c','bunker_d','bunker_e','bunker_f'],
+        shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4'],
+    };
+
+    // Filter object to only include valid DB columns
+    function pickValidCols(table: string, data: Record<string, unknown>): Record<string, unknown> {
+        const valid = new Set(VALID_COLS[table] || []);
+        const result: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(data)) {
+            if (valid.has(k) && v !== undefined) result[k] = v;
+        }
+        return result;
+    }
 
     const submitReport = useCallback(async (reportData: {
         group_name: string;
@@ -251,6 +310,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
 
         const supabase = createClient();
+        const errors: string[] = [];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: sr, error: srError } = await supabase
@@ -262,7 +322,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 supervisor: reportData.supervisor,
                 status: 'draft' as ReportStatus,
                 catatan: reportData.catatan || null,
-                created_by: reportData.created_by,
+                ...(reportData.created_by ? { created_by: reportData.created_by } : {}),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any, { onConflict: 'date,shift,group_name' })
             .select()
@@ -271,108 +331,112 @@ export function useShiftReport(date: string, shift: ShiftType) {
         if (srError || !sr) return { error: srError?.message || 'Failed to create report' };
 
         const reportId = (sr as Record<string, unknown>).id as string;
+        console.log('[submitReport] reportId:', reportId);
 
-        // Insert boiler data
-        if (reportData.boilerA) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_boiler').upsert({
-                shift_report_id: reportId,
-                boiler: 'A',
-                ...reportData.boilerA,
-            } as any, { onConflict: 'shift_report_id,boiler' });
-        }
-        if (reportData.boilerB) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_boiler').upsert({
-                shift_report_id: reportId,
-                boiler: 'B',
-                ...reportData.boilerB,
-            } as any, { onConflict: 'shift_report_id,boiler' });
-        }
+        // Helper: save child table (DELETE existing + INSERT new)
+        // More reliable than upsert which can silently fail on some PostgREST configs
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async function saveChild(table: string, data: Record<string, unknown>, extra: Record<string, unknown> = {}) {
+            const filtered = pickValidCols(table, data);
+            if (Object.keys(filtered).length === 0) {
+                console.log(`[submitReport] skip "${table}": no valid columns`);
+                return;
+            }
 
-        // Insert turbin data
-        if (reportData.turbin) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_turbin').upsert({
-                shift_report_id: reportId,
-                ...reportData.turbin,
-            } as any, { onConflict: 'shift_report_id' });
-        }
+            // Step 1: Delete existing rows for this report
+            const { error: delErr } = await supabase
+                .from(table)
+                .delete()
+                .eq('shift_report_id', reportId);
+            if (delErr) {
+                console.error(`[submitReport] DELETE "${table}" error:`, delErr.message);
+                errors.push(`${table}: delete failed - ${delErr.message}`);
+                return;
+            }
 
-        // Insert steam distribution
-        if (reportData.steamDist) {
+            // Step 2: Insert new row
+            const payload = { shift_report_id: reportId, ...extra, ...filtered };
+            console.log(`[submitReport] INSERT "${table}":`, Object.keys(filtered));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_steam_dist').upsert({
-                shift_report_id: reportId,
-                ...reportData.steamDist,
-            } as any, { onConflict: 'shift_report_id' });
-        }
-
-        // Insert generator & GI
-        if (reportData.generatorGi) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_generator_gi').upsert({
-                shift_report_id: reportId,
-                ...reportData.generatorGi,
-            } as any, { onConflict: 'shift_report_id' });
+            const { data: inserted, error: insErr } = await supabase
+                .from(table)
+                .insert(payload as any)
+                .select();
+            if (insErr) {
+                console.error(`[submitReport] INSERT "${table}" error:`, insErr.message);
+                errors.push(`${table}: ${insErr.message}`);
+            } else {
+                console.log(`[submitReport] "${table}" saved OK, id=${(inserted as Record<string, unknown>[])?.[0]?.id}`);
+            }
         }
 
-        // Insert power distribution
-        if (reportData.powerDist) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_power_dist').upsert({
-                shift_report_id: reportId,
-                ...reportData.powerDist,
-            } as any, { onConflict: 'shift_report_id' });
+        // Save boiler A & B (delete by boiler id, then insert)
+        for (const [boilerId, boilerData] of [['A', reportData.boilerA], ['B', reportData.boilerB]] as [string, Record<string, number | null> | undefined][]) {
+            if (boilerData && Object.keys(boilerData).length > 0) {
+                const filtered = pickValidCols('shift_boiler', boilerData as Record<string, unknown>);
+                if (Object.keys(filtered).length > 0) {
+                    await supabase.from('shift_boiler').delete()
+                        .eq('shift_report_id', reportId).eq('boiler', boilerId);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const { data: ins, error: bErr } = await supabase.from('shift_boiler')
+                        .insert({ shift_report_id: reportId, boiler: boilerId, ...filtered } as any)
+                        .select();
+                    if (bErr) {
+                        console.error(`[submitReport] INSERT shift_boiler ${boilerId} error:`, bErr.message);
+                        errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
+                    } else {
+                        console.log(`[submitReport] shift_boiler ${boilerId} saved OK, id=${(ins as Record<string, unknown>[])?.[0]?.id}`);
+                    }
+                }
+            }
         }
 
-        // Insert ESP & handling
-        if (reportData.espHandling) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_esp_handling').upsert({
-                shift_report_id: reportId,
-                ...reportData.espHandling,
-            } as any, { onConflict: 'shift_report_id' });
+        // Save all other child tables
+        if (reportData.turbin && Object.keys(reportData.turbin).length > 0) {
+            await saveChild('shift_turbin', reportData.turbin);
+        }
+        if (reportData.steamDist && Object.keys(reportData.steamDist).length > 0) {
+            await saveChild('shift_steam_dist', reportData.steamDist);
+        }
+        if (reportData.generatorGi && Object.keys(reportData.generatorGi).length > 0) {
+            await saveChild('shift_generator_gi', reportData.generatorGi);
+        }
+        if (reportData.powerDist && Object.keys(reportData.powerDist).length > 0) {
+            await saveChild('shift_power_dist', reportData.powerDist);
+        }
+        if (reportData.espHandling && Object.keys(reportData.espHandling).length > 0) {
+            await saveChild('shift_esp_handling', reportData.espHandling as Record<string, unknown>);
+        }
+        if (reportData.tankyard && Object.keys(reportData.tankyard).length > 0) {
+            await saveChild('shift_tankyard', reportData.tankyard);
+        }
+        if (reportData.personnel && Object.keys(reportData.personnel).length > 0) {
+            await saveChild('shift_personnel', reportData.personnel as Record<string, unknown>);
+        }
+        if (reportData.coalBunker && Object.keys(reportData.coalBunker).length > 0) {
+            await saveChild('shift_coal_bunker', reportData.coalBunker);
+        }
+        if (reportData.waterQuality && Object.keys(reportData.waterQuality).length > 0) {
+            await saveChild('shift_water_quality', reportData.waterQuality);
         }
 
-        // Insert tankyard
-        if (reportData.tankyard) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_tankyard').upsert({
-                shift_report_id: reportId,
-                ...reportData.tankyard,
-            } as any, { onConflict: 'shift_report_id' });
-        }
+        // Verification: query back to confirm all child data was written
+        const { data: verify } = await supabase
+            .from('shift_reports')
+            .select('id, shift_boiler(id), shift_turbin(id), shift_steam_dist(id), shift_generator_gi(id), shift_power_dist(id), shift_esp_handling(id), shift_tankyard(id), shift_coal_bunker(id)')
+            .eq('id', reportId)
+            .single();
+        console.log('[submitReport] VERIFY after save:', JSON.stringify(verify));
 
-        // Insert personnel
-        if (reportData.personnel) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_personnel').upsert({
-                shift_report_id: reportId,
-                ...reportData.personnel,
-            } as any, { onConflict: 'shift_report_id' });
-        }
+        console.log('[submitReport] all saves done, errors:', errors);
 
-        // Insert coal bunker
-        if (reportData.coalBunker) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_coal_bunker').upsert({
-                shift_report_id: reportId,
-                ...reportData.coalBunker,
-            } as any, { onConflict: 'shift_report_id' });
-        }
-
-        // Insert water quality
-        if (reportData.waterQuality) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await supabase.from('shift_water_quality').upsert({
-                shift_report_id: reportId,
-                ...reportData.waterQuality,
-            } as any, { onConflict: 'shift_report_id' });
+        if (errors.length > 0) {
+            console.error('Child table errors:', errors);
+            return { error: errors.join('; '), reportId };
         }
 
         return { error: null, reportId };
     }, [date, shift]);
 
-    return { report, loading, error, submitReport };
+    return { report, loading, error, submitReport, refetch };
 }

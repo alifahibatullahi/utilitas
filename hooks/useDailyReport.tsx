@@ -50,6 +50,7 @@ export function useDailyReport(date: string) {
             return;
         }
 
+        let stale = false;
         const supabase = createClient();
 
         const selectQuery = `
@@ -74,6 +75,8 @@ export function useDailyReport(date: string) {
                 .eq('date', date)
                 .single();
 
+            if (stale) return;
+
             if (fetchError) {
                 if (fetchError.code === 'PGRST116') {
                     setReport(null);
@@ -87,13 +90,15 @@ export function useDailyReport(date: string) {
             // Fetch previous date report for delta calculations
             const prevDate = new Date(date);
             prevDate.setDate(prevDate.getDate() - 1);
-            const prevDateStr = prevDate.toISOString().split('T')[0];
+            const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
 
             const { data: prevData } = await supabase
                 .from('daily_reports')
                 .select(selectQuery)
                 .eq('date', prevDateStr)
                 .single();
+
+            if (stale) return;
 
             if (prevData) {
                 setPrevReport(prevData as unknown as DailyReportData);
@@ -105,6 +110,8 @@ export function useDailyReport(date: string) {
         }
 
         fetchReport();
+
+        return () => { stale = true; };
     }, [date]);
 
     const submitReport = useCallback(async (reportData: {
@@ -138,7 +145,7 @@ export function useDailyReport(date: string) {
                 load_mw: reportData.load_mw ?? null,
                 notes: reportData.notes || null,
                 status: 'draft' as ReportStatus,
-                created_by: reportData.created_by || null,
+                ...(reportData.created_by ? { created_by: reportData.created_by } : {}),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any, { onConflict: 'date' })
             .select()

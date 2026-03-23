@@ -308,7 +308,7 @@ export default function LaporanHarianPage() {
     prevDate.setDate(prevDate.getDate() - 1);
     const nextDate = new Date(dateObj);
     nextDate.setDate(nextDate.getDate() + 1);
-    const toISO = (d: Date) => d.toISOString().split('T')[0];
+    const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     return (
         <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto space-y-5">
@@ -324,7 +324,7 @@ export default function LaporanHarianPage() {
                         d.setDate(d.getDate() - 3 + i);
                         const iso = toISO(d);
                         const isActive = iso === selectedDate;
-                        const isToday = iso === new Date().toISOString().split('T')[0];
+                        const isToday = iso === toISO(new Date());
                         const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
                         const dayNum = d.getDate();
                         return (

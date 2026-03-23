@@ -40,7 +40,10 @@ export default function TotaliserPage() {
     const [showToast, setShowToast] = useState(false);
 
     // Form state for input tab
-    const [inputDate, setInputDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [inputDate, setInputDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [inputValues, setInputValues] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -82,7 +85,7 @@ export default function TotaliserPage() {
         // Find previous day
         const prevDate = new Date(date);
         prevDate.setDate(prevDate.getDate() - 1);
-        const prevDateStr = prevDate.toISOString().split('T')[0];
+        const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
         const yesterday = records.find(r => r.date === prevDateStr && r.sourceId === sourceId);
         if (today && yesterday) {
             return today.value - yesterday.value;

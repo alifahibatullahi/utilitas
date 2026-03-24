@@ -13,6 +13,7 @@ import { useShiftReport } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import type { ShiftType } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
+import InputHarianForm from '@/components/input-harian/InputHarianForm';
 
 type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker' | 'Lab';
 
@@ -287,78 +288,86 @@ export default function InputShiftPage() {
                         )}
                     </div>
                 </div>
-                <div className="flex gap-3 shrink-0 mt-2">
-                    <button
-                        onClick={loadSampleData}
-                        className="flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(217,119,6,0.3)] border border-amber-500/50"
-                    >
-                        <span className="material-symbols-outlined text-[14px]">database</span>
-                        Load Data Referensi
-                    </button>
-                    <button
-                        onClick={handleSaveDraft}
-                        disabled={submitting}
-                        className={`flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(37,99,235,0.3)] border border-blue-500/50 ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        <span className="material-symbols-outlined text-[14px]">drafts</span>
-                        {submitting ? 'Saving...' : 'Save Draft'}
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={submitting}
-                        className={`flex justify-center items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(16,185,129,0.3)] border border-emerald-400/50 ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        <span className="material-symbols-outlined text-[14px]">send</span>
-                        {submitting ? 'Submitting...' : 'Submit Report'}
-                    </button>
-                </div>
+                {inputMode === 'shift' && (
+                    <div className="flex gap-3 shrink-0 mt-2">
+                        <button
+                            onClick={loadSampleData}
+                            className="flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(217,119,6,0.3)] border border-amber-500/50"
+                        >
+                            <span className="material-symbols-outlined text-[14px]">database</span>
+                            Load Data Referensi
+                        </button>
+                        <button
+                            onClick={handleSaveDraft}
+                            disabled={submitting}
+                            className={`flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(37,99,235,0.3)] border border-blue-500/50 ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <span className="material-symbols-outlined text-[14px]">drafts</span>
+                            {submitting ? 'Saving...' : 'Save Draft'}
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                            className={`flex justify-center items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors shadow-[0_0_10px_rgba(16,185,129,0.3)] border border-emerald-400/50 ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <span className="material-symbols-outlined text-[14px]">send</span>
+                            {submitting ? 'Submitting...' : 'Submit Report'}
+                        </button>
+                    </div>
+                )}
             </header>
 
-            {/* Tab Bar */}
-            <div className="shrink-0">
-                <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-1">
-                    <div className="flex flex-wrap gap-1">
-                        {TABS.map((tab) => {
-                            const isActive = activeTab === tab.id;
+            {inputMode === 'shift' ? (
+                <>
+                    {/* Shift Tab Bar */}
+                    <div className="shrink-0">
+                        <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-1">
+                            <div className="flex flex-wrap gap-1">
+                                {TABS.map((tab) => {
+                                    const isActive = activeTab === tab.id;
 
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as TabId)}
-                                    className={`px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap ${isActive
-                                        ? 'font-bold bg-[#2b7cee]/20 text-[#2b7cee] border border-[#2b7cee]/30 shadow-inner shadow-[#2b7cee]/10'
-                                        : 'font-medium text-[#92a9c9] hover:text-white hover:bg-[#1f2b3e] border border-transparent'
-                                        }`}
-                                >
-                                    <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-[#2b7cee]' : ''}`}>
-                                        {tab.icon}
-                                    </span>
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id as TabId)}
+                                            className={`px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap ${isActive
+                                                ? 'font-bold bg-[#2b7cee]/20 text-[#2b7cee] border border-[#2b7cee]/30 shadow-inner shadow-[#2b7cee]/10'
+                                                : 'font-medium text-[#92a9c9] hover:text-white hover:bg-[#1f2b3e] border border-transparent'
+                                                }`}
+                                        >
+                                            <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-[#2b7cee]' : ''}`}>
+                                                {tab.icon}
+                                            </span>
+                                            {tab.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Tab Content */}
-            {loading && (
-                <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-4">
-                    <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                    Memuat data...
-                </div>
+                    {/* Shift Tab Content */}
+                    {loading && (
+                        <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-4">
+                            <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                            Memuat data...
+                        </div>
+                    )}
+                    <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
+                        {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeNumberHandler(setCoalBunker)} />}
+                        {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeNumberHandler(setCoalBunker)} />}
+                        {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} />}
+                        {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} />}
+                        {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} />}
+                        {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} />}
+                        {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} />}
+                        {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeNumberHandler(setCoalBunker)} />}
+                        {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} />}
+                    </div>
+                </>
+            ) : (
+                <InputHarianForm date={selectedDate} operator={operator} />
             )}
-            <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
-                {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeNumberHandler(setCoalBunker)} />}
-                {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeNumberHandler(setCoalBunker)} />}
-                {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} />}
-                {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} />}
-                {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} />}
-                {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} />}
-                {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} />}
-                {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeNumberHandler(setCoalBunker)} />}
-                {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} />}
-            </div>
         </div>
     );
 }

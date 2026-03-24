@@ -38,11 +38,75 @@ function isSupabaseConfigured(): boolean {
     return !!url && !url.includes('YOUR_PROJECT_ID');
 }
 
+// Whitelist kolom valid per child table
+const VALID_COLS: Record<string, string[]> = {
+    daily_report_steam: [
+        'prod_boiler_a_24', 'prod_boiler_b_24', 'prod_total_24',
+        'inlet_turbine_24', 'mps_i_24', 'mps_3a_24', 'lps_ii_24', 'lps_3a_24',
+        'fully_condens_24', 'internal_ubb_24',
+        'prod_boiler_a_00', 'prod_boiler_b_00', 'prod_total_00',
+        'inlet_turbine_00', 'co_gen_00', 'mps_i_00', 'mps_3a_00',
+        'lps_ii_00', 'lps_3a_00', 'fully_condens_00', 'internal_ubb_00',
+    ],
+    daily_report_power: [
+        'gen_24', 'dist_ib_24', 'dist_ii_24', 'dist_3a_24', 'dist_3b_24',
+        'internal_bus1_24', 'internal_bus2_24', 'pja_24',
+        'revamp_stg175_24', 'revamp_stg125_24', 'exsport_24', 'pie_pln_24', 'pie_import_24',
+        'gen_00', 'dist_ib_00', 'dist_ii_00', 'dist_3a_00', 'dist_3b_00',
+        'internal_bus1_00', 'internal_bus2_00', 'pja_00',
+        'revamp_stg175_00', 'revamp_stg125_00', 'exsport_00', 'pie_pln_00', 'pie_import_00', 'pie_gi_00',
+    ],
+    daily_report_coal: [
+        'coal_a_24', 'coal_b_24', 'coal_c_24', 'total_boiler_a_24',
+        'coal_d_24', 'coal_e_24', 'coal_f_24', 'total_boiler_b_24', 'grand_total_24',
+        'coal_a_00', 'coal_b_00', 'coal_c_00', 'total_boiler_a_00',
+        'coal_d_00', 'coal_e_00', 'coal_f_00', 'total_boiler_b_00', 'grand_total_00',
+    ],
+    daily_report_turbine_misc: [
+        'temp_furnace_a', 'temp_furnace_b',
+        'axial_displacement', 'thrust_bearing_temp', 'steam_inlet_press', 'steam_inlet_temp',
+        'consumption_rate_a', 'consumption_rate_b', 'consumption_rate_avg',
+        'totalizer_gi', 'totalizer_export', 'totalizer_import',
+    ],
+    daily_report_stock_tank: [
+        'stock_batubara', 'rcw_level_00', 'demin_level_00',
+        'solar_tank_a', 'solar_tank_b', 'solar_tank_total', 'kedatangan_solar',
+        'solar_boiler', 'solar_bengkel', 'solar_3b',
+        'bfw_boiler_a', 'bfw_boiler_b', 'bfw_total',
+        'chemical_phosphat', 'chemical_amin', 'chemical_hydrasin',
+        'silo_a_pct', 'silo_b_pct', 'unloading_fly_ash_a', 'unloading_fly_ash_b',
+        'total_pf1', 'total_pf2',
+    ],
+    daily_report_coal_transfer: [
+        'pb2_pf1_rit', 'pb2_pf1_ton', 'pb2_pf2_rit', 'pb2_pf2_ton',
+        'pb2_total_pf1_rit', 'pb2_total_pf1_ton', 'pb2_total_pf2_rit', 'pb2_total_pf2_ton',
+        'pb3_calc_rit', 'pb3_calc_ton', 'pb3_total_calc_rit', 'pb3_total_calc_ton',
+        'darat_24_ton', 'darat_total_ton', 'laut_24_ton', 'laut_total_ton',
+    ],
+    daily_report_totalizer: [
+        'totalizer_1', 'totalizer_2', 'totalizer_3', 'totalizer_4', 'totalizer_5',
+        'group_name', 'kasi_name',
+        'stock_batubara_rendal', 'keterangan',
+        'konsumsi_demin', 'konsumsi_rcw',
+        'penerimaan_demin_3a', 'penerimaan_demin_1b', 'penerimaan_rcw_1a',
+    ],
+};
+
+function pickValidCols(table: string, data: Record<string, unknown>): Record<string, unknown> {
+    const valid = new Set(VALID_COLS[table] || []);
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(data)) {
+        if (valid.has(k)) result[k] = v;
+    }
+    return result;
+}
+
 export function useDailyReport(date: string) {
     const [report, setReport] = useState<DailyReportData | null>(null);
     const [prevReport, setPrevReport] = useState<DailyReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [fetchKey, setFetchKey] = useState(0);
 
     useEffect(() => {
         if (!isSupabaseConfigured()) {
@@ -112,7 +176,7 @@ export function useDailyReport(date: string) {
         fetchReport();
 
         return () => { stale = true; };
-    }, [date]);
+    }, [date, fetchKey]);
 
     const submitReport = useCallback(async (reportData: {
         created_by?: string;
@@ -169,10 +233,11 @@ export function useDailyReport(date: string) {
         for (const { key, table } of childTables) {
             const childData = reportData[key];
             if (childData) {
+                const filtered = pickValidCols(table, childData as Record<string, unknown>);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 await supabase.from(table).upsert({
                     daily_report_id: reportId,
-                    ...childData,
+                    ...filtered,
                 } as any, { onConflict: 'daily_report_id' });
             }
         }
@@ -180,5 +245,7 @@ export function useDailyReport(date: string) {
         return { error: null, reportId };
     }, [date]);
 
-    return { report, prevReport, loading, error, submitReport };
+    const refetch = useCallback(() => setFetchKey(k => k + 1), []);
+
+    return { report, prevReport, loading, error, submitReport, refetch };
 }

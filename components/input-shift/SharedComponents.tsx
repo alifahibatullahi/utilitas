@@ -58,14 +58,14 @@ export const Card = ({ title, icon, color = "blue", children, isSidebar = false 
     };
 
     return (
-        <div className={`bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl overflow-hidden shadow-sm flex flex-col group transition-colors duration-300 ${borderMap[color]} ${isSidebar ? 'h-full' : ''}`}>
-            <div className={`p-4 border-b border-slate-800/80 flex items-center gap-3 bg-gradient-to-r from-[#1f2b3e]/50 to-transparent ${isSidebar ? 'shrink-0' : ''}`}>
+        <div className={`bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl overflow-hidden shadow-sm flex flex-col group transition-colors duration-300 ${borderMap[color]}`}>
+            <div className={`p-4 border-b border-slate-800/80 flex items-center gap-3 bg-gradient-to-r from-[#1f2b3e]/50 to-transparent shrink-0`}>
                 <div className={`p-2 rounded-lg ${colorMap[color].split(' ')[1]}`}>
                     <span className={`material-symbols-outlined ${colorMap[color].split(' ')[0]}`}>{icon}</span>
                 </div>
                 <h3 className="text-white font-bold text-lg tracking-wide">{title}</h3>
             </div>
-            <div className={`p-5 space-y-4 flex-1 flex flex-col justify-start ${isSidebar ? 'overflow-y-auto scrollbar-hide' : ''}`}>
+            <div className={`${isSidebar ? 'p-4 space-y-2' : 'p-5 space-y-4'} flex flex-col justify-start`}>
                 {children}
             </div>
         </div>

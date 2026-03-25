@@ -25,6 +25,7 @@ END $$;
 DROP TABLE IF EXISTS shift_notes CASCADE;
 DROP TABLE IF EXISTS maintenance_logs CASCADE;
 DROP TABLE IF EXISTS critical_equipment CASCADE;
+DROP TABLE IF EXISTS ash_unloadings CASCADE;
 DROP TABLE IF EXISTS solar_unloadings CASCADE;
 DROP TABLE IF EXISTS shift_turbin CASCADE;
 DROP TABLE IF EXISTS shift_steam_dist CASCADE;
@@ -224,7 +225,7 @@ CREATE TABLE shift_boiler (
     UNIQUE(shift_report_id, boiler)
 );
 
--- ─── 9. Shift Coal Feeder & Bunker (12 field) ───
+-- ─── 9. Shift Coal Feeder & Bunker (12 field + 6 status) ───
 CREATE TABLE shift_coal_bunker (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     shift_report_id UUID NOT NULL REFERENCES shift_reports(id) ON DELETE CASCADE,
@@ -232,6 +233,13 @@ CREATE TABLE shift_coal_bunker (
     feeder_d NUMERIC, feeder_e NUMERIC, feeder_f NUMERIC,
     bunker_a NUMERIC, bunker_b NUMERIC, bunker_c NUMERIC,
     bunker_d NUMERIC, bunker_e NUMERIC, bunker_f NUMERIC,
+    -- Status bunker (Normal / Berasap)
+    status_bunker_a TEXT DEFAULT 'Normal',
+    status_bunker_b TEXT DEFAULT 'Normal',
+    status_bunker_c TEXT DEFAULT 'Normal',
+    status_bunker_d TEXT DEFAULT 'Normal',
+    status_bunker_e TEXT DEFAULT 'Normal',
+    status_bunker_f TEXT DEFAULT 'Normal',
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)
 );
@@ -343,7 +351,7 @@ CREATE TABLE daily_report_turbine_misc (
     UNIQUE(daily_report_id)
 );
 
--- ─── 5. Daily Report: Stock & Tank (22 field) ───
+-- ─── 5. Daily Report: Stock & Tank (24 field) ───
 CREATE TABLE daily_report_stock_tank (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     daily_report_id UUID NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
@@ -353,8 +361,9 @@ CREATE TABLE daily_report_stock_tank (
     solar_tank_a NUMERIC, solar_tank_b NUMERIC, solar_tank_total NUMERIC,
     kedatangan_solar NUMERIC,
     solar_boiler NUMERIC, solar_bengkel NUMERIC, solar_3b NUMERIC,
-    -- BFW
+    -- BFW (totalizer + flow)
     bfw_boiler_a NUMERIC, bfw_boiler_b NUMERIC, bfw_total NUMERIC,
+    flow_bfw_a NUMERIC, flow_bfw_b NUMERIC,
     -- Chemical
     chemical_phosphat NUMERIC, chemical_amin NUMERIC, chemical_hydrasin NUMERIC,
     -- Silo & Fly Ash
@@ -448,6 +457,21 @@ CREATE TABLE solar_unloadings (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- ─── Ash Unloadings (Unloading Fly Ash per Shift) ───
+CREATE TABLE ash_unloadings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    date DATE NOT NULL,
+    shift TEXT NOT NULL,
+    silo TEXT NOT NULL,
+    perusahaan TEXT NOT NULL,
+    tujuan TEXT NOT NULL,
+    ritase NUMERIC NOT NULL DEFAULT 0,
+    operator_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_ash_unloadings_date ON ash_unloadings(date);
+
 -- ─── Tank Levels (real-time update oleh operator handling) ───
 CREATE TABLE tank_levels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -533,6 +557,7 @@ ALTER TABLE critical_equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintenance_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shift_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE solar_unloadings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ash_unloadings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tank_levels ENABLE ROW LEVEL SECURITY;
 
 -- Allow all for anon (no auth, public access via anon key)
@@ -560,6 +585,7 @@ CREATE POLICY "Allow all for anon" ON critical_equipment FOR ALL TO anon USING (
 CREATE POLICY "Allow all for anon" ON maintenance_logs FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON shift_notes FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON solar_unloadings FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON ash_unloadings FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON tank_levels FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ════════════════════════════════════════════

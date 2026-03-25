@@ -56,27 +56,47 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
 
     const [solarUnloadings, setSolarUnloadings] = useState<{ date: string; liters: number; supplier: string }[]>([]);
+    const [ashUnloadings, setAshUnloadings] = useState<{ date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
 
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
 
-    // Fetch solar unloadings for the selected date
-    useEffect(() => {
-        const supabase = createClient();
-        supabase
-            .from('solar_unloadings')
-            .select('date, liters, supplier')
-            .eq('date', date)
-            .order('created_at', { ascending: false })
-            .then(({ data }) => {
-                setSolarUnloadings(
-                    (data ?? []).map(r => ({
-                        date: r.date as string,
-                        liters: Number(r.liters) || 0,
-                        supplier: (r.supplier as string) || '',
-                    }))
-                );
-            });
-    }, [date]);
+        // Fetch solar & ash unloadings for the selected date
+        useEffect(() => {
+            const supabase = createClient();
+            
+            supabase
+                .from('solar_unloadings')
+                .select('date, liters, supplier')
+                .eq('date', date)
+                .order('created_at', { ascending: false })
+                .then(({ data }) => {
+                    setSolarUnloadings(
+                        (data ?? []).map(r => ({
+                            date: r.date as string,
+                            liters: Number(r.liters) || 0,
+                            supplier: (r.supplier as string) || '',
+                        }))
+                    );
+                });
+
+            supabase
+                .from('ash_unloadings')
+                .select('date, shift, silo, perusahaan, tujuan, ritase')
+                .eq('date', date)
+                .order('created_at', { ascending: false })
+                .then(({ data }) => {
+                    setAshUnloadings(
+                        (data ?? []).map(r => ({
+                            date: r.date as string,
+                            shift: r.shift as string,
+                            silo: r.silo as string,
+                            perusahaan: r.perusahaan as string,
+                            tujuan: r.tujuan as string,
+                            ritase: Number(r.ritase) || 0,
+                        }))
+                    );
+                });
+        }, [date]);
 
     // ─── Helpers ───
     const extractFields = (obj: Record<string, unknown> | undefined, skipKeys: string[] = []) => {
@@ -443,6 +463,7 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                                 onTotalizerChange: makeMixedHandler(setTotalizer),
                                 crA, crB,
                                 solarUnloadings,
+                                ashUnloadings,
                             };
                             return (
                                 <>

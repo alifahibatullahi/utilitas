@@ -181,7 +181,7 @@ export const OPERATORS: Operator[] = [
     { id: 6, name: 'Rizky Dharmaji', role: 'group_a', group: 'A', nik: '2156352', company: 'UBB' },
     { id: 7, name: 'Lutfi Abdul Aziz', role: 'group_a', group: 'A', nik: '2180237', company: 'UBB' },
     // Group A — Tenaga Alih Daya (3 PT FJM + 2 PT Shohib Jaya Putra)
-    { id: 8, name: 'Andreansyah', role: 'group_a', group: 'A', nik: '25-09677', company: 'PT FJM' },
+    { id: 8, name: 'Andreansyah', role: 'handling', group: 'A', nik: '25-09677', company: 'PT FJM' },
     { id: 9, name: 'Bambang Agus', role: 'group_a', group: 'A', nik: '25-10301', company: 'PT FJM' },
     { id: 10, name: 'M. Syaiful Amri', role: 'group_a', group: 'A', nik: '25-09676', company: 'PT FJM' },
     { id: 11, name: 'Aditya Dwi', role: 'group_a', group: 'A', nik: '24-05632', company: 'PT Shohib Jaya Putra' },
@@ -196,7 +196,7 @@ export const OPERATORS: Operator[] = [
     { id: 18, name: 'Nastainul Firdaus Z', role: 'group_b', group: 'B', nik: '2146089', company: 'UBB' },
     { id: 19, name: 'Mohamad Rizky Arsyi', role: 'group_b', group: 'B', nik: '2180310', company: 'UBB' },
     // Group B — Tenaga Alih Daya
-    { id: 20, name: 'Muhammad Syahri', role: 'group_b', group: 'B', nik: '25-09683', company: 'PT FJM' },
+    { id: 20, name: 'Muhammad Syahri', role: 'handling', group: 'B', nik: '25-09683', company: 'PT FJM' },
     { id: 21, name: 'Mulyono', role: 'group_b', group: 'B', nik: '25-10302', company: 'PT FJM' },
     { id: 22, name: 'Sun\'an Kusaini', role: 'group_b', group: 'B', nik: '25-08504', company: 'PT FJM' },
     { id: 23, name: 'Hadi Santoso', role: 'group_b', group: 'B', nik: '24-05614', company: 'PT Shohib Jaya Putra' },
@@ -211,7 +211,7 @@ export const OPERATORS: Operator[] = [
     { id: 30, name: 'Muhammad Indra Ali', role: 'group_c', group: 'C', nik: '2156337', company: 'UBB' },
     { id: 31, name: 'Rizqy Aulia Rahman', role: 'group_c', group: 'C', nik: '2156353', company: 'UBB' },
     // Group C — Tenaga Alih Daya
-    { id: 32, name: 'Achmad Mirza Yusuf', role: 'group_c', group: 'C', nik: '25-10304', company: 'PT FJM' },
+    { id: 32, name: 'Achmad Mirza Yusuf', role: 'handling', group: 'C', nik: '25-10304', company: 'PT FJM' },
     { id: 33, name: 'Moh. Muchlis', role: 'group_c', group: 'C', nik: '25-09675', company: 'PT FJM' },
     { id: 34, name: 'Yusuf Adnan', role: 'group_c', group: 'C', nik: '25-08539', company: 'PT FJM' },
     { id: 35, name: 'Alif Amirul', role: 'group_c', group: 'C', nik: '24-25633', company: 'PT Shohib Jaya Putra' },
@@ -226,7 +226,7 @@ export const OPERATORS: Operator[] = [
     { id: 42, name: 'Ahmad Shofi Hamim', role: 'group_d', group: 'D', nik: '2156283', company: 'UBB' },
     { id: 43, name: 'Achmad Ali Chorudin', role: 'group_d', group: 'D', nik: '2125718', company: 'UBB' },
     // Group D — Tenaga Alih Daya
-    { id: 44, name: 'Mohammad Agil', role: 'group_d', group: 'D', nik: '25-09679', company: 'PT FJM' },
+    { id: 44, name: 'Mohammad Agil', role: 'handling', group: 'D', nik: '25-09679', company: 'PT FJM' },
     { id: 45, name: 'Mohammad Zubairi', role: 'group_d', group: 'D', nik: '25-08496', company: 'PT FJM' },
     { id: 46, name: 'Andik Purwanto', role: 'group_d', group: 'D', nik: '25-10300', company: 'PT FJM' },
     { id: 47, name: 'M. Diso', role: 'group_d', group: 'D', nik: '24-05637', company: 'PT Shohib Jaya Putra' },

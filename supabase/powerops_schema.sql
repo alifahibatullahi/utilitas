@@ -43,6 +43,7 @@ DROP TABLE IF EXISTS daily_report_turbine_misc CASCADE;
 DROP TABLE IF EXISTS daily_report_stock_tank CASCADE;
 DROP TABLE IF EXISTS daily_report_coal_transfer CASCADE;
 DROP TABLE IF EXISTS daily_report_totalizer CASCADE;
+DROP TABLE IF EXISTS tank_levels CASCADE;
 DROP TABLE IF EXISTS shift_reports CASCADE;
 DROP TABLE IF EXISTS daily_reports CASCADE;
 DROP TABLE IF EXISTS operators CASCADE;
@@ -447,6 +448,20 @@ CREATE TABLE solar_unloadings (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- ─── Tank Levels (real-time update oleh operator handling) ───
+CREATE TABLE tank_levels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tank_id TEXT NOT NULL CHECK (tank_id IN ('DEMIN', 'RCW', 'SOLAR')),
+    level_pct NUMERIC NOT NULL,
+    level_m3 NUMERIC NOT NULL,
+    operator_name TEXT NOT NULL,
+    note TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_tank_levels_tank_id ON tank_levels(tank_id);
+CREATE INDEX idx_tank_levels_created_at ON tank_levels(created_at DESC);
+
 -- ════════════════════════════════════════════
 -- SECTION 6: INDEXES
 -- ════════════════════════════════════════════
@@ -518,6 +533,7 @@ ALTER TABLE critical_equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintenance_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shift_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE solar_unloadings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tank_levels ENABLE ROW LEVEL SECURITY;
 
 -- Allow all for anon (no auth, public access via anon key)
 CREATE POLICY "Allow all for anon" ON operators FOR ALL TO anon USING (true) WITH CHECK (true);
@@ -544,6 +560,7 @@ CREATE POLICY "Allow all for anon" ON critical_equipment FOR ALL TO anon USING (
 CREATE POLICY "Allow all for anon" ON maintenance_logs FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON shift_notes FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON solar_unloadings FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON tank_levels FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ════════════════════════════════════════════
 -- SECTION 9: REALTIME
@@ -554,6 +571,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shift_turbin;
 ALTER PUBLICATION supabase_realtime ADD TABLE shift_boiler;
 ALTER PUBLICATION supabase_realtime ADD TABLE daily_report_steam;
 ALTER PUBLICATION supabase_realtime ADD TABLE daily_report_power;
+ALTER PUBLICATION supabase_realtime ADD TABLE tank_levels;
 
 -- ════════════════════════════════════════════
 -- SEED DATA: Operators (51 personil)
@@ -569,7 +587,7 @@ INSERT INTO operators (name, role, group_name, nik, jabatan, company) VALUES
 ('Rizky Dharmaji', 'group_a', 'A', '2156352', NULL, 'UBB'),
 ('Lutfi Abdul Aziz', 'group_a', 'A', '2180237', NULL, 'UBB'),
 -- Group A — Tenaga Alih Daya
-('Andreansyah', 'group_a', 'A', '25-09677', NULL, 'PT FJM'),
+('Andreansyah', 'handling', 'A', '25-09677', NULL, 'PT FJM'),
 ('Bambang Agus', 'group_a', 'A', '25-10301', NULL, 'PT FJM'),
 ('M. Syaiful Amri', 'group_a', 'A', '25-09676', NULL, 'PT FJM'),
 ('Aditya Dwi', 'group_a', 'A', '24-05632', NULL, 'PT Shohib Jaya Putra'),
@@ -584,7 +602,7 @@ INSERT INTO operators (name, role, group_name, nik, jabatan, company) VALUES
 ('Nastainul Firdaus Z', 'group_b', 'B', '2146089', NULL, 'UBB'),
 ('Mohamad Rizky Arsyi', 'group_b', 'B', '2180310', NULL, 'UBB'),
 -- Group B — Tenaga Alih Daya
-('Muhammad Syahri', 'group_b', 'B', '25-09683', NULL, 'PT FJM'),
+('Muhammad Syahri', 'handling', 'B', '25-09683', NULL, 'PT FJM'),
 ('Mulyono', 'group_b', 'B', '25-10302', NULL, 'PT FJM'),
 ('Sun''an Kusaini', 'group_b', 'B', '25-08504', NULL, 'PT FJM'),
 ('Hadi Santoso', 'group_b', 'B', '24-05614', NULL, 'PT Shohib Jaya Putra'),
@@ -599,7 +617,7 @@ INSERT INTO operators (name, role, group_name, nik, jabatan, company) VALUES
 ('Muhammad Indra Ali', 'group_c', 'C', '2156337', NULL, 'UBB'),
 ('Rizqy Aulia Rahman', 'group_c', 'C', '2156353', NULL, 'UBB'),
 -- Group C — Tenaga Alih Daya
-('Achmad Mirza Yusuf', 'group_c', 'C', '25-10304', NULL, 'PT FJM'),
+('Achmad Mirza Yusuf', 'handling', 'C', '25-10304', NULL, 'PT FJM'),
 ('Moh. Muchlis', 'group_c', 'C', '25-09675', NULL, 'PT FJM'),
 ('Yusuf Adnan', 'group_c', 'C', '25-08539', NULL, 'PT FJM'),
 ('Alif Amirul', 'group_c', 'C', '24-25633', NULL, 'PT Shohib Jaya Putra'),
@@ -614,7 +632,7 @@ INSERT INTO operators (name, role, group_name, nik, jabatan, company) VALUES
 ('Ahmad Shofi Hamim', 'group_d', 'D', '2156283', NULL, 'UBB'),
 ('Achmad Ali Chorudin', 'group_d', 'D', '2125718', NULL, 'UBB'),
 -- Group D — Tenaga Alih Daya
-('Mohammad Agil', 'group_d', 'D', '25-09679', NULL, 'PT FJM'),
+('Mohammad Agil', 'handling', 'D', '25-09679', NULL, 'PT FJM'),
 ('Mohammad Zubairi', 'group_d', 'D', '25-08496', NULL, 'PT FJM'),
 ('Andik Purwanto', 'group_d', 'D', '25-10300', NULL, 'PT FJM'),
 ('M. Diso', 'group_d', 'D', '24-05637', NULL, 'PT Shohib Jaya Putra'),

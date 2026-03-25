@@ -436,3 +436,13 @@ export interface SolarUnloadingRow {
     operator_id: string | null;
     created_at: string;
 }
+
+export interface TankLevelRow {
+    id: string;
+    tank_id: 'DEMIN' | 'RCW' | 'SOLAR';
+    level_pct: number;
+    level_m3: number;
+    operator_name: string;
+    note: string | null;
+    created_at: string;
+}

@@ -5,9 +5,10 @@ import { useTankData } from '@/hooks/useTankData';
 import { TANK_IDS, TANKS, TankId } from '@/lib/constants';
 import { getAlertStatus } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
-// Per-tank color themes — matching original app flow colors
+// Per-tank color themes
 const TANK_COLORS: Record<string, {
     base: string; bgClass: string; textClass: string; icon: string; hoverBorderClass: string;
     liquidBg: string; liquidSurface: string;
@@ -28,7 +29,6 @@ function TankCard({ tankId }: { tankId: TankId }) {
     const flows = flowRates[tankId] || [];
     const outFlows = outputFlowRates[tankId] || [];
 
-    // Calculate total flows
     const totalFlowIn = flows.reduce((sum, f) => sum + f.rate, 0);
     const totalFlowOut = outFlows.reduce((sum, f) => sum + f.rate, 0);
 
@@ -223,10 +223,106 @@ function TankCard({ tankId }: { tankId: TankId }) {
     );
 }
 
+function TankTrendChart({ tankId }: { tankId: TankId }) {
+    const { trendData } = useTankData();
+    const tc = TANK_COLORS[tankId] || TANK_COLORS.DEMIN;
+    const tank = TANKS[tankId];
+    const trend = trendData[tankId] || [];
+
+    return (
+        <div className="bg-surface-dark border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 ${tc.bgClass} rounded-lg`} style={{ boxShadow: `0 0 10px ${tc.base}60` }}>
+                        <span className="material-symbols-outlined text-white text-base">{tc.icon}</span>
+                    </div>
+                    <div>
+                        <h3 className="text-white font-bold text-sm">{tank.name}</h3>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Trend Level 1 Jam Terakhir</p>
+                    </div>
+                </div>
+                {trend.length > 0 && (
+                    <div className="text-right">
+                        <span className="text-lg font-black text-white" style={{ textShadow: `0 0 10px ${tc.base}60` }}>
+                            {trend[trend.length - 1].level.toFixed(1)}%
+                        </span>
+                    </div>
+                )}
+            </div>
+            <div className="h-48">
+                {trend.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={trend} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id={`grad-${tankId}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor={tc.base} stopOpacity={0.15} />
+                                    <stop offset="100%" stopColor={tc.base} stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.08)" />
+                            <XAxis
+                                dataKey="time"
+                                stroke="#475569"
+                                fontSize={10}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <YAxis
+                                domain={[0, 100]}
+                                stroke="#475569"
+                                fontSize={10}
+                                tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(v) => `${v}%`}
+                                width={40}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: '#0f172a',
+                                    border: `1px solid ${tc.base}40`,
+                                    borderRadius: '8px',
+                                    fontSize: '12px',
+                                    color: '#f8fafc',
+                                    boxShadow: `0 0 15px ${tc.base}20`,
+                                }}
+                                formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}%`, 'Level']}
+                                labelStyle={{ color: '#94a3b8', fontWeight: 'bold', fontSize: '10px' }}
+                            />
+                            <ReferenceLine y={40} stroke="#eab308" strokeDasharray="4 4" strokeOpacity={0.4} />
+                            <ReferenceLine y={20} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.4} />
+                            <Line
+                                type="monotone"
+                                dataKey="level"
+                                stroke={tc.base}
+                                strokeWidth={2.5}
+                                dot={false}
+                                activeDot={{ r: 5, fill: tc.base, stroke: '#0f172a', strokeWidth: 2 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="h-full flex items-center justify-center">
+                        <p className="text-xs text-slate-600 italic">Belum ada data trend</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function TankLevelPage() {
     const { operator, canInputTank } = useOperator();
     const { currentLevels } = useTankData();
     const router = useRouter();
+    const [, setTick] = useState(0);
+
+    // Auto-refresh every 30 seconds for continuous CCR monitoring
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTick(t => t + 1);
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Find most recent data update timestamp
     const lastUpdate = Object.values(currentLevels)
@@ -239,6 +335,8 @@ export default function TankLevelPage() {
         ? new Date(lastUpdate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })
         : '--:--';
 
+    const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+
     useEffect(() => {
         if (!operator) router.push('/');
     }, [operator, router]);
@@ -250,9 +348,10 @@ export default function TankLevelPage() {
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex flex-col gap-2">
                     <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-[0_0_15px_rgba(43,124,238,0.3)]">Tank Level <span className="text-primary">Monitoring</span></h2>
+                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">CCR Live Display</p>
                 </div>
-                
-                <div className="hidden xl:flex items-center justify-center flex-1">
+
+                <div className="flex items-center gap-4">
                     <div className="bg-surface-dark/40 border border-slate-800/50 px-4 py-2 rounded-full flex items-center gap-3 shadow-inner">
                         <div className="flex flex-col items-center">
                             <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em] mb-1">Last Data Update</span>
@@ -262,16 +361,17 @@ export default function TankLevelPage() {
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div className="flex gap-2">
+                    <div className="hidden sm:flex flex-col items-center text-slate-600">
+                        <span className="text-[9px] uppercase tracking-widest font-bold">Waktu</span>
+                        <span className="text-sm font-mono font-bold">{now}</span>
+                    </div>
                     {canInputTank && (
                         <button
                             onClick={() => router.push('/input')}
-                            className="flex items-center gap-2 bg-surface-dark hover:bg-surface-highlight border border-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-emerald-600/20"
                         >
-                            <span className="material-symbols-outlined text-base">add_circle</span>
-                            Input Data
+                            <span className="material-symbols-outlined text-base">edit</span>
+                            Update Level
                         </button>
                     )}
                     <button onClick={() => window.location.reload()} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-primary/20">
@@ -281,56 +381,28 @@ export default function TankLevelPage() {
                 </div>
             </header>
 
+            {/* Tank Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
                 {TANK_IDS.map(id => <TankCard key={id} tankId={id} />)}
             </div>
 
-            {/* 8h Trend Analysis Section */}
-            <div className="bg-surface-dark border border-slate-800 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-white font-bold text-base flex items-center gap-2">
-                        <span className="material-symbols-outlined text-text-secondary text-xl">query_stats</span>
-                        8 Jam Terakhir — Trend Analysis
-                    </h3>
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-2 h-2 bg-sky-500 rounded-full"></span>
-                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Demin</span>
+            {/* Trend Charts — one line chart per tank */}
+            <div>
+                <div className="flex items-center gap-3 mb-5">
+                    <span className="material-symbols-outlined text-text-secondary text-xl">query_stats</span>
+                    <h3 className="text-white font-bold text-lg">Trend Analysis</h3>
+                    <div className="flex-1 h-px bg-slate-800"></div>
+                    <div className="flex items-center gap-4">
+                        {TANK_IDS.map(id => (
+                            <div key={id} className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TANK_COLORS[id].base }}></span>
+                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{TANKS[id].name}</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
-                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">RCW</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Solar</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                {/* Decorative visual trend presentation */}
-                <div className="w-full h-24 flex items-end justify-between gap-1 px-2 relative opacity-80">
-                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none z-0">
-                        <div className="w-full border-t border-slate-800/50 h-0"></div>
-                        <div className="w-full border-t border-slate-800/50 h-0"></div>
-                        <div className="w-full border-t border-slate-800/50 h-0"></div>
-                    </div>
-                    {/* Demin Trend Profile (8 bars for 8 hours) */}
-                    <div className="flex-1 h-full flex items-end justify-around gap-[2px]">
-                        {[60, 65, 75, 80, 85, 82, 85, 87].map((h, i) => (
-                            <div key={`d-${i}`} className="w-full max-w-[10px] rounded-t-[2px]" style={{ height: `${h}%`, backgroundColor: i === 7 ? 'rgba(14,165,233,0.6)' : 'rgba(14,165,233,0.3)' }}></div>
                         ))}
                     </div>
-                    {/* RCW Trend Profile Overlap */}
-                    <div className="absolute inset-x-0 bottom-0 h-full flex items-end justify-around gap-[2px]">
-                        <div className="flex-1 h-full flex items-end justify-around gap-[2px]">
-                            {[42, 50, 55, 60, 65, 62, 64, 64].map((h, i) => (
-                                <div key={`r-${i}`} className="w-full max-w-[10px] rounded-t-[2px]" style={{ height: `${h}%`, backgroundColor: i === 7 ? 'rgba(20,184,166,0.6)' : 'rgba(20,184,166,0.3)' }}></div>
-                            ))}
-                        </div>
-                    </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {TANK_IDS.map(id => <TankTrendChart key={id} tankId={id} />)}
                 </div>
             </div>
         </div>

@@ -409,6 +409,27 @@ export function useShiftReport(date: string, shift: ShiftType) {
         }
         if (reportData.tankyard && Object.keys(reportData.tankyard).length > 0) {
             await saveChild('shift_tankyard', reportData.tankyard);
+
+            // Sync tankyard data to tank_levels for real-time monitoring
+            const ty = reportData.tankyard;
+            const tankMappings: { tank_id: string; value: number | null; capacity_m3: number }[] = [
+                { tank_id: 'DEMIN', value: ty.tk_demin ?? null, capacity_m3: 1200 },
+                { tank_id: 'RCW', value: ty.tk_rcw ?? null, capacity_m3: 4600 },
+                { tank_id: 'SOLAR', value: ty.tk_solar_ab ?? null, capacity_m3: 200 },
+            ];
+            for (const { tank_id, value, capacity_m3 } of tankMappings) {
+                if (value != null) {
+                    const level_m3 = Number(value);
+                    const level_pct = Math.min(100, Math.max(0, (level_m3 / capacity_m3) * 100));
+                    await supabase.from('tank_levels').insert({
+                        tank_id,
+                        level_pct,
+                        level_m3,
+                        operator_name: 'Laporan Shift',
+                        note: null,
+                    } as Record<string, unknown>);
+                }
+            }
         }
         if (reportData.personnel && Object.keys(reportData.personnel).length > 0) {
             await saveChild('shift_personnel', reportData.personnel as Record<string, unknown>);

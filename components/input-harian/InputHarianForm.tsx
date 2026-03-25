@@ -166,6 +166,9 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
     const prevStockTank = prevReport?.daily_report_stock_tank?.[0]
         ? extractFields(prevReport.daily_report_stock_tank[0] as unknown as Record<string, unknown>) as Record<string, number | null>
         : undefined;
+    const prevCoalTransfer = prevReport?.daily_report_coal_transfer?.[0]
+        ? extractFields(prevReport.daily_report_coal_transfer[0] as unknown as Record<string, unknown>) as Record<string, number | null>
+        : undefined;
 
     // ─── CR Calculation (Total Batubara ÷ Total Produksi Steam) ───
     const N0 = (v: number | null | undefined) => Number(v) || 0;
@@ -237,6 +240,19 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 bfw_total: bfwConsA + bfwConsB,
             };
 
+            const prevCT = prevCoalTransfer || {};
+            const calcTransfer = {
+                ...coalTransfer,
+                pb2_total_pf1_rit: N(prevCT.pb2_total_pf1_rit) + N(coalTransfer.pb2_pf1_rit),
+                pb2_total_pf1_ton: N(prevCT.pb2_total_pf1_ton) + N(coalTransfer.pb2_pf1_ton),
+                pb2_total_pf2_rit: N(prevCT.pb2_total_pf2_rit) + N(coalTransfer.pb2_pf2_rit),
+                pb2_total_pf2_ton: N(prevCT.pb2_total_pf2_ton) + N(coalTransfer.pb2_pf2_ton),
+                pb3_total_calc_rit: N(prevCT.pb3_total_calc_rit) + N(coalTransfer.pb3_calc_rit),
+                pb3_total_calc_ton: N(prevCT.pb3_total_calc_ton) + N(coalTransfer.pb3_calc_ton),
+                darat_total_ton: N(prevCT.darat_total_ton) + N(coalTransfer.darat_24_ton),
+                laut_total_ton: N(prevCT.laut_total_ton) + N(coalTransfer.laut_24_ton),
+            };
+
             const result = await submitReport({
                 created_by: operator?.id != null ? String(operator.id) : undefined,
                 notes: undefined,
@@ -249,7 +265,7 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 coal: coalWithCalcs,
                 turbineMisc: turbWithCalcs,
                 stockTank: tankWithCalcs,
-                coalTransfer,
+                coalTransfer: calcTransfer,
                 totalizer,
             });
 
@@ -417,7 +433,7 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                         {(() => {
                             const tabProps: DailyTabProps = {
                                 steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,
-                                prevSteam, prevPower, prevCoal, prevTotalizer: prevTotalizerData, prevStockTank,
+                                prevSteam, prevPower, prevCoal, prevTotalizer: prevTotalizerData, prevStockTank, prevCoalTransfer,
                                 onSteamChange: makeNumberHandler(setSteam),
                                 onPowerChange: makeNumberHandler(setPower),
                                 onCoalChange: makeNumberHandler(setCoal),

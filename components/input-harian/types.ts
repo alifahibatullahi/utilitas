@@ -14,6 +14,7 @@ export interface DailyTabProps {
     prevCoal?: Record<string, number | null>;
     prevTotalizer?: Record<string, number | string | null>;
     prevStockTank?: Record<string, number | null>;
+    prevCoalTransfer?: Record<string, number | null>;
 
     // Change handlers
     onSteamChange: (name: string, value: number | string | null) => void;

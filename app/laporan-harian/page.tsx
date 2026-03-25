@@ -20,7 +20,7 @@ const DAILY_DATA = {
     steamCondensat: 0, deltaCondensat: 0,
     mpsTo1B: 1105, deltaMps1B: -40,
     mpsTo3A: 806, deltaMps3A: 11,
-    lpsInternal: 45, deltaLps: -5,
+    internalUbb: 776, deltaInternalUbb: 67,
     // Konsumsi Bahan Baku
     loading: 80,
     bfw: 3438, deltaBfw: 74,
@@ -176,8 +176,8 @@ export default function LaporanHarianPage() {
         deltaMps1B: delta(stm?.mps_i_24, pStm?.mps_i_24),
         mpsTo3A: n(stm?.mps_3a_24),
         deltaMps3A: delta(stm?.mps_3a_24, pStm?.mps_3a_24),
-        lpsInternal: n(stm?.lps_ii_24),
-        deltaLps: delta(stm?.lps_ii_24, pStm?.lps_ii_24),
+        internalUbb: n(stm?.inlet_turbine_24) - n(stm?.fully_condens_24),
+        deltaInternalUbb: (n(stm?.inlet_turbine_24) - n(stm?.fully_condens_24)) - (n(pStm?.inlet_turbine_24) - n(pStm?.fully_condens_24)),
 
         // Konsumsi Bahan Baku
         loading: n(tank?.kedatangan_solar),
@@ -406,16 +406,16 @@ export default function LaporanHarianPage() {
                                     <Delta value={r.deltaInletTurbine} />
                                 </div>
                                 <div className="flex flex-col items-center">
-                                    <p className="text-[10px] uppercase tracking-wide text-text-secondary mb-1">Steam Condensat</p>
+                                    <p className="text-[10px] uppercase tracking-wide text-text-secondary mb-1">Condensate</p>
                                     <p className="text-2xl font-bold tracking-tight text-white">{r.steamCondensat.toLocaleString('id-ID')} <span className="text-[10px] font-normal text-slate-500">Ton</span></p>
                                     <Delta value={r.deltaCondensat} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 divide-x divide-slate-700 text-center">
                                 {[
-                                    { label: 'MPS to Prod I B', value: r.mpsTo1B, delta: r.deltaMps1B },
-                                    { label: 'MPS to Prod III A', value: r.mpsTo3A, delta: r.deltaMps3A },
-                                    { label: 'LPS Internal', value: r.lpsInternal, delta: r.deltaLps },
+                                    { label: 'Totalizer Pabrik 1', value: r.mpsTo1B, delta: r.deltaMps1B },
+                                    { label: 'Totalizer Pabrik 3', value: r.mpsTo3A, delta: r.deltaMps3A },
+                                    { label: 'Internal UBB', value: r.internalUbb, delta: r.deltaInternalUbb },
                                 ].map((s, i) => (
                                     <div key={i} className="flex flex-col items-center px-1">
                                         <p className="text-[9px] uppercase tracking-wide text-text-secondary mb-1">{s.label}</p>

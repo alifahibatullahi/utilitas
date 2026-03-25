@@ -187,6 +187,12 @@ export interface ShiftCoalBunkerRow {
     bunker_d: number | null;
     bunker_e: number | null;
     bunker_f: number | null;
+    status_bunker_a: string | null;
+    status_bunker_b: string | null;
+    status_bunker_c: string | null;
+    status_bunker_d: string | null;
+    status_bunker_e: string | null;
+    status_bunker_f: string | null;
     created_at: string;
 }
 
@@ -342,6 +348,8 @@ export interface DailyReportStockTankRow {
     solar_3b: number | null;
     bfw_boiler_a: number | null;
     bfw_boiler_b: number | null;
+    flow_bfw_a: number | null;
+    flow_bfw_b: number | null;
     bfw_total: number | null;
     chemical_phosphat: number | null;
     chemical_amin: number | null;
@@ -433,6 +441,18 @@ export interface SolarUnloadingRow {
     date: string;
     liters: number;
     supplier: string;
+    operator_id: string | null;
+    created_at: string;
+}
+
+export interface AshUnloadingRow {
+    id: string;
+    date: string;
+    shift: string;
+    silo: string;
+    perusahaan: string;
+    tujuan: string;
+    ritase: number;
     operator_id: string | null;
     created_at: string;
 }

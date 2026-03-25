@@ -89,6 +89,8 @@ const VALID_COLS: Record<string, string[]> = {
         'stock_batubara_rendal', 'keterangan',
         'konsumsi_demin', 'konsumsi_rcw',
         'penerimaan_demin_3a', 'penerimaan_demin_1b', 'penerimaan_rcw_1a',
+        'tot_rcw_1a', 'tot_demin', 'tot_demin_pb1', 'tot_demin_pb3',
+        'tot_hydrant', 'tot_basin', 'tot_service',
     ],
 };
 

@@ -1,26 +1,38 @@
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDailyReport } from '@/hooks/useDailyReport';
+import { createClient } from '@/lib/supabase/client';
 import type { Operator } from '@/lib/constants';
-import TabHarianSteam from './TabHarianSteam';
-import TabHarianPower from './TabHarianPower';
-import TabHarianCoal from './TabHarianCoal';
-import TabHarianTurbineMisc from './TabHarianTurbineMisc';
-import TabHarianStockTank from './TabHarianStockTank';
-import TabHarianCoalTransfer from './TabHarianCoalTransfer';
-import TabHarianTotalizer from './TabHarianTotalizer';
+import TabBoiler from './TabBoiler';
+import TabTurbin from './TabTurbin';
+import TabPower from './TabPower';
+import TabHandling from './TabHandling';
+import TabChemical from './TabChemical';
+import TabStockBatubara from './TabStockBatubara';
+import TabSiloFlyAsh from './TabSiloFlyAsh';
+import type { DailyTabProps } from './types';
 
-type HarianTabId = 'Steam' | 'Power' | 'Batubara' | 'Turbin & Misc' | 'Stock & Tank' | 'Transfer BB' | 'Totalizer';
+type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'Handling' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
 
-const HARIAN_TABS: { id: HarianTabId; label: string; icon: string }[] = [
-    { id: 'Steam', label: 'Steam', icon: 'waves' },
-    { id: 'Power', label: 'Power', icon: 'bolt' },
-    { id: 'Batubara', label: 'Batubara', icon: 'precision_manufacturing' },
-    { id: 'Turbin & Misc', label: 'Turbin & Misc', icon: 'mode_fan' },
-    { id: 'Stock & Tank', label: 'Stock & Tank', icon: 'water_drop' },
-    { id: 'Transfer BB', label: 'Transfer BB', icon: 'local_shipping' },
-    { id: 'Totalizer', label: 'Totalizer', icon: 'speed' },
+const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; colorClass: string }[] = [
+    { id: 'Boiler', label: 'Boiler', icon: 'factory', colorClass: 'rose' },
+    { id: 'Turbin', label: 'Turbin', icon: 'mode_fan', colorClass: 'cyan' },
+    { id: 'Power', label: 'Power', icon: 'bolt', colorClass: 'amber' },
+    { id: 'Handling', label: 'Handling', icon: 'local_shipping', colorClass: 'orange' },
+    { id: 'Chemical', label: 'Chemical', icon: 'science', colorClass: 'purple' },
+    { id: 'Stock BB', label: 'Stock BB', icon: 'inventory_2', colorClass: 'indigo' },
+    { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt', colorClass: 'teal' },
 ];
+
+const TAB_STYLES: Record<string, { active: string; inactive: string; icon: string }> = {
+    'rose': { active: 'font-bold bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-inner shadow-rose-500/10', inactive: 'font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border-transparent', icon: 'text-rose-400' },
+    'cyan': { active: 'font-bold bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-inner shadow-cyan-500/10', inactive: 'font-medium text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border-transparent', icon: 'text-cyan-400' },
+    'amber': { active: 'font-bold bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-inner shadow-amber-500/10', inactive: 'font-medium text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 border-transparent', icon: 'text-amber-400' },
+    'orange': { active: 'font-bold bg-orange-500/20 text-orange-400 border-orange-500/30 shadow-inner shadow-orange-500/10', inactive: 'font-medium text-slate-400 hover:text-orange-300 hover:bg-orange-500/10 border-transparent', icon: 'text-orange-400' },
+    'purple': { active: 'font-bold bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-inner shadow-purple-500/10', inactive: 'font-medium text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 border-transparent', icon: 'text-purple-400' },
+    'indigo': { active: 'font-bold bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-inner shadow-indigo-500/10', inactive: 'font-medium text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 border-transparent', icon: 'text-indigo-400' },
+    'teal': { active: 'font-bold bg-teal-500/20 text-teal-400 border-teal-500/30 shadow-inner shadow-teal-500/10', inactive: 'font-medium text-slate-400 hover:text-teal-300 hover:bg-teal-500/10 border-transparent', icon: 'text-teal-400' },
+};
 
 interface InputHarianFormProps {
     date: string;
@@ -28,7 +40,7 @@ interface InputHarianFormProps {
 }
 
 export default function InputHarianForm({ date, operator }: InputHarianFormProps) {
-    const [activeTab, setActiveTab] = useState<HarianTabId>('Steam');
+    const [activeTab, setActiveTab] = useState<HarianTabId>('Boiler');
     const [submitting, setSubmitting] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const lastSubmittedReportId = useRef<string | null>(null);
@@ -43,7 +55,28 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
     const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
 
-    const { report, loading, submitReport, refetch } = useDailyReport(date);
+    const [solarUnloadings, setSolarUnloadings] = useState<{ date: string; liters: number; supplier: string }[]>([]);
+
+    const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
+
+    // Fetch solar unloadings for the selected date
+    useEffect(() => {
+        const supabase = createClient();
+        supabase
+            .from('solar_unloadings')
+            .select('date, liters, supplier')
+            .eq('date', date)
+            .order('created_at', { ascending: false })
+            .then(({ data }) => {
+                setSolarUnloadings(
+                    (data ?? []).map(r => ({
+                        date: r.date as string,
+                        liters: Number(r.liters) || 0,
+                        supplier: (r.supplier as string) || '',
+                    }))
+                );
+            });
+    }, [date]);
 
     // ─── Helpers ───
     const extractFields = (obj: Record<string, unknown> | undefined, skipKeys: string[] = []) => {
@@ -117,6 +150,34 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report]);
 
+    // ─── Previous report data for selisih calculations ───
+    const prevSteam = prevReport?.daily_report_steam?.[0]
+        ? extractFields(prevReport.daily_report_steam[0] as unknown as Record<string, unknown>) as Record<string, number | null>
+        : undefined;
+    const prevPower = prevReport?.daily_report_power?.[0]
+        ? extractFields(prevReport.daily_report_power[0] as unknown as Record<string, unknown>) as Record<string, number | null>
+        : undefined;
+    const prevCoal = prevReport?.daily_report_coal?.[0]
+        ? extractFields(prevReport.daily_report_coal[0] as unknown as Record<string, unknown>) as Record<string, number | null>
+        : undefined;
+    const prevTotalizerData = prevReport?.daily_report_totalizer?.[0]
+        ? extractFields(prevReport.daily_report_totalizer[0] as unknown as Record<string, unknown>) as Record<string, number | string | null>
+        : undefined;
+    const prevStockTank = prevReport?.daily_report_stock_tank?.[0]
+        ? extractFields(prevReport.daily_report_stock_tank[0] as unknown as Record<string, unknown>) as Record<string, number | null>
+        : undefined;
+
+    // ─── CR Calculation (Total Batubara ÷ Total Produksi Steam) ───
+    const N0 = (v: number | null | undefined) => Number(v) || 0;
+    const coalTotalA = N0(coal.coal_a_24) + N0(coal.coal_b_24) + N0(coal.coal_c_24);
+    const coalTotalB = N0(coal.coal_d_24) + N0(coal.coal_e_24) + N0(coal.coal_f_24);
+    const prevSteamA24 = prevSteam ? N0(prevSteam.prod_boiler_a_24) : 0;
+    const prevSteamB24 = prevSteam ? N0(prevSteam.prod_boiler_b_24) : 0;
+    const steamProdA = prevSteamA24 > 0 ? N0(steam.prod_boiler_a_24) - prevSteamA24 : N0(steam.prod_boiler_a_24);
+    const steamProdB = prevSteamB24 > 0 ? N0(steam.prod_boiler_b_24) - prevSteamB24 : N0(steam.prod_boiler_b_24);
+    const crA = steamProdA > 0 ? coalTotalA / steamProdA : 0;
+    const crB = steamProdB > 0 ? coalTotalB / steamProdB : 0;
+
     // ─── Submit handler ───
     const handleSubmit = async () => {
         if (submitting) return;
@@ -124,11 +185,22 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         try {
             const N = (v: number | null | undefined) => Number(v) || 0;
 
-            // Auto-kalkulasi total
+            // Auto-kalkulasi: produksi = selisih totalizer, Internal UBB, LPS = 0
+            const prevA24 = prevSteam ? N(prevSteam.prod_boiler_a_24) : 0;
+            const prevB24 = prevSteam ? N(prevSteam.prod_boiler_b_24) : 0;
+            const prodA24 = prevA24 > 0 ? N(steam.prod_boiler_a_24) - prevA24 : N(steam.prod_boiler_a_24);
+            const prodB24 = prevB24 > 0 ? N(steam.prod_boiler_b_24) - prevB24 : N(steam.prod_boiler_b_24);
+
             const steamWithCalcs = {
                 ...steam,
-                prod_total_24: N(steam.prod_boiler_a_24) + N(steam.prod_boiler_b_24),
+                prod_total_24: prodA24 + prodB24,
                 prod_total_00: N(steam.prod_boiler_a_00) + N(steam.prod_boiler_b_00),
+                internal_ubb_24: N(steam.inlet_turbine_24) - N(steam.fully_condens_24),
+                internal_ubb_00: N(steam.inlet_turbine_00) - N(steam.co_gen_00),
+                lps_ii_24: 0,
+                lps_3a_24: 0,
+                lps_ii_00: 0,
+                lps_3a_00: 0,
             };
 
             const totalA24 = N(coal.coal_a_24) + N(coal.coal_b_24) + N(coal.coal_c_24);
@@ -145,24 +217,31 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 grand_total_00: totalA00 + totalB00,
             };
 
-            const crA = N(turbineMisc.consumption_rate_a);
-            const crB = N(turbineMisc.consumption_rate_b);
+            const calcCrA = steamProdA > 0 ? coalTotalA / steamProdA : 0;
+            const calcCrB = steamProdB > 0 ? coalTotalB / steamProdB : 0;
             const turbWithCalcs = {
                 ...turbineMisc,
-                consumption_rate_avg: (crA + crB) / 2,
+                consumption_rate_a: calcCrA,
+                consumption_rate_b: calcCrB,
+                consumption_rate_avg: (calcCrA + calcCrB) / 2,
             };
+
+            const prevBfwA = prevStockTank ? N(prevStockTank.bfw_boiler_a) : 0;
+            const prevBfwB = prevStockTank ? N(prevStockTank.bfw_boiler_b) : 0;
+            const bfwConsA = prevBfwA > 0 ? N(stockTank.bfw_boiler_a) - prevBfwA : N(stockTank.bfw_boiler_a);
+            const bfwConsB = prevBfwB > 0 ? N(stockTank.bfw_boiler_b) - prevBfwB : N(stockTank.bfw_boiler_b);
 
             const tankWithCalcs = {
                 ...stockTank,
                 solar_tank_total: N(stockTank.solar_tank_a) + N(stockTank.solar_tank_b),
-                bfw_total: N(stockTank.bfw_boiler_a) + N(stockTank.bfw_boiler_b),
+                bfw_total: bfwConsA + bfwConsB,
             };
 
             const result = await submitReport({
                 created_by: operator?.id != null ? String(operator.id) : undefined,
-                notes: typeof totalizer.keterangan === 'string' ? totalizer.keterangan : undefined,
-                produksi_steam_a: steam.prod_boiler_a_24 ?? null,
-                produksi_steam_b: steam.prod_boiler_b_24 ?? null,
+                notes: undefined,
+                produksi_steam_a: prodA24 || null,
+                produksi_steam_b: prodB24 || null,
                 konsumsi_batubara: coalWithCalcs.grand_total_24 ?? null,
                 load_mw: power.gen_00 ?? null,
                 steam: steamWithCalcs,
@@ -188,6 +267,29 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         }
     };
 
+    // ─── Tab Completeness Checker ───
+    const isTabLengkap = useCallback((tabId: HarianTabId) => {
+        const hasVal = (obj: Record<string, any>, keys: string[]) => keys.every(k => obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
+        
+        switch (tabId) {
+            case 'Boiler': 
+                return hasVal(steam, ['prod_boiler_a_24', 'prod_boiler_b_24']) && hasVal(stockTank, ['bfw_boiler_a', 'bfw_boiler_b']);
+            case 'Turbin': 
+                return hasVal(steam, ['inlet_turbine_24', 'fully_condens_24']);
+            case 'Power': 
+                return hasVal(power, ['gen_24', 'exsport_24', 'internal_bus1_24']);
+            case 'Handling': 
+                return hasVal(coalTransfer, ['darat_24_ton', 'laut_24_ton']);
+            case 'Chemical': 
+                return hasVal(stockTank, ['chemical_phosphat', 'chemical_amin', 'chemical_hydrasin']);
+            case 'Stock BB': 
+                return hasVal(stockTank, ['stock_batubara']);
+            case 'Silo & Fly Ash': 
+                return hasVal(stockTank, ['silo_a_pct', 'silo_b_pct']);
+            default: return false;
+        }
+    }, [steam, power, coal, stockTank, coalTransfer]);
+
     return (
         <>
             {/* Toast */}
@@ -206,61 +308,140 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 justify-center shrink-0">
-                <button
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                    className={`flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-[0_0_10px_rgba(16,185,129,0.3)] border border-emerald-500/50 ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    <span className="material-symbols-outlined text-[16px]">save</span>
-                    {submitting ? 'Menyimpan...' : 'Simpan Laporan Harian'}
-                </button>
-            </div>
+            <div className="flex flex-col lg:flex-row gap-6 w-full max-w-full">
+                {/* Left Sidebar */}
+                <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
+                    {/* Action Buttons */}
+                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
+                        <div>
+                            <h3 className="text-white font-bold text-sm mb-1">Menu Laporan</h3>
+                            <p className="text-[11px] text-slate-400 leading-tight">Pilih kategori area untuk mulai input data harian.</p>
+                        </div>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                            className={`flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">save</span>
+                            {submitting ? 'Menyimpan...' : 'Simpan Laporan'}
+                        </button>
+                    </div>
 
-            {/* Tab Bar */}
-            <div className="shrink-0">
-                <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-1">
-                    <div className="flex flex-wrap gap-1">
+                    {/* Desktop Tab List */}
+                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg hidden lg:flex flex-col gap-1">
                         {HARIAN_TABS.map((tab) => {
                             const isActive = activeTab === tab.id;
+                            const isComplete = isTabLengkap(tab.id);
+                            const styles = TAB_STYLES[tab.colorClass];
                             return (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap ${isActive
-                                        ? 'font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner shadow-emerald-500/10'
-                                        : 'font-medium text-[#92a9c9] hover:text-white hover:bg-[#1f2b3e] border border-transparent'
-                                    }`}
+                                    className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? styles.active : styles.inactive}`}
                                 >
-                                    <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-emerald-400' : ''}`}>
+                                    <span className={`material-symbols-outlined text-[20px] ${isActive ? styles.icon : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
                                         {tab.icon}
                                     </span>
-                                    {tab.label}
+                                    <span className="flex-1">{tab.label}</span>
+                                    {isComplete && (
+                                        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 mr-1 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                                            <span className="material-symbols-outlined text-[14px] font-bold">check</span>
+                                        </div>
+                                    )}
+                                    {isActive && <span className="material-symbols-outlined text-[16px] opacity-70">chevron_right</span>}
                                 </button>
                             );
                         })}
                     </div>
-                </div>
-            </div>
 
-            {/* Loading */}
-            {loading && (
-                <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-4">
-                    <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                    Memuat data harian...
+                    {/* Mobile Tab List */}
+                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg lg:hidden overflow-x-auto">
+                        <div className="flex gap-2 w-max pb-1">
+                            {HARIAN_TABS.map((tab) => {
+                                const isActive = activeTab === tab.id;
+                                const isComplete = isTabLengkap(tab.id);
+                                const styles = TAB_STYLES[tab.colorClass];
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? styles.active : styles.inactive}`}
+                                    >
+                                        <span className={`material-symbols-outlined text-[18px] ${isActive ? styles.icon : 'opacity-70'}`}>
+                                            {tab.icon}
+                                        </span>
+                                        <span>{tab.label}</span>
+                                        {isComplete && (
+                                            <div className="flex items-center justify-center w-4 h-4 ml-1 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400">
+                                                <span className="material-symbols-outlined text-[10px] font-bold">check</span>
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
-            )}
 
-            {/* Tab Content */}
-            <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
-                {activeTab === 'Steam' && <TabHarianSteam values={steam} onFieldChange={makeNumberHandler(setSteam)} />}
-                {activeTab === 'Power' && <TabHarianPower values={power} onFieldChange={makeNumberHandler(setPower)} />}
-                {activeTab === 'Batubara' && <TabHarianCoal values={coal} onFieldChange={makeNumberHandler(setCoal)} />}
-                {activeTab === 'Turbin & Misc' && <TabHarianTurbineMisc values={turbineMisc} onFieldChange={makeNumberHandler(setTurbineMisc)} />}
-                {activeTab === 'Stock & Tank' && <TabHarianStockTank values={stockTank} onFieldChange={makeNumberHandler(setStockTank)} />}
-                {activeTab === 'Transfer BB' && <TabHarianCoalTransfer values={coalTransfer} onFieldChange={makeNumberHandler(setCoalTransfer)} />}
-                {activeTab === 'Totalizer' && <TabHarianTotalizer values={totalizer} onFieldChange={makeMixedHandler(setTotalizer)} />}
+                {/* Tab Content Area */}
+                <div className="flex-1 min-w-0 flex flex-col gap-4">
+                    {/* Active Tab Header */}
+                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-5 py-4 flex items-center gap-4 shadow-lg">
+                        {(() => {
+                            const tab = HARIAN_TABS.find(t => t.id === activeTab);
+                            const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
+                            return (
+                                <>
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner`}>
+                                        <span className={`material-symbols-outlined text-[26px] ${styles.icon}`}>{tab?.icon}</span>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-white font-bold text-xl leading-tight">{tab?.label}</h2>
+                                        <p className="text-slate-400 text-xs mt-0.5">Input data operasional harian {tab?.label}</p>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+
+                    {/* Loading */}
+                    {loading && (
+                        <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-4 bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl">
+                            <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                            Memuat data harian...
+                        </div>
+                    )}
+
+                    {/* Tab Content */}
+                    <div className="pb-6">
+                        {(() => {
+                            const tabProps: DailyTabProps = {
+                                steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,
+                                prevSteam, prevPower, prevCoal, prevTotalizer: prevTotalizerData, prevStockTank,
+                                onSteamChange: makeNumberHandler(setSteam),
+                                onPowerChange: makeNumberHandler(setPower),
+                                onCoalChange: makeNumberHandler(setCoal),
+                                onTurbineMiscChange: makeNumberHandler(setTurbineMisc),
+                                onStockTankChange: makeNumberHandler(setStockTank),
+                                onCoalTransferChange: makeNumberHandler(setCoalTransfer),
+                                onTotalizerChange: makeMixedHandler(setTotalizer),
+                                crA, crB,
+                                solarUnloadings,
+                            };
+                            return (
+                                <>
+                                    {activeTab === 'Boiler' && <TabBoiler {...tabProps} />}
+                                    {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
+                                    {activeTab === 'Power' && <TabPower {...tabProps} />}
+                                    {activeTab === 'Handling' && <TabHandling {...tabProps} />}
+                                    {activeTab === 'Chemical' && <TabChemical {...tabProps} />}
+                                    {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}
+                                    {activeTab === 'Silo & Fly Ash' && <TabSiloFlyAsh {...tabProps} />}
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>
             </div>
         </>
     );

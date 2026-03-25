@@ -19,7 +19,7 @@ export default function TabTurbin({
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             {/* ═══ Distribusi Steam ═══ */}
             <Card title="Distribusi Steam" icon="fork_right" color="cyan">
-                <SectionLabel label="24 Jam" badge="Totalizer" />
+                <SectionLabel label="Total Harian" badge="Totalizer" />
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <InputField label="Totalizer Inlet Turbin" name="inlet_turbine_24" value={steam.inlet_turbine_24} onChange={onSteamChange} unit="Ton" color="cyan" />
@@ -42,7 +42,7 @@ export default function TabTurbin({
                 <CalculatedField label="LPS III A" value="0" unit="Ton" variant="small" />
                 <CalculatedField label="Internal UBB (Inlet Turbin − Condensate)" value={fmt(internalUbb24)} unit="Ton" variant="primary" />
 
-                <SectionLabel label="Jam 00.00" badge="Flow" />
+                <SectionLabel label="Data Aktual" badge="Flow" />
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Flow Inlet Turbin" name="inlet_turbine_00" value={steam.inlet_turbine_00} onChange={onSteamChange} unit="T/H" color="orange" />
                     <InputField label="Flow Pabrik 1" name="mps_i_00" value={steam.mps_i_00} onChange={onSteamChange} unit="T/H" color="orange" />
@@ -56,7 +56,7 @@ export default function TabTurbin({
             </Card>
 
             {/* ═══ Turbine Generator ═══ */}
-            <Card title="Turbine Generator (Jam 00.00)" icon="mode_fan" color="sky">
+            <Card title="Turbine Generator (Data Aktual)" icon="mode_fan" color="sky">
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Axial Displacement" name="axial_displacement" value={turbineMisc.axial_displacement} onChange={onTurbineMiscChange} unit="mm" color="sky" />
                     <InputField label="Thrust Bearing Temp" name="thrust_bearing_temp" value={turbineMisc.thrust_bearing_temp} onChange={onTurbineMiscChange} unit="°C" color="sky" />

@@ -16,7 +16,7 @@ export default function TabPower({
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             {/* ═══ Produksi & Distribusi ═══ */}
             <Card title="Power — Produksi & Distribusi" icon="bolt" color="amber">
-                <SectionLabel label="24 Jam" badge="Totalizer · MWh" />
+                <SectionLabel label="Total Harian" badge="Totalizer · MWh" />
                 <TotalizerInput label="Generator (20EG-01.02)" name="gen_24" value={power.gen_24} prev={pn('gen_24')} onChange={onPowerChange} unit="MWh" color="amber" />
                 <div className="grid grid-cols-2 gap-4">
                     <TotalizerInput label="Dist. IB" name="dist_ib_24" value={power.dist_ib_24} prev={pn('dist_ib_24')} onChange={onPowerChange} unit="MWh" color="amber" />
@@ -25,7 +25,7 @@ export default function TabPower({
                     <TotalizerInput label="Dist. III B" name="dist_3b_24" value={power.dist_3b_24} prev={pn('dist_3b_24')} onChange={onPowerChange} unit="MWh" color="amber" />
                 </div>
 
-                <SectionLabel label="Jam 00.00" badge="Flow · MW" />
+                <SectionLabel label="Data Aktual" badge="Flow · MW" />
                 <InputField label="Generator (20EG-01.02)" name="gen_00" value={power.gen_00} onChange={onPowerChange} unit="MW" color="emerald" />
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Dist. IB" name="dist_ib_00" value={power.dist_ib_00} onChange={onPowerChange} unit="MW" color="emerald" />
@@ -38,7 +38,7 @@ export default function TabPower({
 
             {/* ═══ Internal & Ekspor ═══ */}
             <Card title="Power — Internal & Ekspor" icon="electrical_services" color="sky">
-                <SectionLabel label="24 Jam" badge="Totalizer · MWh" />
+                <SectionLabel label="Total Harian" badge="Totalizer · MWh" />
                 <div className="grid grid-cols-2 gap-4">
                     <TotalizerInput label="Internal BUS I" name="internal_bus1_24" value={power.internal_bus1_24} prev={pn('internal_bus1_24')} onChange={onPowerChange} unit="MWh" color="sky" />
                     <TotalizerInput label="Internal BUS II" name="internal_bus2_24" value={power.internal_bus2_24} prev={pn('internal_bus2_24')} onChange={onPowerChange} unit="MWh" color="sky" />
@@ -50,7 +50,7 @@ export default function TabPower({
                     <TotalizerInput label="PIE Import" name="pie_import_24" value={power.pie_import_24} prev={pn('pie_import_24')} onChange={onPowerChange} unit="MWh" color="sky" />
                 </div>
 
-                <SectionLabel label="Jam 00.00" badge="Flow · MW" />
+                <SectionLabel label="Data Aktual" badge="Flow · MW" />
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Internal BUS I" name="internal_bus1_00" value={power.internal_bus1_00} onChange={onPowerChange} unit="MW" color="orange" />
                     <InputField label="Internal BUS II" name="internal_bus2_00" value={power.internal_bus2_00} onChange={onPowerChange} unit="MW" color="orange" />

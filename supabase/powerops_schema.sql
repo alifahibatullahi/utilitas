@@ -142,17 +142,19 @@ CREATE TABLE shift_turbin (
     press_deaerator NUMERIC,
     temp_deaerator NUMERIC,
     stream_days NUMERIC,
+    totalizer_steam_inlet NUMERIC,
+    totalizer_condensate NUMERIC,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)
 );
 
--- ─── 2. Shift Steam Distribution (8 field) ───
+-- ─── 2. Shift Steam Distribution (8 field + 3 totalizer) ───
 CREATE TABLE shift_steam_dist (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     shift_report_id UUID NOT NULL REFERENCES shift_reports(id) ON DELETE CASCADE,
-    pabrik1_flow NUMERIC, pabrik1_temp NUMERIC,
-    pabrik2_flow NUMERIC, pabrik2_temp NUMERIC,
-    pabrik3a_flow NUMERIC, pabrik3a_temp NUMERIC,
+    pabrik1_flow NUMERIC, pabrik1_temp NUMERIC, pabrik1_totalizer NUMERIC,
+    pabrik2_flow NUMERIC, pabrik2_temp NUMERIC, pabrik2_totalizer NUMERIC,
+    pabrik3a_flow NUMERIC, pabrik3a_temp NUMERIC, pabrik3a_totalizer NUMERIC,
     pabrik3b_flow NUMERIC, pabrik3b_temp NUMERIC,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)

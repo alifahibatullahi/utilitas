@@ -5,15 +5,16 @@ import { Card, InputField, SelectField } from './SharedComponents';
 interface TabCoalBunkerProps {
     values?: Record<string, number | string | null>;
     onFieldChange?: (name: string, value: number | string | null) => void;
+    onStatusChange?: (name: string, value: string | null) => void;
 }
 
-export default function TabCoalBunker({ values = {}, onFieldChange }: TabCoalBunkerProps) {
+export default function TabCoalBunker({ values = {}, onFieldChange, onStatusChange }: TabCoalBunkerProps) {
     const statusOptions = [
         { value: 'Normal', label: 'Normal' },
         { value: 'Berasap', label: 'Berasap' }
     ];
 
-    const h = onFieldChange as any;
+    const h = onStatusChange || (onFieldChange as any);
 
     return (
         <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">

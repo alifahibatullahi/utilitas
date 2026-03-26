@@ -23,6 +23,8 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
     const [prevBoilerA, setPrevBoilerA] = useState<Record<string, number | null>>({});
     const [prevBoilerB, setPrevBoilerB] = useState<Record<string, number | null>>({});
     const [prevCoalBunker, setPrevCoalBunker] = useState<Record<string, number | null>>({});
+    const [prevTurbin, setPrevTurbin] = useState<Record<string, number | null>>({});
+    const [prevSteamDist, setPrevSteamDist] = useState<Record<string, number | null>>({});
 
     const { prevDate, prevShift } = useMemo(() => getPreviousShift(date, shift), [date, shift]);
 
@@ -31,6 +33,8 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
             setPrevBoilerA({});
             setPrevBoilerB({});
             setPrevCoalBunker({});
+            setPrevTurbin({});
+            setPrevSteamDist({});
             return;
         }
 
@@ -40,7 +44,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
         async function fetchPrev() {
             const { data } = await supabase
                 .from('shift_reports')
-                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f)')
+                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f), shift_turbin(totalizer_steam_inlet, totalizer_condensate), shift_steam_dist(pabrik1_totalizer, pabrik2_totalizer, pabrik3a_totalizer)')
                 .eq('date', prevDate)
                 .eq('shift', prevShift)
                 .maybeSingle();
@@ -52,6 +56,10 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
                 const boilers = (data as any).shift_boiler;
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const coal = (data as any).shift_coal_bunker;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const turbin = (data as any).shift_turbin;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const steamDist = (data as any).shift_steam_dist;
 
                 if (Array.isArray(boilers)) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,10 +82,33 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
                 } else {
                     setPrevCoalBunker({});
                 }
+
+                const tb = Array.isArray(turbin) ? turbin[0] : turbin;
+                if (tb) {
+                    setPrevTurbin({
+                        totalizer_steam_inlet: tb.totalizer_steam_inlet,
+                        totalizer_condensate: tb.totalizer_condensate,
+                    });
+                } else {
+                    setPrevTurbin({});
+                }
+
+                const sd = Array.isArray(steamDist) ? steamDist[0] : steamDist;
+                if (sd) {
+                    setPrevSteamDist({
+                        pabrik1_totalizer: sd.pabrik1_totalizer,
+                        pabrik2_totalizer: sd.pabrik2_totalizer,
+                        pabrik3a_totalizer: sd.pabrik3a_totalizer,
+                    });
+                } else {
+                    setPrevSteamDist({});
+                }
             } else {
                 setPrevBoilerA({});
                 setPrevBoilerB({});
                 setPrevCoalBunker({});
+                setPrevTurbin({});
+                setPrevSteamDist({});
             }
         }
 
@@ -85,7 +116,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
         return () => { stale = true; };
     }, [prevDate, prevShift, date]);
 
-    return { prevBoilerA, prevBoilerB, prevCoalBunker };
+    return { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist };
 }
 
 export interface ShiftReportData {
@@ -135,6 +166,8 @@ export interface ShiftReportData {
         press_deaerator: number | null;
         temp_deaerator: number | null;
         stream_days: number | null;
+        totalizer_steam_inlet: number | null;
+        totalizer_condensate: number | null;
     }[];
     shift_steam_dist: {
         pabrik1_flow: number | null;
@@ -143,6 +176,9 @@ export interface ShiftReportData {
         pabrik2_temp: number | null;
         pabrik3a_flow: number | null;
         pabrik3a_temp: number | null;
+        pabrik3a_totalizer: number | null;
+        pabrik1_totalizer: number | null;
+        pabrik2_totalizer: number | null;
         pabrik3b_flow: number | null;
         pabrik3b_temp: number | null;
     }[];
@@ -360,8 +396,8 @@ export function useShiftReport(date: string, shift: ShiftType) {
     // Valid DB columns per table (prevents unknown column errors)
     const VALID_COLS: Record<string, string[]> = {
         shift_boiler: ['press_steam','temp_steam','flow_steam','totalizer_steam','flow_bfw','temp_bfw','totalizer_bfw','bfw_press','temp_furnace','temp_flue_gas','excess_air','air_heater_ti113','batubara_ton','solar_m3','stream_days','steam_drum_press','primary_air','secondary_air','o2','feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow'],
-        shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','stream_days'],
-        shift_steam_dist: ['pabrik1_flow','pabrik1_temp','pabrik2_flow','pabrik2_temp','pabrik3a_flow','pabrik3a_temp','pabrik3b_flow','pabrik3b_temp'],
+        shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','stream_days','totalizer_steam_inlet','totalizer_condensate'],
+        shift_steam_dist: ['pabrik1_flow','pabrik1_temp','pabrik1_totalizer','pabrik2_flow','pabrik2_temp','pabrik2_totalizer','pabrik3a_flow','pabrik3a_temp','pabrik3a_totalizer','pabrik3b_flow','pabrik3b_temp'],
         shift_generator_gi: ['gen_load','gen_ampere','gen_amp_react','gen_cos_phi','gen_tegangan','gen_frequensi','gi_sum_p','gi_sum_q','gi_cos_phi'],
         shift_power_dist: ['power_ubb','power_pabrik2','power_pabrik3a','power_pie','power_pabrik3b'],
         shift_esp_handling: ['esp_a1','esp_a2','esp_a3','esp_b1','esp_b2','esp_b3','silo_a','silo_b','unloading_a','unloading_b','loading','hopper','conveyor','pf1','pf2'],
@@ -395,7 +431,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         espHandling?: Record<string, number | string | null>;
         tankyard?: Record<string, number | null>;
         personnel?: Record<string, string | null>;
-        coalBunker?: Record<string, number | null>;
+        coalBunker?: Record<string, number | string | null>;
         waterQuality?: Record<string, number | null>;
     }) => {
         if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
@@ -526,7 +562,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
             await saveChild('shift_personnel', reportData.personnel as Record<string, unknown>);
         }
         if (reportData.coalBunker && Object.keys(reportData.coalBunker).length > 0) {
-            await saveChild('shift_coal_bunker', reportData.coalBunker);
+            await saveChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>);
         }
         if (reportData.waterQuality && Object.keys(reportData.waterQuality).length > 0) {
             await saveChild('shift_water_quality', reportData.waterQuality);

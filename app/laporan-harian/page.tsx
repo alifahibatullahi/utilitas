@@ -59,7 +59,7 @@ const DAILY_DATA = {
     coalMillF: 148, deltaCoalF: -3,
     totalCMBoilerB: 396, deltaTotalCMB: -10,
     // Consumption Rate Harian
-    crA: 0.249, crTarget: 0.210, crB: 0.222,
+    crA: 0.249, crB: 0.222,
     // Totalizer Demin & RCW (m³)
     konsHarianDemin: 2419, konsHarianRCW: 3648,
     penerimaanDemin3A: 1888, penerimaanDemin1B: 401, penerimaanRCW1A: 1621,
@@ -255,7 +255,6 @@ export default function LaporanHarianPage() {
 
         // Consumption Rate Harian
         crA: n(turb?.consumption_rate_a, 0),
-        crTarget: rkap.cr_target,
         crB: n(turb?.consumption_rate_b, 0),
 
         // Totalizer Demin & RCW (m3)

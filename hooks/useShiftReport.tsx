@@ -40,7 +40,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
         async function fetchPrev() {
             const { data } = await supabase
                 .from('shift_reports')
-                .select('shift_boiler(boiler, totalizer_steam), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f)')
+                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f)')
                 .eq('date', prevDate)
                 .eq('shift', prevShift)
                 .maybeSingle();
@@ -58,8 +58,8 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
                     const a = boilers.find((b: any) => b.boiler === 'A');
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const b = boilers.find((b: any) => b.boiler === 'B');
-                    setPrevBoilerA(a ? { totalizer_steam: a.totalizer_steam } : {});
-                    setPrevBoilerB(b ? { totalizer_steam: b.totalizer_steam } : {});
+                    setPrevBoilerA(a ? { totalizer_steam: a.totalizer_steam, totalizer_bfw: a.totalizer_bfw } : {});
+                    setPrevBoilerB(b ? { totalizer_steam: b.totalizer_steam, totalizer_bfw: b.totalizer_bfw } : {});
                 } else {
                     setPrevBoilerA({});
                     setPrevBoilerB({});
@@ -105,6 +105,7 @@ export interface ShiftReportData {
         totalizer_steam: number | null;
         flow_bfw: number | null;
         temp_bfw: number | null;
+        totalizer_bfw: number | null;
         temp_furnace: number | null;
         temp_flue_gas: number | null;
         excess_air: number | null;
@@ -358,7 +359,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
 
     // Valid DB columns per table (prevents unknown column errors)
     const VALID_COLS: Record<string, string[]> = {
-        shift_boiler: ['press_steam','temp_steam','flow_steam','totalizer_steam','flow_bfw','temp_bfw','bfw_press','temp_furnace','temp_flue_gas','excess_air','air_heater_ti113','batubara_ton','solar_m3','stream_days','steam_drum_press','primary_air','secondary_air','o2','feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow'],
+        shift_boiler: ['press_steam','temp_steam','flow_steam','totalizer_steam','flow_bfw','temp_bfw','totalizer_bfw','bfw_press','temp_furnace','temp_flue_gas','excess_air','air_heater_ti113','batubara_ton','solar_m3','stream_days','steam_drum_press','primary_air','secondary_air','o2','feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow'],
         shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','stream_days'],
         shift_steam_dist: ['pabrik1_flow','pabrik1_temp','pabrik2_flow','pabrik2_temp','pabrik3a_flow','pabrik3a_temp','pabrik3b_flow','pabrik3b_temp'],
         shift_generator_gi: ['gen_load','gen_ampere','gen_amp_react','gen_cos_phi','gen_tegangan','gen_frequensi','gi_sum_p','gi_sum_q','gi_cos_phi'],

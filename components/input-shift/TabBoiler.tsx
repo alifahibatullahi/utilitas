@@ -9,10 +9,11 @@ interface TabBoilerProps {
     coalBunkerValues?: Record<string, number | null>;
     onCoalBunkerChange?: (name: string, value: number | string | null) => void;
     prevTotalizerSteam?: number | null;
+    prevTotalizerBfw?: number | null;
     prevCoalBunkerValues?: Record<string, number | null>;
 }
 
-export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBunkerValues = {}, onCoalBunkerChange, prevTotalizerSteam, prevCoalBunkerValues = {} }: TabBoilerProps) {
+export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBunkerValues = {}, onCoalBunkerChange, prevTotalizerSteam, prevTotalizerBfw, prevCoalBunkerValues = {} }: TabBoilerProps) {
     const feeders = boilerId === 'A' ? ['A', 'B', 'C'] : ['D', 'E', 'F'];
     const feederKeys = boilerId === 'A' ? ['feeder_a', 'feeder_b', 'feeder_c'] : ['feeder_d', 'feeder_e', 'feeder_f'];
 
@@ -20,6 +21,11 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
     const currentSteam = Number(values.totalizer_steam) || 0;
     const prevSteam = Number(prevTotalizerSteam) || 0;
     const produksiSteam = prevSteam > 0 ? currentSteam - prevSteam : 0;
+
+    // Calculate produksi BFW (selisih) from totalizer
+    const currentBfw = Number(values.totalizer_bfw) || 0;
+    const prevBfw = Number(prevTotalizerBfw) || 0;
+    const produksiBfw = prevBfw > 0 ? currentBfw - prevBfw : 0;
 
     // Calculate konsumsi batubara (selisih) from feeder totalizers
     const feederKonsumsi = feederKeys.map(key => {
@@ -49,7 +55,10 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         <InputField label="Pressure BFW" unit="MPa" color="cyan" name="bfw_press" value={values.bfw_press} onChange={onFieldChange} />
                         <InputField label="Temp BFW" unit="°C" color="cyan" name="temp_bfw" value={values.temp_bfw} onChange={onFieldChange} />
                         <InputField label="Flow BFW" unit="t/h" color="cyan" name="flow_bfw" value={values.flow_bfw} onChange={onFieldChange} />
-                        <InputField label="Totalizer BFW" unit="ton" color="cyan" readOnly />
+                        <div>
+                            <InputField label="Totalizer BFW" unit="ton" color="cyan" name="totalizer_bfw" value={values.totalizer_bfw} onChange={onFieldChange} />
+                            <SelisihInfo prev={Number(prevTotalizerBfw) || 0} current={Number(values.totalizer_bfw) || 0} />
+                        </div>
                     </Card>
 
                     <Card title="Furnace & Air" icon="local_fire_department" color="orange">
@@ -96,7 +105,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
             <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
                 <Card title="Produksi Shift" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="PRODUKSI STEAM" value={produksiSteam.toFixed(2)} unit="ton" variant="primary" size="large" />
-                    <CalculatedField label="FLOW BFW" value={(Number(values.flow_bfw) || 0).toFixed(2)} unit="t/h" variant="secondary" size="medium" />
+                    <CalculatedField label="PRODUKSI BFW" value={produksiBfw.toFixed(2)} unit="ton" variant="secondary" size="medium" />
 
                     {feeders.map((feeder, idx) => (
                         <CalculatedField key={feeder} label={`Konsumsi Feeder ${feeder}`} value={feederKonsumsi[idx].toFixed(2)} unit="ton" variant="small" size="small" />

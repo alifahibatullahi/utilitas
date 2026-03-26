@@ -218,7 +218,7 @@ CREATE TABLE shift_boiler (
     shift_report_id UUID NOT NULL REFERENCES shift_reports(id) ON DELETE CASCADE,
     boiler VARCHAR(1) NOT NULL CHECK (boiler IN ('A', 'B')),
     press_steam NUMERIC, temp_steam NUMERIC, flow_steam NUMERIC,
-    totalizer_steam NUMERIC, flow_bfw NUMERIC, temp_bfw NUMERIC,
+    totalizer_steam NUMERIC, flow_bfw NUMERIC, temp_bfw NUMERIC, totalizer_bfw NUMERIC,
     temp_furnace NUMERIC, temp_flue_gas NUMERIC, excess_air NUMERIC,
     air_heater_ti113 NUMERIC, batubara_ton NUMERIC, solar_m3 NUMERIC,
     stream_days NUMERIC, steam_drum_press NUMERIC, bfw_press NUMERIC,

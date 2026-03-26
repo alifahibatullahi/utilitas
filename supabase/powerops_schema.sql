@@ -45,6 +45,7 @@ DROP TABLE IF EXISTS daily_report_stock_tank CASCADE;
 DROP TABLE IF EXISTS daily_report_coal_transfer CASCADE;
 DROP TABLE IF EXISTS daily_report_totalizer CASCADE;
 DROP TABLE IF EXISTS tank_levels CASCADE;
+DROP TABLE IF EXISTS app_settings CASCADE;
 DROP TABLE IF EXISTS shift_reports CASCADE;
 DROP TABLE IF EXISTS daily_reports CASCADE;
 DROP TABLE IF EXISTS operators CASCADE;
@@ -185,7 +186,7 @@ CREATE TABLE shift_esp_handling (
     esp_a1 NUMERIC, esp_a2 NUMERIC, esp_a3 NUMERIC,
     esp_b1 NUMERIC, esp_b2 NUMERIC, esp_b3 NUMERIC,
     silo_a NUMERIC, silo_b NUMERIC,
-    unloading_a TEXT, unloading_b NUMERIC,
+    unloading_a NUMERIC, unloading_b NUMERIC,
     loading TEXT, hopper TEXT, conveyor TEXT,
     pf1 NUMERIC, pf2 NUMERIC,
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -221,6 +222,9 @@ CREATE TABLE shift_boiler (
     temp_furnace NUMERIC, temp_flue_gas NUMERIC, excess_air NUMERIC,
     air_heater_ti113 NUMERIC, batubara_ton NUMERIC, solar_m3 NUMERIC,
     stream_days NUMERIC, steam_drum_press NUMERIC, bfw_press NUMERIC,
+    primary_air NUMERIC, secondary_air NUMERIC, o2 NUMERIC,
+    feeder_a_flow NUMERIC, feeder_b_flow NUMERIC, feeder_c_flow NUMERIC,
+    feeder_d_flow NUMERIC, feeder_e_flow NUMERIC, feeder_f_flow NUMERIC,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id, boiler)
 );
@@ -486,6 +490,16 @@ CREATE TABLE tank_levels (
 CREATE INDEX idx_tank_levels_tank_id ON tank_levels(tank_id);
 CREATE INDEX idx_tank_levels_created_at ON tank_levels(created_at DESC);
 
+-- ─── App Settings (RKAP, konfigurasi) ───
+CREATE TABLE app_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key TEXT NOT NULL UNIQUE,
+    value JSONB NOT NULL DEFAULT '{}',
+    description TEXT,
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    updated_by TEXT
+);
+
 -- ════════════════════════════════════════════
 -- SECTION 6: INDEXES
 -- ════════════════════════════════════════════
@@ -559,6 +573,7 @@ ALTER TABLE shift_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE solar_unloadings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ash_unloadings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tank_levels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 
 -- Allow all for anon (no auth, public access via anon key)
 CREATE POLICY "Allow all for anon" ON operators FOR ALL TO anon USING (true) WITH CHECK (true);
@@ -587,6 +602,7 @@ CREATE POLICY "Allow all for anon" ON shift_notes FOR ALL TO anon USING (true) W
 CREATE POLICY "Allow all for anon" ON solar_unloadings FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON ash_unloadings FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON tank_levels FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON app_settings FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ════════════════════════════════════════════
 -- SECTION 9: REALTIME
@@ -668,3 +684,7 @@ INSERT INTO operators (name, role, group_name, nik, jabatan, company) VALUES
 ('Dimas Randyta Iswara', 'admin', NULL, '2145605', 'AVP', 'UBB'),
 ('Mashasan Imanuddin', 'admin', NULL, '2085010', 'Junior AVP', 'UBB'),
 ('Admin Sistem', 'admin', NULL, NULL, NULL, NULL);
+
+-- Seed: App Settings (RKAP)
+INSERT INTO app_settings (key, value, description) VALUES
+('rkap', '{"rkap_steam": 569400, "cr_target": 0.210, "tahun": 2025}'::jsonb, 'Target RKAP Steam dan CR per tahun');

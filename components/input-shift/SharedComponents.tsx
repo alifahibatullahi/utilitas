@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name }: {
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name, negative, readOnly }: {
     label?: string;
     placeholder?: string;
     unit?: string;
@@ -10,25 +10,48 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     value?: number | string | null;
     onChange?: (name: string, value: number | string | null) => void;
     name?: string;
-}) => (
-    <div className="space-y-1.5 w-full">
-        {label && (
-            <label className={`font-medium text-[#92a9c9] uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
-                {label}
-            </label>
-        )}
-        <div className="relative">
-            <input
-                className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} text-white placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all text-left`}
-                placeholder={placeholder}
-                type="number"
-                value={value ?? ''}
-                onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : parseFloat(e.target.value))}
-            />
-            {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
+    negative?: boolean;
+    readOnly?: boolean;
+}) => {
+    const displayValue = negative && value != null && value !== '' ? Math.abs(Number(value)) : value;
+    return (
+        <div className="space-y-1.5 w-full">
+            {label && (
+                <label className={`font-medium text-[#92a9c9] uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+                    {label}
+                </label>
+            )}
+            <div className="relative">
+                <input
+                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all text-left`}
+                    placeholder={placeholder}
+                    type="number"
+                    inputMode="decimal"
+                    readOnly={readOnly}
+                    tabIndex={readOnly ? -1 : undefined}
+                    value={displayValue ?? ''}
+                    onChange={e => {
+                        if (readOnly) return;
+                        const raw = e.target.value === '' ? null : parseFloat(e.target.value);
+                        const val = negative && raw != null ? -Math.abs(raw) : raw;
+                        onChange?.(name || label || '', val);
+                    }}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const inputs = Array.from(document.querySelectorAll('input:not([readonly]):not([disabled])'));
+                            const idx = inputs.indexOf(e.target as Element);
+                            if (idx >= 0 && idx < inputs.length - 1) {
+                                (inputs[idx + 1] as HTMLElement).focus();
+                            }
+                        }
+                    }}
+                />
+                {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 export const SelectField = ({ label, options, color = "blue", size = "normal", value, onChange, name }: {
     label?: string;

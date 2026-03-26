@@ -27,7 +27,7 @@ export default function TabTurbin({ values = {}, onFieldChange }: TabTurbinProps
                             <InputField label="Level Condenser" unit="%" color="cyan" name="level_condenser" value={values.level_condenser} onChange={onFieldChange} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Vacuum" unit="MPa" color="cyan" name="vacuum" value={values.vacuum} onChange={onFieldChange} />
+                            <InputField label="Vacuum" unit="MPa" color="cyan" name="vacuum" value={values.vacuum} onChange={onFieldChange} negative />
                             <InputField label="Durasi HPO" unit="s" color="cyan" name="hpo_durasi" value={values.hpo_durasi} onChange={onFieldChange} />
                         </div>
                         <InputField label="Totalizer Condensate" unit="ton" color="cyan" />

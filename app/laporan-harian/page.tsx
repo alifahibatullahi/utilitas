@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
+import { useAppSettings, useStreamDays } from '@/hooks/useAppSettings';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -45,9 +46,9 @@ const DAILY_DATA = {
     stockBatubara: 30424.77, deltaStockBatubara: -806.3,
     // RKAP
     rkapSteam: 569400, steamProduct: 221865,
-    crTahunan: 0.236, crBoilerAB: 0.236,
+    crTahunan: 0.236, crBoilerAB: 0.236, crTarget: 0.210,
     // Stream Days
-    streamDays: 2201, streamDaysReal: 425,
+    streamDays: 0, streamDaysReal: 0,
     // Konsumsi Batubara (Ton) — Coal Mill A-F
     coalMillA: 165, deltaCoalA: -8,
     coalMillB: 90, deltaCoalB: 10,
@@ -122,6 +123,8 @@ export default function LaporanHarianPage() {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState('2026-03-15');
     const { report, prevReport, loading, error } = useDailyReport(selectedDate);
+    const { rkap } = useAppSettings();
+    const { streamDaysA, streamDaysB } = useStreamDays(selectedDate);
 
     useEffect(() => {
         if (!operator) router.push('/');
@@ -221,15 +224,16 @@ export default function LaporanHarianPage() {
         stockBatubara: n(tank?.stock_batubara),
         deltaStockBatubara: delta(tank?.stock_batubara, pTank?.stock_batubara),
 
-        // RKAP (not stored in DB — keep hardcoded defaults)
-        rkapSteam: 569400,
-        steamProduct: n(stm?.prod_total_24) > 0 ? n(stm?.prod_total_24) : 221865,
-        crTahunan: n(turb?.consumption_rate_avg, 0.236),
-        crBoilerAB: n(turb?.consumption_rate_avg, 0.236),
+        // RKAP (dari app_settings)
+        rkapSteam: rkap.rkap_steam,
+        steamProduct: n(stm?.prod_total_24) > 0 ? n(stm?.prod_total_24) : 0,
+        crTahunan: n(turb?.consumption_rate_avg, 0),
+        crBoilerAB: n(turb?.consumption_rate_avg, 0),
+        crTarget: rkap.cr_target,
 
-        // Stream Days (not in daily report tables — keep hardcoded defaults)
-        streamDays: 2201,
-        streamDaysReal: 425,
+        // Stream Days (dari shift report terakhir hari ini)
+        streamDays: streamDaysA,
+        streamDaysReal: streamDaysB,
 
         // Konsumsi Batubara (Ton) — Coal Mill A-F
         coalMillA: n(coal?.coal_a_24),
@@ -250,9 +254,9 @@ export default function LaporanHarianPage() {
         deltaTotalCMB: delta(coal?.total_boiler_b_24, pCoal?.total_boiler_b_24),
 
         // Consumption Rate Harian
-        crA: n(turb?.consumption_rate_a, 0.249),
-        crTarget: 0.210,
-        crB: n(turb?.consumption_rate_b, 0.222),
+        crA: n(turb?.consumption_rate_a, 0),
+        crTarget: rkap.cr_target,
+        crB: n(turb?.consumption_rate_b, 0),
 
         // Totalizer Demin & RCW (m3)
         konsHarianDemin: n(totalizer?.konsumsi_demin),

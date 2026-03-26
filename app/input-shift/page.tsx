@@ -9,7 +9,7 @@ import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
-import { useShiftReport } from '@/hooks/useShiftReport';
+import { useShiftReport, usePreviousShiftData } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType } from '@/lib/supabase/types';
@@ -45,7 +45,12 @@ const TAB_STYLES: Record<string, { active: string; inactive: string; icon: strin
 export default function InputShiftPage() {
     const [activeTab, setActiveTab] = useState<TabId>('Boiler A');
     const [inputMode, setInputMode] = useState<'shift' | 'harian'>('shift');
-    const [selectedShift, setSelectedShift] = useState<1 | 2 | 3>(2);
+    const [selectedShift, setSelectedShift] = useState<1 | 2 | 3>(() => {
+        const hour = new Date().getHours();
+        if (hour >= 6 && hour < 14) return 1;   // 06.00 Malam
+        if (hour >= 14 && hour < 22) return 2;   // 14.00 Pagi
+        return 3;                                 // 22.00 Sore
+    });
     const [submitting, setSubmitting] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -74,8 +79,14 @@ export default function InputShiftPage() {
     const [solarEntries, setSolarEntries] = useState<{ tanggal: string; jumlah: number | null; perusahaan: string }[]>([]);
     const [ashEntries, setAshEntries] = useState<AshUnloadingEntry[]>([]);
 
-    const shiftMap: Record<number, ShiftType> = { 1: 'pagi', 2: 'sore', 3: 'malam' };
+    // Shift mapping: button order matches chronological report time
+    // 06.00 → shift malam (night shift makes 06.00 report)
+    // 14.00 → shift pagi  (morning shift makes 14.00 report)
+    // 22.00 → shift sore  (afternoon shift makes 22.00 report)
+    const shiftMap: Record<number, ShiftType> = { 1: 'malam', 2: 'pagi', 3: 'sore' };
+    const SHIFT_LABELS: Record<number, string> = { 1: '06.00 Malam', 2: '14.00 Pagi', 3: '22.00 Sore' };
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
+    const { prevBoilerA, prevBoilerB, prevCoalBunker } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const { operator } = useOperator();
 
     // Helper: extract non-null numeric fields from a record, skip id/FK fields
@@ -306,9 +317,9 @@ export default function InputShiftPage() {
                     {inputMode === 'shift' && (
                         <div className="flex bg-[#16202e]/80 border border-slate-700/50 rounded-lg p-1">
                             {[
-                                { id: 1, label: 'Pagi' },
-                                { id: 2, label: 'Sore' },
-                                { id: 3, label: 'Malam' }
+                                { id: 1, label: '06.00 Malam' },
+                                { id: 2, label: '14.00 Pagi' },
+                                { id: 3, label: '22.00 Sore' }
                             ].map(shift => (
                                 <button
                                     key={shift.id}
@@ -329,7 +340,7 @@ export default function InputShiftPage() {
                     <div className="flex items-center justify-center gap-2 text-[#92a9c9]">
                         {inputMode === 'shift' ? (
                             <span className="px-2 py-0.5 rounded text-xs font-semibold bg-[#2b7cee]/20 text-[#2b7cee] border border-[#2b7cee]/20 uppercase">
-                                SHIFT {selectedShift} ({selectedShift === 1 ? 'PAGI' : selectedShift === 2 ? 'SORE' : 'MALAM'})
+                                {SHIFT_LABELS[selectedShift].toUpperCase()}
                             </span>
                         ) : (
                             <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 uppercase">
@@ -465,8 +476,8 @@ export default function InputShiftPage() {
 
                         {/* Shift Tab Content */}
                         <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
-                            {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeNumberHandler(setCoalBunker)} />}
-                            {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeNumberHandler(setCoalBunker)} />}
+                            {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeNumberHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevCoalBunkerValues={prevCoalBunker} />}
+                            {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeNumberHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevCoalBunkerValues={prevCoalBunker} />}
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} />}
                             {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} />}
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} />}

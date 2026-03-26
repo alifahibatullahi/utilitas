@@ -1,8 +1,92 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, ReportStatus } from '@/lib/supabase/types';
+
+// Determine the previous shift based on chronological report order:
+// 06.00 (malam) → prev is sore (22.00) from yesterday
+// 14.00 (pagi)  → prev is malam (06.00) same day
+// 22.00 (sore)  → prev is pagi (14.00) same day
+function getPreviousShift(date: string, shift: ShiftType): { prevDate: string; prevShift: ShiftType } {
+    if (shift === 'malam') {
+        const d = new Date(date + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        const prevDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return { prevDate, prevShift: 'sore' };
+    }
+    if (shift === 'pagi') return { prevDate: date, prevShift: 'malam' };
+    return { prevDate: date, prevShift: 'pagi' };
+}
+
+export function usePreviousShiftData(date: string, shift: ShiftType) {
+    const [prevBoilerA, setPrevBoilerA] = useState<Record<string, number | null>>({});
+    const [prevBoilerB, setPrevBoilerB] = useState<Record<string, number | null>>({});
+    const [prevCoalBunker, setPrevCoalBunker] = useState<Record<string, number | null>>({});
+
+    const { prevDate, prevShift } = useMemo(() => getPreviousShift(date, shift), [date, shift]);
+
+    useEffect(() => {
+        if (!isSupabaseConfigured() || !date) {
+            setPrevBoilerA({});
+            setPrevBoilerB({});
+            setPrevCoalBunker({});
+            return;
+        }
+
+        const supabase = createClient();
+        let stale = false;
+
+        async function fetchPrev() {
+            const { data } = await supabase
+                .from('shift_reports')
+                .select('shift_boiler(boiler, totalizer_steam), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f)')
+                .eq('date', prevDate)
+                .eq('shift', prevShift)
+                .maybeSingle();
+
+            if (stale) return;
+
+            if (data) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const boilers = (data as any).shift_boiler;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const coal = (data as any).shift_coal_bunker;
+
+                if (Array.isArray(boilers)) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const a = boilers.find((b: any) => b.boiler === 'A');
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const b = boilers.find((b: any) => b.boiler === 'B');
+                    setPrevBoilerA(a ? { totalizer_steam: a.totalizer_steam } : {});
+                    setPrevBoilerB(b ? { totalizer_steam: b.totalizer_steam } : {});
+                } else {
+                    setPrevBoilerA({});
+                    setPrevBoilerB({});
+                }
+
+                const cb = Array.isArray(coal) ? coal[0] : coal;
+                if (cb) {
+                    setPrevCoalBunker({
+                        feeder_a: cb.feeder_a, feeder_b: cb.feeder_b, feeder_c: cb.feeder_c,
+                        feeder_d: cb.feeder_d, feeder_e: cb.feeder_e, feeder_f: cb.feeder_f,
+                    });
+                } else {
+                    setPrevCoalBunker({});
+                }
+            } else {
+                setPrevBoilerA({});
+                setPrevBoilerB({});
+                setPrevCoalBunker({});
+            }
+        }
+
+        fetchPrev();
+        return () => { stale = true; };
+    }, [prevDate, prevShift, date]);
+
+    return { prevBoilerA, prevBoilerB, prevCoalBunker };
+}
 
 export interface ShiftReportData {
     id: string;
@@ -122,6 +206,12 @@ export interface ShiftReportData {
         bunker_d: number | null;
         bunker_e: number | null;
         bunker_f: number | null;
+        status_bunker_a: string | null;
+        status_bunker_b: string | null;
+        status_bunker_c: string | null;
+        status_bunker_d: string | null;
+        status_bunker_e: string | null;
+        status_bunker_f: string | null;
     }[];
     shift_water_quality: {
         demin_1250_ph: number | null;
@@ -268,7 +358,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
 
     // Valid DB columns per table (prevents unknown column errors)
     const VALID_COLS: Record<string, string[]> = {
-        shift_boiler: ['press_steam','temp_steam','flow_steam','totalizer_steam','flow_bfw','temp_bfw','bfw_press','temp_furnace','temp_flue_gas','excess_air','air_heater_ti113','batubara_ton','solar_m3','stream_days','steam_drum_press'],
+        shift_boiler: ['press_steam','temp_steam','flow_steam','totalizer_steam','flow_bfw','temp_bfw','bfw_press','temp_furnace','temp_flue_gas','excess_air','air_heater_ti113','batubara_ton','solar_m3','stream_days','steam_drum_press','primary_air','secondary_air','o2','feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow'],
         shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','stream_days'],
         shift_steam_dist: ['pabrik1_flow','pabrik1_temp','pabrik2_flow','pabrik2_temp','pabrik3a_flow','pabrik3a_temp','pabrik3b_flow','pabrik3b_temp'],
         shift_generator_gi: ['gen_load','gen_ampere','gen_amp_react','gen_cos_phi','gen_tegangan','gen_frequensi','gi_sum_p','gi_sum_q','gi_cos_phi'],
@@ -276,7 +366,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         shift_esp_handling: ['esp_a1','esp_a2','esp_a3','esp_b1','esp_b2','esp_b3','silo_a','silo_b','unloading_a','unloading_b','loading','hopper','conveyor','pf1','pf2'],
         shift_tankyard: ['tk_rcw','tk_demin','tk_solar_ab'],
         shift_personnel: ['turbin_grup','turbin_karu','turbin_kasi','boiler_grup','boiler_karu','boiler_kasi'],
-        shift_coal_bunker: ['feeder_a','feeder_b','feeder_c','feeder_d','feeder_e','feeder_f','bunker_a','bunker_b','bunker_c','bunker_d','bunker_e','bunker_f'],
+        shift_coal_bunker: ['feeder_a','feeder_b','feeder_c','feeder_d','feeder_e','feeder_f','bunker_a','bunker_b','bunker_c','bunker_d','bunker_e','bunker_f','status_bunker_a','status_bunker_b','status_bunker_c','status_bunker_d','status_bunker_e','status_bunker_f'],
         shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4'],
     };
 

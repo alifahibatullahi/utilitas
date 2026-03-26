@@ -84,7 +84,7 @@ export default function InputShiftPage() {
     // 14.00 → shift pagi  (morning shift makes 14.00 report)
     // 22.00 → shift sore  (afternoon shift makes 22.00 report)
     const shiftMap: Record<number, ShiftType> = { 1: 'malam', 2: 'pagi', 3: 'sore' };
-    const SHIFT_LABELS: Record<number, string> = { 1: '06.00 Malam', 2: '14.00 Pagi', 3: '22.00 Sore' };
+    const SHIFT_LABELS: Record<number, string> = { 1: 'Shift Malam 06.00', 2: 'Shift Pagi 14.00', 3: 'Shift Sore 22.00' };
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
     const { prevBoilerA, prevBoilerB, prevCoalBunker } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const { operator } = useOperator();
@@ -317,9 +317,9 @@ export default function InputShiftPage() {
                     {inputMode === 'shift' && (
                         <div className="flex bg-[#16202e]/80 border border-slate-700/50 rounded-lg p-1">
                             {[
-                                { id: 1, label: '06.00 Malam' },
-                                { id: 2, label: '14.00 Pagi' },
-                                { id: 3, label: '22.00 Sore' }
+                                { id: 1, label: 'Shift Malam 06.00' },
+                                { id: 2, label: 'Shift Pagi 14.00' },
+                                { id: 3, label: 'Shift Sore 22.00' }
                             ].map(shift => (
                                 <button
                                     key={shift.id}

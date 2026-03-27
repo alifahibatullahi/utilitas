@@ -9,7 +9,7 @@ import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
-import { useShiftReport, usePreviousShiftData } from '@/hooks/useShiftReport';
+import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType } from '@/lib/supabase/types';
@@ -87,6 +87,7 @@ export default function InputShiftPage() {
     const SHIFT_LABELS: Record<number, string> = { 1: 'Shift Malam 06.00', 2: 'Shift Pagi 14.00', 3: 'Shift Sore 22.00' };
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
     const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
+    const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const { operator } = useOperator();
 
     // Helper: extract non-null numeric fields from a record, skip id/FK fields
@@ -148,6 +149,24 @@ export default function InputShiftPage() {
         if (espData) setEspHandling(extractFields(espData as unknown as Record<string, unknown>));
         if (tankyardData) setTankyard(extractFields(tankyardData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (coalData) setCoalBunker(extractFields(coalData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
+
+        // Load water quality & chemical dosing from shift_water_quality
+        const wqData = report.shift_water_quality?.[0];
+        if (wqData) {
+            const allFields = extractFields(wqData as unknown as Record<string, unknown>) as Record<string, number | null>;
+            const chemKeys = ['phosphate_', 'phosphate_b_', 'amine_', 'hydrazine_'];
+            const wqFields: Record<string, number | null> = {};
+            const cdFields: Record<string, number | null> = {};
+            for (const [k, v] of Object.entries(allFields)) {
+                if (chemKeys.some(prefix => k.startsWith(prefix))) {
+                    cdFields[k] = v;
+                } else {
+                    wqFields[k] = v;
+                }
+            }
+            setWaterQuality(wqFields);
+            setChemicalDosing(cdFields);
+        }
     }, [report]);
 
     // Generic change handlers
@@ -192,6 +211,7 @@ export default function InputShiftPage() {
                 espHandling,
                 tankyard,
                 coalBunker,
+                waterQuality: { ...waterQuality, ...chemicalDosing },
             });
             // Save solar unloadings if filled
             const validSolarEntries = solarEntries.filter(e => e.tanggal && e.jumlah && e.perusahaan);
@@ -483,7 +503,7 @@ export default function InputShiftPage() {
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
                             {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} />}
                             {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} />}
-                            {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} />}
+                            {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
                             {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} />}
                         </div>
                     </div>

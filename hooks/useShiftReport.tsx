@@ -119,6 +119,79 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
     return { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist };
 }
 
+// Track when each bunker started being "Berasap"
+export interface BunkerBerasapInfo {
+    [bunkerKey: string]: { date: string; shift: ShiftType } | null;
+}
+
+export function useBunkerBerasapHistory(date: string, shift: ShiftType) {
+    const [berasapSince, setBerasapSince] = useState<BunkerBerasapInfo>({});
+
+    useEffect(() => {
+        if (!isSupabaseConfigured() || !date) {
+            setBerasapSince({});
+            return;
+        }
+
+        const supabase = createClient();
+        let stale = false;
+        const BUNKER_KEYS = ['status_bunker_a', 'status_bunker_b', 'status_bunker_c', 'status_bunker_d', 'status_bunker_e', 'status_bunker_f'];
+
+        async function fetchHistory() {
+            // Fetch the last 30 shift reports with coal bunker status, ordered by date desc
+            const { data } = await supabase
+                .from('shift_reports')
+                .select('date, shift, shift_coal_bunker(status_bunker_a, status_bunker_b, status_bunker_c, status_bunker_d, status_bunker_e, status_bunker_f)')
+                .lte('date', date)
+                .order('date', { ascending: false })
+                .limit(30);
+
+            if (stale || !data) return;
+
+            // Sort by date desc, then shift order (sore > pagi > malam for same date)
+            const shiftOrder: Record<string, number> = { sore: 2, pagi: 1, malam: 0 };
+            const sorted = (data as { date: string; shift: ShiftType; shift_coal_bunker: Record<string, string | null>[] | Record<string, string | null> | null }[])
+                .filter(r => {
+                    // Exclude current shift itself
+                    if (r.date === date && r.shift === shift) return false;
+                    // Exclude future shifts on same date
+                    if (r.date === date && shiftOrder[r.shift] >= shiftOrder[shift]) return false;
+                    return true;
+                })
+                .sort((a, b) => {
+                    if (a.date !== b.date) return b.date.localeCompare(a.date);
+                    return (shiftOrder[b.shift] || 0) - (shiftOrder[a.shift] || 0);
+                });
+
+            const result: BunkerBerasapInfo = {};
+
+            for (const key of BUNKER_KEYS) {
+                let berasapStart: { date: string; shift: ShiftType } | null = null;
+
+                for (const report of sorted) {
+                    const cb = Array.isArray(report.shift_coal_bunker) ? report.shift_coal_bunker[0] : report.shift_coal_bunker;
+                    if (!cb) break; // No coal bunker data, stop searching
+                    const status = cb[key];
+                    if (status === 'Berasap') {
+                        berasapStart = { date: report.date, shift: report.shift };
+                    } else {
+                        break; // Found Normal or null, stop walking back
+                    }
+                }
+
+                result[key] = berasapStart;
+            }
+
+            setBerasapSince(result);
+        }
+
+        fetchHistory();
+        return () => { stale = true; };
+    }, [date, shift]);
+
+    return berasapSince;
+}
+
 export interface ShiftReportData {
     id: string;
     date: string;
@@ -165,6 +238,7 @@ export interface ShiftReportData {
         temp_cw_out: number | null;
         press_deaerator: number | null;
         temp_deaerator: number | null;
+        press_lps: number | null;
         stream_days: number | null;
         totalizer_steam_inlet: number | null;
         totalizer_condensate: number | null;
@@ -278,6 +352,22 @@ export interface ShiftReportData {
         product_steam_th: number | null;
         product_steam_sio2: number | null;
         product_steam_nh4: number | null;
+        phosphate_level_tanki: number | null;
+        phosphate_stroke_pompa: number | null;
+        phosphate_penambahan_air: number | null;
+        phosphate_penambahan_chemical: number | null;
+        phosphate_b_level_tanki: number | null;
+        phosphate_b_stroke_pompa: number | null;
+        phosphate_b_penambahan_air: number | null;
+        phosphate_b_penambahan_chemical: number | null;
+        amine_level_tanki: number | null;
+        amine_stroke_pompa: number | null;
+        amine_penambahan_air: number | null;
+        amine_penambahan_chemical: number | null;
+        hydrazine_level_tanki: number | null;
+        hydrazine_stroke_pompa: number | null;
+        hydrazine_penambahan_air: number | null;
+        hydrazine_penambahan_chemical: number | null;
     }[];
     critical_equipment: {
         date: string;
@@ -396,7 +486,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
     // Valid DB columns per table (prevents unknown column errors)
     const VALID_COLS: Record<string, string[]> = {
         shift_boiler: ['press_steam','temp_steam','flow_steam','totalizer_steam','flow_bfw','temp_bfw','totalizer_bfw','bfw_press','temp_furnace','temp_flue_gas','excess_air','air_heater_ti113','batubara_ton','solar_m3','stream_days','steam_drum_press','primary_air','secondary_air','o2','feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow'],
-        shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','stream_days','totalizer_steam_inlet','totalizer_condensate'],
+        shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','press_lps','stream_days','totalizer_steam_inlet','totalizer_condensate'],
         shift_steam_dist: ['pabrik1_flow','pabrik1_temp','pabrik1_totalizer','pabrik2_flow','pabrik2_temp','pabrik2_totalizer','pabrik3a_flow','pabrik3a_temp','pabrik3a_totalizer','pabrik3b_flow','pabrik3b_temp'],
         shift_generator_gi: ['gen_load','gen_ampere','gen_amp_react','gen_cos_phi','gen_tegangan','gen_frequensi','gi_sum_p','gi_sum_q','gi_cos_phi'],
         shift_power_dist: ['power_ubb','power_pabrik2','power_pabrik3a','power_pie','power_pabrik3b'],
@@ -404,7 +494,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         shift_tankyard: ['tk_rcw','tk_demin','tk_solar_ab'],
         shift_personnel: ['turbin_grup','turbin_karu','turbin_kasi','boiler_grup','boiler_karu','boiler_kasi'],
         shift_coal_bunker: ['feeder_a','feeder_b','feeder_c','feeder_d','feeder_e','feeder_f','bunker_a','bunker_b','bunker_c','bunker_d','bunker_e','bunker_f','status_bunker_a','status_bunker_b','status_bunker_c','status_bunker_d','status_bunker_e','status_bunker_f'],
-        shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4'],
+        shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4','phosphate_level_tanki','phosphate_stroke_pompa','phosphate_penambahan_air','phosphate_penambahan_chemical','phosphate_b_level_tanki','phosphate_b_stroke_pompa','phosphate_b_penambahan_air','phosphate_b_penambahan_chemical','amine_level_tanki','amine_stroke_pompa','amine_penambahan_air','amine_penambahan_chemical','hydrazine_level_tanki','hydrazine_stroke_pompa','hydrazine_penambahan_air','hydrazine_penambahan_chemical'],
     };
 
     // Filter object to only include valid DB columns

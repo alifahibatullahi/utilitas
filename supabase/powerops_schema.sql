@@ -141,6 +141,7 @@ CREATE TABLE shift_turbin (
     temp_cw_out NUMERIC,
     press_deaerator NUMERIC,
     temp_deaerator NUMERIC,
+    press_lps NUMERIC,
     stream_days NUMERIC,
     totalizer_steam_inlet NUMERIC,
     totalizer_condensate NUMERIC,
@@ -273,6 +274,18 @@ CREATE TABLE shift_water_quality (
     product_steam_ph NUMERIC, product_steam_conduct NUMERIC,
     product_steam_th NUMERIC, product_steam_sio2 NUMERIC,
     product_steam_nh4 NUMERIC,
+    -- Chemical Dosing: Phosphate Boiler A
+    phosphate_level_tanki NUMERIC, phosphate_stroke_pompa NUMERIC,
+    phosphate_penambahan_air NUMERIC, phosphate_penambahan_chemical NUMERIC,
+    -- Chemical Dosing: Phosphate Boiler B
+    phosphate_b_level_tanki NUMERIC, phosphate_b_stroke_pompa NUMERIC,
+    phosphate_b_penambahan_air NUMERIC, phosphate_b_penambahan_chemical NUMERIC,
+    -- Chemical Dosing: Amine
+    amine_level_tanki NUMERIC, amine_stroke_pompa NUMERIC,
+    amine_penambahan_air NUMERIC, amine_penambahan_chemical NUMERIC,
+    -- Chemical Dosing: Hydrazine
+    hydrazine_level_tanki NUMERIC, hydrazine_stroke_pompa NUMERIC,
+    hydrazine_penambahan_air NUMERIC, hydrazine_penambahan_chemical NUMERIC,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)
 );

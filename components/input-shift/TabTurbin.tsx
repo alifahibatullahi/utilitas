@@ -25,8 +25,8 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
 
                     <Card title="Steam Inlet Turbin" icon="waves" color="blue">
                         <InputField label="Pressure Steam Inlet" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} />
-                        <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} />
                         <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} />
+                        <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} />
                         <div>
                             <InputField label="Totalizer Steam Inlet" unit="ton" color="blue" name="totalizer_steam_inlet" value={values.totalizer_steam_inlet} onChange={onFieldChange} />
                             <SelisihInfo prev={prevSteamInlet} current={currentSteamInlet} />
@@ -37,10 +37,10 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                         <InputField label="Flow Condensate" unit="t/h" color="cyan" name="flow_cond" value={values.flow_cond} onChange={onFieldChange} />
                         <div className="grid grid-cols-2 gap-3">
                             <InputField label="Temp Exhaust Steam" unit="°C" color="cyan" name="exh_steam" value={values.exh_steam} onChange={onFieldChange} />
-                            <InputField label="Level Condenser" unit="mm" color="cyan" name="level_condenser" value={values.level_condenser} onChange={onFieldChange} />
+                            <InputField label="Vacuum" unit="MPa" color="cyan" name="vacuum" value={values.vacuum} onChange={onFieldChange} negative />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Vacuum" unit="MPa" color="cyan" name="vacuum" value={values.vacuum} onChange={onFieldChange} negative />
+                            <InputField label="Level Condenser" unit="mm" color="cyan" name="level_condenser" value={values.level_condenser} onChange={onFieldChange} />
                             <InputField label="Durasi HPO" unit="s" color="cyan" name="hpo_durasi" value={values.hpo_durasi} onChange={onFieldChange} />
                         </div>
                         <div>
@@ -64,7 +64,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                     <Card title="Deaerator & Cooling Water" icon="opacity" color="emerald">
                         <InputField label="Pressure Deaerator" unit="MPa" color="emerald" name="press_deaerator" value={values.press_deaerator} onChange={onFieldChange} />
                         <InputField label="Temp Deaerator" unit="°C" color="emerald" name="temp_deaerator" value={values.temp_deaerator} onChange={onFieldChange} />
-                        <InputField label="Pressure LPS" unit="MPa" color="emerald" />
+                        <InputField label="Pressure LPS" unit="MPa" color="emerald" name="press_lps" value={values.press_lps} onChange={onFieldChange} />
 
                         <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-700/50">
                             <InputField label="Temp CW In" unit="°C" color="emerald" name="temp_cw_in" value={values.temp_cw_in} onChange={onFieldChange} />

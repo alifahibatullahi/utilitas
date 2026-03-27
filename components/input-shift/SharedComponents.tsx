@@ -54,7 +54,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     );
 };
 
-export const SelectField = ({ label, options, color = "blue", size = "normal", value, onChange, name }: {
+export const SelectField = ({ label, options, color = "blue", size = "normal", value, onChange, name, placeholder = "Pilih..." }: {
     label?: string;
     options: { value: string; label: string }[];
     color?: string;
@@ -62,6 +62,7 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
     value?: string | null;
     onChange?: (name: string, value: string | null) => void;
     name?: string;
+    placeholder?: string;
 }) => (
     <div className="space-y-1.5 w-full">
         {label && (
@@ -74,7 +75,7 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
             value={value ?? ''}
             onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : e.target.value)}
         >
-            <option value="" className="bg-[#101822] text-slate-500">Normal / Berasap...</option>
+            <option value="" className="bg-[#101822] text-slate-500">{placeholder}</option>
             {options.map((opt) => (
                 <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">
                     {opt.label}

@@ -66,12 +66,13 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                         <div className="space-y-3 p-3 bg-[#101822]/30 border border-slate-700/50 rounded-lg">
                             <p className="text-xs font-bold text-orange-500 uppercase tracking-wider">Form Unloading</p>
                             
-                            <SelectField 
-                                label="Sumber Silo" 
-                                color="orange" 
-                                value={currentEntry.silo} 
-                                onChange={(_, v) => setCurrentEntry({...currentEntry, silo: v as 'A' | 'B'})} 
-                                options={[{value: 'A', label: 'Silo A'}, {value: 'B', label: 'Silo B'}]} 
+                            <SelectField
+                                label="Sumber Silo"
+                                color="orange"
+                                value={currentEntry.silo}
+                                onChange={(_, v) => setCurrentEntry({...currentEntry, silo: v as 'A' | 'B'})}
+                                options={[{value: 'A', label: 'Silo A'}, {value: 'B', label: 'Silo B'}]}
+                                placeholder="Pilih Silo..."
                             />
                             
                             <div className="grid grid-cols-2 gap-3">

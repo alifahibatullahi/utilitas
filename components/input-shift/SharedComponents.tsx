@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name, negative, readOnly, textMode }: {
     label?: string;
@@ -14,6 +14,17 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     readOnly?: boolean;
     textMode?: boolean;
 }) => {
+    // Local state for textMode to handle intermediate values like "-" or "1."
+    const [rawText, setRawText] = useState('');
+    const isFocused = useRef(false);
+
+    // Sync rawText when value changes from parent (e.g. loading saved data)
+    useEffect(() => {
+        if (textMode && !isFocused.current) {
+            setRawText(value != null && value !== '' ? String(value) : '');
+        }
+    }, [value, textMode]);
+
     const displayValue = negative && value != null && value !== '' ? Math.abs(Number(value)) : value;
     return (
         <div className="space-y-1.5 w-full">
@@ -31,12 +42,27 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                     inputMode={textMode ? "text" : "decimal"}
                     readOnly={readOnly}
                     tabIndex={readOnly ? -1 : undefined}
-                    value={displayValue ?? ''}
+                    value={textMode ? rawText : (displayValue ?? '')}
+                    onFocus={() => { if (textMode) isFocused.current = true; }}
+                    onBlur={() => {
+                        if (!textMode) return;
+                        isFocused.current = false;
+                        // Clean up intermediate values on blur
+                        if (rawText === '-' || rawText === '.' || rawText === '-.') {
+                            setRawText('');
+                            onChange?.(name || label || '', null);
+                        }
+                    }}
                     onChange={e => {
                         if (readOnly) return;
                         if (textMode) {
                             const raw = e.target.value;
-                            if (raw === '' || raw === '-') { onChange?.(name || label || '', raw === '-' ? raw as unknown as null : null); return; }
+                            // Only allow digits, minus, dot
+                            if (raw !== '' && !/^-?\d*\.?\d*$/.test(raw)) return;
+                            setRawText(raw);
+                            if (raw === '' ) { onChange?.(name || label || '', null); return; }
+                            // Intermediate: don't propagate yet
+                            if (raw === '-' || raw === '.' || raw === '-.' || raw.endsWith('.')) return;
                             const num = parseFloat(raw);
                             if (!isNaN(num)) onChange?.(name || label || '', num);
                             return;

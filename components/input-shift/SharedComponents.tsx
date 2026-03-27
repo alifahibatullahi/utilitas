@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name, negative, readOnly }: {
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name, negative, readOnly, textMode }: {
     label?: string;
     placeholder?: string;
     unit?: string;
@@ -12,6 +12,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     name?: string;
     negative?: boolean;
     readOnly?: boolean;
+    textMode?: boolean;
 }) => {
     const displayValue = negative && value != null && value !== '' ? Math.abs(Number(value)) : value;
     return (
@@ -26,13 +27,20 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                 <input
                     className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all text-left`}
                     placeholder={placeholder}
-                    type="number"
-                    inputMode="decimal"
+                    type={textMode ? "text" : "number"}
+                    inputMode={textMode ? "text" : "decimal"}
                     readOnly={readOnly}
                     tabIndex={readOnly ? -1 : undefined}
                     value={displayValue ?? ''}
                     onChange={e => {
                         if (readOnly) return;
+                        if (textMode) {
+                            const raw = e.target.value;
+                            if (raw === '' || raw === '-') { onChange?.(name || label || '', raw === '-' ? raw as unknown as null : null); return; }
+                            const num = parseFloat(raw);
+                            if (!isNaN(num)) onChange?.(name || label || '', num);
+                            return;
+                        }
                         const raw = e.target.value === '' ? null : parseFloat(e.target.value);
                         const val = negative && raw != null ? -Math.abs(raw) : raw;
                         onChange?.(name || label || '', val);

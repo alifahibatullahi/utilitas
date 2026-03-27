@@ -64,7 +64,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                                     <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} />
                                                     <SelisihInfo prev={prevTot} current={curTot} />
                                                 </div>
-                                                <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} />
+                                                <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />
                                             </div>
                                         </div>
                                     );

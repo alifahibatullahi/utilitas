@@ -58,7 +58,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                             <InputField label="Vibrasi" unit="um" color="orange" name="vibrasi" value={values.vibrasi} onChange={onFieldChange} />
                             <InputField label="Temp Winding" unit="°C" color="orange" name="winding" value={values.winding} onChange={onFieldChange} />
                         </div>
-                        <InputField label="Axial Displacement" unit="mm" color="orange" name="axial_displacement" value={values.axial_displacement} onChange={onFieldChange} />
+                        <InputField label="Axial Displacement" unit="mm" color="orange" name="axial_displacement" value={values.axial_displacement} onChange={onFieldChange} textMode />
                     </Card>
 
                     <Card title="Deaerator & Cooling Water" icon="opacity" color="emerald">

@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Card, InputField, SelisihInfo } from './SharedComponents';
+import { Card, InputField, SelisihInfo, CalculatedField } from './SharedComponents';
 
 interface TabGeneratorProps {
     generatorValues?: Record<string, number | string | null>;
@@ -61,10 +61,10 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <div>
-                                                    <InputField label="Totalizer" unit="kWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} />
+                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} />
                                                     <SelisihInfo prev={prevTot} current={curTot} />
                                                 </div>
-                                                <SignedMWInput label="MW" name={mwName} value={pv[mwName]} onChange={onPowerChange} />
+                                                <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} />
                                             </div>
                                         </div>
                                     );
@@ -75,7 +75,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <div>
-                                            <InputField label="Totalizer" unit="kWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} />
+                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} />
                                             <SelisihInfo prev={Number(prevPowerDist.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} />
                                         </div>
                                         <div>
@@ -92,100 +92,22 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
             </div>
 
             <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
-                <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl overflow-hidden shadow-sm flex flex-col group hover:border-purple-500/30 transition-colors duration-300 h-full">
-                    <div className="p-4 border-b border-slate-800/80 flex items-center gap-3 bg-gradient-to-r from-[#1f2b3e]/50 to-transparent shrink-0">
-                        <div className="p-2 bg-purple-500/10 rounded-lg">
-                            <span className="material-symbols-outlined text-purple-500">calculate</span>
-                        </div>
-                        <h3 className="text-white font-bold text-lg tracking-wide">Power Summary</h3>
-                    </div>
+                <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
+                    <CalculatedField label="LOAD STG" value={fmt(gv.gen_load)} unit="MW" variant="primary" />
 
-                    <div className="p-4 flex flex-col gap-2.5 flex-1 justify-center overflow-y-auto scrollbar-hide">
-                        <div className="flex flex-col gap-2 bg-[#2b7cee]/20 border-2 border-[#2b7cee]/50 rounded-xl p-5 mb-4 shadow-[0_0_25px_rgba(43,124,238,0.2)]">
-                            <span className="text-xs font-black text-[#2b7cee] uppercase tracking-[0.2em] text-left">LOAD STG</span>
-                            <div className="flex items-baseline justify-between w-full">
-                                <span className="text-white text-4xl font-mono font-black tracking-tighter">{fmt(gv.gen_load)}</span>
-                                <span className="text-[#2b7cee]/70 text-sm font-bold">MW</span>
-                            </div>
-                        </div>
+                    <div className="h-px bg-slate-700/80 w-full my-1" />
 
-                        <div className="space-y-2">
-                            {DIST_ITEMS.map(({ key, label }) => (
-                                <GeneratorSubCalculation key={key} label={label} value={fmt(pv[`power_${key}`])} unit="MW" />
-                            ))}
-                            <GeneratorSubCalculation label="STG UBB" value={fmt(genLoad)} unit="MW" />
-                            <div className="h-px bg-slate-700/50 my-1" />
-                            <GeneratorSubCalculation label="PLN (Σ P)" value={fmt(gv.gi_sum_p)} unit="MW" />
-                        </div>
-                    </div>
-                </div>
+                    {DIST_ITEMS.map(({ key, label }) => (
+                        <CalculatedField key={key} label={label.toUpperCase()} value={fmt(pv[`power_${key}`])} unit="MW" variant="transparent" />
+                    ))}
+                    <CalculatedField label="STG UBB" value={fmt(genLoad)} unit="MW" variant="transparent" />
+
+                    <div className="h-px bg-slate-700/80 w-full my-1" />
+
+                    <CalculatedField label="PLN (Σ P)" value={fmt(gv.gi_sum_p)} unit="MW" variant="transparent" />
+                    <CalculatedField label="PLN (Σ Q)" value={fmt(gv.gi_sum_q)} unit="MVAR" variant="transparent" />
+                </Card>
             </div>
         </>
     );
 }
-
-/** MW input with +/- toggle for mobile (type=number doesn't show minus on some phones) */
-const SignedMWInput = ({ label, name, value, onChange }: {
-    label: string; name: string; value?: number | string | null;
-    onChange?: (name: string, value: number | string | null) => void;
-}) => {
-    const numVal = Number(value) || 0;
-    const isNeg = numVal < 0;
-
-    const toggleSign = () => {
-        if (value == null || value === '' || value === 0) return;
-        onChange?.(name, -numVal);
-    };
-
-    return (
-        <div className="space-y-1.5 w-full">
-            <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-[10px]">{label}</label>
-            <div className="flex gap-1.5">
-                <button
-                    type="button"
-                    onClick={toggleSign}
-                    className={`shrink-0 w-9 h-9 rounded-lg border text-sm font-bold transition-colors ${
-                        isNeg
-                            ? 'bg-red-500/20 border-red-500/50 text-red-400'
-                            : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                    }`}
-                >
-                    {isNeg ? '−' : '+'}
-                </button>
-                <div className="relative flex-1">
-                    <input
-                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2 pl-3 pr-10 text-white placeholder-slate-500 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-mono transition-all text-left"
-                        placeholder="0.0"
-                        type="number"
-                        inputMode="decimal"
-                        value={value != null && value !== '' ? Math.abs(numVal) : ''}
-                        onChange={e => {
-                            const raw = e.target.value === '' ? null : parseFloat(e.target.value);
-                            if (raw == null) { onChange?.(name, null); return; }
-                            onChange?.(name, isNeg ? -Math.abs(raw) : Math.abs(raw));
-                        }}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const inputs = Array.from(document.querySelectorAll('input:not([readonly]):not([disabled])'));
-                                const idx = inputs.indexOf(e.target as Element);
-                                if (idx >= 0 && idx < inputs.length - 1) (inputs[idx + 1] as HTMLElement).focus();
-                            }
-                        }}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">MW</span>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const GeneratorSubCalculation = ({ label, value, unit }: { label: string, value: string, unit: string }) => (
-    <div className="flex flex-col gap-1 bg-[#1f2b3e]/20 border border-slate-700/30 rounded-lg p-3">
-        <span className="text-[10px] font-bold text-[#92a9c9] uppercase tracking-wider text-left">{label}</span>
-        <div className="flex items-baseline justify-between w-full">
-            <span className="text-white text-lg font-mono font-bold">{value}</span>
-            <span className="text-slate-500 text-[10px] font-medium">{unit}</span>
-        </div>
-    </div>
-);

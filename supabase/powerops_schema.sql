@@ -172,12 +172,17 @@ CREATE TABLE shift_generator_gi (
     UNIQUE(shift_report_id)
 );
 
--- ─── 4. Shift Power Distribution (5 field) ───
+-- ─── 4. Shift Power Distribution ───
 CREATE TABLE shift_power_dist (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     shift_report_id UUID NOT NULL REFERENCES shift_reports(id) ON DELETE CASCADE,
-    power_ubb NUMERIC, power_pabrik2 NUMERIC,
-    power_pabrik3a NUMERIC, power_pie NUMERIC, power_pabrik3b NUMERIC,
+    power_ubb NUMERIC, power_ubb_totalizer NUMERIC,
+    power_pabrik2 NUMERIC, power_pabrik2_totalizer NUMERIC,
+    power_pabrik3a NUMERIC, power_pabrik3a_totalizer NUMERIC,
+    power_revamping NUMERIC, power_revamping_totalizer NUMERIC,
+    power_pie NUMERIC, power_pie_totalizer NUMERIC,
+    power_pabrik3b NUMERIC,
+    power_stg_ubb_totalizer NUMERIC,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)
 );

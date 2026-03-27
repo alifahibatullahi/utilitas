@@ -86,7 +86,7 @@ export default function InputShiftPage() {
     const shiftMap: Record<number, ShiftType> = { 1: 'malam', 2: 'pagi', 3: 'sore' };
     const SHIFT_LABELS: Record<number, string> = { 1: 'Shift Malam 06.00', 2: 'Shift Pagi 14.00', 3: 'Shift Sore 22.00' };
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
-    const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
+    const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const { operator } = useOperator();
 
@@ -499,7 +499,7 @@ export default function InputShiftPage() {
                             {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} coalBunkerValues={coalBunker as Record<string, number | null>} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevTotalizerBfw={prevBoilerA.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
                             {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} coalBunkerValues={coalBunker as Record<string, number | null>} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevTotalizerBfw={prevBoilerB.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
-                            {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} />}
+                            {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} />}
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
                             {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} />}
                             {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} />}

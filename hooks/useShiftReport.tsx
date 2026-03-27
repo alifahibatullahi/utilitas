@@ -25,6 +25,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
     const [prevCoalBunker, setPrevCoalBunker] = useState<Record<string, number | null>>({});
     const [prevTurbin, setPrevTurbin] = useState<Record<string, number | null>>({});
     const [prevSteamDist, setPrevSteamDist] = useState<Record<string, number | null>>({});
+    const [prevPowerDist, setPrevPowerDist] = useState<Record<string, number | null>>({});
 
     const { prevDate, prevShift } = useMemo(() => getPreviousShift(date, shift), [date, shift]);
 
@@ -35,6 +36,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
             setPrevCoalBunker({});
             setPrevTurbin({});
             setPrevSteamDist({});
+            setPrevPowerDist({});
             return;
         }
 
@@ -44,7 +46,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
         async function fetchPrev() {
             const { data } = await supabase
                 .from('shift_reports')
-                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f), shift_turbin(totalizer_steam_inlet, totalizer_condensate), shift_steam_dist(pabrik1_totalizer, pabrik2_totalizer, pabrik3a_totalizer)')
+                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f), shift_turbin(totalizer_steam_inlet, totalizer_condensate), shift_steam_dist(pabrik1_totalizer, pabrik2_totalizer, pabrik3a_totalizer), shift_power_dist(power_ubb_totalizer, power_pabrik2_totalizer, power_pabrik3a_totalizer, power_revamping_totalizer, power_pie_totalizer, power_stg_ubb_totalizer)')
                 .eq('date', prevDate)
                 .eq('shift', prevShift)
                 .maybeSingle();
@@ -103,12 +105,29 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
                 } else {
                     setPrevSteamDist({});
                 }
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const pd = (data as any).shift_power_dist;
+                const pdRow = Array.isArray(pd) ? pd[0] : pd;
+                if (pdRow) {
+                    setPrevPowerDist({
+                        power_ubb_totalizer: pdRow.power_ubb_totalizer,
+                        power_pabrik2_totalizer: pdRow.power_pabrik2_totalizer,
+                        power_pabrik3a_totalizer: pdRow.power_pabrik3a_totalizer,
+                        power_revamping_totalizer: pdRow.power_revamping_totalizer,
+                        power_pie_totalizer: pdRow.power_pie_totalizer,
+                        power_stg_ubb_totalizer: pdRow.power_stg_ubb_totalizer,
+                    });
+                } else {
+                    setPrevPowerDist({});
+                }
             } else {
                 setPrevBoilerA({});
                 setPrevBoilerB({});
                 setPrevCoalBunker({});
                 setPrevTurbin({});
                 setPrevSteamDist({});
+                setPrevPowerDist({});
             }
         }
 
@@ -116,7 +135,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
         return () => { stale = true; };
     }, [prevDate, prevShift, date]);
 
-    return { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist };
+    return { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist };
 }
 
 // Track when each bunker started being "Berasap"
@@ -269,10 +288,17 @@ export interface ShiftReportData {
     }[];
     shift_power_dist: {
         power_ubb: number | null;
+        power_ubb_totalizer: number | null;
         power_pabrik2: number | null;
+        power_pabrik2_totalizer: number | null;
         power_pabrik3a: number | null;
+        power_pabrik3a_totalizer: number | null;
+        power_revamping: number | null;
+        power_revamping_totalizer: number | null;
         power_pie: number | null;
+        power_pie_totalizer: number | null;
         power_pabrik3b: number | null;
+        power_stg_ubb_totalizer: number | null;
     }[];
     shift_esp_handling: {
         esp_a1: number | null;
@@ -489,7 +515,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','press_lps','stream_days','totalizer_steam_inlet','totalizer_condensate'],
         shift_steam_dist: ['pabrik1_flow','pabrik1_temp','pabrik1_totalizer','pabrik2_flow','pabrik2_temp','pabrik2_totalizer','pabrik3a_flow','pabrik3a_temp','pabrik3a_totalizer','pabrik3b_flow','pabrik3b_temp'],
         shift_generator_gi: ['gen_load','gen_ampere','gen_amp_react','gen_cos_phi','gen_tegangan','gen_frequensi','gi_sum_p','gi_sum_q','gi_cos_phi'],
-        shift_power_dist: ['power_ubb','power_pabrik2','power_pabrik3a','power_pie','power_pabrik3b'],
+        shift_power_dist: ['power_ubb','power_ubb_totalizer','power_pabrik2','power_pabrik2_totalizer','power_pabrik3a','power_pabrik3a_totalizer','power_revamping','power_revamping_totalizer','power_pie','power_pie_totalizer','power_pabrik3b','power_stg_ubb_totalizer'],
         shift_esp_handling: ['esp_a1','esp_a2','esp_a3','esp_b1','esp_b2','esp_b3','silo_a','silo_b','unloading_a','unloading_b','loading','hopper','conveyor','pf1','pf2'],
         shift_tankyard: ['tk_rcw','tk_demin','tk_solar_ab'],
         shift_personnel: ['turbin_grup','turbin_karu','turbin_kasi','boiler_grup','boiler_karu','boiler_kasi'],

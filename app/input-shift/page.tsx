@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import TabBoiler from '@/components/input-shift/TabBoiler';
 import TabTurbin from '@/components/input-shift/TabTurbin';
 import TabGenerator from '@/components/input-shift/TabGenerator';
@@ -89,6 +90,52 @@ export default function InputShiftPage() {
     const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const { operator } = useOperator();
+    const router = useRouter();
+
+    // ─── Navigation Guard ───
+    const [showNavWarning, setShowNavWarning] = useState(false);
+    const [userModified, setUserModified] = useState(false);
+    const userModifiedRef = useRef(false);
+    const bypassNavRef = useRef(false);
+    const pendingNavUrl = useRef<string | null>(null);
+
+    useEffect(() => { userModifiedRef.current = userModified; }, [userModified]);
+
+    // Patch history.pushState once to intercept SPA navigation
+    useEffect(() => {
+        const originalPushState = history.pushState.bind(history);
+        history.pushState = function(state: unknown, title: string, url?: string | URL | null) {
+            const targetUrl = url ? String(url) : '';
+            if (!userModifiedRef.current || bypassNavRef.current || !targetUrl || targetUrl.includes('/input-shift')) {
+                originalPushState(state, title, url);
+                return;
+            }
+            pendingNavUrl.current = targetUrl;
+            setShowNavWarning(true);
+        };
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (!userModifiedRef.current) return;
+            e.preventDefault();
+            e.returnValue = '';
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            history.pushState = originalPushState;
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
+
+    const handleNavLeave = useCallback(() => {
+        bypassNavRef.current = true;
+        const url = pendingNavUrl.current!;
+        setShowNavWarning(false);
+        router.push(url);
+    }, [router]);
+
+    const handleNavStay = useCallback(() => {
+        setShowNavWarning(false);
+        pendingNavUrl.current = null;
+    }, []);
 
     // Helper: extract non-null numeric fields from a record, skip id/FK fields
     const extractFields = (obj: Record<string, unknown> | undefined, skipKeys: string[] = []) => {
@@ -115,6 +162,7 @@ export default function InputShiftPage() {
         }
         lastSubmittedReportId.current = null;
 
+        setUserModified(false);
         setBoilerA({});
         setBoilerB({});
         setTurbin({});
@@ -172,6 +220,7 @@ export default function InputShiftPage() {
     // Generic change handlers
     const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>
         (name: string, value: number | string | null) => {
+            setUserModified(true);
             setter(prev => ({
                 ...prev,
                 [name]: typeof value === 'string'
@@ -182,6 +231,7 @@ export default function InputShiftPage() {
 
     const makeMixedHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | string | null>>>) =>
         (name: string, value: number | string | null) => {
+            setUserModified(true);
             setter(prev => ({ ...prev, [name]: value }));
         };
 
@@ -246,6 +296,7 @@ export default function InputShiftPage() {
                 showToast('Error: ' + result.error, 'error');
             } else {
                 showToast('Laporan berhasil disimpan!', 'success');
+                setUserModified(false);
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
             }
@@ -298,6 +349,37 @@ export default function InputShiftPage() {
 
     return (
         <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 flex flex-col gap-6 h-full overflow-hidden">
+            {/* Navigation Warning Modal */}
+            {showNavWarning && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-[#16202e] border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-amber-400 text-[22px]">warning</span>
+                            </div>
+                            <h3 className="text-white font-extrabold text-base">Data Belum Dikirim</h3>
+                        </div>
+                        <p className="text-slate-400 text-sm leading-relaxed mb-5">
+                            Kamu belum mengirim laporan shift. Data yang sudah diisi akan <span className="text-rose-400 font-semibold">hilang</span> jika pindah halaman.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleNavStay}
+                                className="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-300 text-sm font-bold hover:bg-slate-700/50 transition-colors cursor-pointer"
+                            >
+                                Kembali
+                            </button>
+                            <button
+                                onClick={handleNavLeave}
+                                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition-colors cursor-pointer"
+                            >
+                                Tinggalkan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Toast Notification */}
             {toast && (
                 <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all ${

@@ -14,9 +14,10 @@ interface TabESPProps {
     onFieldChange?: (name: string, value: number | string | null) => void;
     ashEntries?: AshUnloadingEntry[];
     onAshEntriesChange?: (entries: AshUnloadingEntry[]) => void;
+    savedAshEntries?: AshUnloadingEntry[];
 }
 
-export default function TabESP({ values = {}, onFieldChange, ashEntries = [], onAshEntriesChange }: TabESPProps) {
+export default function TabESP({ values = {}, onFieldChange, ashEntries = [], onAshEntriesChange, savedAshEntries = [] }: TabESPProps) {
     const [currentEntry, setCurrentEntry] = useState<AshUnloadingEntry>({ silo: '', perusahaan: '', tujuan: '', ritase: null });
 
     const addEntry = () => {
@@ -94,10 +95,32 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                             </button>
                         </div>
 
-                        {/* Added Entries List */}
+                        {/* Saved Entries (already submitted) */}
+                        {savedAshEntries.length > 0 && (
+                            <div className="space-y-2 mt-4 pt-4 border-t border-slate-700/50">
+                                <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                    Sudah Dilaporkan ({savedAshEntries.length})
+                                </p>
+                                {savedAshEntries.map((entry, idx) => (
+                                    <div key={idx} className="flex items-center p-3 bg-emerald-900/20 border border-emerald-700/40 rounded-lg">
+                                        <div className="flex flex-col flex-1">
+                                            <span className="text-sm font-mono text-emerald-200 font-bold">{entry.ritase} <span className="text-xs text-emerald-400 font-medium">Rit</span> <span className="text-slate-500 mx-1">•</span> <span className="text-emerald-300">Silo {entry.silo}</span></span>
+                                            <span className="text-xs text-slate-400 mt-1"><span className="text-slate-500">PT:</span> {entry.perusahaan}</span>
+                                            <span className="text-xs text-slate-400 mt-0.5"><span className="text-slate-500">Tujuan:</span> {entry.tujuan}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Pending Entries List */}
                         {ashEntries.length > 0 && (
                             <div className="space-y-2 mt-4 pt-4 border-t border-slate-700/50">
-                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Daftar Unloading ({ashEntries.length})</p>
+                                <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-[13px]">pending</span>
+                                    Belum Dikirim ({ashEntries.length})
+                                </p>
                                 {ashEntries.map((entry, idx) => (
                                     <div key={idx} className="flex justify-between items-center p-3 bg-[#101822] border border-slate-700/80 rounded-lg shadow-inner">
                                         <div className="flex flex-col">

@@ -79,6 +79,7 @@ export default function InputShiftPage() {
     const [chemicalDosing, setChemicalDosing] = useState<Record<string, number | null>>({});
     const [solarEntries, setSolarEntries] = useState<{ tanggal: string; jumlah: number | null; perusahaan: string }[]>([]);
     const [ashEntries, setAshEntries] = useState<AshUnloadingEntry[]>([]);
+    const [savedAshEntries, setSavedAshEntries] = useState<AshUnloadingEntry[]>([]);
 
     // Shift mapping: button order matches chronological report time
     // 06.00 → shift malam (night shift makes 06.00 report)
@@ -91,6 +92,25 @@ export default function InputShiftPage() {
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const { operator } = useOperator();
     const router = useRouter();
+
+    // Fetch saved ash unloadings for current date+shift
+    useEffect(() => {
+        const supabase = createClient();
+        supabase
+            .from('ash_unloadings')
+            .select('silo, perusahaan, tujuan, ritase')
+            .eq('date', selectedDate)
+            .eq('shift', shiftMap[selectedShift])
+            .order('created_at', { ascending: true })
+            .then(({ data }) => {
+                setSavedAshEntries((data ?? []).map(r => ({
+                    silo: r.silo,
+                    perusahaan: r.perusahaan,
+                    tujuan: r.tujuan,
+                    ritase: r.ritase,
+                })));
+            });
+    }, [selectedDate, selectedShift]);
 
     // ─── Navigation Guard ───
     const [showNavWarning, setShowNavWarning] = useState(false);
@@ -299,6 +319,12 @@ export default function InputShiftPage() {
                 setUserModified(false);
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
+                // Refresh saved ash unloadings
+                supabase.from('ash_unloadings').select('silo, perusahaan, tujuan, ritase')
+                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
+                    .order('created_at', { ascending: true })
+                    .then(({ data }) => setSavedAshEntries((data ?? []).map(r => ({ silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));
+                setAshEntries([]);
             }
         } catch (err) {
             showToast('Terjadi kesalahan saat menyimpan laporan.', 'error');
@@ -584,7 +610,7 @@ export default function InputShiftPage() {
                             {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} />}
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
                             {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} />}
-                            {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} />}
+                            {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} />}
                             {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
                             {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} />}
                         </div>

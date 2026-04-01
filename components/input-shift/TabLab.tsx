@@ -146,7 +146,7 @@ export default function TabLab({
                 </div>
             </div>
 
-            <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
                 <Card title="Lab Summary" icon="summarize" color="purple" isSidebar={true}>
                     <CalculatedField label="PHOSPHATE A" value={(Number(cd.phosphate_penambahan_chemical) || 0).toFixed(1)} unit="liter" variant="primary" />
                     <CalculatedField label="PHOSPHATE B" value={(Number(cd.phosphate_b_penambahan_chemical) || 0).toFixed(1)} unit="liter" variant="transparent" />

@@ -60,7 +60,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                 </div>
             </div>
 
-            <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
                 <Card title="Distribusi Shift" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="Steam Pabrik 1" value={produksiP1.toFixed(2)} unit="ton" variant="secondary" size="medium" />
                     <CalculatedField label="Steam Pabrik 2" value={produksiP2.toFixed(2)} unit="ton" variant="secondary" size="medium" />

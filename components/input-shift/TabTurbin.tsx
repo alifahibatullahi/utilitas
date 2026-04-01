@@ -35,10 +35,8 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
 
                     <Card title="Condenser" icon="water_drop" color="cyan">
                         <InputField label="Flow Condensate" unit="t/h" color="cyan" name="flow_cond" value={values.flow_cond} onChange={onFieldChange} />
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Temp Exhaust Steam" unit="°C" color="cyan" name="exh_steam" value={values.exh_steam} onChange={onFieldChange} />
-                            <InputField label="Vacuum" unit="MPa" color="cyan" name="vacuum" value={values.vacuum} onChange={onFieldChange} negative />
-                        </div>
+                        <InputField label="Temp Exhaust Steam" unit="°C" color="cyan" name="exh_steam" value={values.exh_steam} onChange={onFieldChange} />
+                        <InputField label="Vacuum" unit="MPa" color="cyan" name="vacuum" value={values.vacuum} onChange={onFieldChange} negative />
                         <div className="grid grid-cols-2 gap-3">
                             <InputField label="Level Condenser" unit="mm" color="cyan" name="level_condenser" value={values.level_condenser} onChange={onFieldChange} />
                             <InputField label="Durasi HPO" unit="s" color="cyan" name="hpo_durasi" value={values.hpo_durasi} onChange={onFieldChange} />
@@ -75,7 +73,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                 </div>
             </div>
 
-            <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
                 <Card title="Produksi Shift" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="PRODUKSI STEAM INLET" value={produksiSteamInlet.toFixed(2)} unit="ton" variant="primary" />
                     <CalculatedField label="PRODUKSI CONDENSATE" value={produksiCondensate.toFixed(2)} unit="ton" variant="secondary" />

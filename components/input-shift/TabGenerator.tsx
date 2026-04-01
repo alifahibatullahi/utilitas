@@ -91,7 +91,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                 </div>
             </div>
 
-            <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
                 <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="LOAD STG" value={fmt(gv.gen_load)} unit="MW" variant="primary" />
 

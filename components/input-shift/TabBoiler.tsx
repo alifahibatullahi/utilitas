@@ -102,7 +102,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                 </div>
             </div>
 
-            <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
                 <Card title="Produksi Shift" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="PRODUKSI STEAM" value={produksiSteam.toFixed(2)} unit="ton" variant="primary" size="large" />
                     <CalculatedField label="PRODUKSI BFW" value={produksiBfw.toFixed(2)} unit="ton" variant="secondary" size="medium" />

@@ -274,7 +274,7 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
             };
 
             const result = await submitReport({
-                created_by: operator?.id != null ? String(operator.id) : undefined,
+                created_by: operator?.supabaseId ?? undefined,
                 notes: undefined,
                 produksi_steam_a: prodA24 || null,
                 produksi_steam_b: prodB24 || null,

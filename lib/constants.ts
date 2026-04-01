@@ -113,6 +113,7 @@ export type OperatorRole = 'group_a' | 'group_b' | 'group_c' | 'group_d' | 'supe
 
 export interface Operator {
     id: number;
+    supabaseId?: string;    // UUID dari DB operators.id
     name: string;
     role: OperatorRole;
     group?: string;         // Group A/B/C/D

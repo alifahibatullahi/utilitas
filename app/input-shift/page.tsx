@@ -291,7 +291,7 @@ export default function InputShiftPage() {
                     date: entry.tanggal,
                     liters: entry.jumlah,
                     supplier: entry.perusahaan,
-                    operator_id: operator?.id != null ? String(operator.id) : null,
+                    operator_id: operator?.supabaseId ?? null,
                 }));
                 await supabase.from('solar_unloadings').insert(inserts as any[]);
             }
@@ -307,7 +307,7 @@ export default function InputShiftPage() {
                     perusahaan: entry.perusahaan,
                     tujuan: entry.tujuan,
                     ritase: entry.ritase,
-                    operator_id: operator?.id != null ? String(operator.id) : null,
+                    operator_id: operator?.supabaseId ?? null,
                 }));
                 await supabase.from('ash_unloadings').insert(ashInserts as any[]);
             }

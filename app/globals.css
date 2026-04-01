@@ -38,6 +38,23 @@
   background: #2b7cee;
 }
 
+/* Custom light scrollbar for specific modules */
+.light-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.light-scrollbar::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+.light-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+.light-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
 /* Smooth transitions */
 * {
   transition-property: background-color, border-color, box-shadow;

@@ -405,27 +405,70 @@ export interface DailyReportTotalizerRow {
     created_at: string;
 }
 
+// ─── Critical & Maintenance Types ───
+
+export type CriticalEquipmentStatus = 'OPEN' | 'CLOSED';
+export type MaintenanceStatus = 'OPEN' | 'IP' | 'OK';
+export type CriticalStatus = CriticalEquipmentStatus | MaintenanceStatus;
+export type MaintenanceType = 'corrective' | 'preventif';
+export type HarScope = 'mekanik' | 'listrik' | 'instrumen' | 'sipil';
+export type ForemanType = 'foreman_turbin' | 'foreman_boiler';
+export type ActivityActionType = 'created' | 'status_changed' | 'note' | 'maintenance_added' | 'maintenance_updated' | 'maintenance_deleted';
+
 // ─── Supporting Tables ───
 
 export interface CriticalEquipmentRow {
     id: string;
-    shift_report_id: string;
+    shift_report_id: string | null;
     date: string;
     item: string;
-    scope: string;
-    status: string | null;
+    deskripsi: string;
+    scope: HarScope;
+    foreman: ForemanType;
+    status: CriticalEquipmentStatus;
+    notif: string | null;
+    reported_by: string | null;
     created_at: string;
+    updated_at: string;
 }
 
 export interface MaintenanceLogRow {
     id: string;
-    shift_report_id: string;
+    shift_report_id: string | null;
+    critical_id: string | null;
+    date: string;
     item: string;
     uraian: string;
-    scope: string;
+    scope: HarScope;
+    foreman: ForemanType;
+    tipe: MaintenanceType;
+    status: MaintenanceStatus;
     keterangan: string | null;
-    status: string;
+    notif: string | null;
+    reported_by: string | null;
     created_at: string;
+    updated_at: string;
+}
+
+export interface CriticalActivityLogRow {
+    id: string;
+    critical_id: string;
+    action_type: ActivityActionType;
+    description: string;
+    actor: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+}
+
+// ─── Joined types for UI ───
+
+export interface CriticalWithMaintenance extends CriticalEquipmentRow {
+    maintenance_logs: MaintenanceLogRow[];
+    critical_activity_logs: CriticalActivityLogRow[];
+}
+
+export interface MaintenanceWithCritical extends MaintenanceLogRow {
+    critical_equipment: CriticalEquipmentRow | null;
 }
 
 export interface ShiftNoteRow {

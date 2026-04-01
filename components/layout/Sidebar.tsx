@@ -9,6 +9,7 @@ const ICON_MAP: Record<string, string> = {
     dashboard: 'dashboard',
     tank: 'propane_tank',
     edit: 'edit_square',
+    warning: 'warning',
     report: 'description',
     daily: 'calendar_month',
     trend: 'history',
@@ -37,7 +38,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     };
 
     // Group nav items
-    const mainNav = filteredNav.filter(item => ['dashboard', 'tank-level', 'input-shift'].includes(item.id));
+    const mainNav = filteredNav.filter(item => ['dashboard', 'tank-level', 'input-shift', 'critical'].includes(item.id));
     const reportNav = filteredNav.filter(item => ['laporan-shift', 'laporan-harian'].includes(item.id));
     const systemNav = filteredNav.filter(item => ['history', 'admin-users'].includes(item.id));
 

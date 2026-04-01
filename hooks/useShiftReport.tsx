@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, ReportStatus } from '@/lib/supabase/types';
+import { getShiftWindow } from '@/lib/constants';
 
 // Determine the previous shift based on chronological report order:
 // 06.00 (malam) → prev is sore (22.00) from yesterday
@@ -398,15 +399,24 @@ export interface ShiftReportData {
     critical_equipment: {
         date: string;
         item: string;
+        deskripsi: string;
         scope: string;
+        foreman: string;
         status: string | null;
+        reported_by: string | null;
     }[];
     maintenance_logs: {
+        critical_id: string | null;
+        date: string;
         item: string;
         uraian: string;
         scope: string;
-        keterangan: string | null;
+        foreman: string;
+        tipe: string;
         status: string;
+        keterangan: string | null;
+        notif: string | null;
+        reported_by: string | null;
     }[];
     shift_notes: {
         content: string;
@@ -421,6 +431,8 @@ function isSupabaseConfigured(): boolean {
 
 export function useShiftReport(date: string, shift: ShiftType) {
     const [report, setReport] = useState<ShiftReportData | null>(null);
+    const [activeMaintenance, setActiveMaintenance] = useState<import('@/lib/supabase/types').MaintenanceWithCritical[]>([]);
+    const [openCriticals, setOpenCriticals] = useState<import('@/lib/supabase/types').CriticalEquipmentRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [fetchKey, setFetchKey] = useState(0);
@@ -441,32 +453,55 @@ export function useShiftReport(date: string, shift: ShiftType) {
             setLoading(true);
             setError(null);
 
-            const { data, error: fetchError } = await supabase
-                .from('shift_reports')
-                .select(`
-                    *,
-                    shift_boiler(*),
-                    shift_turbin(*),
-                    shift_steam_dist(*),
-                    shift_generator_gi(*),
-                    shift_power_dist(*),
-                    shift_esp_handling(*),
-                    shift_tankyard(*),
-                    shift_personnel(*),
-                    shift_coal_bunker(*),
-                    shift_water_quality(*),
-                    critical_equipment(*),
-                    maintenance_logs(*),
-                    shift_notes(*)
-                `)
-                .eq('date', date)
-                .eq('shift', shift)
-                .maybeSingle();
+            const win = getShiftWindow(date, shift as 'pagi' | 'sore' | 'malam');
+            const winStart = win.start.toISOString();
+            const winEnd = win.end.toISOString();
+
+            const [{ data, error: fetchError }, maintRes, critRes] = await Promise.all([
+                supabase
+                    .from('shift_reports')
+                    .select(`
+                        *,
+                        shift_boiler(*),
+                        shift_turbin(*),
+                        shift_steam_dist(*),
+                        shift_generator_gi(*),
+                        shift_power_dist(*),
+                        shift_esp_handling(*),
+                        shift_tankyard(*),
+                        shift_personnel(*),
+                        shift_coal_bunker(*),
+                        shift_water_quality(*),
+                        critical_equipment(*),
+                        maintenance_logs(*),
+                        shift_notes(*)
+                    `)
+                    .eq('date', date)
+                    .eq('shift', shift)
+                    .maybeSingle(),
+                supabase
+                    .from('maintenance_logs')
+                    .select('*, critical_equipment(item, deskripsi)')
+                    .in('status', ['IP', 'OK'])
+                    .gte('updated_at', winStart)
+                    .lte('updated_at', winEnd)
+                    .order('created_at', { ascending: true }),
+                supabase
+                    .from('critical_equipment')
+                    .select('*')
+                    .eq('status', 'OPEN')
+                    .order('created_at', { ascending: true }),
+            ]);
 
             if (stale) {
                 console.log(`[useShiftReport] STALE fetch discarded: date=${date}, shift=${shift}`);
                 return;
             }
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setActiveMaintenance((maintRes.data ?? []) as any[]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setOpenCriticals((critRes.data ?? []) as any[]);
 
             if (fetchError) {
                 setError(fetchError.message);
@@ -702,5 +737,5 @@ export function useShiftReport(date: string, shift: ShiftType) {
         return { error: null, reportId };
     }, [date, shift]);
 
-    return { report, loading, error, submitReport, refetch };
+    return { report, activeMaintenance, openCriticals, loading, error, submitReport, refetch };
 }

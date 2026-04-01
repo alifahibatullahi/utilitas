@@ -9,6 +9,7 @@ const ICON_MAP: Record<string, string> = {
     dashboard: 'dashboard',
     tank: 'propane_tank',
     edit: 'edit_square',
+    warning: 'warning',
     report: 'description',
     daily: 'calendar_month',
     trend: 'history',

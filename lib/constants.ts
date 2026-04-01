@@ -271,8 +271,97 @@ export const NAV_ITEMS: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/dashboard', roles: 'all' },
     { id: 'tank-level', label: 'Tank Level', icon: 'tank', path: '/tank-level', roles: 'all' },
     { id: 'input-shift', label: 'Input Laporan', icon: 'edit', path: '/input-shift', roles: [...SHIFT_INPUT_ROLES, 'supervisor'] },
+    { id: 'critical', label: 'Critical & Maint', icon: 'warning', path: '/critical', roles: 'all' },
     { id: 'laporan-shift', label: 'Laporan Shift', icon: 'report', path: '/laporan-shift', roles: 'all' },
     { id: 'laporan-harian', label: 'Laporan Harian', icon: 'daily', path: '/laporan-harian', roles: 'all' },
     { id: 'history', label: 'History & Trend', icon: 'trend', path: '/history', roles: 'all' },
     { id: 'admin-users', label: 'Kelola User', icon: 'users', path: '/admin/users', roles: ['admin'] },
 ];
+
+// ─── Critical & Maintenance Constants ───
+
+export const HAR_SCOPES = [
+    { value: 'mekanik', label: 'Mekanik' },
+    { value: 'listrik', label: 'Listrik' },
+    { value: 'instrumen', label: 'Instrumen' },
+    { value: 'sipil', label: 'Sipil' },
+] as const;
+
+export const FOREMAN_OPTIONS = [
+    { value: 'foreman_turbin', label: 'Foreman Turbin' },
+    { value: 'foreman_boiler', label: 'Foreman Boiler' },
+] as const;
+
+export const CRITICAL_STATUSES = [
+    { value: 'OPEN', label: 'Open', color: 'rose', icon: 'error' },
+    { value: 'CLOSED', label: 'Closed', color: 'slate', icon: 'lock' },
+] as const;
+
+export const MAINTENANCE_STATUSES = [
+    { value: 'OPEN', label: 'Open', color: 'blue', icon: 'info' },
+    { value: 'IP', label: 'In Progress', color: 'amber', icon: 'pending' },
+    { value: 'OK', label: 'Selesai', color: 'emerald', icon: 'check_circle' },
+] as const;
+
+export const PREDEFINED_ITEMS = [
+    'Boiler A', 'Boiler B',
+    'STG (Turbin)', 'Generator',
+    'ESP A', 'ESP B',
+    'Silo A', 'Silo B',
+    'Conveyor', 'Crusher',
+    'Pompa BFW A', 'Pompa BFW B',
+    'Pompa Kondensat', 'Pompa CEP',
+    'Deaerator', 'Condenser',
+    'Cooling Tower',
+    'Fan ID A', 'Fan ID B',
+    'Fan FD A', 'Fan FD B',
+    'Fan SA A', 'Fan SA B',
+    'Coal Feeder A', 'Coal Feeder B', 'Coal Feeder C',
+    'Coal Feeder D', 'Coal Feeder E', 'Coal Feeder F',
+] as const;
+
+// ─── Shift time window helper ───
+export type ShiftKey = 'pagi' | 'sore' | 'malam';
+
+// Shift times (WIB local):
+//   Pagi  : 07:00 – 15:00
+//   Sore  : 15:00 – 23:00
+//   Malam : 23:00 – 07:00 (next day)
+export const SHIFT_OPTIONS: { value: ShiftKey; label: string; start: string; end: string }[] = [
+    { value: 'pagi',  label: 'Pagi (07:00–15:00)',  start: '07:00', end: '15:00' },
+    { value: 'sore',  label: 'Sore (15:00–23:00)',  start: '15:00', end: '23:00' },
+    { value: 'malam', label: 'Malam (23:00–07:00)', start: '23:00', end: '07:00' },
+];
+
+export function getShiftWindow(date: string, shift: ShiftKey): { start: Date; end: Date } {
+    const [y, m, d] = date.split('-').map(Number);
+    if (shift === 'pagi') {
+        return { start: new Date(y, m - 1, d, 7, 0, 0), end: new Date(y, m - 1, d, 15, 0, 0) };
+    }
+    if (shift === 'sore') {
+        return { start: new Date(y, m - 1, d, 15, 0, 0), end: new Date(y, m - 1, d, 23, 0, 0) };
+    }
+    // malam: 23:00 same day – 07:00 next day
+    return { start: new Date(y, m - 1, d, 23, 0, 0), end: new Date(y, m - 1, d + 1, 7, 0, 0) };
+}
+
+export function detectCurrentShift(): { shift: ShiftKey; date: string } {
+    const now = new Date();
+    const h = now.getHours();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmt = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+    if (h >= 7 && h < 15) return { shift: 'pagi', date: fmt(now) };
+    if (h >= 15 && h < 23) return { shift: 'sore', date: fmt(now) };
+    // malam: 23:00+ same day, or 00:00–06:59 = previous day's malam
+    if (h < 7) {
+        const prev = new Date(now); prev.setDate(prev.getDate() - 1);
+        return { shift: 'malam', date: fmt(prev) };
+    }
+    return { shift: 'malam', date: fmt(now) };
+}
+
+export const KANBAN_COLUMNS = [
+    { id: 'OPEN', label: 'Open', bgColor: 'bg-blue-50', borderColor: 'border-blue-300', headerBg: 'bg-blue-500', textColor: 'text-blue-700', badgeBg: 'bg-blue-100' },
+    { id: 'IP', label: 'In Progress', bgColor: 'bg-amber-50', borderColor: 'border-amber-300', headerBg: 'bg-amber-500', textColor: 'text-amber-700', badgeBg: 'bg-amber-100' },
+    { id: 'OK', label: 'Selesai', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-300', headerBg: 'bg-emerald-500', textColor: 'text-emerald-700', badgeBg: 'bg-emerald-100' },
+] as const;

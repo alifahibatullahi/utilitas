@@ -19,8 +19,10 @@ interface BoilerData {
 interface CriticalEquipment {
     date: string;
     item: string;
+    deskripsi: string;
     uraian: string;
     scope: string;
+    foreman: string;
 }
 
 interface MaintenanceItem {
@@ -28,7 +30,10 @@ interface MaintenanceItem {
     item: string;
     uraian: string;
     scope: string;
+    foreman: string;
+    tipe: string;
     status: string;
+    notif: string | null;
 }
 
 interface ShiftReport {
@@ -185,15 +190,20 @@ function buildReportFromSupabase(sr: ShiftReportData): ShiftReport {
         criticalEquipment: (sr.critical_equipment ?? []).map(ce => ({
             date: ce.date ?? '',
             item: ce.item ?? '',
-            uraian: ce.scope ?? '',
+            deskripsi: ce.deskripsi ?? '',
+            uraian: ce.deskripsi ?? '',
             scope: ce.scope ?? '',
+            foreman: ce.foreman ?? '',
         })),
         maintenance: (sr.maintenance_logs ?? []).map(ml => ({
-            date: '',
+            date: ml.date ?? '',
             item: ml.item ?? '',
             uraian: ml.uraian ?? '',
             scope: ml.scope ?? '',
+            foreman: ml.foreman ?? '',
+            tipe: ml.tipe ?? 'corrective',
             status: ml.status ?? '',
+            notif: ml.notif ?? null,
         })),
         catatan: note?.content ?? '',
         catatanTime: note?.timestamp ?? '',
@@ -258,7 +268,7 @@ export default function LaporanShiftPage() {
     const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
     const [selectedDate, setSelectedDate] = useState(() => toLocalDateStr(new Date()));
 
-    const { report: supaReport, loading, error } = useShiftReport(selectedDate, activeShift);
+    const { report: supaReport, activeMaintenance, openCriticals, loading, error } = useShiftReport(selectedDate, activeShift);
 
     const report = useMemo(() => {
         if (supaReport) return buildReportFromSupabase(supaReport);
@@ -576,17 +586,20 @@ export default function LaporanShiftPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {report.maintenance.map((m, i) => (
+                                        {activeMaintenance.map((m, i) => (
                                             <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
                                                 <td className="text-[10px] py-2 px-1 text-center text-slate-400">{m.date}</td>
                                                 <td className="text-[10px] py-2 px-2 font-mono font-bold text-primary">{m.item}</td>
                                                 <td className="text-[10px] py-2 px-1 text-slate-300">{m.uraian}</td>
                                                 <td className="text-[10px] py-2 px-1 text-center text-slate-400">{m.scope}</td>
                                                 <td className="text-center py-2 px-2">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${m.status === 'OK' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{m.status}</span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${m.status === 'OK' ? 'bg-emerald-500/20 text-emerald-400' : m.status === 'IP' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>{m.status}</span>
                                                 </td>
                                             </tr>
                                         ))}
+                                        {activeMaintenance.length === 0 && (
+                                            <tr><td colSpan={5} className="text-center text-[10px] text-slate-500 italic py-4">Tidak ada maintenance aktif</td></tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -614,14 +627,17 @@ export default function LaporanShiftPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="text-center">
-                                        {report.criticalEquipment.map((eq, i) => (
+                                        {openCriticals.map((eq, i) => (
                                             <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
                                                 <td className="text-[10px] py-2 px-1 text-slate-400">{eq.date}</td>
                                                 <td className="text-[10px] py-2 px-1 font-mono font-bold text-rose-400">{eq.item}</td>
-                                                <td className="text-[10px] py-2 px-1 text-left text-slate-300">{eq.uraian}</td>
+                                                <td className="text-[10px] py-2 px-1 text-left text-slate-300">{eq.deskripsi}</td>
                                                 <td className="text-[10px] py-2 px-2 text-slate-400">{eq.scope}</td>
                                             </tr>
                                         ))}
+                                        {openCriticals.length === 0 && (
+                                            <tr><td colSpan={4} className="text-center text-[10px] text-slate-500 italic py-4">Tidak ada critical aktif</td></tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

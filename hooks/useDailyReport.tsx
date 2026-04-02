@@ -150,6 +150,19 @@ export function useDailyReport(date: string) {
                     setError(fetchError.message);
                 }
             } else if (data) {
+                // PostgREST returns single objects for one-to-one relations (UNIQUE on FK)
+                // but consumers expect arrays. Normalize here.
+                const oneToOneKeys = [
+                    'daily_report_steam', 'daily_report_power', 'daily_report_coal',
+                    'daily_report_turbine_misc', 'daily_report_stock_tank',
+                    'daily_report_coal_transfer', 'daily_report_totalizer',
+                ] as const;
+                for (const key of oneToOneKeys) {
+                    const val = (data as Record<string, unknown>)[key];
+                    if (val && !Array.isArray(val)) {
+                        (data as Record<string, unknown>)[key] = [val];
+                    }
+                }
                 setReport(data as unknown as DailyReportData);
             }
 
@@ -167,6 +180,17 @@ export function useDailyReport(date: string) {
             if (stale) return;
 
             if (prevData) {
+                const oneToOneKeys = [
+                    'daily_report_steam', 'daily_report_power', 'daily_report_coal',
+                    'daily_report_turbine_misc', 'daily_report_stock_tank',
+                    'daily_report_coal_transfer', 'daily_report_totalizer',
+                ] as const;
+                for (const key of oneToOneKeys) {
+                    const val = (prevData as Record<string, unknown>)[key];
+                    if (val && !Array.isArray(val)) {
+                        (prevData as Record<string, unknown>)[key] = [val];
+                    }
+                }
                 setPrevReport(prevData as unknown as DailyReportData);
             } else {
                 setPrevReport(null);

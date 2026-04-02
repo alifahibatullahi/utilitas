@@ -320,7 +320,7 @@ export default function InputShiftPage() {
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
                 // Refresh saved ash unloadings
-                supabase.from('ash_unloadings').select('silo, perusahaan, tujuan, ritase')
+                createClient().from('ash_unloadings').select('silo, perusahaan, tujuan, ritase')
                     .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
                     .order('created_at', { ascending: true })
                     .then(({ data }) => setSavedAshEntries((data ?? []).map(r => ({ silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));

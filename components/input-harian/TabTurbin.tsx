@@ -42,12 +42,11 @@ export default function TabTurbin({
                 <CalculatedField label="LPS III A" value="0" unit="Ton" variant="small" />
                 <CalculatedField label="Internal UBB (Inlet Turbin − Condensate)" value={fmt(internalUbb24)} unit="Ton" variant="primary" />
 
-                <SectionLabel label="Data Aktual" badge="Flow" />
+                <SectionLabel label="Flow" />
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Flow Inlet Turbin" name="inlet_turbine_00" value={steam.inlet_turbine_00} onChange={onSteamChange} unit="T/H" color="orange" />
                     <InputField label="Flow Pabrik 1" name="mps_i_00" value={steam.mps_i_00} onChange={onSteamChange} unit="T/H" color="orange" />
                     <InputField label="Flow Pabrik 3" name="mps_3a_00" value={steam.mps_3a_00} onChange={onSteamChange} unit="T/H" color="orange" />
-                    <InputField label="Flow Condensate" name="fully_condens_00" value={steam.fully_condens_00} onChange={onSteamChange} unit="T/H" color="orange" />
                     <InputField label="Flow Condensate (Co Gen)" name="co_gen_00" value={steam.co_gen_00} onChange={onSteamChange} unit="T/H" color="orange" />
                 </div>
                 <CalculatedField label="LPS II" value="0" unit="T/H" variant="small" />
@@ -56,12 +55,12 @@ export default function TabTurbin({
             </Card>
 
             {/* ═══ Turbine Generator ═══ */}
-            <Card title="Turbine Generator (Data Aktual)" icon="mode_fan" color="sky">
+            <Card title="Turbine Generator" icon="mode_fan" color="sky">
                 <div className="grid grid-cols-2 gap-4">
-                    <InputField label="Axial Displacement" name="axial_displacement" value={turbineMisc.axial_displacement} onChange={onTurbineMiscChange} unit="mm" color="sky" />
-                    <InputField label="Thrust Bearing Temp" name="thrust_bearing_temp" value={turbineMisc.thrust_bearing_temp} onChange={onTurbineMiscChange} unit="°C" color="sky" />
                     <InputField label="Steam Inlet Press" name="steam_inlet_press" value={turbineMisc.steam_inlet_press} onChange={onTurbineMiscChange} unit="MPa" color="sky" />
                     <InputField label="Steam Inlet Temp" name="steam_inlet_temp" value={turbineMisc.steam_inlet_temp} onChange={onTurbineMiscChange} unit="°C" color="sky" />
+                    <InputField label="Thrust Bearing Temp" name="thrust_bearing_temp" value={turbineMisc.thrust_bearing_temp} onChange={onTurbineMiscChange} unit="°C" color="sky" />
+                    <InputField label="Axial Displacement" name="axial_displacement" value={turbineMisc.axial_displacement} onChange={onTurbineMiscChange} unit="mm" color="sky" textMode />
                 </div>
             </Card>
         </div>

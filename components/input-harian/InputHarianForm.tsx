@@ -330,16 +330,18 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         <>
             {/* Toast */}
             {toast && (
-                <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all ${
-                    toast.type === 'success'
-                        ? 'bg-emerald-600 border border-emerald-400/50 shadow-emerald-500/20'
-                        : 'bg-red-600 border border-red-400/50 shadow-red-500/20'
-                }`}>
-                    <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">
-                            {toast.type === 'success' ? 'check_circle' : 'error'}
-                        </span>
-                        {toast.message}
+                <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                    <div className={`px-8 py-5 rounded-2xl shadow-2xl text-white text-base font-semibold transition-all scale-100 pointer-events-auto ${
+                        toast.type === 'success'
+                            ? 'bg-emerald-600 border border-emerald-400/50 shadow-emerald-500/30'
+                            : 'bg-red-600 border border-red-400/50 shadow-red-500/30'
+                    }`}>
+                        <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-[28px]">
+                                {toast.type === 'success' ? 'check_circle' : 'error'}
+                            </span>
+                            {toast.message}
+                        </div>
                     </div>
                 </div>
             )}
@@ -359,7 +361,7 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                             className={`flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">save</span>
-                            {submitting ? 'Menyimpan...' : 'Simpan Laporan'}
+                            {submitting ? 'Menyimpan...' : 'SIMPAN LAPORAN'}
                         </button>
                     </div>
 

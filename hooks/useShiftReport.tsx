@@ -590,6 +590,9 @@ export function useShiftReport(date: string, shift: ShiftType) {
         const supabase = createClient();
         const errors: string[] = [];
 
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const validCreatedBy = reportData.created_by && UUID_REGEX.test(reportData.created_by) ? reportData.created_by : null;
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: sr, error: srError } = await supabase
             .from('shift_reports')
@@ -600,7 +603,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 supervisor: reportData.supervisor,
                 status: 'draft' as ReportStatus,
                 catatan: reportData.catatan || null,
-                ...(reportData.created_by ? { created_by: reportData.created_by } : {}),
+                ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any, { onConflict: 'date,shift,group_name' })
             .select()

@@ -200,6 +200,9 @@ export function useDailyReport(date: string) {
         const supabase = createClient();
 
         // Upsert daily_reports anchor
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const validCreatedBy = reportData.created_by && UUID_REGEX.test(reportData.created_by) ? reportData.created_by : null;
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: dr, error: drError } = await supabase
             .from('daily_reports')
@@ -211,7 +214,7 @@ export function useDailyReport(date: string) {
                 load_mw: reportData.load_mw ?? null,
                 notes: reportData.notes || null,
                 status: 'draft' as ReportStatus,
-                ...(reportData.created_by ? { created_by: reportData.created_by } : {}),
+                ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any, { onConflict: 'date' })
             .select()

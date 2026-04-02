@@ -22,9 +22,10 @@ export default function TabBoiler({
     const prodB24 = prevB24 > 0 ? n(steam.prod_boiler_b_24) - prevB24 : n(steam.prod_boiler_b_24);
     const prodTotal24 = prodA24 + prodB24;
 
-    // Coal calculations
-    const totalA24 = n(coal.coal_a_24) + n(coal.coal_b_24) + n(coal.coal_c_24);
-    const totalB24 = n(coal.coal_d_24) + n(coal.coal_e_24) + n(coal.coal_f_24);
+    // Coal calculations — selisih totalizer hari ini vs kemarin
+    const selCoal = (key: string, val: number | null | undefined) => { const p = pnCoal(key); return p > 0 ? n(val) - p : n(val); };
+    const totalA24 = selCoal('coal_a_24', coal.coal_a_24) + selCoal('coal_b_24', coal.coal_b_24) + selCoal('coal_c_24', coal.coal_c_24);
+    const totalB24 = selCoal('coal_d_24', coal.coal_d_24) + selCoal('coal_e_24', coal.coal_e_24) + selCoal('coal_f_24', coal.coal_f_24);
     const grandTotal24 = totalA24 + totalB24;
 
     // BFW Consumption calculations

@@ -192,8 +192,9 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
 
     // ─── CR Calculation (Total Batubara ÷ Total Produksi Steam) ───
     const N0 = (v: number | null | undefined) => Number(v) || 0;
-    const coalTotalA = N0(coal.coal_a_24) + N0(coal.coal_b_24) + N0(coal.coal_c_24);
-    const coalTotalB = N0(coal.coal_d_24) + N0(coal.coal_e_24) + N0(coal.coal_f_24);
+    const selCoalCR = (key: string) => { const p = prevCoal ? N0(prevCoal[key]) : 0; return p > 0 ? N0(coal[key]) - p : N0(coal[key]); };
+    const coalTotalA = selCoalCR('coal_a_24') + selCoalCR('coal_b_24') + selCoalCR('coal_c_24');
+    const coalTotalB = selCoalCR('coal_d_24') + selCoalCR('coal_e_24') + selCoalCR('coal_f_24');
     const prevSteamA24 = prevSteam ? N0(prevSteam.prod_boiler_a_24) : 0;
     const prevSteamB24 = prevSteam ? N0(prevSteam.prod_boiler_b_24) : 0;
     const steamProdA = prevSteamA24 > 0 ? N0(steam.prod_boiler_a_24) - prevSteamA24 : N0(steam.prod_boiler_a_24);
@@ -226,8 +227,9 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 lps_3a_00: 0,
             };
 
-            const totalA24 = N(coal.coal_a_24) + N(coal.coal_b_24) + N(coal.coal_c_24);
-            const totalB24 = N(coal.coal_d_24) + N(coal.coal_e_24) + N(coal.coal_f_24);
+            const selC = (key: string) => { const p = prevCoal ? N(prevCoal[key]) : 0; return p > 0 ? N(coal[key]) - p : N(coal[key]); };
+            const totalA24 = selC('coal_a_24') + selC('coal_b_24') + selC('coal_c_24');
+            const totalB24 = selC('coal_d_24') + selC('coal_e_24') + selC('coal_f_24');
             const totalA00 = N(coal.coal_a_00) + N(coal.coal_b_00) + N(coal.coal_c_00);
             const totalB00 = N(coal.coal_d_00) + N(coal.coal_e_00) + N(coal.coal_f_00);
             const coalWithCalcs = {

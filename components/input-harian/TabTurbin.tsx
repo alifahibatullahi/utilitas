@@ -11,9 +11,13 @@ export default function TabTurbin({
     const n = (v: number | null | undefined) => Number(v) || 0;
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
 
-    // Internal UBB = Inlet Turbin - Condensate
-    const internalUbb24 = n(steam.inlet_turbine_24) - n(steam.fully_condens_24);
-    const internalUbb00 = n(steam.inlet_turbine_00) - n(steam.co_gen_00);
+    // Internal UBB = selisih Inlet Turbin − selisih Condensate
+    const prevInlet24 = prevSteam ? n(prevSteam.inlet_turbine_24) : 0;
+    const prevCondens24 = prevSteam ? n(prevSteam.fully_condens_24) : 0;
+    const selInlet24 = prevInlet24 > 0 ? n(steam.inlet_turbine_24) - prevInlet24 : n(steam.inlet_turbine_24);
+    const selCondens24 = prevCondens24 > 0 ? n(steam.fully_condens_24) - prevCondens24 : n(steam.fully_condens_24);
+    const internalUbb24 = selInlet24 - selCondens24;
+    const internalUbb00 = n(steam.inlet_turbine_00) - n(steam.fully_condens_00);
 
     return (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
@@ -47,7 +51,7 @@ export default function TabTurbin({
                     <InputField label="Flow Inlet Turbin" name="inlet_turbine_00" value={steam.inlet_turbine_00} onChange={onSteamChange} unit="T/H" color="orange" />
                     <InputField label="Flow Pabrik 1" name="mps_i_00" value={steam.mps_i_00} onChange={onSteamChange} unit="T/H" color="orange" />
                     <InputField label="Flow Pabrik 3" name="mps_3a_00" value={steam.mps_3a_00} onChange={onSteamChange} unit="T/H" color="orange" />
-                    <InputField label="Flow Condensate (Co Gen)" name="co_gen_00" value={steam.co_gen_00} onChange={onSteamChange} unit="T/H" color="orange" />
+                    <InputField label="Flow Condensate" name="fully_condens_00" value={steam.fully_condens_00} onChange={onSteamChange} unit="T/H" color="orange" />
                 </div>
                 <CalculatedField label="LPS II" value="0" unit="T/H" variant="small" />
                 <CalculatedField label="LPS III A" value="0" unit="T/H" variant="small" />

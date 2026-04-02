@@ -235,17 +235,22 @@ export function useDailyReport(date: string) {
             { key: 'totalizer', table: 'daily_report_totalizer' },
         ] as const;
 
+        const childErrors: string[] = [];
+
         for (const { key, table } of childTables) {
             const childData = reportData[key];
             if (childData) {
                 const filtered = pickValidCols(table, childData as Record<string, unknown>);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                await supabase.from(table).upsert({
+                const { error: childErr } = await supabase.from(table).upsert({
                     daily_report_id: reportId,
                     ...filtered,
                 } as any, { onConflict: 'daily_report_id' });
+                if (childErr) childErrors.push(`${table}: ${childErr.message}`);
             }
         }
+
+        if (childErrors.length > 0) return { error: childErrors.join('; '), reportId };
 
         return { error: null, reportId };
     }, [date]);

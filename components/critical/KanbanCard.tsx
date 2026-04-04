@@ -2,10 +2,11 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { MaintenanceWithCritical } from '@/lib/supabase/types';
+import type { MaintenanceWithCritical, PhotoRow } from '@/lib/supabase/types';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
+import PhotoGallery from './PhotoGallery';
 
 function getForemanLabel(val: string) {
     return FOREMAN_OPTIONS.find(f => f.value === val)?.label ?? val;
@@ -13,10 +14,11 @@ function getForemanLabel(val: string) {
 
 interface KanbanCardProps {
     item: MaintenanceWithCritical;
+    photos?: PhotoRow[];
     overlay?: boolean;
 }
 
-export default function KanbanCard({ item, overlay = false }: KanbanCardProps) {
+export default function KanbanCard({ item, photos, overlay = false }: KanbanCardProps) {
     const {
         attributes,
         listeners,
@@ -94,6 +96,13 @@ export default function KanbanCard({ item, overlay = false }: KanbanCardProps) {
                     <span>{item.date}</span>
                 </div>
             </div>
+
+            {/* Photo thumbnails */}
+            {photos && photos.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                    <PhotoGallery photos={photos} compact />
+                </div>
+            )}
         </div>
     );
 }

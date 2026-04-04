@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope } from '@/lib/supabase/types';
+import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope, PhotoRow } from '@/lib/supabase/types';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
+import PhotoGallery from './PhotoGallery';
+import PhotoUploadButton from './PhotoUploadButton';
 
 const STORAGE_KEY = 'critical-starred-ids';
 const COL_COUNT = 11;
@@ -17,6 +19,9 @@ interface CriticalTableViewProps {
     onEditMaintenance?: (m: MaintenanceLogRow) => void;
     onDeleteMaintenance?: (id: string) => Promise<void>;
     onAddMaintenance?: (critical: CriticalWithMaintenance) => void;
+    fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
+    deletePhoto?: (id: string) => Promise<{ error: string | null }>;
+    operatorName?: string;
 }
 
 type TableStatusTab = 'OPEN' | 'CLOSED';
@@ -222,7 +227,7 @@ function ActivityPanel({ logs }: { logs: CriticalActivityLogRow[] }) {
 function CriticalRowPair({
     critical, starred, isEven, toggleStar, onEditCritical, onDeleteCritical,
     onEditMaintenance, onDeleteMaintenance, onAddMaintenance,
-    expandedId, onToggleExpand,
+    expandedId, onToggleExpand, fetchPhotos, deletePhoto, operatorName,
 }: {
     critical: CriticalWithMaintenance;
     starred: boolean;
@@ -235,12 +240,39 @@ function CriticalRowPair({
     onAddMaintenance?: (critical: CriticalWithMaintenance) => void;
     expandedId: string | null;
     onToggleExpand: (id: string) => void;
+    fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
+    deletePhoto?: (id: string) => Promise<{ error: string | null }>;
+    operatorName?: string;
 }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [showPhotoModal, setShowPhotoModal] = useState(false);
+    const [photos, setPhotos] = useState<PhotoRow[]>([]);
+    const [photosLoaded, setPhotosLoaded] = useState(false);
     const isExpanded = expandedId === critical.id;
     const last = getLastAction(critical.critical_activity_logs);
     const rowBg = isExpanded ? 'bg-blue-50/40' : isEven ? 'bg-gray-50/30' : 'bg-white';
+
+    async function openPhotoModal() {
+        setShowPhotoModal(true);
+        if (!photosLoaded && fetchPhotos) {
+            const p = await fetchPhotos('critical', critical.id);
+            setPhotos(p);
+            setPhotosLoaded(true);
+        }
+    }
+
+    function handlePhotoUploaded(photo: PhotoRow) {
+        setPhotos(prev => [...prev, photo]);
+    }
+
+    async function handlePhotoDeleted(photoId: string) {
+        if (!deletePhoto) return;
+        const result = await deletePhoto(photoId);
+        if (!result.error) {
+            setPhotos(prev => prev.filter(p => p.id !== photoId));
+        }
+    }
 
     async function handleDelete() {
         setDeleting(true);
@@ -285,7 +317,7 @@ function CriticalRowPair({
                 <td className="px-3 py-2">
                     <MaintBadge logs={critical.maintenance_logs} />
                 </td>
-                {/* Last Action */}
+                {/* Notes */}
                 <td className="px-3 py-2">
                     {last ? (
                         <div className="flex flex-col gap-0.5 max-w-[170px]">
@@ -313,6 +345,14 @@ function CriticalRowPair({
                                 {isExpanded ? 'expand_less' : 'expand_more'}
                             </span>
                             Detail
+                        </button>
+                        {/* Foto */}
+                        <button
+                            onClick={openPhotoModal}
+                            className="p-1 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                            title="Lihat / upload foto"
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>add_photo_alternate</span>
                         </button>
                         {/* Edit */}
                         <button
@@ -396,6 +436,70 @@ function CriticalRowPair({
                     </td>
                 </tr>
             )}
+
+            {/* ── Photo Modal ── */}
+            {showPhotoModal && (
+                <tr>
+                    <td colSpan={COL_COUNT} className="p-0">
+                        <div
+                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                            onClick={() => setShowPhotoModal(false)}
+                        >
+                            <div
+                                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5 flex flex-col gap-4"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                {/* Header */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-extrabold text-gray-800">Foto — {critical.item}</h3>
+                                        <p className="text-[11px] text-gray-400 line-clamp-1">{critical.deskripsi}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <PhotoUploadButton
+                                            criticalId={critical.id}
+                                            uploadedBy={operatorName}
+                                            onUploadSuccess={handlePhotoUploaded}
+                                        />
+                                        <button
+                                            onClick={() => setShowPhotoModal(false)}
+                                            className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Gallery */}
+                                <div className="min-h-[80px]">
+                                    {!photosLoaded ? (
+                                        <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                            <span className="material-symbols-outlined animate-spin" style={{ fontSize: 16 }}>progress_activity</span>
+                                            Memuat foto...
+                                        </div>
+                                    ) : photos.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-8 text-gray-300">
+                                            <span className="material-symbols-outlined text-4xl mb-2">add_photo_alternate</span>
+                                            <p className="text-sm font-semibold text-gray-400">Belum ada foto</p>
+                                            <p className="text-xs text-gray-400">Klik tombol Foto untuk upload</p>
+                                        </div>
+                                    ) : (
+                                        <PhotoGallery
+                                            photos={photos}
+                                            onDelete={deletePhoto ? handlePhotoDeleted : undefined}
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Count */}
+                                {photosLoaded && photos.length > 0 && (
+                                    <p className="text-[10px] text-gray-400 text-right">{photos.length} foto</p>
+                                )}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            )}
         </>
     );
 }
@@ -414,7 +518,7 @@ function TableHeader() {
                 <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Notif/SAP</th>
                 <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Maintenance</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Last Action</th>
+                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Notes</th>
                 <th className="px-3 py-2.5 text-center text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Detail / Edit</th>
             </tr>
         </thead>
@@ -425,7 +529,7 @@ function TableHeader() {
 function TableBody({
     items, starredIds, toggleStar, onEditCritical, onDeleteCritical,
     onEditMaintenance, onDeleteMaintenance, onAddMaintenance,
-    expandedId, onToggleExpand,
+    expandedId, onToggleExpand, fetchPhotos, deletePhoto, operatorName,
 }: {
     items: CriticalWithMaintenance[];
     starredIds: Set<string>;
@@ -437,6 +541,9 @@ function TableBody({
     onAddMaintenance?: (critical: CriticalWithMaintenance) => void;
     expandedId: string | null;
     onToggleExpand: (id: string) => void;
+    fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
+    deletePhoto?: (id: string) => Promise<{ error: string | null }>;
+    operatorName?: string;
 }) {
     return (
         <>
@@ -454,6 +561,9 @@ function TableBody({
                     onAddMaintenance={onAddMaintenance}
                     expandedId={expandedId}
                     onToggleExpand={onToggleExpand}
+                    fetchPhotos={fetchPhotos}
+                    deletePhoto={deletePhoto}
+                    operatorName={operatorName}
                 />
             ))}
         </>
@@ -461,7 +571,7 @@ function TableBody({
 }
 
 // ─── Main Export ───
-export default function CriticalTableView({ criticals, onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance }: CriticalTableViewProps) {
+export default function CriticalTableView({ criticals, onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, fetchPhotos, deletePhoto, operatorName }: CriticalTableViewProps) {
     const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<TableStatusTab>('OPEN');
     const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -537,6 +647,9 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                                         onAddMaintenance={onAddMaintenance}
                                         expandedId={expandedId}
                                         onToggleExpand={handleToggleExpand}
+                                        fetchPhotos={fetchPhotos}
+                                        deletePhoto={deletePhoto}
+                                        operatorName={operatorName}
                                     />
                                 </tbody>
                             </table>
@@ -685,6 +798,9 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                                     onAddMaintenance={onAddMaintenance}
                                     expandedId={expandedId}
                                     onToggleExpand={handleToggleExpand}
+                                    fetchPhotos={fetchPhotos}
+                                    deletePhoto={deletePhoto}
+                                    operatorName={operatorName}
                                 />
                             )}
                         </tbody>

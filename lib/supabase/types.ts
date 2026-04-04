@@ -460,15 +460,30 @@ export interface CriticalActivityLogRow {
     created_at: string;
 }
 
+// ─── Photos ───
+
+export interface PhotoRow {
+    id:             string;
+    critical_id:    string | null;
+    maintenance_id: string | null;
+    url:            string;
+    filename:       string;
+    uploaded_via:   'app' | 'whatsapp';
+    uploaded_by:    string | null;
+    created_at:     string;
+}
+
 // ─── Joined types for UI ───
 
 export interface CriticalWithMaintenance extends CriticalEquipmentRow {
     maintenance_logs: MaintenanceLogRow[];
     critical_activity_logs: CriticalActivityLogRow[];
+    photos?: PhotoRow[];
 }
 
 export interface MaintenanceWithCritical extends MaintenanceLogRow {
     critical_equipment: CriticalEquipmentRow | null;
+    photos?: PhotoRow[];
 }
 
 export interface ShiftNoteRow {

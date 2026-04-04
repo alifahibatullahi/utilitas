@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type { MaintenanceWithCritical, CriticalStatus } from '@/lib/supabase/types';
+import type { MaintenanceWithCritical, CriticalStatus, PhotoRow } from '@/lib/supabase/types';
 import { KANBAN_COLUMNS } from '@/lib/constants';
 import KanbanCard from './KanbanCard';
 
@@ -12,9 +12,10 @@ interface KanbanColumnProps {
     items: MaintenanceWithCritical[];
     prevItems?: MaintenanceWithCritical[];
     onKonfirmasiShift?: (id: string) => Promise<{ error: string | null }>;
+    photosByMaintId?: Record<string, PhotoRow[]>;
 }
 
-function PrevItemWrapper({ item, onKonfirmasi }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }> }) {
+function PrevItemWrapper({ item, onKonfirmasi, photos }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[] }) {
     const [loading, setLoading] = useState(false);
     const handleKonfirmasi = async () => {
         if (!onKonfirmasi) return;
@@ -24,7 +25,7 @@ function PrevItemWrapper({ item, onKonfirmasi }: { item: MaintenanceWithCritical
     };
     return (
         <div className="relative">
-            <KanbanCard item={item} />
+            <KanbanCard item={item} photos={photos} />
             <button
                 onClick={handleKonfirmasi}
                 disabled={loading}
@@ -37,7 +38,7 @@ function PrevItemWrapper({ item, onKonfirmasi }: { item: MaintenanceWithCritical
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], onKonfirmasiShift }: KanbanColumnProps) {
+export default function KanbanColumn({ status, items, prevItems = [], onKonfirmasiShift, photosByMaintId }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
@@ -65,10 +66,10 @@ export default function KanbanColumn({ status, items, prevItems = [], onKonfirma
                     <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 14 }}>layers</span>
                     <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-widest truncate">{g.itemName}</span>
                 </div>
-                {g.cards.map(item => <KanbanCard key={item.id} item={item} />)}
+                {g.cards.map(item => <KanbanCard key={item.id} item={item} photos={photosByMaintId?.[item.id]} />)}
             </div>
         ) : (
-            <KanbanCard key={g.cards[0].id} item={g.cards[0]} />
+            <KanbanCard key={g.cards[0].id} item={g.cards[0]} photos={photosByMaintId?.[g.cards[0].id]} />
         ));
     }
 
@@ -103,7 +104,7 @@ export default function KanbanColumn({ status, items, prevItems = [], onKonfirma
                             </div>
                             <div className="opacity-60 flex flex-col gap-3">
                                 {prevItems.map(item => (
-                                    <PrevItemWrapper key={item.id} item={item} onKonfirmasi={onKonfirmasiShift} />
+                                    <PrevItemWrapper key={item.id} item={item} onKonfirmasi={onKonfirmasiShift} photos={photosByMaintId?.[item.id]} />
                                 ))}
                             </div>
                         </>

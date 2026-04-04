@@ -11,7 +11,7 @@ import {
     type DragStartEvent,
     type DragEndEvent,
 } from '@dnd-kit/core';
-import type { MaintenanceWithCritical, MaintenanceStatus } from '@/lib/supabase/types';
+import type { MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
 
@@ -20,11 +20,12 @@ interface KanbanBoardProps {
     shiftWindow?: { start: Date; end: Date };
     onMoveStatus: (id: string, newStatus: MaintenanceStatus) => Promise<{ error: string | null }>;
     onKonfirmasiShift: (id: string) => Promise<{ error: string | null }>;
+    photosByMaintId?: Record<string, PhotoRow[]>;
 }
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
 
     const sensors = useSensors(
@@ -96,7 +97,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
         >
             <div className="flex gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-4 px-1">
                 {columns.map(col => (
-                    <KanbanColumn key={col.status} status={col.status} items={col.items} prevItems={col.prevItems} onKonfirmasiShift={onKonfirmasiShift} />
+                    <KanbanColumn key={col.status} status={col.status} items={col.items} prevItems={col.prevItems} onKonfirmasiShift={onKonfirmasiShift} photosByMaintId={photosByMaintId} />
                 ))}
             </div>
             <DragOverlay>

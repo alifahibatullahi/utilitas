@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCriticalMaintenance } from '@/hooks/useCriticalMaintenance';
 import { useOperator } from '@/hooks/useOperator';
 import { SHIFT_OPTIONS, getShiftWindow, detectCurrentShift } from '@/lib/constants';
-import type { CriticalWithMaintenance, MaintenanceWithCritical, MaintenanceLogRow } from '@/lib/supabase/types';
+import type { CriticalWithMaintenance, MaintenanceWithCritical, MaintenanceLogRow, PhotoRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 import HistoryView from './HistoryView';
 import CriticalTableView from './CriticalTableView';
@@ -60,6 +60,14 @@ export default function CriticalPage() {
 
     // Apply basic Kanban filters (no scope/foreman filters applied anymore per user request)
     const filteredKanban = cm.maintenances;
+
+    // Photos for Kanban board
+    const [photosByMaintId, setPhotosByMaintId] = useState<Record<string, PhotoRow[]>>({});
+    useEffect(() => {
+        if (view !== 'board') return;
+        const ids = cm.maintenances.map(m => m.id);
+        cm.fetchPhotosForMaintList(ids).then(setPhotosByMaintId);
+    }, [view, cm.maintenances]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const today = new Date();
     const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -173,6 +181,9 @@ export default function CriticalPage() {
                                         });
                                         setShowMaintenanceForm(true);
                                     }}
+                                    fetchPhotos={cm.fetchPhotos}
+                                    deletePhoto={cm.deletePhoto}
+                                    operatorName={operator?.name}
                                 />
                             </div>
                         )}
@@ -204,6 +215,7 @@ export default function CriticalPage() {
                                     shiftWindow={shiftWindow}
                                     onMoveStatus={cm.moveMaintenanceStatus}
                                     onKonfirmasiShift={cm.konfirmasiShift}
+                                    photosByMaintId={photosByMaintId}
                                 />
                                 {/* Summary footer */}
                                 <div className="mt-8 flex items-center justify-center gap-6 text-xs text-gray-500 bg-white py-2 px-6 rounded-full shadow-sm w-fit mx-auto border border-gray-200">

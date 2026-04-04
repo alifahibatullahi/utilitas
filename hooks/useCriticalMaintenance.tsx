@@ -12,6 +12,7 @@ import type {
     CriticalStatus,
     HarScope,
     ActivityActionType,
+    PhotoRow,
 } from '@/lib/supabase/types';
 
 export interface CriticalMaintenanceFilters {
@@ -366,6 +367,52 @@ export function useCriticalMaintenance() {
         return { error: null };
     }, [supabase, fetchData]);
 
+    // ─── Photos ───
+
+    const fetchPhotos = useCallback(async (
+        parentType: 'critical' | 'maintenance',
+        parentId: string,
+    ): Promise<PhotoRow[]> => {
+        const column = parentType === 'critical' ? 'critical_id' : 'maintenance_id';
+        const { data, error: err } = await supabase
+            .from('photos')
+            .select('*')
+            .eq(column, parentId)
+            .order('created_at', { ascending: true });
+        if (err) {
+            console.error('[fetchPhotos]', err.message);
+            return [];
+        }
+        return (data ?? []) as PhotoRow[];
+    }, [supabase]);
+
+    const deletePhoto = useCallback(async (photoId: string): Promise<{ error: string | null }> => {
+        const res = await fetch(`/api/upload/${photoId}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const json = await res.json().catch(() => ({}));
+            return { error: (json as { error?: string }).error ?? 'Hapus foto gagal' };
+        }
+        return { error: null };
+    }, []);
+
+    /** Batch fetch photos for a list of maintenance IDs — returns a map of maintId → PhotoRow[] */
+    const fetchPhotosForMaintList = useCallback(async (maintIds: string[]): Promise<Record<string, PhotoRow[]>> => {
+        if (maintIds.length === 0) return {};
+        const { data, error: err } = await supabase
+            .from('photos')
+            .select('*')
+            .in('maintenance_id', maintIds)
+            .order('created_at', { ascending: true });
+        if (err || !data) return {};
+        const map: Record<string, PhotoRow[]> = {};
+        for (const photo of (data as PhotoRow[])) {
+            if (!photo.maintenance_id) continue;
+            if (!map[photo.maintenance_id]) map[photo.maintenance_id] = [];
+            map[photo.maintenance_id].push(photo);
+        }
+        return map;
+    }, [supabase]);
+
     return {
         criticals,
         maintenances,
@@ -384,5 +431,8 @@ export function useCriticalMaintenance() {
         moveCriticalStatus,
         konfirmasiShift,
         addActivityNote,
+        fetchPhotos,
+        deletePhoto,
+        fetchPhotosForMaintList,
     };
 }

@@ -8,6 +8,7 @@ import { SHIFT_OPTIONS, getShiftWindow, detectCurrentShift } from '@/lib/constan
 import type { CriticalWithMaintenance, MaintenanceWithCritical, MaintenanceLogRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 import HistoryView from './HistoryView';
+import CriticalTableView from './CriticalTableView';
 import CriticalFormModal from './CriticalFormModal';
 import MaintenanceFormModal from './MaintenanceFormModal';
 
@@ -94,8 +95,8 @@ export default function CriticalPage() {
                                     view === 'history' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 shadow-transparent'
                                 }`}
                             >
-                                <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>history</span>
-                                History Critical
+                                <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>table_view</span>
+                                Critical
                             </button>
                             <button
                                 onClick={() => setView('board')}
@@ -104,13 +105,13 @@ export default function CriticalPage() {
                                 }`}
                             >
                                 <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>view_kanban</span>
-                                Maintenance Board
+                                Maintenance
                             </button>
                         </div>
 
                         {/* Right: Actions */}
                         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar justify-end">
-                            {view !== 'history' && (
+                            {view === 'board' && (
                                 <>
                                     <button
                                         onClick={() => setShowMaintenanceForm(true)}
@@ -155,28 +156,23 @@ export default function CriticalPage() {
                     <>
                         {view === 'history' && (
                             <div className="w-full flex-1 transition-all animate-in fade-in zoom-in-95 duration-300">
-                                <HistoryView
+                                <CriticalTableView
                                     criticals={cm.criticals}
-                                    filterCriticals={cm.filterCriticals}
-                                    loading={cm.loading}
-                                    addActivityNote={cm.addActivityNote}
-                                    operatorName={operator?.name}
-                                    onAddCritical={() => setShowCriticalForm(true)}
-                                    onAddMaintenance={(fromCritical) => {
-                                        setMaintenanceInitial(fromCritical ? {
-                                            critical_id: fromCritical.id,
-                                            item: fromCritical.item,
-                                            scope: fromCritical.scope,
-                                            foreman: fromCritical.foreman,
-                                        } : undefined);
-                                        setShowMaintenanceForm(true);
-                                    }}
                                     onEditCritical={(c) => setEditingCritical(c)}
                                     onDeleteCritical={async (id) => { await cm.deleteCritical(id); }}
-                                    onEditMaintenance={(m) => setEditingMaintenance(m)}
-                                    onUpdateMaintenance={async (id, data) => { await cm.updateMaintenance(id, data, operator?.name); }}
+                                    onAddCritical={() => setShowCriticalForm(true)}
+                                    onEditMaintenance={(m) => setEditingMaintenance({ ...m, critical_equipment: null })}
                                     onDeleteMaintenance={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
-                                    onCloseCritical={async (id, actor) => cm.updateCritical(id, { status: 'CLOSED' }, actor)}
+                                    onAddMaintenance={(critical) => {
+                                        setMaintenanceInitial({
+                                            critical_id: critical.id,
+                                            item: critical.item,
+                                            scope: critical.scope,
+                                            foreman: critical.foreman,
+                                            date: new Date().toISOString().split('T')[0],
+                                        });
+                                        setShowMaintenanceForm(true);
+                                    }}
                                 />
                             </div>
                         )}
@@ -226,6 +222,8 @@ export default function CriticalPage() {
                                 </div>
                             </div>
                         )}
+
+
                     </>
                 )}
             </main>

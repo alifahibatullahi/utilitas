@@ -286,7 +286,7 @@ function CriticalList({
                         + Tambah Critical
                     </button>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                     {sortedItems.map((c, idx) => {
                         const isSelected = selectedId === c.id;
                         const isConfirmDelete = confirmDeleteCriticalId === c.id;
@@ -294,7 +294,7 @@ function CriticalList({
                         return (
                             <div key={c.id}>
                             {idx === firstClosedIdx && firstClosedIdx > 0 && (
-                                <div className="flex items-center gap-2 mb-3">
+                                <div className="flex items-center gap-2 mb-2">
                                     <div className="flex-1 h-px bg-rose-300" />
                                     <span className="text-[10px] font-extrabold text-gray-700 uppercase tracking-widest">Closed</span>
                                     <div className="flex-1 h-px bg-rose-300" />
@@ -302,44 +302,44 @@ function CriticalList({
                             )}
                             <div
                                 key={`card-${c.id}`}
-                                className={`w-full text-left bg-white border rounded-xl shadow-sm transition-all overflow-visible relative group
+                                className={`w-full text-left bg-white border rounded-lg shadow-sm transition-all overflow-visible relative group
                                     ${isSelected ? 'border-blue-500 ring-1 ring-blue-500' : c.status === 'OPEN' ? 'border-rose-400 hover:bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}
                             >
                                 {/* Top-Right Actions */}
-                                <div className="absolute top-3 right-3 flex items-center gap-1 z-10 transition-opacity opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                                <div className="absolute top-2 right-2 flex items-center gap-1 z-10 transition-opacity opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                                     {isConfirmDelete ? (
-                                        <div className="flex items-center gap-1 bg-rose-50 px-1.5 py-1 rounded-lg border border-rose-200 shadow-sm animate-in fade-in zoom-in duration-200">
+                                        <div className="flex items-center gap-1 bg-rose-50 px-1.5 py-0.5 rounded-lg border border-rose-200 shadow-sm animate-in fade-in zoom-in duration-200">
                                             <span className="text-[10px] font-extrabold text-rose-600 mx-1 uppercase tracking-widest">Hapus?</span>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleDeleteCritical(c.id); }}
                                                 disabled={deleting}
-                                                className="w-6 h-6 rounded flex items-center justify-center bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50 cursor-pointer shadow-sm"
+                                                className="w-5 h-5 rounded flex items-center justify-center bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50 cursor-pointer shadow-sm"
                                             >
-                                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{deleting ? 'more_horiz' : 'check'}</span>
+                                                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{deleting ? 'more_horiz' : 'check'}</span>
                                             </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteCriticalId(null); }}
-                                                className="w-6 h-6 rounded flex items-center justify-center bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 cursor-pointer shadow-sm"
+                                                className="w-5 h-5 rounded flex items-center justify-center bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 cursor-pointer shadow-sm"
                                             >
-                                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
+                                                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>close</span>
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1.5 py-1 rounded-lg shadow-sm border border-gray-100">
+                                        <div className="flex items-center gap-0.5 bg-white/90 backdrop-blur-sm px-1 py-0.5 rounded-lg shadow-sm border border-gray-100">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onEditCritical?.(c); }}
-                                                className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                                className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
                                                 title="Edit critical"
                                             >
-                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit</span>
+                                                <span className="material-symbols-outlined" style={{ fontSize: 15 }}>edit</span>
                                             </button>
-                                            <div className="w-px h-4 bg-gray-200 mx-0.5"></div>
+                                            <div className="w-px h-3.5 bg-gray-200 mx-0.5"></div>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteCriticalId(c.id); }}
-                                                className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                                className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                                 title="Hapus critical"
                                             >
-                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
+                                                <span className="material-symbols-outlined" style={{ fontSize: 15 }}>delete</span>
                                             </button>
                                         </div>
                                     )}
@@ -348,10 +348,10 @@ function CriticalList({
                                 {/* Card body — clickable for select */}
                                 <button
                                     onClick={() => onSelect(isSelected ? null : c.id)}
-                                    className="w-full text-left px-5 pt-4 pb-4 cursor-pointer"
+                                    className="w-full text-left px-3 pt-2.5 pb-2.5 cursor-pointer"
                                 >
-                                    <div className="flex items-center gap-2 flex-wrap pr-16">
-                                        <span className={`text-base font-extrabold ${isSelected ? 'text-blue-700' : 'text-black'}`}>{c.item}</span>
+                                    <div className="flex items-center gap-1.5 flex-wrap pr-16">
+                                        <span className={`text-sm font-extrabold ${isSelected ? 'text-blue-700' : 'text-black'}`}>{c.item}</span>
                                         {/* Clickable status badge */}
                                         <div className="relative" onClick={e => { e.stopPropagation(); setOpenStatusDropdownId(isStatusOpen ? null : c.id); }}>
                                             <span className="cursor-pointer hover:opacity-80 transition-opacity inline-flex items-center gap-0.5">
@@ -368,39 +368,29 @@ function CriticalList({
                                         </div>
                                         <ScopeBadge scope={c.scope} light={true} />
                                     </div>
-                                    <p className={`text-sm mt-1.5 line-clamp-2 font-semibold ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}>Deskripsi : {c.deskripsi}</p>
-                                    
-                                    {/* Notif & Reporter summary */}
-                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    <p className={`text-xs mt-0.5 line-clamp-1 ${isSelected ? 'text-gray-700' : 'text-gray-500'}`}>{c.deskripsi}</p>
+
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5">
                                         {c.notif ? (
-                                            <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded shadow-sm border border-blue-200 flex items-center gap-0.5">
-                                                <span className="material-symbols-outlined text-[10px]">integration_instructions</span>Notif : {c.notif}
+                                            <span className="text-[10px] font-bold text-blue-700 flex items-center gap-0.5">
+                                                <span className="material-symbols-outlined" style={{ fontSize: 11 }}>integration_instructions</span>{c.notif}
                                             </span>
                                         ) : (
-                                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded shadow-sm border border-rose-200 flex items-center gap-0.5">
-                                                <span className="material-symbols-outlined text-[10px]">error</span>Belum ada notif
+                                            <span className="text-[10px] font-bold text-rose-500 flex items-center gap-0.5">
+                                                <span className="material-symbols-outlined" style={{ fontSize: 11 }}>error</span>No notif
                                             </span>
                                         )}
-                                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shadow-sm border border-gray-200">
-                                            Dilaporkan oleh: {c.reported_by || '-'}
+                                        <span className="text-[10px] text-gray-400">{c.reported_by || '-'}</span>
+                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0 rounded-full border border-blue-100 ml-auto">
+                                            {c.maintenance_logs.length} maint
                                         </span>
-                                    </div>
-
-                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                                        <div className="text-[10px] font-bold px-2 py-0.5 rounded-full text-blue-600 bg-blue-50 border border-blue-100">
-                                            {c.maintenance_logs.length} maintenance
-                                        </div>
-                                        <div className="text-[10px] font-bold text-gray-600 flex items-center gap-2">
-                                            <span className="flex items-center gap-0.5">
-                                                <span className="material-symbols-outlined text-[13px] text-gray-500">person</span>
-                                                {getForemanLabel(c.foreman)}
-                                            </span>
-                                            <span>•</span>
-                                            <span className="flex items-center gap-0.5">
-                                                <span className="material-symbols-outlined text-[13px] text-gray-500">calendar_today</span>
-                                                {formatDate(c.date)}
-                                            </span>
-                                        </div>
+                                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                                            <span className="material-symbols-outlined" style={{ fontSize: 11 }}>person</span>
+                                            {getForemanLabel(c.foreman)}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400">
+                                            {formatDate(c.date)}
+                                        </span>
                                     </div>
                                 </button>
                             </div>

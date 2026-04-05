@@ -81,16 +81,18 @@ export default function InputPage() {
 
             // Submit output flow rates (DEMIN)
             const outputs = TANKS[selectedTank].outputDestinations;
-            if (outputs.length > 0 && outputs.some(d => d.hasFlow)) {
-                const outRates: OutputFlowRate[] = outputs
-                    .filter(d => d.hasFlow)
-                    .map((dest) => ({
-                        destinationLabel: dest.name,
-                        rate: parseFloat(outputFlowInputs[dest.name] || '0') || 0,
-                        ...(dest.pumps && selectedPump ? { pump: selectedPump } : {}),
-                    }))
-                    .filter((r) => r.rate > 0);
-                if (outRates.length > 0) submitOutputFlowRates(selectedTank, outRates);
+            if (outputs.length > 0) {
+                const allOutRates: OutputFlowRate[] = [];
+                // Flow-based destinations
+                outputs.filter(d => d.hasFlow).forEach(dest => {
+                    const rate = parseFloat(outputFlowInputs[dest.name] || '0') || 0;
+                    if (rate > 0) allOutRates.push({ destinationLabel: dest.name, rate });
+                });
+                // Pump-only destinations (no flow, just record active pump)
+                outputs.filter(d => !d.hasFlow && d.pumps?.length).forEach(dest => {
+                    allOutRates.push({ destinationLabel: dest.name, rate: 0, pump: selectedPump || undefined });
+                });
+                if (allOutRates.length > 0) submitOutputFlowRates(selectedTank, allOutRates);
             }
 
             // Submit solar unloading if SOLAR
@@ -150,6 +152,7 @@ export default function InputPage() {
                 <div className="relative">
                     <input
                         type="number"
+                        inputMode="decimal"
                         value={levelM3}
                         onChange={(e) => setLevelM3(e.target.value)}
                         placeholder={selectedTank && currentLevels[selectedTank].operator !== '-' ? Math.round(currentLevels[selectedTank].level / 100 * capM3).toString() : '0'}
@@ -191,6 +194,7 @@ export default function InputPage() {
                                     <div className="relative">
                                         <input
                                             type="number"
+                                            inputMode="decimal"
                                             value={flowInputs[source] || ''}
                                             onChange={(e) => setFlowInputs(prev => ({ ...prev, [source]: e.target.value }))}
                                             placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
@@ -207,7 +211,7 @@ export default function InputPage() {
                 </div>
             )}
 
-            {/* Output Flow Rate inputs (DEMIN only) */}
+            {/* Output Flow Rate inputs — hanya untuk destination yang punya flow (hasFlow: true) */}
             {selectedTank && TANKS[selectedTank].outputDestinations.some(d => d.hasFlow) && (
                 <div className="mb-5">
                     <label className="block text-sm font-medium text-slate-300 mb-2">Output Flow Rate (ton/h)</label>
@@ -226,49 +230,64 @@ export default function InputPage() {
                                     <div className="relative">
                                         <input
                                             type="number"
+                                            inputMode="decimal"
                                             value={outputFlowInputs[dest.name] || ''}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setOutputFlowInputs(prev => ({ ...prev, [dest.name]: val }));
-                                                if (dest.pumps && (!val || parseFloat(val) === 0)) setSelectedPump('');
-                                            }}
+                                            onChange={(e) => setOutputFlowInputs(prev => ({ ...prev, [dest.name]: e.target.value }))}
                                             placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
                                             min="0" step="0.1"
                                             className="w-full px-4 py-3 bg-slate-800/80 border border-rose-500/20 rounded-xl text-xl font-bold text-white text-center focus:outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 appearance-none"
                                         />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">ton/h</span>
                                     </div>
-                                    {dest.pumps && (() => {
-                                        const destFlowVal = parseFloat(outputFlowInputs[dest.name] || '0');
-                                        const pumpDisabled = !destFlowVal || destFlowVal === 0;
-                                        return (
-                                            <div className="mt-2">
-                                                <span className="text-[10px] text-slate-500 block mb-1.5">Pompa yang digunakan:{pumpDisabled && <span className="text-rose-400 ml-1">(Flow 0 — pompa mati)</span>}</span>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {dest.pumps.map(pump => (
-                                                        <button
-                                                            key={pump}
-                                                            type="button"
-                                                            disabled={pumpDisabled}
-                                                            onClick={() => setSelectedPump(pump)}
-                                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${pumpDisabled
-                                                                ? 'bg-slate-800/50 text-slate-600 border border-slate-700/30 cursor-not-allowed'
-                                                                : selectedPump === pump
-                                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.3)] cursor-pointer'
-                                                                    : 'bg-slate-700/50 text-slate-400 border border-slate-600/50 hover:border-slate-500 cursor-pointer'
-                                                                }`}
-                                                        >
-                                                            {pump}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
                                 </div>
                             );
                         })}
                     </div>
+                </div>
+            )}
+
+            {/* Pompa Aktif — untuk destination tanpa flow (pump-only, e.g. Demin Revamp) */}
+            {selectedTank && TANKS[selectedTank].outputDestinations.some(d => !d.hasFlow && d.pumps?.length) && (
+                <div className="mb-5">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Pompa Aktif</label>
+                    {TANKS[selectedTank].outputDestinations.filter(d => !d.hasFlow && d.pumps?.length).map(dest => {
+                        const lastOut = currentOutputFlowRates[selectedTank]?.find(f => f.destinationLabel === dest.name);
+                        return (
+                            <div key={dest.name} className="bg-slate-800/50 border border-slate-600/30 rounded-xl p-4">
+                                <p className="text-xs text-slate-400 font-bold uppercase mb-3">{dest.name}</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedPump('')}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                                            !selectedPump
+                                                ? 'bg-slate-600/50 text-slate-200 border-slate-400/50'
+                                                : 'bg-slate-700/30 text-slate-500 border-slate-700/30 hover:border-slate-600'
+                                        }`}
+                                    >
+                                        Mati
+                                    </button>
+                                    {dest.pumps!.map(pump => (
+                                        <button
+                                            key={pump}
+                                            type="button"
+                                            onClick={() => setSelectedPump(pump)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                                                selectedPump === pump
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                                                    : 'bg-slate-700/50 text-slate-400 border-slate-600/50 hover:border-slate-500'
+                                            }`}
+                                        >
+                                            {pump}
+                                        </button>
+                                    ))}
+                                </div>
+                                {lastOut?.pump && (
+                                    <p className="text-[10px] text-slate-500 mt-2">Terakhir: <span className="text-slate-400">{lastOut.pump}</span></p>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -291,6 +310,7 @@ export default function InputPage() {
                             <div className="relative">
                                 <input
                                     type="number"
+                                    inputMode="decimal"
                                     value={solarLiters}
                                     onChange={(e) => setSolarLiters(e.target.value)}
                                     placeholder="5000"

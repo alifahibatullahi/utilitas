@@ -30,7 +30,7 @@ export const TANKS: Record<string, {
         inputSources: ['Utilitas 1', 'Demin 3A'],
         outputDestinations: [
             { name: 'Internal UBB', hasFlow: true },
-            { name: 'Demin Revamp', hasFlow: true, pumps: ['P-1000A', 'P-1000B', 'Demin B'] },
+            { name: 'Demin Revamp', hasFlow: false, pumps: ['P-1000A', 'P-1000B', 'Demin B'] },
         ],
     },
     RCW: {
@@ -72,6 +72,15 @@ export const DEFAULT_THRESHOLDS = {
     warning_low: 40,
     warning_high: 80,
     critical_high: 90,
+};
+
+// Per-tank thresholds (in %)
+// DEMIN: normal 900–1120 m³ dari 1200 = 75%–93.3%
+// RCW  : normal 3800–4600 m³ dari 4600 = 82.6%–100%
+export const TANK_THRESHOLDS: Record<string, typeof DEFAULT_THRESHOLDS> = {
+    DEMIN:  { critical_low: 0, warning_low: 75,   warning_high: 93.3, critical_high: 101 },
+    RCW:    { critical_low: 0, warning_low: 82.6,  warning_high: 100,  critical_high: 101 },
+    SOLAR:  DEFAULT_THRESHOLDS,
 };
 
 // Alert status colors

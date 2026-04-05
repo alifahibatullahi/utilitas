@@ -139,22 +139,22 @@ function TankCard({ tankId }: { tankId: TankId }) {
 
                     {/* Flow In / Out (DEMIN & RCW) */}
                     {tankId !== 'SOLAR' && (
-                        <div className={`grid ${tankId === 'DEMIN' ? 'grid-cols-2' : 'grid-cols-1'} gap-3 xl:gap-5 mt-2`}>
-                            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl px-5 py-4 xl:p-6 shadow-[0_0_20px_rgba(16,185,129,0.05)]">
-                                <p className="text-xs xl:text-sm text-emerald-500/80 uppercase font-black tracking-widest mb-1 lg:mb-2 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-sm xl:text-base">login</span> Flow In
+                        <div className={`grid ${tankId === 'DEMIN' ? 'grid-cols-2' : 'grid-cols-1'} gap-3 xl:gap-4 mt-2`}>
+                            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 xl:px-5 xl:py-4 shadow-[0_0_20px_rgba(16,185,129,0.05)]">
+                                <p className="text-[11px] xl:text-xs text-emerald-500/80 uppercase font-black tracking-widest mb-1 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-sm">login</span> Flow In
                                 </p>
-                                <p className="text-3xl lg:text-4xl xl:text-5xl font-black font-mono text-emerald-400 leading-none tracking-tighter">
-                                    {totalFlowIn.toFixed(1)}<span className="text-base lg:text-xl xl:text-2xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
+                                <p className="text-2xl lg:text-3xl xl:text-4xl font-black font-mono text-emerald-400 leading-none tracking-tighter">
+                                    {totalFlowIn.toFixed(1)}<span className="text-sm lg:text-base xl:text-xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
                                 </p>
                             </div>
                             {tankId === 'DEMIN' && (
-                                <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl px-5 py-4 xl:p-6 shadow-[0_0_20px_rgba(244,63,94,0.05)]">
-                                    <p className="text-xs xl:text-sm text-rose-500/80 uppercase font-black tracking-widest mb-1 lg:mb-2 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-sm xl:text-base">logout</span> Flow Out
+                                <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl px-4 py-3 xl:px-5 xl:py-4 shadow-[0_0_20px_rgba(244,63,94,0.05)]">
+                                    <p className="text-[11px] xl:text-xs text-rose-500/80 uppercase font-black tracking-widest mb-1 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-sm">logout</span> Flow Out
                                     </p>
-                                    <p className="text-3xl lg:text-4xl xl:text-5xl font-black font-mono text-rose-400 leading-none tracking-tighter">
-                                        {totalFlowOut.toFixed(1)}<span className="text-base lg:text-xl xl:text-2xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
+                                    <p className="text-2xl lg:text-3xl xl:text-4xl font-black font-mono text-rose-400 leading-none tracking-tighter">
+                                        {totalFlowOut.toFixed(1)}<span className="text-sm lg:text-base xl:text-xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
                                     </p>
                                 </div>
                             )}
@@ -172,12 +172,22 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                     {solarUnloadings.slice(0, 3).map((entry, idx) => {
                                         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
                                         return (
-                                            <div key={idx} className="flex xl:flex-col items-center xl:items-start justify-between px-4 py-3 xl:p-5 rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group">
-                                                <div className="xl:mb-3 xl:border-b border-slate-700/50 xl:pb-3 w-full">
-                                                    <span className="text-sm xl:text-base font-bold text-white block">{lbl}</span>
-                                                    <span className="text-xs xl:text-sm text-slate-400 truncate block mt-0.5 group-hover:text-slate-300 transition-colors" title={entry.supplier}>{entry.supplier}</span>
+                                            <div key={idx} className="flex xl:flex-col items-center xl:items-start justify-between px-4 py-3 xl:p-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative">
+                                                <div className="xl:mb-2 xl:border-b border-slate-700/50 xl:pb-2 w-full pr-12 xl:pr-0 relative">
+                                                    <span className="text-sm xl:text-[15px] font-bold text-white block truncate">{lbl}</span>
+                                                    <span className="text-[11px] xl:text-xs text-slate-400 truncate block mt-0.5 group-hover:text-slate-300 transition-colors" title={entry.supplier}>{entry.supplier}</span>
+                                                    
+                                                    {/* Hover Actions */}
+                                                    <div className="absolute top-0 right-0 xl:-top-2 xl:-right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/80 backdrop-blur-sm rounded-lg p-1 border border-slate-700/50">
+                                                        <button className="text-slate-400 hover:text-emerald-400 transition-colors p-1 rounded hover:bg-slate-700 cursor-pointer" title="Edit Unloading">
+                                                            <span className="material-symbols-outlined text-[14px]">edit</span>
+                                                        </button>
+                                                        <button className="text-slate-400 hover:text-rose-400 transition-colors p-1 rounded hover:bg-slate-700 cursor-pointer" title="Hapus Unloading">
+                                                            <span className="material-symbols-outlined text-[14px]">delete</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <span className={`text-xl xl:text-3xl font-black font-mono tracking-tighter leading-none ${tc.textClass}`}>{entry.liters.toLocaleString('id-ID')} <span className="text-sm xl:text-base text-slate-500 font-bold">L</span></span>
+                                                <span className={`text-lg xl:text-2xl font-black font-mono tracking-tighter leading-none ${tc.textClass} mt-0 xl:mt-2`}>{entry.liters.toLocaleString('id-ID')} <span className="text-xs xl:text-sm text-slate-500 font-bold ml-0.5">L</span></span>
                                             </div>
                                         );
                                     })}
@@ -187,23 +197,23 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                 )}
                             </>
                         ) : (
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-8 overflow-y-auto pr-2 light-scrollbar max-h-[30vh]">
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 xl:gap-4 mt-1">
                                 {tank.inputSources.length > 0 && (
-                                    <div className="flex flex-col gap-2 xl:gap-3">
-                                        <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2 mb-1">
+                                    <div className="flex flex-col gap-2">
+                                        <p className="text-[10px] xl:text-[11px] text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-0.5">
                                             <span className="material-symbols-outlined text-[14px]">turn_left</span> Input Sources
                                         </p>
-                                        <div className="flex flex-col gap-2">
+                                        <div className="flex flex-col gap-1.5">
                                             {tank.inputSources.map(source => {
                                                 const f = flows.find(f => f.sourceLabel === source);
                                                 const active = f && f.rate > 0;
                                                 return (
-                                                    <div key={source} className={`flex items-center justify-between px-4 py-3 xl:py-4 rounded-xl xl:rounded-2xl border ${active ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`w-2.5 h-2.5 xl:w-3 xl:h-3 rounded-full ${active ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-slate-600'}`}></span>
-                                                            <span className={`text-sm xl:text-base font-bold uppercase tracking-tight ${active ? 'text-emerald-400' : 'text-slate-400'}`}>{source}</span>
+                                                    <div key={source} className={`flex items-center justify-between px-3 py-2 xl:px-4 xl:py-2.5 rounded-xl border ${active ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`w-2 h-2 xl:w-2.5 xl:h-2.5 rounded-full ${active ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-slate-600'}`}></span>
+                                                            <span className={`text-xs xl:text-sm font-bold uppercase tracking-tight ${active ? 'text-emerald-400' : 'text-slate-400'}`}>{source}</span>
                                                         </div>
-                                                        <span className={`text-base xl:text-xl font-mono font-black tracking-tighter ${active ? 'text-emerald-400' : 'text-slate-600'}`}>{f ? f.rate.toFixed(1) : '0.0'} <span className="text-xs xl:text-sm font-bold opacity-60">t/h</span></span>
+                                                        <span className={`text-sm xl:text-base font-mono font-black tracking-tighter ${active ? 'text-emerald-400' : 'text-slate-600'}`}>{f ? f.rate.toFixed(1) : '0.0'} <span className="text-[10px] xl:text-xs font-bold opacity-60">t/h</span></span>
                                                     </div>
                                                 );
                                             })}
@@ -211,40 +221,40 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                     </div>
                                 )}
                                 {tank.outputDestinations.length > 0 && (
-                                    <div className="flex flex-col gap-2 xl:gap-3">
-                                        <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2 mb-1 mt-2 xl:mt-0">
+                                    <div className="flex flex-col gap-2">
+                                        <p className="text-[10px] xl:text-[11px] text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-0.5 mt-2 xl:mt-0">
                                             <span className="material-symbols-outlined text-[14px]">turn_right</span> Output Destinations
                                         </p>
-                                        <div className="flex flex-col gap-2">
+                                        <div className="flex flex-col gap-1.5">
                                             {tankId === 'DEMIN' ? tank.outputDestinations.map(dest => {
                                                 const outFlow = outFlows.find(f => f.destinationLabel === dest.name);
                                                 const outActive = dest.hasFlow
                                                     ? !!(outFlow && outFlow.rate > 0)
                                                     : !!(outFlow?.pump);
                                                 return (
-                                                    <div key={dest.name} className={`flex flex-col gap-2 px-4 py-3 xl:p-5 rounded-xl xl:rounded-2xl border ${outActive ? 'bg-rose-500/10 border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.05)]' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
+                                                    <div key={dest.name} className={`flex flex-col gap-1.5 px-3 py-2 xl:px-4 xl:py-2.5 rounded-xl border ${outActive ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
                                                         <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className={`w-2.5 h-2.5 xl:w-3 xl:h-3 rounded-full ${outActive ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-slate-600'}`}></span>
-                                                                <span className={`text-sm xl:text-base font-bold uppercase tracking-tight ${outActive ? 'text-rose-400' : 'text-slate-400'}`}>{dest.name}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`w-2 h-2 xl:w-2.5 xl:h-2.5 rounded-full ${outActive ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-slate-600'}`}></span>
+                                                                <span className={`text-xs xl:text-sm font-bold uppercase tracking-tight ${outActive ? 'text-rose-400' : 'text-slate-400'}`}>{dest.name}</span>
                                                             </div>
                                                             {dest.hasFlow && (
-                                                                <span className={`text-base xl:text-xl font-mono font-black tracking-tighter ${outActive ? 'text-rose-400' : 'text-slate-600'}`}>{outFlow ? outFlow.rate.toFixed(1) : '0.0'} <span className="text-xs xl:text-sm font-bold opacity-60">t/h</span></span>
+                                                                <span className={`text-sm xl:text-base font-mono font-black tracking-tighter ${outActive ? 'text-rose-400' : 'text-slate-600'}`}>{outFlow ? outFlow.rate.toFixed(1) : '0.0'} <span className="text-[10px] xl:text-xs font-bold opacity-60">t/h</span></span>
                                                             )}
                                                         </div>
                                                         {dest.pumps && (
-                                                            <div className="flex flex-wrap items-center gap-3 pt-3 mt-1 xl:mt-2 border-t border-slate-600/30">
+                                                            <div className="flex flex-wrap items-center gap-2 pt-2 mt-0.5 border-t border-slate-600/30">
                                                                 {dest.pumps.map(pump => {
                                                                     const isActive = outFlow?.pump === pump;
                                                                     return isActive ? (
-                                                                        <div key={pump} className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 rounded-lg shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
-                                                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                                                                            <span className="text-xs xl:text-sm font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
+                                                                        <div key={pump} className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/40 px-2 py-1 xl:px-2.5 xl:py-1 rounded-md shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
+                                                                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                                                            <span className="text-[10px] xl:text-[11px] font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
                                                                         </div>
                                                                     ) : (
-                                                                        <div key={pump} className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 px-3 py-1.5 rounded-lg opacity-60">
-                                                                            <span className="w-2 h-2 rounded-full bg-slate-500"></span>
-                                                                            <span className="text-xs xl:text-sm font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
+                                                                        <div key={pump} className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 px-2 py-1 xl:px-2.5 xl:py-1 rounded-md opacity-60">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                                                                            <span className="text-[10px] xl:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
                                                                         </div>
                                                                     );
                                                                 })}

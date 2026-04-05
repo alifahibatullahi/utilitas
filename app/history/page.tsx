@@ -70,6 +70,12 @@ const SECTIONS: TableSection[] = [
         ],
     },
     {
+        id: 'equipment', label: 'Equipment List', icon: 'build', color: '#e879f9',
+        tables: [
+            { name: 'equipment_items', label: 'Equipment Items', query: '*' },
+        ],
+    },
+    {
         id: 'system', label: 'Sistem', icon: 'settings', color: '#64748b',
         tables: [
             { name: 'operators', label: 'Operators', query: '*' },
@@ -627,6 +633,214 @@ function AshUnloadingTable({ color }: { color: string }) {
     );
 }
 
+// ─── Equipment List Table (with CRUD & Search) ───
+function EquipmentListTable({ color }: { color: string }) {
+    const [rows, setRows] = useState<AnyRow[]>([]);
+    const [filteredRows, setFilteredRows] = useState<AnyRow[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [editRow, setEditRow] = useState<AnyRow | null>(null);
+    const [isAdding, setIsAdding] = useState(false);
+    const [editForm, setEditForm] = useState({ no_item: '', deskripsi: '' });
+    const [saving, setSaving] = useState(false);
+    const [search, setSearch] = useState('');
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        const supabase = createClient();
+        const { data } = await supabase.from('equipment_items').select('*').order('no_item', { ascending: true });
+        const result = (data as unknown as AnyRow[]) || [];
+        setRows(result);
+        setFilteredRows(result);
+        setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    // Filter rows by search
+    useEffect(() => {
+        if (!search.trim()) {
+            setFilteredRows(rows);
+        } else {
+            const q = search.toLowerCase();
+            setFilteredRows(rows.filter(r =>
+                String(r.no_item || '').toLowerCase().includes(q) ||
+                String(r.deskripsi || '').toLowerCase().includes(q)
+            ));
+        }
+    }, [search, rows]);
+
+    const handleEdit = (row: AnyRow) => {
+        setEditRow(row);
+        setIsAdding(false);
+        setEditForm({
+            no_item: String(row.no_item || ''),
+            deskripsi: String(row.deskripsi || ''),
+        });
+    };
+
+    const handleAdd = () => {
+        setIsAdding(true);
+        setEditRow({ _new: true });
+        setEditForm({ no_item: '', deskripsi: '' });
+    };
+
+    const handleSave = async () => {
+        if (!editRow) return;
+        if (!editForm.no_item.trim() || !editForm.deskripsi.trim()) return;
+        setSaving(true);
+        const supabase = createClient();
+        const payload = {
+            no_item: editForm.no_item.trim(),
+            deskripsi: editForm.deskripsi.trim(),
+        };
+        if (isAdding) {
+            await supabase.from('equipment_items').insert(payload);
+        } else {
+            await supabase.from('equipment_items').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editRow.id);
+        }
+        setEditRow(null);
+        setIsAdding(false);
+        setSaving(false);
+        await fetchData();
+    };
+
+    const handleDelete = async (id: unknown) => {
+        if (!confirm('Hapus equipment item ini?')) return;
+        const supabase = createClient();
+        await supabase.from('equipment_items').delete().eq('id', String(id));
+        await fetchData();
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* Search & Add Bar */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1 relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Cari no item atau deskripsi..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-surface-highlight border border-slate-700 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                    />
+                    {search && (
+                        <button onClick={() => setSearch('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer">
+                            <span className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                    )}
+                </div>
+                <button onClick={handleAdd}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer hover:scale-105"
+                    style={{ backgroundColor: `${color}20`, color, border: `1px solid ${color}40` }}>
+                    <span className="material-symbols-outlined text-lg">add_circle</span>
+                    Tambah Item
+                </button>
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center gap-4 text-xs text-slate-500">
+                <span>Total: <strong className="text-slate-300">{rows.length}</strong> item</span>
+                {search && (
+                    <span>Ditemukan: <strong className="text-slate-300">{filteredRows.length}</strong> item</span>
+                )}
+            </div>
+
+            {/* Table */}
+            <div className="border border-slate-700/50 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="flex items-center gap-3 text-slate-500">
+                                <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                <span className="text-sm">Memuat data equipment...</span>
+                            </div>
+                        </div>
+                    ) : filteredRows.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                            <span className="material-symbols-outlined text-4xl mb-2 opacity-40">inventory_2</span>
+                            <p className="text-sm">{search ? 'Tidak ada item yang cocok dengan pencarian.' : 'Belum ada data equipment.'}</p>
+                        </div>
+                    ) : (
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 z-10">
+                                <tr style={{ backgroundColor: `${color}12` }}>
+                                    <th className="text-left px-4 py-3 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30 w-16">#</th>
+                                    <th className="text-left px-4 py-3 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30 w-[280px]">No Item</th>
+                                    <th className="text-left px-4 py-3 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Deskripsi</th>
+                                    <th className="text-center px-4 py-3 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30 w-24">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700/20">
+                                {filteredRows.map((row, i) => (
+                                    <tr key={String(row.id)} className="hover:bg-surface-highlight/40 transition-colors group">
+                                        <td className="px-4 py-2.5 text-slate-600 tabular-nums text-xs">{i + 1}</td>
+                                        <td className="px-4 py-2.5">
+                                            <span className="font-mono font-bold text-sm" style={{ color }}>{String(row.no_item || '-')}</span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-slate-300">{String(row.deskripsi || '-')}</td>
+                                        <td className="px-4 py-2.5 text-center">
+                                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleEdit(row)}
+                                                    className="p-1.5 rounded-lg hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer" title="Edit">
+                                                    <span className="material-symbols-outlined text-sm">edit</span>
+                                                </button>
+                                                <button onClick={() => handleDelete(row.id)}
+                                                    className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" title="Hapus">
+                                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
+
+            {/* Add/Edit Modal */}
+            {editRow && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => { setEditRow(null); setIsAdding(false); }}>
+                    <div className="bg-surface-dark border border-slate-700 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <h4 className="text-base font-bold text-white flex items-center gap-2">
+                            <span className="material-symbols-outlined text-lg" style={{ color }}>{isAdding ? 'add_circle' : 'edit'}</span>
+                            {isAdding ? 'Tambah Equipment Item' : 'Edit Equipment Item'}
+                        </h4>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">No Item</label>
+                                <input type="text" value={editForm.no_item}
+                                    onChange={e => setEditForm(f => ({ ...f, no_item: e.target.value }))}
+                                    placeholder="Contoh: 20 K-08.01 A/B"
+                                    className="w-full px-3 py-2.5 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono" />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Deskripsi</label>
+                                <input type="text" value={editForm.deskripsi}
+                                    onChange={e => setEditForm(f => ({ ...f, deskripsi: e.target.value }))}
+                                    placeholder="Contoh: ID Fan"
+                                    className="w-full px-3 py-2.5 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button onClick={() => { setEditRow(null); setIsAdding(false); }}
+                                className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors cursor-pointer">Batal</button>
+                            <button onClick={handleSave} disabled={saving || !editForm.no_item.trim() || !editForm.deskripsi.trim()}
+                                className="px-4 py-2 text-sm font-bold text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors cursor-pointer disabled:opacity-50">
+                                {saving ? 'Menyimpan...' : 'Simpan'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Main Page ───
 export default function HistoryPage() {
     const { operator } = useOperator();
@@ -650,7 +864,7 @@ export default function HistoryPage() {
                         <span className="material-symbols-outlined text-primary text-2xl">history</span>
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black tracking-tight text-white">History & Data Lengkap</h2>
+                        <h2 className="text-2xl font-black tracking-tight text-white">History Data</h2>
                         <p className="text-text-secondary text-sm mt-1">Seluruh data operasional dari database, dikelompokkan per konteks</p>
                     </div>
                 </div>
@@ -696,6 +910,8 @@ export default function HistoryPage() {
                             <SolarUnloadingTable color={currentSection.color} />
                             <AshUnloadingTable color={currentSection.color} />
                         </>
+                    ) : activeSection === 'equipment' ? (
+                        <EquipmentListTable color={currentSection.color} />
                     ) : (
                         currentSection.tables.map(t => (
                             <DataTable

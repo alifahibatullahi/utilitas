@@ -75,9 +75,9 @@ function TankCard({ tankId }: { tankId: TankId }) {
             <div className="flex-1 flex gap-0 lg:min-h-0 lg:overflow-hidden">
 
                 {/* Glass Tank column — desktop only */}
-                <div className="hidden lg:flex flex-shrink-0 w-28 flex-col items-center justify-end py-6 px-4 border-r border-slate-800/60"
+                <div className="hidden lg:flex flex-shrink-0 w-40 flex-col items-center justify-end py-4 px-5 border-r border-slate-800/60"
                     style={{ background: `linear-gradient(to bottom, ${tc.base}08, transparent)` }}>
-                    <div className="w-full flex-1 glass-tank rounded-xl relative bg-slate-800/60 max-h-[420px]">
+                    <div className="w-full glass-tank rounded-xl relative bg-slate-800/60 h-52">
                         {/* scale marks */}
                         <div className="absolute inset-0 flex flex-col justify-between py-3 px-2 z-20 pointer-events-none">
                             <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">100%</div>

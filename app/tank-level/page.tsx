@@ -274,7 +274,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
 }
 
 export default function TankLevelPage() {
-    const { operator, canInputTank } = useOperator();
+    const { operator, canInputTank, loading: operatorLoading } = useOperator();
     const { currentLevels } = useTankData();
     const router = useRouter();
     const [now, setNow] = useState('');
@@ -305,10 +305,10 @@ export default function TankLevelPage() {
         : '---';
 
     useEffect(() => {
-        if (!operator) router.push('/');
-    }, [operator, router]);
+        if (!operatorLoading && !operator) router.push('/');
+    }, [operator, operatorLoading, router]);
 
-    if (!operator) return null;
+    if (operatorLoading || !operator) return null;
 
     return (
         /* Mobile: scrollable min-h-screen | Desktop (lg+): full-screen CCR no-scroll */

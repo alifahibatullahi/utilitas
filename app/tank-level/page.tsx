@@ -6,16 +6,14 @@ import { TANK_IDS, TANKS, TankId, TANK_THRESHOLDS, DEFAULT_THRESHOLDS } from '@/
 import { getAlertStatus } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 // Per-tank color themes
 const TANK_COLORS: Record<string, {
-    base: string; bgClass: string; textClass: string; icon: string; hoverBorderClass: string;
-    liquidBg: string; liquidSurface: string;
+    base: string; bgClass: string; textClass: string; icon: string; borderClass: string;
 }> = {
-    DEMIN: { base: '#0ea5e9', bgClass: 'bg-sky-500', textClass: 'text-sky-400', icon: 'water_drop', hoverBorderClass: 'hover:border-sky-500/30', liquidBg: 'bg-sky-500', liquidSurface: 'bg-sky-400' },
-    RCW: { base: '#14b8a6', bgClass: 'bg-teal-500', textClass: 'text-teal-400', icon: 'water_pump', hoverBorderClass: 'hover:border-teal-500/30', liquidBg: 'bg-teal-500', liquidSurface: 'bg-teal-400' },
-    SOLAR: { base: '#f59e0b', bgClass: 'bg-amber-500', textClass: 'text-amber-400', icon: 'oil_barrel', hoverBorderClass: 'hover:border-amber-500/30', liquidBg: 'bg-amber-500', liquidSurface: 'bg-amber-400' },
+    DEMIN: { base: '#0ea5e9', bgClass: 'bg-sky-500',   textClass: 'text-sky-400',   icon: 'water_drop', borderClass: 'border-sky-500/30' },
+    RCW:   { base: '#14b8a6', bgClass: 'bg-teal-500',  textClass: 'text-teal-400',  icon: 'water_pump', borderClass: 'border-teal-500/30' },
+    SOLAR: { base: '#f59e0b', bgClass: 'bg-amber-500', textClass: 'text-amber-400', icon: 'oil_barrel', borderClass: 'border-amber-500/30' },
 };
 
 function TankCard({ tankId }: { tankId: TankId }) {
@@ -27,300 +25,219 @@ function TankCard({ tankId }: { tankId: TankId }) {
     const status = getAlertStatus(level, thresholds);
     const tc = TANK_COLORS[tankId] || TANK_COLORS.DEMIN;
 
-    const flows = flowRates[tankId] || [];
+    const flows    = flowRates[tankId]       || [];
     const outFlows = outputFlowRates[tankId] || [];
 
-    const totalFlowIn = flows.reduce((sum, f) => sum + f.rate, 0);
-    // totalFlowOut only from flow-based destinations (hasFlow: true)
+    const totalFlowIn  = flows.reduce((s, f) => s + f.rate, 0);
     const totalFlowOut = outFlows
         .filter(f => tank.outputDestinations.find(d => d.name === f.destinationLabel)?.hasFlow)
-        .reduce((sum, f) => sum + f.rate, 0);
+        .reduce((s, f) => s + f.rate, 0);
 
     const statusObj = status === 'normal'
-        ? { label: 'Normal', color: 'bg-emerald-500', text: 'text-emerald-500' }
+        ? { label: 'Normal',  color: 'bg-emerald-500', text: 'text-emerald-400', ring: 'shadow-emerald-500/40' }
         : status === 'warning'
-            ? { label: 'Warning', color: 'bg-amber-500', text: 'text-amber-500' }
-            : { label: 'Kritis', color: 'bg-red-500', text: 'text-red-500' };
+            ? { label: 'Warning', color: 'bg-amber-500',   text: 'text-amber-400',   ring: 'shadow-amber-500/40' }
+            : { label: 'Kritis',  color: 'bg-red-500',     text: 'text-red-400',     ring: 'shadow-red-500/40' };
 
     const m3 = Math.round(level / 100 * (tankId === 'SOLAR' ? 200 : tank.capacityM3));
 
     return (
-        <div className={`bg-surface-dark border border-slate-800 rounded-xl overflow-hidden shadow-xl flex flex-col relative group ${tc.hoverBorderClass} transition-all duration-300`}>
-            {/* Header */}
-            <div className="p-5 border-b border-slate-800 flex items-center relative z-10"
-                style={{ background: `linear-gradient(to right, ${tc.base}1A, var(--color-surface-highlight) 50%, transparent)` }}>
-                <div className="flex items-center gap-3">
-                    <div className={`p-2.5 ${tc.bgClass} rounded-xl`} style={{ boxShadow: `0 0 12px ${tc.base}80` }}>
-                        <span className="material-symbols-outlined text-white text-xl">{tc.icon}</span>
+        <div className={`bg-surface-dark border ${tc.borderClass} rounded-2xl overflow-hidden shadow-2xl flex flex-col h-full transition-all duration-300`}
+            style={{ boxShadow: `0 0 40px ${tc.base}15` }}>
+
+            {/* ── Card Header ── */}
+            <div className="flex-shrink-0 px-6 py-4 border-b border-slate-800 flex items-center justify-between"
+                style={{ background: `linear-gradient(to right, ${tc.base}22, transparent 60%)` }}>
+                <div className="flex items-center gap-4">
+                    <div className={`p-3 ${tc.bgClass} rounded-xl`}
+                        style={{ boxShadow: `0 0 20px ${tc.base}80` }}>
+                        <span className="material-symbols-outlined text-white text-3xl">{tc.icon}</span>
                     </div>
                     <div>
-                        <h3 className="text-white font-black text-xl uppercase tracking-tighter">{tank.name}</h3>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="relative flex h-2 w-2">
-                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusObj.color} opacity-75`}></span>
-                                <span className={`relative inline-flex rounded-full h-2 w-2 ${statusObj.color}`}></span>
-                            </span>
-                            <span className={`${statusObj.text} text-[10px] font-bold uppercase tracking-wide`}>{statusObj.label}</span>
-                        </div>
+                        <h3 className="text-white font-black text-3xl uppercase tracking-tight leading-none">{tank.name}</h3>
+                        <p className="text-slate-400 text-sm font-semibold mt-0.5">{tank.capacity}</p>
                     </div>
+                </div>
+                {/* Status badge */}
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
+                    status === 'normal' ? 'bg-emerald-500/10 border-emerald-500/30' :
+                    status === 'warning' ? 'bg-amber-500/10 border-amber-500/30' :
+                    'bg-red-500/10 border-red-500/30'}`}>
+                    <span className={`relative flex h-3 w-3`}>
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusObj.color} opacity-60`}></span>
+                        <span className={`relative inline-flex rounded-full h-3 w-3 ${statusObj.color}`}></span>
+                    </span>
+                    <span className={`${statusObj.text} text-sm font-black uppercase tracking-widest`}>{statusObj.label}</span>
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="p-5 flex-1 flex flex-col gap-5 relative z-10">
+            {/* ── Main Body ── */}
+            <div className="flex-1 flex gap-0 min-h-0 overflow-hidden">
 
-                {/* Level Row: Glass Tank (left) + Stats (right) — always side-by-side */}
-                <div className="flex items-start gap-4">
-                    {/* Glass Tank Visual */}
-                    <div className="w-20 h-52 glass-tank rounded-xl relative bg-slate-800/50 flex-shrink-0">
-                        <div className="absolute right-0 top-0 bottom-0 w-full flex flex-col justify-between py-2 px-1 z-20 pointer-events-none">
-                            <div className="w-full border-t border-white/10 text-[8px] text-right text-slate-600 pr-0.5">100</div>
-                            <div className="w-3/4 border-t border-white/10 self-end"></div>
-                            <div className="w-3/4 border-t border-white/10 self-end"></div>
-                            <div className="w-3/4 border-t border-white/10 self-end"></div>
-                            <div className="w-full border-t border-white/10 text-[8px] text-right text-slate-600 pr-0.5">0</div>
+                {/* Glass Tank column */}
+                <div className="flex-shrink-0 w-28 flex flex-col items-center justify-end py-6 px-4 border-r border-slate-800/60"
+                    style={{ background: `linear-gradient(to bottom, ${tc.base}08, transparent)` }}>
+                    <div className="w-full flex-1 glass-tank rounded-xl relative bg-slate-800/60 max-h-[420px]">
+                        {/* scale marks */}
+                        <div className="absolute inset-0 flex flex-col justify-between py-3 px-2 z-20 pointer-events-none">
+                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">100%</div>
+                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">75%</div>
+                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">50%</div>
+                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">25%</div>
+                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">0%</div>
                         </div>
-                        <div className="liquid backdrop-blur-sm" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${Math.min(Math.max(level, 0), 100)}%`, backgroundColor: `${tc.base}CC`, boxShadow: `0 0 20px ${tc.base}66` }}>
-                            <div className="liquid-surface" style={{ backgroundColor: tc.base, filter: 'brightness(1.3)' }}></div>
+                        {/* liquid */}
+                        <div className="liquid backdrop-blur-sm"
+                            style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
+                                height: `${Math.min(Math.max(level, 0), 100)}%`,
+                                backgroundColor: `${tc.base}CC`,
+                                boxShadow: `0 0 30px ${tc.base}66` }}>
+                            <div className="liquid-surface" style={{ backgroundColor: tc.base, filter: 'brightness(1.3)' }} />
                         </div>
                     </div>
-
-                    {/* Level Stats */}
-                    <div className="flex-1 flex flex-col gap-1">
-                        <p className="text-[10px] text-text-secondary uppercase tracking-widest font-bold">Current Level</p>
-                        {/* Highlighted level number */}
-                        <div className="flex items-baseline gap-1.5 mt-0.5">
-                            <span className="text-5xl font-black text-white tracking-tighter leading-none"
-                                style={{ textShadow: `0 0 30px ${tc.base}, 0 0 60px ${tc.base}60` }}>
-                                {m3.toLocaleString('id-ID')}
-                            </span>
-                            <span className={`text-xl font-black ${tc.textClass}`}>m³</span>
-                        </div>
-                        {/* % bar */}
-                        <div className="mt-2 h-2 rounded-full bg-slate-700/60 overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-700"
-                                style={{ width: `${Math.min(level, 100)}%`, backgroundColor: tc.base, boxShadow: `0 0 8px ${tc.base}` }} />
-                        </div>
-                        {tankId === 'SOLAR' ? (
-                            <>
-                                <p className="text-xs text-white/60 font-bold mt-1">Total: {(m3 * 2).toLocaleString('id-ID')} m³ <span className="text-[10px] text-slate-500">(2 tanki)</span></p>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase">{level.toFixed(1)}% &bull; 2×200 m³</p>
-                            </>
-                        ) : (
-                            <p className="text-[10px] text-slate-500 font-bold uppercase mt-0.5">{level.toFixed(1)}% &bull; {tank.capacity}</p>
-                        )}
-
-                        {/* Flow In / Out summary (DEMIN & RCW) */}
-                        {tankId !== 'SOLAR' && (
-                            <div className="mt-3 pt-3 border-t border-slate-700/40 space-y-1.5">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] text-slate-500 uppercase font-bold">Flow In</span>
-                                    <span className="text-emerald-400 font-mono font-bold text-lg leading-none">{totalFlowIn.toFixed(1)} <span className="text-[10px] opacity-60">t/h</span></span>
-                                </div>
-                                {tankId === 'DEMIN' && (
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] text-slate-500 uppercase font-bold">Flow Out</span>
-                                        <span className="text-rose-400 font-mono font-bold text-lg leading-none">{totalFlowOut.toFixed(1)} <span className="text-[10px] opacity-60">t/h</span></span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    {/* % label below tank */}
+                    <p className="mt-3 text-2xl font-black font-mono" style={{ color: tc.base }}>{level.toFixed(1)}%</p>
                 </div>
 
-                {/* Divider */}
-                <div className="border-t border-slate-700/30" />
+                {/* Stats column */}
+                <div className="flex-1 flex flex-col justify-between p-6 gap-4 overflow-hidden">
 
-                {/* Bottom Details */}
-                <div className="flex flex-col gap-3">
-                    {tankId === 'SOLAR' ? (
-                        <div>
-                            <p className="text-[10px] text-text-secondary uppercase font-bold tracking-widest mb-2">3 Unloading Terakhir</p>
-                            <div className="space-y-1.5">
+                    {/* Current Level — hero number */}
+                    <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-[0.2em] font-black mb-2">Current Level</p>
+                        <div className="flex items-baseline gap-3">
+                            <span className="font-black text-white leading-none"
+                                style={{ fontSize: 'clamp(3.5rem, 6vw, 5.5rem)',
+                                    textShadow: `0 0 40px ${tc.base}, 0 0 80px ${tc.base}60` }}>
+                                {m3.toLocaleString('id-ID')}
+                            </span>
+                            <span className={`font-black ${tc.textClass}`} style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2.5rem)' }}>m³</span>
+                        </div>
+                        {tankId === 'SOLAR' && (
+                            <p className="text-base text-white/50 font-bold mt-1">
+                                Total 2 tanki: <span className="text-white font-black">{(m3 * 2).toLocaleString('id-ID')} m³</span>
+                            </p>
+                        )}
+                        {/* Progress bar */}
+                        <div className="mt-3 h-3 rounded-full bg-slate-700/70 overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700"
+                                style={{ width: `${Math.min(level, 100)}%`, backgroundColor: tc.base,
+                                    boxShadow: `0 0 10px ${tc.base}` }} />
+                        </div>
+                    </div>
+
+                    {/* Flow In / Out (DEMIN & RCW) */}
+                    {tankId !== 'SOLAR' && (
+                        <div className={`grid ${tankId === 'DEMIN' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+                            <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3">
+                                <p className="text-[11px] text-slate-500 uppercase font-black tracking-widest mb-1">Flow In</p>
+                                <p className="text-3xl font-black font-mono text-emerald-400 leading-none">
+                                    {totalFlowIn.toFixed(1)}<span className="text-base ml-1 opacity-60">t/h</span>
+                                </p>
+                            </div>
+                            {tankId === 'DEMIN' && (
+                                <div className="bg-rose-500/8 border border-rose-500/20 rounded-xl px-4 py-3">
+                                    <p className="text-[11px] text-slate-500 uppercase font-black tracking-widest mb-1">Flow Out</p>
+                                    <p className="text-3xl font-black font-mono text-rose-400 leading-none">
+                                        {totalFlowOut.toFixed(1)}<span className="text-base ml-1 opacity-60">t/h</span>
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Details — sources / destinations / unloading */}
+                    <div className="flex flex-col gap-2">
+                        {tankId === 'SOLAR' ? (
+                            <>
+                                <p className="text-[11px] text-slate-500 uppercase font-black tracking-widest">3 Unloading Terakhir</p>
                                 {solarUnloadings.slice(0, 3).map((entry, idx) => {
-                                    const dateLabel = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                                    const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
                                     return (
-                                        <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg bg-surface-highlight/50 border border-slate-700/50">
+                                        <div key={idx} className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-surface-highlight/60 border border-slate-700/50">
                                             <div>
-                                                <span className="text-sm font-bold text-white block">{dateLabel}</span>
-                                                <span className="text-xs text-text-secondary">{entry.supplier}</span>
+                                                <span className="text-sm font-bold text-white block">{lbl}</span>
+                                                <span className="text-xs text-slate-500">{entry.supplier}</span>
                                             </div>
-                                            <span className={`text-sm font-mono font-bold ${tc.textClass}`}>{entry.liters.toLocaleString('id-ID')} L</span>
+                                            <span className={`text-base font-black font-mono ${tc.textClass}`}>{entry.liters.toLocaleString('id-ID')} L</span>
                                         </div>
                                     );
                                 })}
                                 {solarUnloadings.length === 0 && (
-                                    <p className="text-xs text-text-secondary/60 italic text-center py-2">Belum ada riwayat unloading</p>
+                                    <p className="text-xs text-slate-600 italic py-1">Belum ada riwayat unloading</p>
                                 )}
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Input Sources */}
-                            {tank.inputSources.length > 0 && (
-                                <div>
-                                    <p className="text-[10px] text-text-secondary uppercase font-bold tracking-widest mb-2">Input Sources</p>
-                                    <div className="space-y-1.5">
-                                        {tank.inputSources.map((source) => {
+                            </>
+                        ) : (
+                            <>
+                                {tank.inputSources.length > 0 && (
+                                    <>
+                                        <p className="text-[11px] text-slate-500 uppercase font-black tracking-widest">Input Sources</p>
+                                        {tank.inputSources.map(source => {
                                             const f = flows.find(f => f.sourceLabel === source);
-                                            const flowActive = f && f.rate > 0;
+                                            const active = f && f.rate > 0;
                                             return (
-                                                <div key={source} className={`flex items-center justify-between px-3 py-2 rounded ${flowActive ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-slate-700/20 border border-slate-700/40'}`}>
+                                                <div key={source} className={`flex items-center justify-between px-4 py-2.5 rounded-xl ${active ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-slate-700/20 border border-slate-700/40'}`}>
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${flowActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`}></span>
-                                                        <span className={`text-xs font-bold uppercase ${flowActive ? 'text-emerald-400' : 'text-slate-500'}`}>{source}</span>
+                                                        <span className={`w-2 h-2 rounded-full ${active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`}></span>
+                                                        <span className={`text-sm font-bold uppercase ${active ? 'text-emerald-400' : 'text-slate-500'}`}>{source}</span>
                                                     </div>
-                                                    <span className={`text-xs font-mono font-bold ${flowActive ? 'text-emerald-400' : 'text-slate-600'}`}>{f ? f.rate.toFixed(1) : '0.0'} t/h</span>
+                                                    <span className={`text-sm font-mono font-bold ${active ? 'text-emerald-400' : 'text-slate-600'}`}>{f ? f.rate.toFixed(1) : '0.0'} t/h</span>
                                                 </div>
                                             );
                                         })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Output Destinations */}
-                            {tank.outputDestinations.length > 0 && (
-                                <div>
-                                    <p className="text-[10px] text-text-secondary uppercase font-bold tracking-widest mb-2">Output Destinations</p>
-                                    {tankId === 'DEMIN' ? (
-                                        <div className="space-y-1.5">
-                                            {tank.outputDestinations.map(dest => {
-                                                const outFlow = outFlows.find(f => f.destinationLabel === dest.name);
-                                                // Flow-based: active = rate > 0; Pump-only: active = pump set
-                                                const outActive = dest.hasFlow
-                                                    ? !!(outFlow && outFlow.rate > 0)
-                                                    : !!(outFlow?.pump);
-                                                return (
-                                                    <div key={dest.name} className={`flex flex-col gap-1 px-3 py-2 rounded ${outActive ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-slate-700/20 border border-slate-700/40'}`}>
-                                                        <div className="flex items-center justify-between">
-                                                            <span className={`text-xs font-bold uppercase ${outActive ? 'text-rose-400' : 'text-slate-500'}`}>{dest.name}</span>
-                                                            {dest.hasFlow && (
-                                                                <span className={`text-xs font-mono font-bold ${outActive ? 'text-rose-400' : 'text-slate-600'}`}>{outFlow ? outFlow.rate.toFixed(1) : '0.0'} t/h</span>
-                                                            )}
-                                                        </div>
-                                                        {dest.pumps && (
-                                                            <div className="flex flex-wrap items-center gap-3 mt-0.5 pt-1 border-t border-slate-600/30">
-                                                                {dest.pumps.map(pump => {
-                                                                    const isActive = outFlow?.pump === pump;
-                                                                    return isActive ? (
-                                                                        <div key={pump} className="flex items-center gap-1">
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
-                                                                            <span className="text-[9px] font-bold text-emerald-500">{pump}</span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div key={pump} className="flex items-center gap-1 opacity-40">
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                                                                            <span className="text-[9px] font-bold text-slate-400">{pump}</span>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
+                                    </>
+                                )}
+                                {tank.outputDestinations.length > 0 && (
+                                    <>
+                                        <p className="text-[11px] text-slate-500 uppercase font-black tracking-widest mt-1">Output Destinations</p>
+                                        {tankId === 'DEMIN' ? tank.outputDestinations.map(dest => {
+                                            const outFlow = outFlows.find(f => f.destinationLabel === dest.name);
+                                            const outActive = dest.hasFlow
+                                                ? !!(outFlow && outFlow.rate > 0)
+                                                : !!(outFlow?.pump);
+                                            return (
+                                                <div key={dest.name} className={`flex flex-col gap-1 px-4 py-2.5 rounded-xl ${outActive ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-slate-700/20 border border-slate-700/40'}`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`text-sm font-bold uppercase ${outActive ? 'text-rose-400' : 'text-slate-500'}`}>{dest.name}</span>
+                                                        {dest.hasFlow && (
+                                                            <span className={`text-sm font-mono font-bold ${outActive ? 'text-rose-400' : 'text-slate-600'}`}>{outFlow ? outFlow.rate.toFixed(1) : '0.0'} t/h</span>
                                                         )}
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {tank.outputDestinations.map(dest => (
-                                                <span key={dest.name} className="px-2 py-1 rounded bg-surface-highlight border border-slate-700 text-[10px] text-slate-300 font-semibold uppercase tracking-wider">
-                                                    {dest.name}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function TankTrendChart({ tankId }: { tankId: TankId }) {
-    const { trendData } = useTankData();
-    const tc = TANK_COLORS[tankId] || TANK_COLORS.DEMIN;
-    const tank = TANKS[tankId];
-    const trend = trendData[tankId] || [];
-
-    return (
-        <div className="bg-surface-dark border border-slate-800 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div className={`p-2 ${tc.bgClass} rounded-lg`} style={{ boxShadow: `0 0 10px ${tc.base}60` }}>
-                        <span className="material-symbols-outlined text-white text-base">{tc.icon}</span>
-                    </div>
-                    <div>
-                        <h3 className="text-white font-bold text-sm">{tank.name}</h3>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Trend Level 1 Jam Terakhir</p>
+                                                    {dest.pumps && (
+                                                        <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-slate-600/30">
+                                                            {dest.pumps.map(pump => {
+                                                                const isActive = outFlow?.pump === pump;
+                                                                return isActive ? (
+                                                                    <div key={pump} className="flex items-center gap-1.5">
+                                                                        <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]"></span>
+                                                                        <span className="text-xs font-bold text-emerald-400">{pump}</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div key={pump} className="flex items-center gap-1.5 opacity-35">
+                                                                        <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                                                                        <span className="text-xs font-bold text-slate-400">{pump}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        }) : (
+                                            <div className="flex flex-wrap gap-2">
+                                                {tank.outputDestinations.map(dest => (
+                                                    <span key={dest.name} className="px-3 py-1.5 rounded-lg bg-surface-highlight border border-slate-700 text-xs text-slate-300 font-semibold uppercase tracking-wider">
+                                                        {dest.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
-                {trend.length > 0 && (
-                    <div className="text-right">
-                        <span className="text-lg font-black text-white" style={{ textShadow: `0 0 10px ${tc.base}60` }}>
-                            {trend[trend.length - 1].level.toFixed(1)}%
-                        </span>
-                    </div>
-                )}
-            </div>
-            <div className="h-48">
-                {trend.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={trend} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id={`grad-${tankId}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor={tc.base} stopOpacity={0.15} />
-                                    <stop offset="100%" stopColor={tc.base} stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.08)" />
-                            <XAxis
-                                dataKey="time"
-                                stroke="#475569"
-                                fontSize={10}
-                                tickLine={false}
-                                axisLine={false}
-                            />
-                            <YAxis
-                                domain={[0, 100]}
-                                stroke="#475569"
-                                fontSize={10}
-                                tickLine={false}
-                                axisLine={false}
-                                tickFormatter={(v) => `${v}%`}
-                                width={40}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: '#0f172a',
-                                    border: `1px solid ${tc.base}40`,
-                                    borderRadius: '8px',
-                                    fontSize: '12px',
-                                    color: '#f8fafc',
-                                    boxShadow: `0 0 15px ${tc.base}20`,
-                                }}
-                                formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}%`, 'Level']}
-                                labelStyle={{ color: '#94a3b8', fontWeight: 'bold', fontSize: '10px' }}
-                            />
-                            <ReferenceLine y={40} stroke="#eab308" strokeDasharray="4 4" strokeOpacity={0.4} />
-                            <ReferenceLine y={20} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.4} />
-                            <Line
-                                type="monotone"
-                                dataKey="level"
-                                stroke={tc.base}
-                                strokeWidth={2.5}
-                                dot={false}
-                                activeDot={{ r: 5, fill: tc.base, stroke: '#0f172a', strokeWidth: 2 }}
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <div className="h-full flex items-center justify-center">
-                        <p className="text-xs text-slate-600 italic">Belum ada data trend</p>
-                    </div>
-                )}
             </div>
         </div>
     );
@@ -330,32 +247,32 @@ export default function TankLevelPage() {
     const { operator, canInputTank } = useOperator();
     const { currentLevels } = useTankData();
     const router = useRouter();
-    const [, setTick] = useState(0);
+    const [now, setNow] = useState('');
 
-    // Auto-refresh every 30 seconds for continuous CCR monitoring
+    // Tick every second for live clock
     useEffect(() => {
-        const interval = setInterval(() => {
-            setTick(t => t + 1);
-        }, 30000);
-        return () => clearInterval(interval);
+        const tick = () => setNow(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
     }, []);
 
-    // Find most recent data update timestamp
-    const lastUpdate = Object.values(currentLevels)
-        .map(d => d?.timestamp)
-        .filter(Boolean)
-        .sort()
-        .reverse()[0];
+    // Auto-refresh every 30 s
+    useEffect(() => {
+        const id = setInterval(() => window.location.reload(), 30000);
+        return () => clearInterval(id);
+    }, []);
 
-    const lastUpdateLabel = lastUpdate
+    const lastUpdate = Object.values(currentLevels)
+        .map(d => d?.timestamp).filter(Boolean).sort().reverse()[0];
+
+    const lastUpdateTime = lastUpdate
         ? new Date(lastUpdate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })
         : '--:--';
 
     const lastUpdateDate = lastUpdate
         ? new Date(lastUpdate).toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
         : '---';
-
-    const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
     useEffect(() => {
         if (!operator) router.push('/');
@@ -364,66 +281,66 @@ export default function TankLevelPage() {
     if (!operator) return null;
 
     return (
-        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto space-y-8">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex flex-col gap-2">
-                    <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-[0_0_15px_rgba(43,124,238,0.3)]">Tank Level <span className="text-primary">Monitoring UBB</span></h2>
-                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">CCR Live Display</p>
+        /* Full-screen CCR layout — no scroll */
+        <div className="h-screen overflow-hidden flex flex-col gap-3 px-5 py-4"
+            style={{ background: 'var(--color-background, #060c1a)' }}>
+
+            {/* ── Compact Header ── */}
+            <header className="flex-shrink-0 flex items-center justify-between gap-4">
+                {/* Title */}
+                <div>
+                    <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white leading-tight">
+                        Tank Level <span className="text-primary">Monitoring UBB</span>
+                    </h1>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold mt-0.5">CCR Live Display</p>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    {/* Last Data Update — enlarged with date */}
-                    <div className="bg-surface-dark/60 border border-primary/20 px-5 py-3 rounded-2xl flex flex-col items-center gap-1 shadow-[0_0_24px_rgba(43,124,238,0.12)]">
+                {/* Center: Last Data Update */}
+                <div className="flex items-stretch gap-4">
+                    <div className="bg-surface-dark border border-primary/25 rounded-2xl px-6 py-3 flex flex-col items-center justify-center gap-0.5 shadow-[0_0_30px_rgba(43,124,238,0.15)]">
                         <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Last Data Update</span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mt-0.5">
                             <span className="material-symbols-outlined text-primary text-2xl">schedule</span>
-                            <span className="text-3xl font-black font-mono text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(43,124,238,0.5)' }}>{lastUpdateLabel}</span>
+                            <span className="text-4xl font-black font-mono text-white tracking-tighter leading-none"
+                                style={{ textShadow: '0 0 20px rgba(43,124,238,0.6)' }}>
+                                {lastUpdateTime}
+                            </span>
                         </div>
-                        <span className="text-xs font-bold text-slate-400">{lastUpdateDate}</span>
+                        <span className="text-sm font-semibold text-slate-400">{lastUpdateDate}</span>
                     </div>
-                    <div className="hidden sm:flex flex-col items-center text-slate-600">
-                        <span className="text-[9px] uppercase tracking-widest font-bold">Waktu</span>
-                        <span className="text-sm font-mono font-bold">{now}</span>
+
+                    {/* Live clock */}
+                    <div className="bg-surface-dark border border-slate-800 rounded-2xl px-5 py-3 flex flex-col items-center justify-center gap-0.5">
+                        <span className="text-[10px] uppercase font-black text-slate-500 tracking-[0.2em]">Waktu</span>
+                        <span className="text-3xl font-black font-mono text-slate-300 tracking-tighter leading-none">{now}</span>
                     </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2">
                     {canInputTank && (
-                        <button
-                            onClick={() => router.push('/input')}
-                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-emerald-600/20"
-                        >
+                        <button onClick={() => router.push('/input')}
+                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer">
                             <span className="material-symbols-outlined text-base">edit</span>
                             Update Level
                         </button>
                     )}
-                    <button onClick={() => window.location.reload()} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-primary/20">
+                    <button onClick={() => window.location.reload()}
+                        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-primary/20 cursor-pointer">
                         <span className="material-symbols-outlined text-base">refresh</span>
                         Refresh
+                    </button>
+                    <button onClick={() => router.push('/dashboard')}
+                        className="flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors cursor-pointer">
+                        <span className="material-symbols-outlined text-base">arrow_back</span>
+                        Dashboard
                     </button>
                 </div>
             </header>
 
-            {/* Tank Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {/* ── 3 Tank Cards — fill remaining screen height ── */}
+            <div className="flex-1 grid grid-cols-3 gap-4 min-h-0">
                 {TANK_IDS.map(id => <TankCard key={id} tankId={id} />)}
-            </div>
-
-            {/* Trend Charts — one line chart per tank */}
-            <div>
-                <div className="flex items-center gap-3 mb-5">
-                    <span className="material-symbols-outlined text-text-secondary text-xl">query_stats</span>
-                    <h3 className="text-white font-bold text-lg">Trend Analysis</h3>
-                    <div className="flex-1 h-px bg-slate-800"></div>
-                    <div className="flex items-center gap-4">
-                        {TANK_IDS.map(id => (
-                            <div key={id} className="flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TANK_COLORS[id].base }}></span>
-                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{TANKS[id].name}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {TANK_IDS.map(id => <TankTrendChart key={id} tankId={id} />)}
-                </div>
             </div>
         </div>
     );

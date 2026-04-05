@@ -76,7 +76,7 @@ export default function InputPage() {
                 const rates: FlowRate[] = sources
                     .map((src) => ({ sourceLabel: src, rate: parseFloat(flowInputs[src] || '0') || 0 }))
                     .filter((r) => r.rate > 0);
-                if (rates.length > 0) submitFlowRates(selectedTank, rates);
+                if (rates.length > 0) submitFlowRates(selectedTank, rates, operator.name);
             }
 
             // Submit output flow rates (DEMIN)
@@ -92,7 +92,7 @@ export default function InputPage() {
                 outputs.filter(d => !d.hasFlow && d.pumps?.length).forEach(dest => {
                     allOutRates.push({ destinationLabel: dest.name, rate: 0, pump: selectedPump || undefined });
                 });
-                if (allOutRates.length > 0) submitOutputFlowRates(selectedTank, allOutRates);
+                if (allOutRates.length > 0) submitOutputFlowRates(selectedTank, allOutRates, operator.name);
             }
 
             // Submit solar unloading if SOLAR

@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { TankId, TANK_IDS, TANKS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
-import type { SolarUnloadingRow, TankLevelRow } from '@/lib/supabase/types';
+import type { SolarUnloadingRow, TankLevelRow, TankFlowReadingRow } from '@/lib/supabase/types';
 
 // Flow rate per source (ton/h)
 export interface FlowRate {
@@ -20,6 +20,7 @@ export interface OutputFlowRate {
 
 // Solar unloading entry
 export interface SolarUnloading {
+    id?: string;        // Supabase UUID (tersedia setelah fetch dari DB)
     date: string;       // ISO date string (tanggal unloading)
     liters: number;     // jumlah liter
     supplier: string;   // perusahaan pengirim
@@ -49,10 +50,14 @@ interface TankDataContextType {
     flowRates: Record<TankId, FlowRate[]>;
     outputFlowRates: Record<TankId, OutputFlowRate[]>;
     solarUnloadings: SolarUnloading[];
+    /** ISO timestamp kapan pompa Demin Revamp mulai aktif (null = mati) */
+    pumpActiveSince: string | null;
     submitLevel: (tankId: TankId, level: number, levelM3: number, operator: string, note?: string) => void;
-    submitFlowRates: (tankId: TankId, rates: FlowRate[]) => void;
-    submitOutputFlowRates: (tankId: TankId, rates: OutputFlowRate[]) => void;
+    submitFlowRates: (tankId: TankId, rates: FlowRate[], operatorName?: string) => void;
+    submitOutputFlowRates: (tankId: TankId, rates: OutputFlowRate[], operatorName?: string) => void;
     submitSolarUnloading: (entry: SolarUnloading) => void;
+    deleteSolarUnloading: (id: string) => Promise<void>;
+    updateSolarUnloading: (id: string, updates: Pick<SolarUnloading, 'date' | 'liters' | 'supplier'>) => Promise<void>;
 }
 
 // Initial empty state
@@ -70,6 +75,23 @@ function isSupabaseConfigured(): boolean {
     return !!url && !url.includes('YOUR_PROJECT_ID');
 }
 
+/** Dari history pompa Demin Revamp (desc), hitung kapan pompa aktif mulai */
+function calcPumpActiveSince(rows: TankFlowReadingRow[]): string | null {
+    if (!rows.length) return null;
+    const currentPump = rows[0].pump;
+    if (!currentPump) return null;
+    // Jalan mundur — cari batas terakhir berturut-turut dengan pompa yang sama
+    let since = rows[0].created_at;
+    for (const row of rows) {
+        if (row.pump === currentPump) {
+            since = row.created_at;
+        } else {
+            break;
+        }
+    }
+    return since;
+}
+
 const TankDataContext = createContext<TankDataContextType | null>(null);
 
 export function TankDataProvider({ children }: { children: ReactNode }) {
@@ -78,6 +100,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
     const [flowRates, setFlowRates] = useState(emptyFlowRates);
     const [outputFlowRates, setOutputFlowRates] = useState(emptyOutputFlowRates);
     const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloading[]>([]);
+    const [pumpActiveSince, setPumpActiveSince] = useState<string | null>(null);
     const [trendData, setTrendData] = useState<Record<TankId, { time: string; level: number }[]>>({
         DEMIN: [], RCW: [], SOLAR: [],
     });
@@ -98,6 +121,35 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         return result;
     }, []);
 
+    // Apply flow reading rows to state
+    const applyFlowReadings = useCallback((rows: TankFlowReadingRow[]) => {
+        const newFlowRates: Record<TankId, FlowRate[]> = { DEMIN: [], RCW: [], SOLAR: [] };
+        const newOutputFlowRates: Record<TankId, OutputFlowRate[]> = { DEMIN: [], RCW: [], SOLAR: [] };
+
+        // Group by tank + direction + label, take latest per group
+        const latestByKey = new Map<string, TankFlowReadingRow>();
+        for (const row of rows) {
+            const key = `${row.tank_id}|${row.direction}|${row.label}`;
+            if (!latestByKey.has(key)) latestByKey.set(key, row); // rows already sorted desc
+        }
+
+        for (const row of latestByKey.values()) {
+            const tankId = row.tank_id as TankId;
+            if (row.direction === 'in') {
+                newFlowRates[tankId].push({ sourceLabel: row.label, rate: Number(row.rate) });
+            } else {
+                newOutputFlowRates[tankId].push({
+                    destinationLabel: row.label,
+                    rate: Number(row.rate),
+                    pump: row.pump ?? undefined,
+                });
+            }
+        }
+
+        setFlowRates(newFlowRates);
+        setOutputFlowRates(newOutputFlowRates);
+    }, []);
+
     // Fetch from Supabase on mount
     useEffect(() => {
         if (!isSupabaseConfigured()) return;
@@ -106,7 +158,6 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
 
         // Fetch latest tank levels + history from tank_levels table
         const fetchTankLevels = async () => {
-            // Get last 100 entries for history & trend
             const { data } = await supabase
                 .from('tank_levels')
                 .select('*')
@@ -116,7 +167,6 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             if (data && data.length > 0) {
                 const rows = data as unknown as TankLevelRow[];
 
-                // Set current levels (latest per tank)
                 TANK_IDS.forEach(tankId => {
                     const latest = rows.find(r => r.tank_id === tankId);
                     if (latest) {
@@ -133,7 +183,6 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     }
                 });
 
-                // Build history
                 const historyItems: TankLevelHistory[] = rows.map((r, idx) => ({
                     id: idx + 1,
                     tankId: r.tank_id as TankId,
@@ -147,7 +196,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             }
         };
 
-        // Fallback: also check shift_tankyard for levels if tank_levels is empty
+        // Fallback: shift_tankyard jika tank_levels kosong
         const fetchShiftTankyard = async () => {
             const { data } = await supabase
                 .from('shift_tankyard')
@@ -164,20 +213,36 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     created_at: string;
                 };
                 const timestamp = row.created_at;
-                // Only set if tank_levels didn't provide data
                 setCurrentLevels(prev => {
                     const updated = { ...prev };
-                    if (prev.DEMIN.operator === '-' && row.tk_demin != null) {
+                    if (prev.DEMIN.operator === '-' && row.tk_demin != null)
                         updated.DEMIN = { tankId: 'DEMIN', level: Number(row.tk_demin), operator: 'Shift Report', timestamp };
-                    }
-                    if (prev.RCW.operator === '-' && row.tk_rcw != null) {
+                    if (prev.RCW.operator === '-' && row.tk_rcw != null)
                         updated.RCW = { tankId: 'RCW', level: Number(row.tk_rcw), operator: 'Shift Report', timestamp };
-                    }
-                    if (prev.SOLAR.operator === '-' && row.tk_solar_ab != null) {
+                    if (prev.SOLAR.operator === '-' && row.tk_solar_ab != null)
                         updated.SOLAR = { tankId: 'SOLAR', level: Number(row.tk_solar_ab), operator: 'Shift Report', timestamp };
-                    }
                     return updated;
                 });
+            }
+        };
+
+        // Fetch flow readings (ambil 200 terakhir untuk tiap tank+direction)
+        const fetchFlowReadings = async () => {
+            const { data } = await supabase
+                .from('tank_flow_readings')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(200);
+
+            if (data && data.length > 0) {
+                const rows = data as unknown as TankFlowReadingRow[];
+                applyFlowReadings(rows);
+
+                // Hitung pumpActiveSince dari history Demin Revamp
+                const deminRevampHistory = rows.filter(
+                    r => r.tank_id === 'DEMIN' && r.direction === 'out' && r.label === 'Demin Revamp'
+                );
+                setPumpActiveSince(calcPumpActiveSince(deminRevampHistory));
             }
         };
 
@@ -192,6 +257,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             if (data && data.length > 0) {
                 const rows = data as unknown as SolarUnloadingRow[];
                 setSolarUnloadings(rows.map(d => ({
+                    id: d.id,
                     date: d.date,
                     liters: Number(d.liters),
                     supplier: d.supplier,
@@ -200,10 +266,11 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         };
 
         fetchTankLevels().then(() => fetchShiftTankyard());
+        fetchFlowReadings();
         fetchSolar();
 
-        // Subscribe to realtime updates on tank_levels
-        const channel = supabase
+        // Realtime: tank_levels
+        const levelChannel = supabase
             .channel('tank_levels_realtime')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tank_levels' }, (payload) => {
                 const row = payload.new as TankLevelRow;
@@ -224,16 +291,38 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             })
             .subscribe();
 
+        // Realtime: tank_flow_readings
+        const flowChannel = supabase
+            .channel('tank_flow_readings_realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tank_flow_readings' }, async () => {
+                // Re-fetch all flow readings untuk update state lengkap
+                const { data } = await supabase
+                    .from('tank_flow_readings')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(200);
+
+                if (data && data.length > 0) {
+                    const rows = data as unknown as TankFlowReadingRow[];
+                    applyFlowReadings(rows);
+                    const deminRevampHistory = rows.filter(
+                        r => r.tank_id === 'DEMIN' && r.direction === 'out' && r.label === 'Demin Revamp'
+                    );
+                    setPumpActiveSince(calcPumpActiveSince(deminRevampHistory));
+                }
+            })
+            .subscribe();
+
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(levelChannel);
+            supabase.removeChannel(flowChannel);
         };
-    }, [buildTrendData]);
+    }, [buildTrendData, applyFlowReadings]);
 
     const submitLevel = useCallback((tankId: TankId, level: number, levelM3: number, operator: string, note?: string) => {
         const timestamp = new Date().toISOString();
         const newEntry: TankLevel = { tankId, level, operator, timestamp, note };
 
-        // Update local state immediately
         setCurrentLevels(prev => ({ ...prev, [tankId]: newEntry }));
         setHistory(prev => {
             const newHistory = [{ id: prev.length + 1, ...newEntry }, ...prev];
@@ -241,7 +330,6 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             return newHistory;
         });
 
-        // Persist to Supabase
         if (isSupabaseConfigured()) {
             const supabase = createClient();
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -257,18 +345,63 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         }
     }, [buildTrendData]);
 
-    const submitFlowRates = useCallback((tankId: TankId, rates: FlowRate[]) => {
+    const submitFlowRates = useCallback((tankId: TankId, rates: FlowRate[], operatorName?: string) => {
+        // Update local state
         setFlowRates(prev => ({ ...prev, [tankId]: rates }));
+
+        // Persist each reading to Supabase
+        if (isSupabaseConfigured() && rates.length > 0) {
+            const supabase = createClient();
+            const rows = rates.map(r => ({
+                tank_id: tankId,
+                direction: 'in',
+                label: r.sourceLabel,
+                rate: r.rate,
+                pump: null,
+                operator_name: operatorName ?? null,
+            }));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            supabase.from('tank_flow_readings').insert(rows as any).then(({ error }: { error: unknown }) => {
+                if (error) console.error('Failed to insert flow readings:', error);
+            });
+        }
     }, []);
 
-    const submitOutputFlowRates = useCallback((tankId: TankId, rates: OutputFlowRate[]) => {
+    const submitOutputFlowRates = useCallback((tankId: TankId, rates: OutputFlowRate[], operatorName?: string) => {
+        // Update local state
         setOutputFlowRates(prev => ({ ...prev, [tankId]: rates }));
+
+        // Update pumpActiveSince locally for immediate feedback
+        if (tankId === 'DEMIN') {
+            const revamp = rates.find(r => r.destinationLabel === 'Demin Revamp');
+            if (revamp?.pump) {
+                setPumpActiveSince(prev => prev ?? new Date().toISOString());
+            } else if (revamp && !revamp.pump) {
+                setPumpActiveSince(null);
+            }
+        }
+
+        // Persist each reading to Supabase
+        if (isSupabaseConfigured() && rates.length > 0) {
+            const supabase = createClient();
+            const rows = rates.map(r => ({
+                tank_id: tankId,
+                direction: 'out',
+                label: r.destinationLabel,
+                rate: r.rate,
+                pump: r.pump ?? null,
+                operator_name: operatorName ?? null,
+            }));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            supabase.from('tank_flow_readings').insert(rows as any).then(({ error }: { error: unknown }) => {
+                if (error) console.error('Failed to insert output flow readings:', error);
+            });
+        }
     }, []);
 
     const submitSolarUnloading = useCallback((entry: SolarUnloading) => {
         setSolarUnloadings(prev => [entry, ...prev]);
 
-        // Insert to Supabase
         if (isSupabaseConfigured()) {
             const supabase = createClient();
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -282,8 +415,38 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const deleteSolarUnloading = useCallback(async (id: string) => {
+        setSolarUnloadings(prev => prev.filter(e => e.id !== id));
+        if (isSupabaseConfigured()) {
+            const supabase = createClient();
+            const { error } = await supabase.from('solar_unloadings').delete().eq('id', id);
+            if (error) console.error('Failed to delete solar unloading:', error);
+        }
+    }, []);
+
+    const updateSolarUnloading = useCallback(async (
+        id: string,
+        updates: Pick<SolarUnloading, 'date' | 'liters' | 'supplier'>
+    ) => {
+        setSolarUnloadings(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+        if (isSupabaseConfigured()) {
+            const supabase = createClient();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error } = await (supabase.from('solar_unloadings') as any)
+                .update({ date: updates.date, liters: updates.liters, supplier: updates.supplier })
+                .eq('id', id);
+            if (error) console.error('Failed to update solar unloading:', error);
+        }
+    }, []);
+
     return (
-        <TankDataContext.Provider value={{ currentLevels, history, trendData, flowRates, outputFlowRates, solarUnloadings, submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading }}>
+        <TankDataContext.Provider value={{
+            currentLevels, history, trendData,
+            flowRates, outputFlowRates,
+            solarUnloadings, pumpActiveSince,
+            submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading,
+            deleteSolarUnloading, updateSolarUnloading,
+        }}>
             {children}
         </TankDataContext.Provider>
     );

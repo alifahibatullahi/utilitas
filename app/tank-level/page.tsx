@@ -17,7 +17,12 @@ const TANK_COLORS: Record<string, {
 };
 
 function TankCard({ tankId }: { tankId: TankId }) {
-    const { currentLevels, flowRates, outputFlowRates, solarUnloadings } = useTankData();
+    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, pumpActiveSince, deleteSolarUnloading, updateSolarUnloading } = useTankData();
+    // Edit unloading state
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editDate, setEditDate] = useState('');
+    const [editLiters, setEditLiters] = useState('');
+    const [editSupplier, setEditSupplier] = useState('');
     const tank = TANKS[tankId];
     const data = currentLevels[tankId];
     const level = data?.level || 0;
@@ -171,29 +176,53 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                 <div className={`${solarUnloadings.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3' : ''}`}>
                                     {solarUnloadings.slice(0, 3).map((entry, idx) => {
                                         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                                        const isEditing = editingId === entry.id;
+                                        if (isEditing) {
+                                            return (
+                                                <div key={entry.id ?? idx} className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/40">
+                                                    <div className="flex gap-2">
+                                                        <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                                                            className="flex-1 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-amber-500/50" />
+                                                        <input type="number" inputMode="decimal" value={editLiters} onChange={e => setEditLiters(e.target.value)}
+                                                            placeholder="Liter" className="w-24 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white text-center outline-none focus:border-amber-500/50 appearance-none" />
+                                                    </div>
+                                                    <input type="text" value={editSupplier} onChange={e => setEditSupplier(e.target.value)}
+                                                        placeholder="Perusahaan" className="w-full px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-amber-500/50" />
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button onClick={() => setEditingId(null)}
+                                                            className="px-3 py-1 rounded-lg bg-slate-700 text-xs text-slate-300 font-bold cursor-pointer hover:bg-slate-600 transition-colors">Batal</button>
+                                                        <button onClick={async () => {
+                                                            if (entry.id) await updateSolarUnloading(entry.id, { date: editDate, liters: parseFloat(editLiters) || 0, supplier: editSupplier });
+                                                            setEditingId(null);
+                                                        }} className="px-3 py-1 rounded-lg bg-amber-500 text-xs text-white font-bold cursor-pointer hover:bg-amber-400 transition-colors">Simpan</button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
                                         return (
-                                            <div key={idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative">
+                                            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative">
                                                 <div className="w-full pr-12 relative flex flex-col justify-center">
                                                     <span className="text-sm xl:text-base font-bold text-white block truncate">{lbl}</span>
                                                     <span className="text-[11px] xl:text-xs text-slate-400 truncate block mt-0.5 group-hover:text-slate-300 transition-colors" title={entry.supplier}>{entry.supplier}</span>
                                                 </div>
-                                                
                                                 <div className="flex items-baseline gap-1.5 whitespace-nowrap">
                                                     <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none ${tc.textClass}`}>
                                                         {entry.liters.toLocaleString('id-ID')}
                                                     </span>
                                                     <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
                                                 </div>
-
-                                                {/* Hover Actions - Positioned absolutely at the center-right */}
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/90 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50">
-                                                    <button className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit Unloading">
-                                                        <span className="material-symbols-outlined text-[16px]">edit</span>
-                                                    </button>
-                                                    <button className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus Unloading">
-                                                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                                                    </button>
-                                                </div>
+                                                {entry.id && (
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/90 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50">
+                                                        <button onClick={() => { setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toString()); setEditSupplier(entry.supplier); }}
+                                                            className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
+                                                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        </button>
+                                                        <button onClick={() => { if (entry.id && confirm('Hapus data unloading ini?')) deleteSolarUnloading(entry.id); }}
+                                                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
+                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -249,21 +278,34 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                                             )}
                                                         </div>
                                                         {dest.pumps && (
-                                                            <div className="flex flex-wrap items-center gap-2 pt-2 mt-0.5 border-t border-slate-600/30">
-                                                                {dest.pumps.map(pump => {
-                                                                    const isActive = outFlow?.pump === pump;
-                                                                    return isActive ? (
-                                                                        <div key={pump} className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/40 px-2 py-1 xl:px-2.5 xl:py-1 rounded-md shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
-                                                                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                                                                            <span className="text-[10px] xl:text-[11px] font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div key={pump} className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 px-2 py-1 xl:px-2.5 xl:py-1 rounded-md opacity-60">
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                                                                            <span className="text-[10px] xl:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
-                                                                        </div>
-                                                                    );
-                                                                })}
+                                                            <div className="flex flex-col gap-1.5 pt-2 mt-0.5 border-t border-slate-600/30">
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    {dest.pumps.map(pump => {
+                                                                        const isActive = outFlow?.pump === pump;
+                                                                        return isActive ? (
+                                                                            <div key={pump} className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/40 px-2 py-1 xl:px-2.5 xl:py-1 rounded-md shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
+                                                                                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                                                                <span className="text-[10px] xl:text-[11px] font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div key={pump} className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 px-2 py-1 xl:px-2.5 xl:py-1 rounded-md opacity-60">
+                                                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                                                                                <span className="text-[10px] xl:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                                {/* Aktif sejak — tampil saat pompa aktif */}
+                                                                {outActive && pumpActiveSince && (
+                                                                    <div className="flex items-center gap-1.5 text-[10px] xl:text-[11px] text-emerald-400/70 font-semibold">
+                                                                        <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                                                        Aktif sejak{' '}
+                                                                        <span className="font-black text-emerald-400">
+                                                                            {new Date(pumpActiveSince).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}{' '}
+                                                                            {new Date(pumpActiveSince).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>

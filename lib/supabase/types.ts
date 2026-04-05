@@ -524,3 +524,14 @@ export interface TankLevelRow {
     note: string | null;
     created_at: string;
 }
+
+export interface TankFlowReadingRow {
+    id: string;
+    tank_id: 'DEMIN' | 'RCW' | 'SOLAR';
+    direction: 'in' | 'out';
+    label: string;        // nama source / destination
+    rate: number;         // ton/h; 0 untuk pump-only
+    pump: string | null;  // pompa aktif (khusus Demin Revamp)
+    operator_name: string | null;
+    created_at: string;
+}

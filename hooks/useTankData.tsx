@@ -291,10 +291,10 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             })
             .subscribe();
 
-        // Realtime: tank_flow_readings
+        // Realtime: tank_flow_readings (INSERT, UPDATE, DELETE)
         const flowChannel = supabase
             .channel('tank_flow_readings_realtime')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tank_flow_readings' }, async () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tank_flow_readings' }, async () => {
                 // Re-fetch all flow readings untuk update state lengkap
                 const { data } = await supabase
                     .from('tank_flow_readings')
@@ -313,9 +313,35 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             })
             .subscribe();
 
+        // Realtime: solar_unloadings (INSERT, UPDATE, DELETE)
+        const solarChannel = supabase
+            .channel('solar_unloadings_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'solar_unloadings' }, async () => {
+                // Re-fetch solar unloadings on any change
+                const { data } = await supabase
+                    .from('solar_unloadings')
+                    .select('*')
+                    .order('date', { ascending: false })
+                    .limit(10);
+
+                if (data && data.length > 0) {
+                    const rows = data as unknown as SolarUnloadingRow[];
+                    setSolarUnloadings(rows.map(d => ({
+                        id: d.id,
+                        date: d.date,
+                        liters: Number(d.liters),
+                        supplier: d.supplier,
+                    })));
+                } else {
+                    setSolarUnloadings([]);
+                }
+            })
+            .subscribe();
+
         return () => {
             supabase.removeChannel(levelChannel);
             supabase.removeChannel(flowChannel);
+            supabase.removeChannel(solarChannel);
         };
     }, [buildTrendData, applyFlowReadings]);
 

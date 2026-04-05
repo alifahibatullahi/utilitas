@@ -8,7 +8,7 @@ import HistoryTable from '@/components/ui/HistoryTable';
 import { useOperator } from '@/hooks/useOperator';
 import { useTankData } from '@/hooks/useTankData';
 import { TANKS, TankId, TANK_IDS } from '@/lib/constants';
-import { getAlertStatus, generateTrendData } from '@/lib/utils';
+import { getAlertStatus } from '@/lib/utils';
 
 export default function TankDetailPage({ params }: { params: Promise<{ tank: string }> }) {
     const { tank: tankSlug } = use(params);
@@ -40,11 +40,22 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
     }
 
     const data = currentLevels[tankId];
-    const tankHistory = history.filter(h => h.tankId === tankId);
+    const tankHistory = history
+        .filter(h => h.tankId === tankId)
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     const alertStatus = getAlertStatus(data.level);
 
-    // Generate more detailed trend data (24 hours, every 30 min)
-    const detailedTrend = generateDetailedTrend(data.level);
+    // Real trend from DB history
+    const detailedTrend = tankHistory.map(h => ({
+        time: new Date(h.timestamp).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }),
+        level: h.level,
+    }));
+
+    // Stats from real data
+    const levels = tankHistory.map(h => h.level);
+    const minLevel = levels.length ? Math.min(...levels) : data.level;
+    const maxLevel = levels.length ? Math.max(...levels) : data.level;
+    const avgLevel = levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : data.level;
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
@@ -93,9 +104,9 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     {[
                         { label: 'Level Saat Ini', value: `${data.level.toFixed(1)}%`, color: tank.liquidColor },
-                        { label: 'Min (24 jam)', value: `${Math.max(0, data.level - 15).toFixed(1)}%`, color: '#94a3b8' },
-                        { label: 'Max (24 jam)', value: `${Math.min(100, data.level + 10).toFixed(1)}%`, color: '#94a3b8' },
-                        { label: 'Rata-rata', value: `${(data.level - 2.5).toFixed(1)}%`, color: '#94a3b8' },
+                        { label: `Min (${levels.length} data)`, value: `${minLevel.toFixed(1)}%`, color: '#94a3b8' },
+                        { label: `Max (${levels.length} data)`, value: `${maxLevel.toFixed(1)}%`, color: '#94a3b8' },
+                        { label: 'Rata-rata', value: `${avgLevel.toFixed(1)}%`, color: '#94a3b8' },
                     ].map((item) => (
                         <div key={item.label} className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-4">
                             <p className="text-xs text-slate-400">{item.label}</p>
@@ -157,8 +168,11 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
                 {/* Trend chart */}
                 <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5 mb-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold text-slate-200">📈 Trend Level (24 Jam)</h2>
+                        <h2 className="text-sm font-semibold text-slate-200">📈 Trend Level ({tankHistory.length} data terakhir)</h2>
                     </div>
+                    {detailedTrend.length === 0 ? (
+                        <div className="h-32 flex items-center justify-center text-slate-500 text-sm italic">Belum ada data historis</div>
+                    ) : (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={detailedTrend}>
@@ -204,6 +218,7 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
+                    )}
                 </div>
 
                 {/* History table */}
@@ -213,18 +228,3 @@ export default function TankDetailPage({ params }: { params: Promise<{ tank: str
     );
 }
 
-// Generate 24-hour trend (every 30 min = 48 points)
-function generateDetailedTrend(currentLevel: number) {
-    const data = [];
-    const now = new Date();
-    for (let i = 47; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * 30 * 60 * 1000);
-        const variation = (Math.random() - 0.5) * 15;
-        data.push({
-            time: time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-            level: Math.max(0, Math.min(100, currentLevel + variation - (i * 0.1))),
-        });
-    }
-    data[data.length - 1].level = currentLevel;
-    return data;
-}

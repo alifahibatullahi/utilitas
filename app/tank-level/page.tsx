@@ -111,15 +111,15 @@ function TankCard({ tankId }: { tankId: TankId }) {
                             <span className="material-symbols-outlined text-sm">water</span>
                             Total Volume Available
                         </p>
-                        <div className="flex items-baseline gap-3 xl:gap-4">
+                        <div className="flex items-baseline gap-2 xl:gap-3">
                             <span className="font-black text-white leading-none tracking-tighter"
-                                style={{ fontSize: 'clamp(3rem, 7vw, 6.5rem)',
-                                    textShadow: `0 0 50px ${tc.base}80, 0 0 100px ${tc.base}40` }}>
+                                style={{ fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
+                                    textShadow: `0 0 40px ${tc.base}80, 0 0 80px ${tc.base}30` }}>
                                 {m3.toLocaleString('id-ID')}
                             </span>
-                            <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1.5rem, 3.5vw, 3rem)' }}>m³</span>
+                            <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1.2rem, 2vw, 2rem)' }}>m³</span>
                             {/* % on mobile (no glass tank) */}
-                            <span className="lg:hidden ml-auto text-3xl font-black font-mono" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
+                            <span className="lg:hidden ml-auto text-2xl font-black font-mono" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
                         </div>
                         {tankId === 'SOLAR' && (
                             <div className="inline-block mt-3 bg-slate-800/50 border border-slate-700/60 px-4 py-2 rounded-xl">
@@ -168,26 +168,32 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[14px] xl:text-base">local_shipping</span> 3 Unloading Terakhir
                                 </p>
-                                <div className={`${solarUnloadings.length > 0 ? 'grid grid-cols-1 xl:grid-cols-3 gap-3' : ''}`}>
+                                <div className={`${solarUnloadings.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3' : ''}`}>
                                     {solarUnloadings.slice(0, 3).map((entry, idx) => {
                                         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
                                         return (
-                                            <div key={idx} className="flex xl:flex-col items-center xl:items-start justify-between px-4 py-3 xl:p-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative">
-                                                <div className="xl:mb-2 xl:border-b border-slate-700/50 xl:pb-2 w-full pr-12 xl:pr-0 relative">
-                                                    <span className="text-sm xl:text-[15px] font-bold text-white block truncate">{lbl}</span>
+                                            <div key={idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative">
+                                                <div className="w-full pr-12 relative flex flex-col justify-center">
+                                                    <span className="text-sm xl:text-base font-bold text-white block truncate">{lbl}</span>
                                                     <span className="text-[11px] xl:text-xs text-slate-400 truncate block mt-0.5 group-hover:text-slate-300 transition-colors" title={entry.supplier}>{entry.supplier}</span>
-                                                    
-                                                    {/* Hover Actions */}
-                                                    <div className="absolute top-0 right-0 xl:-top-2 xl:-right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/80 backdrop-blur-sm rounded-lg p-1 border border-slate-700/50">
-                                                        <button className="text-slate-400 hover:text-emerald-400 transition-colors p-1 rounded hover:bg-slate-700 cursor-pointer" title="Edit Unloading">
-                                                            <span className="material-symbols-outlined text-[14px]">edit</span>
-                                                        </button>
-                                                        <button className="text-slate-400 hover:text-rose-400 transition-colors p-1 rounded hover:bg-slate-700 cursor-pointer" title="Hapus Unloading">
-                                                            <span className="material-symbols-outlined text-[14px]">delete</span>
-                                                        </button>
-                                                    </div>
                                                 </div>
-                                                <span className={`text-lg xl:text-2xl font-black font-mono tracking-tighter leading-none ${tc.textClass} mt-0 xl:mt-2`}>{entry.liters.toLocaleString('id-ID')} <span className="text-xs xl:text-sm text-slate-500 font-bold ml-0.5">L</span></span>
+                                                
+                                                <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                                                    <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none ${tc.textClass}`}>
+                                                        {entry.liters.toLocaleString('id-ID')}
+                                                    </span>
+                                                    <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
+                                                </div>
+
+                                                {/* Hover Actions - Positioned absolutely at the center-right */}
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/90 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50">
+                                                    <button className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit Unloading">
+                                                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                    </button>
+                                                    <button className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus Unloading">
+                                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                    </button>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -197,7 +203,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                 )}
                             </>
                         ) : (
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 xl:gap-4 mt-1">
+                            <div className="flex flex-col gap-3 xl:gap-4 mt-1">
                                 {tank.inputSources.length > 0 && (
                                     <div className="flex flex-col gap-2">
                                         <p className="text-[10px] xl:text-[11px] text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-0.5">
@@ -297,11 +303,6 @@ export default function TankLevelPage() {
         return () => clearInterval(id);
     }, []);
 
-    // Auto-refresh every 30 s
-    useEffect(() => {
-        const id = setInterval(() => window.location.reload(), 30000);
-        return () => clearInterval(id);
-    }, []);
 
     const lastUpdate = Object.values(currentLevels)
         .map(d => d?.timestamp).filter(Boolean).sort().reverse()[0];

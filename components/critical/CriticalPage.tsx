@@ -20,16 +20,16 @@ function HeaderOperatorSelect() {
         <div className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-lg px-2 py-1 shadow-sm transition-colors hover:bg-gray-200 focus-within:ring-2 focus-within:ring-blue-500/20">
             <span className="material-symbols-outlined text-gray-500" style={{ fontSize: 16 }}>person</span>
             <select
-                value={operator?.id || ''}
+                value={operator?.name || ''}
                 onChange={e => {
-                    const op = operators.find(o => String(o.id) === e.target.value);
+                    const op = operators.find(o => o.name === e.target.value);
                     if (op) login(op);
                 }}
                 className="bg-transparent text-xs font-bold text-gray-700 outline-none cursor-pointer pr-4 appearance-none hover:text-gray-900"
             >
                 <option value="" disabled>Login Sebagai...</option>
                 {sorted.map(op => (
-                    <option key={op.id} value={op.id}>{op.name}</option>
+                    <option key={op.name} value={op.name}>{op.name}</option>
                 ))}
             </select>
             <span className="material-symbols-outlined absolute right-2 text-gray-400 pointer-events-none hidden sm:block" style={{ fontSize: 14, right: 8 }}>expand_more</span>

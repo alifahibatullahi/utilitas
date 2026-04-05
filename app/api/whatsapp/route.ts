@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToR2, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
 // ─── POST — Fonnte webhook (incoming message) ───
 // Fonnte mengirim POST ke URL ini setiap ada pesan masuk
 export async function POST(req: NextRequest) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
   let body: FonnteWebhookBody;
   try {
     body = await req.json();
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await processMessage(body);
+    await processMessage(body, supabaseAdmin);
   } catch (err) {
     console.error('[fonnte/POST]', err);
   }
@@ -34,7 +33,8 @@ export async function POST(req: NextRequest) {
 }
 
 // ─── Core processing ───
-async function processMessage(body: FonnteWebhookBody) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processMessage(body: FonnteWebhookBody, supabaseAdmin: any) {
   const { sender, message, file, type } = body;
 
   if (!sender) return;

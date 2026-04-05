@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToR2, deleteFromR2, keyFromUrl, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
 export async function POST(req: NextRequest) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
   try {
     const formData      = await req.formData();
     const file          = formData.get('file')           as File   | null;

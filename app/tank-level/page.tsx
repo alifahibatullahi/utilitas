@@ -72,7 +72,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
                 {/* Level Row: Glass Tank (left) + Stats (right) — always side-by-side */}
                 <div className="flex items-start gap-4">
                     {/* Glass Tank Visual */}
-                    <div className="w-16 h-40 glass-tank rounded-xl relative bg-slate-800/50 flex-shrink-0">
+                    <div className="w-20 h-52 glass-tank rounded-xl relative bg-slate-800/50 flex-shrink-0">
                         <div className="absolute right-0 top-0 bottom-0 w-full flex flex-col justify-between py-2 px-1 z-20 pointer-events-none">
                             <div className="w-full border-t border-white/10 text-[8px] text-right text-slate-600 pr-0.5">100</div>
                             <div className="w-3/4 border-t border-white/10 self-end"></div>
@@ -88,13 +88,22 @@ function TankCard({ tankId }: { tankId: TankId }) {
                     {/* Level Stats */}
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="text-[10px] text-text-secondary uppercase tracking-widest font-bold">Current Level</p>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-4xl font-black text-white tracking-tighter" style={{ textShadow: `0 0 20px ${tc.base}80` }}>{m3.toLocaleString('id-ID')}</span>
-                            <span className={`text-base font-bold ${tc.textClass}`}>m³</span>
+                        {/* Highlighted level number */}
+                        <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-5xl font-black text-white tracking-tighter leading-none"
+                                style={{ textShadow: `0 0 30px ${tc.base}, 0 0 60px ${tc.base}60` }}>
+                                {m3.toLocaleString('id-ID')}
+                            </span>
+                            <span className={`text-xl font-black ${tc.textClass}`}>m³</span>
+                        </div>
+                        {/* % bar */}
+                        <div className="mt-2 h-2 rounded-full bg-slate-700/60 overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700"
+                                style={{ width: `${Math.min(level, 100)}%`, backgroundColor: tc.base, boxShadow: `0 0 8px ${tc.base}` }} />
                         </div>
                         {tankId === 'SOLAR' ? (
                             <>
-                                <p className="text-xs text-white/60 font-bold mt-0.5">Total: {(m3 * 2).toLocaleString('id-ID')} m³ <span className="text-[10px] text-slate-500">(2 tanki)</span></p>
+                                <p className="text-xs text-white/60 font-bold mt-1">Total: {(m3 * 2).toLocaleString('id-ID')} m³ <span className="text-[10px] text-slate-500">(2 tanki)</span></p>
                                 <p className="text-[10px] text-slate-500 font-bold uppercase">{level.toFixed(1)}% &bull; 2×200 m³</p>
                             </>
                         ) : (
@@ -342,6 +351,10 @@ export default function TankLevelPage() {
         ? new Date(lastUpdate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })
         : '--:--';
 
+    const lastUpdateDate = lastUpdate
+        ? new Date(lastUpdate).toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+        : '---';
+
     const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
     useEffect(() => {
@@ -354,19 +367,19 @@ export default function TankLevelPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto space-y-8">
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                    <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-[0_0_15px_rgba(43,124,238,0.3)]">Tank Level <span className="text-primary">Monitoring</span></h2>
+                    <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-[0_0_15px_rgba(43,124,238,0.3)]">Tank Level <span className="text-primary">Monitoring UBB</span></h2>
                     <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">CCR Live Display</p>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="bg-surface-dark/40 border border-slate-800/50 px-4 py-2 rounded-full flex items-center gap-3 shadow-inner">
-                        <div className="flex flex-col items-center">
-                            <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em] mb-1">Last Data Update</span>
-                            <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 px-6 py-1.5 rounded-2xl shadow-[0_0_20px_rgba(43,124,238,0.1)]">
-                                <span className="material-symbols-outlined text-primary text-xl">schedule</span>
-                                <span className="text-lg font-bold font-mono text-white tracking-tight">{lastUpdateLabel}</span>
-                            </div>
+                    {/* Last Data Update — enlarged with date */}
+                    <div className="bg-surface-dark/60 border border-primary/20 px-5 py-3 rounded-2xl flex flex-col items-center gap-1 shadow-[0_0_24px_rgba(43,124,238,0.12)]">
+                        <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Last Data Update</span>
+                        <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary text-2xl">schedule</span>
+                            <span className="text-3xl font-black font-mono text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(43,124,238,0.5)' }}>{lastUpdateLabel}</span>
                         </div>
+                        <span className="text-xs font-bold text-slate-400">{lastUpdateDate}</span>
                     </div>
                     <div className="hidden sm:flex flex-col items-center text-slate-600">
                         <span className="text-[9px] uppercase tracking-widest font-bold">Waktu</span>

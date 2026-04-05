@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npx next:*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(node -e \"require\\(''''child_process''''\\).execSync\\(''''npm run dev'''', {stdio: ''''inherit''''}\\)\")",
+      "Bash(taskkill /PID 11232 /F)",
+      "Bash(cmd //c \"taskkill /PID 11232 /F\")",
+      "Bash(cmd /c \"taskkill /IM node.exe /F\")",
+      "Bash(cmd /c \"taskkill /IM node.exe /F /T 2>&1\")",
+      "Bash(netstat -ano)",
+      "Bash(cmd /c \"taskkill /IM node.exe /F /T\")",
+      "Bash(cmd /c \"wmic process where ProcessId=19988 get Name,ProcessId,CommandLine 2>&1\")",
+      "Bash(npm run:*)",
+      "Bash(git -C \"D:/INOVASI 2025/PowerOps\" log --oneline -8)",
+      "Bash(git -C \"D:/INOVASI 2025/PowerOps\" remote -v)",
+      "Bash(git -C \"D:/INOVASI 2025/PowerOps\" branch -a)"
+    ]
+  }
+}

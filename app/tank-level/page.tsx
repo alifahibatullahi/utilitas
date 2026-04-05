@@ -75,28 +75,31 @@ function TankCard({ tankId }: { tankId: TankId }) {
             <div className="flex-1 flex gap-0 lg:min-h-0 lg:overflow-hidden">
 
                 {/* Glass Tank column — desktop only */}
-                <div className="hidden lg:flex flex-shrink-0 w-40 flex-col items-center justify-end py-4 px-5 border-r border-slate-800/60"
+                <div className="hidden lg:flex flex-shrink-0 w-48 xl:w-56 flex-col items-center justify-between py-6 px-6 border-r border-slate-800/60"
                     style={{ background: `linear-gradient(to bottom, ${tc.base}08, transparent)` }}>
-                    <div className="w-full glass-tank rounded-xl relative bg-slate-800/60 h-52">
+                    <div className="w-full xl:w-3/4 flex-1 glass-tank rounded-3xl relative bg-slate-800/60 min-h-[300px]">
                         {/* scale marks */}
-                        <div className="absolute inset-0 flex flex-col justify-between py-3 px-2 z-20 pointer-events-none">
-                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">100%</div>
-                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">75%</div>
-                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">50%</div>
-                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">25%</div>
-                            <div className="border-t border-white/10 text-[10px] text-right text-slate-600 pr-1">0%</div>
+                        <div className="absolute inset-0 flex flex-col justify-between py-8 px-3 z-20 pointer-events-none">
+                            <div className="border-t border-white/10 text-xs xl:text-sm text-right text-slate-500 pr-2 font-bold uppercase tracking-widest">100%</div>
+                            <div className="border-t border-white/10 text-xs xl:text-sm text-right text-slate-500 pr-2 font-bold uppercase tracking-widest">75%</div>
+                            <div className="border-t border-white/10 text-xs xl:text-sm text-right text-slate-500 pr-2 font-bold uppercase tracking-widest">50%</div>
+                            <div className="border-t border-white/10 text-xs xl:text-sm text-right text-slate-500 pr-2 font-bold uppercase tracking-widest">25%</div>
+                            <div className="border-t border-white/10 text-xs xl:text-sm text-right text-slate-500 pr-2 font-bold uppercase tracking-widest">0%</div>
                         </div>
                         {/* liquid */}
-                        <div className="liquid backdrop-blur-sm"
+                        <div className="liquid backdrop-blur-md rounded-b-3xl"
                             style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
                                 height: `${Math.min(Math.max(level, 0), 100)}%`,
                                 backgroundColor: `${tc.base}CC`,
-                                boxShadow: `0 0 30px ${tc.base}66` }}>
-                            <div className="liquid-surface" style={{ backgroundColor: tc.base, filter: 'brightness(1.3)' }} />
+                                boxShadow: `0 -10px 40px ${tc.base}50` }}>
+                            <div className="liquid-surface" style={{ backgroundColor: tc.base, filter: 'brightness(1.5)', height: '15px', top: '-7.5px' }} />
                         </div>
                     </div>
                     {/* % label below tank */}
-                    <p className="mt-3 text-2xl font-black font-mono" style={{ color: tc.base }}>{level.toFixed(1)}%</p>
+                    <div className="mt-6 flex flex-col items-center">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-black mb-1">Percentage</span>
+                        <p className="text-4xl xl:text-5xl font-black font-mono leading-none tracking-tighter" style={{ color: tc.base, textShadow: `0 0 20px ${tc.base}40` }}>{level.toFixed(1)}%</p>
+                    </div>
                 </div>
 
                 {/* Stats column */}
@@ -104,44 +107,54 @@ function TankCard({ tankId }: { tankId: TankId }) {
 
                     {/* Current Level — hero number */}
                     <div>
-                        <p className="text-[10px] lg:text-xs text-slate-500 uppercase tracking-[0.2em] font-black mb-1 lg:mb-2">Current Level</p>
-                        <div className="flex items-baseline gap-2 lg:gap-3">
-                            <span className="font-black text-white leading-none"
-                                style={{ fontSize: 'clamp(2.2rem, 8vw, 5.5rem)',
-                                    textShadow: `0 0 40px ${tc.base}, 0 0 80px ${tc.base}60` }}>
+                        <p className="text-xs lg:text-sm text-slate-500 uppercase tracking-[0.2em] font-black mb-2 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-sm">water</span>
+                            Total Volume Available
+                        </p>
+                        <div className="flex items-baseline gap-3 xl:gap-4">
+                            <span className="font-black text-white leading-none tracking-tighter"
+                                style={{ fontSize: 'clamp(3rem, 7vw, 6.5rem)',
+                                    textShadow: `0 0 50px ${tc.base}80, 0 0 100px ${tc.base}40` }}>
                                 {m3.toLocaleString('id-ID')}
                             </span>
-                            <span className={`font-black ${tc.textClass}`} style={{ fontSize: 'clamp(1rem, 3vw, 2.5rem)' }}>m³</span>
+                            <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1.5rem, 3.5vw, 3rem)' }}>m³</span>
                             {/* % on mobile (no glass tank) */}
-                            <span className="lg:hidden ml-auto text-base font-black font-mono" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
+                            <span className="lg:hidden ml-auto text-3xl font-black font-mono" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
                         </div>
                         {tankId === 'SOLAR' && (
-                            <p className="text-sm text-white/50 font-bold mt-1">
-                                Total 2 tanki: <span className="text-white font-black">{(m3 * 2).toLocaleString('id-ID')} m³</span>
-                            </p>
+                            <div className="inline-block mt-3 bg-slate-800/50 border border-slate-700/60 px-4 py-2 rounded-xl">
+                                <p className="text-sm xl:text-base text-slate-400 font-bold flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-sm">layers</span>
+                                    Total 2 tanki: <span className="text-white font-black text-lg xl:text-xl">{(m3 * 2).toLocaleString('id-ID')} m³</span>
+                                </p>
+                            </div>
                         )}
                         {/* Progress bar */}
-                        <div className="mt-2 lg:mt-3 h-2.5 lg:h-3 rounded-full bg-slate-700/70 overflow-hidden">
+                        <div className="mt-4 lg:hidden h-3 rounded-full bg-slate-700/70 overflow-hidden shadow-inner">
                             <div className="h-full rounded-full transition-all duration-700"
                                 style={{ width: `${Math.min(level, 100)}%`, backgroundColor: tc.base,
-                                    boxShadow: `0 0 10px ${tc.base}` }} />
+                                    boxShadow: `0 0 15px ${tc.base}` }} />
                         </div>
                     </div>
 
                     {/* Flow In / Out (DEMIN & RCW) */}
                     {tankId !== 'SOLAR' && (
-                        <div className={`grid ${tankId === 'DEMIN' ? 'grid-cols-2' : 'grid-cols-1'} gap-2 lg:gap-3`}>
-                            <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-3 lg:px-4 py-2 lg:py-3">
-                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-0.5 lg:mb-1">Flow In</p>
-                                <p className="text-2xl lg:text-3xl font-black font-mono text-emerald-400 leading-none">
-                                    {totalFlowIn.toFixed(1)}<span className="text-sm lg:text-base ml-1 opacity-60">t/h</span>
+                        <div className={`grid ${tankId === 'DEMIN' ? 'grid-cols-2' : 'grid-cols-1'} gap-3 xl:gap-5 mt-2`}>
+                            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl px-5 py-4 xl:p-6 shadow-[0_0_20px_rgba(16,185,129,0.05)]">
+                                <p className="text-xs xl:text-sm text-emerald-500/80 uppercase font-black tracking-widest mb-1 lg:mb-2 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-sm xl:text-base">login</span> Flow In
+                                </p>
+                                <p className="text-3xl lg:text-4xl xl:text-5xl font-black font-mono text-emerald-400 leading-none tracking-tighter">
+                                    {totalFlowIn.toFixed(1)}<span className="text-base lg:text-xl xl:text-2xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
                                 </p>
                             </div>
                             {tankId === 'DEMIN' && (
-                                <div className="bg-rose-500/8 border border-rose-500/20 rounded-xl px-3 lg:px-4 py-2 lg:py-3">
-                                    <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-0.5 lg:mb-1">Flow Out</p>
-                                    <p className="text-2xl lg:text-3xl font-black font-mono text-rose-400 leading-none">
-                                        {totalFlowOut.toFixed(1)}<span className="text-sm lg:text-base ml-1 opacity-60">t/h</span>
+                                <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl px-5 py-4 xl:p-6 shadow-[0_0_20px_rgba(244,63,94,0.05)]">
+                                    <p className="text-xs xl:text-sm text-rose-500/80 uppercase font-black tracking-widest mb-1 lg:mb-2 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-sm xl:text-base">logout</span> Flow Out
+                                    </p>
+                                    <p className="text-3xl lg:text-4xl xl:text-5xl font-black font-mono text-rose-400 leading-none tracking-tighter">
+                                        {totalFlowOut.toFixed(1)}<span className="text-base lg:text-xl xl:text-2xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
                                     </p>
                                 </div>
                             )}
@@ -149,94 +162,109 @@ function TankCard({ tankId }: { tankId: TankId }) {
                     )}
 
                     {/* Details — sources / destinations / unloading */}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-3 lg:gap-4 mt-auto pt-4 border-t border-slate-800/60">
                         {tankId === 'SOLAR' ? (
                             <>
-                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">3 Unloading Terakhir</p>
-                                {solarUnloadings.slice(0, 3).map((entry, idx) => {
-                                    const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                                    return (
-                                        <div key={idx} className="flex items-center justify-between px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl bg-surface-highlight/60 border border-slate-700/50">
-                                            <div>
-                                                <span className="text-sm font-bold text-white block">{lbl}</span>
-                                                <span className="text-xs text-slate-500">{entry.supplier}</span>
+                                <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[14px] xl:text-base">local_shipping</span> 3 Unloading Terakhir
+                                </p>
+                                <div className={`${solarUnloadings.length > 0 ? 'grid grid-cols-1 xl:grid-cols-3 gap-3' : ''}`}>
+                                    {solarUnloadings.slice(0, 3).map((entry, idx) => {
+                                        const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                                        return (
+                                            <div key={idx} className="flex xl:flex-col items-center xl:items-start justify-between px-4 py-3 xl:p-5 rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group">
+                                                <div className="xl:mb-3 xl:border-b border-slate-700/50 xl:pb-3 w-full">
+                                                    <span className="text-sm xl:text-base font-bold text-white block">{lbl}</span>
+                                                    <span className="text-xs xl:text-sm text-slate-400 truncate block mt-0.5 group-hover:text-slate-300 transition-colors" title={entry.supplier}>{entry.supplier}</span>
+                                                </div>
+                                                <span className={`text-xl xl:text-3xl font-black font-mono tracking-tighter leading-none ${tc.textClass}`}>{entry.liters.toLocaleString('id-ID')} <span className="text-sm xl:text-base text-slate-500 font-bold">L</span></span>
                                             </div>
-                                            <span className={`text-sm lg:text-base font-black font-mono ${tc.textClass}`}>{entry.liters.toLocaleString('id-ID')} L</span>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
+                                </div>
                                 {solarUnloadings.length === 0 && (
-                                    <p className="text-xs text-slate-600 italic py-1">Belum ada riwayat unloading</p>
+                                    <p className="text-sm text-slate-600 italic py-2">Belum ada riwayat unloading</p>
                                 )}
                             </>
                         ) : (
-                            <>
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-8 overflow-y-auto pr-2 light-scrollbar max-h-[30vh]">
                                 {tank.inputSources.length > 0 && (
-                                    <>
-                                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Input Sources</p>
-                                        {tank.inputSources.map(source => {
-                                            const f = flows.find(f => f.sourceLabel === source);
-                                            const active = f && f.rate > 0;
-                                            return (
-                                                <div key={source} className={`flex items-center justify-between px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl ${active ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-slate-700/20 border border-slate-700/40'}`}>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`w-2 h-2 rounded-full ${active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`}></span>
-                                                        <span className={`text-xs lg:text-sm font-bold uppercase ${active ? 'text-emerald-400' : 'text-slate-500'}`}>{source}</span>
+                                    <div className="flex flex-col gap-2 xl:gap-3">
+                                        <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2 mb-1">
+                                            <span className="material-symbols-outlined text-[14px]">turn_left</span> Input Sources
+                                        </p>
+                                        <div className="flex flex-col gap-2">
+                                            {tank.inputSources.map(source => {
+                                                const f = flows.find(f => f.sourceLabel === source);
+                                                const active = f && f.rate > 0;
+                                                return (
+                                                    <div key={source} className={`flex items-center justify-between px-4 py-3 xl:py-4 rounded-xl xl:rounded-2xl border ${active ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`w-2.5 h-2.5 xl:w-3 xl:h-3 rounded-full ${active ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-slate-600'}`}></span>
+                                                            <span className={`text-sm xl:text-base font-bold uppercase tracking-tight ${active ? 'text-emerald-400' : 'text-slate-400'}`}>{source}</span>
+                                                        </div>
+                                                        <span className={`text-base xl:text-xl font-mono font-black tracking-tighter ${active ? 'text-emerald-400' : 'text-slate-600'}`}>{f ? f.rate.toFixed(1) : '0.0'} <span className="text-xs xl:text-sm font-bold opacity-60">t/h</span></span>
                                                     </div>
-                                                    <span className={`text-xs lg:text-sm font-mono font-bold ${active ? 'text-emerald-400' : 'text-slate-600'}`}>{f ? f.rate.toFixed(1) : '0.0'} t/h</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 )}
                                 {tank.outputDestinations.length > 0 && (
-                                    <>
-                                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Output Destinations</p>
-                                        {tankId === 'DEMIN' ? tank.outputDestinations.map(dest => {
-                                            const outFlow = outFlows.find(f => f.destinationLabel === dest.name);
-                                            const outActive = dest.hasFlow
-                                                ? !!(outFlow && outFlow.rate > 0)
-                                                : !!(outFlow?.pump);
-                                            return (
-                                                <div key={dest.name} className={`flex flex-col gap-1 px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl ${outActive ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-slate-700/20 border border-slate-700/40'}`}>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className={`text-xs lg:text-sm font-bold uppercase ${outActive ? 'text-rose-400' : 'text-slate-500'}`}>{dest.name}</span>
-                                                        {dest.hasFlow && (
-                                                            <span className={`text-xs lg:text-sm font-mono font-bold ${outActive ? 'text-rose-400' : 'text-slate-600'}`}>{outFlow ? outFlow.rate.toFixed(1) : '0.0'} t/h</span>
+                                    <div className="flex flex-col gap-2 xl:gap-3">
+                                        <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2 mb-1 mt-2 xl:mt-0">
+                                            <span className="material-symbols-outlined text-[14px]">turn_right</span> Output Destinations
+                                        </p>
+                                        <div className="flex flex-col gap-2">
+                                            {tankId === 'DEMIN' ? tank.outputDestinations.map(dest => {
+                                                const outFlow = outFlows.find(f => f.destinationLabel === dest.name);
+                                                const outActive = dest.hasFlow
+                                                    ? !!(outFlow && outFlow.rate > 0)
+                                                    : !!(outFlow?.pump);
+                                                return (
+                                                    <div key={dest.name} className={`flex flex-col gap-2 px-4 py-3 xl:p-5 rounded-xl xl:rounded-2xl border ${outActive ? 'bg-rose-500/10 border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.05)]' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className={`w-2.5 h-2.5 xl:w-3 xl:h-3 rounded-full ${outActive ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-slate-600'}`}></span>
+                                                                <span className={`text-sm xl:text-base font-bold uppercase tracking-tight ${outActive ? 'text-rose-400' : 'text-slate-400'}`}>{dest.name}</span>
+                                                            </div>
+                                                            {dest.hasFlow && (
+                                                                <span className={`text-base xl:text-xl font-mono font-black tracking-tighter ${outActive ? 'text-rose-400' : 'text-slate-600'}`}>{outFlow ? outFlow.rate.toFixed(1) : '0.0'} <span className="text-xs xl:text-sm font-bold opacity-60">t/h</span></span>
+                                                            )}
+                                                        </div>
+                                                        {dest.pumps && (
+                                                            <div className="flex flex-wrap items-center gap-3 pt-3 mt-1 xl:mt-2 border-t border-slate-600/30">
+                                                                {dest.pumps.map(pump => {
+                                                                    const isActive = outFlow?.pump === pump;
+                                                                    return isActive ? (
+                                                                        <div key={pump} className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 rounded-lg shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
+                                                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                                                            <span className="text-xs xl:text-sm font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div key={pump} className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 px-3 py-1.5 rounded-lg opacity-60">
+                                                                            <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                                                                            <span className="text-xs xl:text-sm font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    {dest.pumps && (
-                                                        <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-slate-600/30">
-                                                            {dest.pumps.map(pump => {
-                                                                const isActive = outFlow?.pump === pump;
-                                                                return isActive ? (
-                                                                    <div key={pump} className="flex items-center gap-1.5">
-                                                                        <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]"></span>
-                                                                        <span className="text-xs font-bold text-emerald-400">{pump}</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div key={pump} className="flex items-center gap-1.5 opacity-35">
-                                                                        <span className="w-2 h-2 rounded-full bg-slate-500"></span>
-                                                                        <span className="text-xs font-bold text-slate-400">{pump}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
+                                                );
+                                            }) : (
+                                                <div className="flex flex-wrap gap-2 xl:gap-3">
+                                                    {tank.outputDestinations.map(dest => (
+                                                        <span key={dest.name} className="px-4 py-2 rounded-xl bg-surface-highlight/50 border border-slate-700 shadow-sm text-xs xl:text-sm text-slate-300 font-bold uppercase tracking-widest">
+                                                            {dest.name}
+                                                        </span>
+                                                    ))}
                                                 </div>
-                                            );
-                                        }) : (
-                                            <div className="flex flex-wrap gap-2">
-                                                {tank.outputDestinations.map(dest => (
-                                                    <span key={dest.name} className="px-3 py-1.5 rounded-lg bg-surface-highlight border border-slate-700 text-xs text-slate-300 font-semibold uppercase tracking-wider">
-                                                        {dest.name}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
+                                            )}
+                                        </div>
+                                    </div>
                                 )}
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -331,49 +359,50 @@ export default function TankLevelPage() {
                 </div>
 
                 {/* Desktop header layout */}
-                <div className="hidden lg:flex items-center justify-between gap-4">
+                <div className="hidden lg:flex items-center justify-between gap-6 px-1 lg:py-2">
                     <div>
-                        <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white leading-tight">
+                        <h1 className="text-3xl lg:text-5xl font-black tracking-tighter text-white leading-tight">
                             Tank Level <span className="text-primary">Monitoring UBB</span>
                         </h1>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold mt-0.5">CCR Live Display</p>
+                        <p className="text-[11px] lg:text-sm text-primary uppercase tracking-[0.3em] font-black mt-2">CCR Live Display</p>
                     </div>
 
-                    <div className="flex items-stretch gap-4">
-                        <div className="bg-surface-dark border border-primary/25 rounded-2xl px-6 py-3 flex flex-col items-center justify-center gap-0.5 shadow-[0_0_30px_rgba(43,124,238,0.15)]">
-                            <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Last Data Update</span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className="material-symbols-outlined text-primary text-2xl">schedule</span>
-                                <span className="text-4xl font-black font-mono text-white tracking-tighter leading-none"
-                                    style={{ textShadow: '0 0 20px rgba(43,124,238,0.6)' }}>
+                    <div className="flex items-stretch gap-6">
+                        <div className="bg-surface-dark border border-primary/30 rounded-[2rem] px-8 py-4 lg:py-5 flex flex-col items-center justify-center gap-1 shadow-[0_0_40px_rgba(43,124,238,0.15)] relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                            <span className="text-xs lg:text-sm uppercase font-black text-primary tracking-[0.2em] relative z-10">Last Data Update</span>
+                            <div className="flex items-center gap-3 mt-1 relative z-10">
+                                <span className="material-symbols-outlined text-primary text-3xl lg:text-4xl">schedule</span>
+                                <span className="text-5xl lg:text-6xl font-black font-mono text-white tracking-tighter leading-none"
+                                    style={{ textShadow: '0 0 30px rgba(43,124,238,0.5)' }}>
                                     {lastUpdateTime}
                                 </span>
                             </div>
-                            <span className="text-sm font-semibold text-slate-400">{lastUpdateDate}</span>
+                            <span className="text-sm lg:text-base font-bold text-slate-400 mt-1 relative z-10">{lastUpdateDate}</span>
                         </div>
 
-                        <div className="bg-surface-dark border border-slate-800 rounded-2xl px-5 py-3 flex flex-col items-center justify-center gap-0.5">
-                            <span className="text-[10px] uppercase font-black text-slate-500 tracking-[0.2em]">Waktu</span>
-                            <span className="text-3xl font-black font-mono text-slate-300 tracking-tighter leading-none">{now}</span>
+                        <div className="bg-surface-dark border border-slate-800 rounded-[2rem] px-8 py-4 lg:py-5 flex flex-col items-center justify-center gap-1 shadow-xl">
+                            <span className="text-xs lg:text-sm uppercase font-black text-slate-500 tracking-[0.2em]">Local Time</span>
+                            <span className="text-4xl lg:text-5xl font-black font-mono text-slate-300 tracking-tighter leading-none mt-2">{now}</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                         {canInputTank && (
                             <button onClick={() => router.push('/input')}
-                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer">
-                                <span className="material-symbols-outlined text-base">edit</span>
+                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 lg:px-6 py-3 lg:py-4 rounded-2xl text-sm lg:text-base font-bold transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-emerald-600/30 cursor-pointer">
+                                <span className="material-symbols-outlined text-lg lg:text-xl">edit</span>
                                 Update Level
                             </button>
                         )}
                         <button onClick={() => window.location.reload()}
-                            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-primary/20 cursor-pointer">
-                            <span className="material-symbols-outlined text-base">refresh</span>
+                            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-5 lg:px-6 py-3 lg:py-4 rounded-2xl text-sm lg:text-base font-bold transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-primary/30 cursor-pointer">
+                            <span className="material-symbols-outlined text-lg lg:text-xl">refresh</span>
                             Refresh
                         </button>
                         <button onClick={() => router.push('/dashboard')}
-                            className="flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors cursor-pointer">
-                            <span className="material-symbols-outlined text-base">arrow_back</span>
+                            className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 px-5 lg:px-6 py-3 lg:py-4 rounded-2xl text-sm lg:text-base font-bold transition-colors cursor-pointer border border-slate-700/50">
+                            <span className="material-symbols-outlined text-lg lg:text-xl">home</span>
                             Dashboard
                         </button>
                     </div>

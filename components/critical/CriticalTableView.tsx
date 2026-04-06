@@ -134,39 +134,39 @@ function MaintenancePanelRow({ m, onEdit, onDelete }: {
             </div>
             <span className="text-[9px] font-bold text-black whitespace-nowrap">{m.status}</span>
             {/* Edit / Delete — visible on hover */}
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                 <button
                     onClick={() => onEdit?.(m)}
-                    className="p-0.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     title="Edit"
                 >
-                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>edit</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit</span>
                 </button>
                 {confirmDel ? (
                     <div className="flex items-center gap-0.5">
                         <button
                             onClick={handleDelete}
                             disabled={deleting}
-                            className="w-4 h-4 flex items-center justify-center rounded bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50"
                             title="Konfirmasi hapus"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 11 }}>{deleting ? 'more_horiz' : 'check'}</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{deleting ? 'more_horiz' : 'check'}</span>
                         </button>
                         <button
                             onClick={() => setConfirmDel(false)}
-                            className="w-4 h-4 flex items-center justify-center rounded bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
                             title="Batal"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 11 }}>close</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>close</span>
                         </button>
                     </div>
                 ) : (
                     <button
                         onClick={() => setConfirmDel(true)}
-                        className="p-0.5 rounded text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                         title="Hapus"
                     >
-                        <span className="material-symbols-outlined" style={{ fontSize: 13 }}>delete</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
                     </button>
                 )}
             </div>
@@ -349,45 +349,45 @@ function CriticalRowPair({
                         {/* Foto */}
                         <button
                             onClick={openPhotoModal}
-                            className="p-1 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                            className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                             title="Lihat / upload foto"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>add_photo_alternate</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 19 }}>add_photo_alternate</span>
                         </button>
                         {/* Edit */}
                         <button
                             onClick={() => onEditCritical?.(critical)}
-                            className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Edit"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>edit</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 19 }}>edit</span>
                         </button>
                         {/* Delete / Confirm */}
                         {confirmDelete ? (
-                            <div className="flex items-center gap-0.5">
+                            <div className="flex items-center gap-1">
                                 <button
                                     onClick={handleDelete}
                                     disabled={deleting}
-                                    className="w-5 h-5 flex items-center justify-center rounded bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50"
+                                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50"
                                     title="Konfirmasi hapus"
                                 >
-                                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{deleting ? 'more_horiz' : 'check'}</span>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>{deleting ? 'more_horiz' : 'check'}</span>
                                 </button>
                                 <button
                                     onClick={() => setConfirmDelete(false)}
-                                    className="w-5 h-5 flex items-center justify-center rounded bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
                                     title="Batal"
                                 >
-                                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>close</span>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>close</span>
                                 </button>
                             </div>
                         ) : (
                             <button
                                 onClick={() => setConfirmDelete(true)}
-                                className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                className="p-2 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                                 title="Hapus"
                             >
-                                <span className="material-symbols-outlined" style={{ fontSize: 15 }}>delete</span>
+                                <span className="material-symbols-outlined" style={{ fontSize: 19 }}>delete</span>
                             </button>
                         )}
                     </div>

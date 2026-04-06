@@ -274,7 +274,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             fetchTankLevels().then(() => fetchShiftTankyard());
             fetchFlowReadings();
             fetchSolar();
-        }, 30 * 60 * 1000);
+        }, 15 * 60 * 1000);
 
         // Realtime: tank_levels
         const levelChannel = supabase

@@ -70,23 +70,22 @@ export default function InputPage() {
         setTimeout(() => {
             submitLevel(selectedTank, numLevel, numM3, operator.name, note || undefined);
 
-            // Submit input flow rates
+            // Submit input flow rates (termasuk 0 agar tampilan ikut update)
             const sources = TANKS[selectedTank].inputSources;
             if (sources.length > 0) {
                 const rates: FlowRate[] = sources
-                    .map((src) => ({ sourceLabel: src, rate: parseFloat(flowInputs[src] || '0') || 0 }))
-                    .filter((r) => r.rate > 0);
-                if (rates.length > 0) submitFlowRates(selectedTank, rates, operator.name);
+                    .map((src) => ({ sourceLabel: src, rate: parseFloat(flowInputs[src] || '0') || 0 }));
+                submitFlowRates(selectedTank, rates, operator.name);
             }
 
-            // Submit output flow rates (DEMIN)
+            // Submit output flow rates
             const outputs = TANKS[selectedTank].outputDestinations;
             if (outputs.length > 0) {
                 const allOutRates: OutputFlowRate[] = [];
-                // Flow-based destinations
+                // Flow-based destinations (termasuk 0)
                 outputs.filter(d => d.hasFlow).forEach(dest => {
                     const rate = parseFloat(outputFlowInputs[dest.name] || '0') || 0;
-                    if (rate > 0) allOutRates.push({ destinationLabel: dest.name, rate });
+                    allOutRates.push({ destinationLabel: dest.name, rate });
                 });
                 // Pump-only destinations (no flow, just record active pump)
                 outputs.filter(d => !d.hasFlow && d.pumps?.length).forEach(dest => {

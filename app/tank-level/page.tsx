@@ -144,7 +144,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
 
                     {/* Flow In / Out (DEMIN & RCW) */}
                     {tankId !== 'SOLAR' && (
-                        <div className={`grid ${tankId === 'DEMIN' ? 'grid-cols-2' : 'grid-cols-1'} gap-3 xl:gap-4 mt-2`}>
+                        <div className="grid grid-cols-2 gap-3 xl:gap-4 mt-2">
                             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 xl:px-5 xl:py-4 shadow-[0_0_20px_rgba(16,185,129,0.05)]">
                                 <p className="text-[11px] xl:text-xs text-emerald-500/80 uppercase font-black tracking-widest mb-1 flex items-center gap-2">
                                     <span className="material-symbols-outlined text-sm">login</span> Flow In
@@ -153,16 +153,14 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                     {totalFlowIn.toFixed(1)}<span className="text-sm lg:text-base xl:text-xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
                                 </p>
                             </div>
-                            {tankId === 'DEMIN' && (
-                                <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl px-4 py-3 xl:px-5 xl:py-4 shadow-[0_0_20px_rgba(244,63,94,0.05)]">
-                                    <p className="text-[11px] xl:text-xs text-rose-500/80 uppercase font-black tracking-widest mb-1 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-sm">logout</span> Flow Out
-                                    </p>
-                                    <p className="text-2xl lg:text-3xl xl:text-4xl font-black font-mono text-rose-400 leading-none tracking-tighter">
-                                        {totalFlowOut.toFixed(1)}<span className="text-sm lg:text-base xl:text-xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
-                                    </p>
-                                </div>
-                            )}
+                            <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl px-4 py-3 xl:px-5 xl:py-4 shadow-[0_0_20px_rgba(244,63,94,0.05)]">
+                                <p className="text-[11px] xl:text-xs text-rose-500/80 uppercase font-black tracking-widest mb-1 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-sm">logout</span> Flow Out
+                                </p>
+                                <p className="text-2xl lg:text-3xl xl:text-4xl font-black font-mono text-rose-400 leading-none tracking-tighter">
+                                    {totalFlowOut.toFixed(1)}<span className="text-sm lg:text-base xl:text-xl ml-1 xl:ml-2 font-bold opacity-60">t/h</span>
+                                </p>
+                            </div>
                         </div>
                     )}
 
@@ -261,7 +259,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                             <span className="material-symbols-outlined text-[14px]">turn_right</span> Output Destinations
                                         </p>
                                         <div className="flex flex-col gap-1.5">
-                                            {tankId === 'DEMIN' ? tank.outputDestinations.map(dest => {
+                                            {tank.outputDestinations.map(dest => {
                                                 const outFlow = outFlows.find(f => f.destinationLabel === dest.name);
                                                 const outActive = dest.hasFlow
                                                     ? !!(outFlow && outFlow.rate > 0)
@@ -310,15 +308,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                                         )}
                                                     </div>
                                                 );
-                                            }) : (
-                                                <div className="flex flex-wrap gap-2 xl:gap-3">
-                                                    {tank.outputDestinations.map(dest => (
-                                                        <span key={dest.name} className="px-4 py-2 rounded-xl bg-surface-highlight/50 border border-slate-700 shadow-sm text-xs xl:text-sm text-slate-300 font-bold uppercase tracking-widest">
-                                                            {dest.name}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            })}
                                         </div>
                                     </div>
                                 )}

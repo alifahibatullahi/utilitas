@@ -16,9 +16,14 @@ interface KanbanCardProps {
     item: MaintenanceWithCritical;
     photos?: PhotoRow[];
     overlay?: boolean;
+    index?: number;
+    isFirst?: boolean;
+    isLast?: boolean;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
 }
 
-export default function KanbanCard({ item, photos, overlay = false }: KanbanCardProps) {
+export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown }: KanbanCardProps) {
     const {
         attributes,
         listeners,
@@ -34,13 +39,14 @@ export default function KanbanCard({ item, photos, overlay = false }: KanbanCard
         opacity: isDragging ? 0.4 : 1,
     };
 
-    // Scope color mapping for left accent
     const scopeAccent: Record<string, string> = {
         mekanik: 'border-l-blue-500',
         listrik: 'border-l-amber-500',
         instrumen: 'border-l-purple-500',
         sipil: 'border-l-teal-500',
     };
+
+    const showControls = index !== undefined && (onMoveUp || onMoveDown);
 
     return (
         <div
@@ -52,6 +58,35 @@ export default function KanbanCard({ item, photos, overlay = false }: KanbanCard
                 shadow-sm hover:shadow-md transition-shadow p-3 cursor-grab active:cursor-grabbing
                 ${overlay ? 'shadow-xl rotate-2 scale-105' : ''}`}
         >
+            {/* Nomor urut + up/down controls */}
+            {showControls && (
+                <div className="flex items-center justify-between mb-2">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-extrabold border border-gray-200">
+                        {index}
+                    </span>
+                    <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                        <button
+                            onPointerDown={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); onMoveUp?.(); }}
+                            disabled={isFirst}
+                            className="w-6 h-6 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                            title="Pindah ke atas"
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>arrow_upward</span>
+                        </button>
+                        <button
+                            onPointerDown={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); onMoveDown?.(); }}
+                            disabled={isLast}
+                            className="w-6 h-6 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                            title="Pindah ke bawah"
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>arrow_downward</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Item name + critical deskripsi + status */}
             <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="min-w-0 flex-1">

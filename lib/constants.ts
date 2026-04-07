@@ -44,9 +44,9 @@ export const TANKS: Record<string, {
         gradientTo: '#2dd4bf',        // teal-400
         inputSources: ['Utilitas 1'],
         outputDestinations: [
-            { name: 'Make UP Cooling Tower', hasFlow: false },
-            { name: 'Hydrant', hasFlow: false },
-            { name: 'Service', hasFlow: false },
+            { name: 'Make UP Cooling Tower', hasFlow: true },
+            { name: 'Hydrant', hasFlow: true },
+            { name: 'Service', hasFlow: true },
         ],
     },
     SOLAR: {

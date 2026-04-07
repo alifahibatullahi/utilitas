@@ -13,6 +13,7 @@ interface KanbanColumnProps {
     prevItems?: MaintenanceWithCritical[];
     onKonfirmasiShift?: (id: string) => Promise<{ error: string | null }>;
     photosByMaintId?: Record<string, PhotoRow[]>;
+    onMoveInColumn?: (id: string, direction: 'up' | 'down') => void;
 }
 
 function PrevItemWrapper({ item, onKonfirmasi, photos }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[] }) {
@@ -38,11 +39,11 @@ function PrevItemWrapper({ item, onKonfirmasi, photos }: { item: MaintenanceWith
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], onKonfirmasiShift, photosByMaintId }: KanbanColumnProps) {
+export default function KanbanColumn({ status, items, prevItems = [], onKonfirmasiShift, photosByMaintId, onMoveInColumn }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
-    function renderGroups(list: MaintenanceWithCritical[], keyPrefix = '') {
+    function renderGroups(list: MaintenanceWithCritical[], keyPrefix = '', withControls = false) {
         const groups: { isGroup: boolean; criticalId: string | null; itemName: string | null; cards: MaintenanceWithCritical[] }[] = [];
         let current: MaintenanceWithCritical[] = [];
         list.forEach(item => {
@@ -60,16 +61,49 @@ export default function KanbanColumn({ status, items, prevItems = [], onKonfirma
         });
         if (current.length > 0) groups.push({ isGroup: current.length > 1, criticalId: current[0].critical_id, itemName: current[0].critical_equipment?.item || 'Unknown Critical', cards: current });
 
+        // Build flat index for numbering (based on original list position)
+        const flatIndexMap = new Map<string, number>();
+        list.forEach((item, idx) => flatIndexMap.set(item.id, idx));
+
         return groups.map((g, idx) => g.isGroup ? (
             <div key={keyPrefix + 'group-' + idx} className="bg-slate-100/70 border-2 border-slate-200/80 rounded-2xl p-2 flex flex-col gap-2 relative shadow-inner overflow-hidden">
                 <div className="px-1.5 pt-0.5 flex items-center gap-1.5 opacity-80">
                     <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 14 }}>layers</span>
                     <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-widest truncate">{g.itemName}</span>
                 </div>
-                {g.cards.map(item => <KanbanCard key={item.id} item={item} photos={photosByMaintId?.[item.id]} />)}
+                {g.cards.map(item => {
+                    const flatIdx = flatIndexMap.get(item.id) ?? 0;
+                    return (
+                        <KanbanCard
+                            key={item.id}
+                            item={item}
+                            photos={photosByMaintId?.[item.id]}
+                            index={flatIdx + 1}
+                            isFirst={flatIdx === 0}
+                            isLast={flatIdx === list.length - 1}
+                            onMoveUp={withControls ? () => onMoveInColumn?.(item.id, 'up') : undefined}
+                            onMoveDown={withControls ? () => onMoveInColumn?.(item.id, 'down') : undefined}
+                        />
+                    );
+                })}
             </div>
         ) : (
-            <KanbanCard key={g.cards[0].id} item={g.cards[0]} photos={photosByMaintId?.[g.cards[0].id]} />
+            (() => {
+                const item = g.cards[0];
+                const flatIdx = flatIndexMap.get(item.id) ?? 0;
+                return (
+                    <KanbanCard
+                        key={item.id}
+                        item={item}
+                        photos={photosByMaintId?.[item.id]}
+                        index={flatIdx + 1}
+                        isFirst={flatIdx === 0}
+                        isLast={flatIdx === list.length - 1}
+                        onMoveUp={withControls ? () => onMoveInColumn?.(item.id, 'up') : undefined}
+                        onMoveDown={withControls ? () => onMoveInColumn?.(item.id, 'down') : undefined}
+                    />
+                );
+            })()
         ));
     }
 
@@ -92,7 +126,7 @@ export default function KanbanColumn({ status, items, prevItems = [], onKonfirma
                 className="flex-1 p-3 space-y-3 min-h-[200px] overflow-y-auto"
             >
                 <SortableContext items={[...items, ...prevItems].map(i => i.id)} strategy={verticalListSortingStrategy}>
-                    {renderGroups(items)}
+                    {renderGroups(items, '', true)}
 
                     {/* Divider: shift sebelumnya */}
                     {prevItems.length > 0 && (

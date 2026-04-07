@@ -269,6 +269,13 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         fetchFlowReadings();
         fetchSolar();
 
+        // Auto-refresh setiap 30 menit sebagai fallback dari realtime subscription
+        const autoRefreshInterval = setInterval(() => {
+            fetchTankLevels().then(() => fetchShiftTankyard());
+            fetchFlowReadings();
+            fetchSolar();
+        }, 15 * 60 * 1000);
+
         // Realtime: tank_levels
         const levelChannel = supabase
             .channel('tank_levels_realtime')
@@ -339,6 +346,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             .subscribe();
 
         return () => {
+            clearInterval(autoRefreshInterval);
             supabase.removeChannel(levelChannel);
             supabase.removeChannel(flowChannel);
             supabase.removeChannel(solarChannel);

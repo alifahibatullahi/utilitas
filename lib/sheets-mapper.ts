@@ -422,9 +422,6 @@ export function rowToShiftReport(row: string[]): ShiftRowParsed {
             turbin_grup: parseStr(c(COL.turbin_grup)),
             turbin_karu: parseStr(c(COL.turbin_karu)),
             turbin_kasi: parseStr(c(COL.turbin_kasi)),
-            boiler_grup: parseStr(c(COL.boiler_grup)),
-            boiler_karu: parseStr(c(COL.boiler_karu)),
-            boiler_kasi: parseStr(c(COL.boiler_kasi)),
         },
 
         boilerA: {

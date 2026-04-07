@@ -169,19 +169,12 @@ export default function InputShiftPage() {
         return result;
     };
 
-    // Clear form when date/shift changes, then populate from fetched report
+    // Clear form immediately when date/shift changes
     useEffect(() => {
         if (skipNextClear.current) {
             skipNextClear.current = false;
             return;
         }
-        // After submit+refetch, report matches what we just saved — skip clearing
-        if (lastSubmittedReportId.current && report && (report as unknown as Record<string, unknown>).id === lastSubmittedReportId.current) {
-            lastSubmittedReportId.current = null;
-            return;
-        }
-        lastSubmittedReportId.current = null;
-
         setUserModified(false);
         setBoilerA({});
         setBoilerB({});
@@ -196,6 +189,17 @@ export default function InputShiftPage() {
         setChemicalDosing({});
         setSolarEntries([]);
         setAshEntries([]);
+    }, [selectedShift, selectedDate]);
+
+    // Populate form when report data arrives from Supabase
+    useEffect(() => {
+        // After submit+refetch, report matches what we just saved — skip re-populating
+        if (lastSubmittedReportId.current && report && (report as unknown as Record<string, unknown>).id === lastSubmittedReportId.current) {
+            lastSubmittedReportId.current = null;
+            return;
+        }
+        lastSubmittedReportId.current = null;
+
         if (!report) return;
 
         const boilerAData = report.shift_boiler?.find((b: { boiler: string }) => b.boiler === 'A');

@@ -478,6 +478,8 @@ export function useShiftReport(date: string, shift: ShiftType) {
                     `)
                     .eq('date', date)
                     .eq('shift', shift)
+                    .order('created_at', { ascending: true })
+                    .limit(1)
                     .maybeSingle(),
                 supabase
                     .from('maintenance_logs')

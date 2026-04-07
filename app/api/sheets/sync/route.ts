@@ -55,7 +55,7 @@ async function saveRowToSupabase(
     parsed: ReturnType<typeof rowToShiftReport>,
     errors: string[],
 ): Promise<'synced' | 'skipped'> {
-    const group_name = parsed.personnel?.turbin_grup || 'Sheets';
+    const group_name = parsed.personnel?.turbin_grup || 'A';
     const supervisor = parsed.personnel?.turbin_karu || 'Sheets Sync';
 
     // Upsert shift_reports

@@ -165,7 +165,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
                     )}
 
                     {/* Details — sources / destinations / unloading */}
-                    <div className="flex flex-col gap-3 lg:gap-4 mt-auto pt-4 border-t border-slate-800/60">
+                    <div className="flex flex-col gap-3 lg:gap-4 mt-2 xl:mt-4 pt-4 border-t border-slate-800/60 flex-1">
                         {tankId === 'SOLAR' ? (
                             <>
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
@@ -232,21 +232,21 @@ function TankCard({ tankId }: { tankId: TankId }) {
                         ) : (
                             <div className="flex flex-col gap-3 xl:gap-4 mt-1">
                                 {tank.inputSources.length > 0 && (
-                                    <div className="flex flex-col gap-2">
-                                        <p className="text-[10px] xl:text-[11px] text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-0.5">
-                                            <span className="material-symbols-outlined text-[14px]">turn_left</span> Input Sources
+                                    <div className="flex flex-col gap-3 xl:gap-4">
+                                        <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-1">
+                                            <span className="material-symbols-outlined text-[16px] xl:text-[20px]">turn_left</span> Input
                                         </p>
-                                        <div className="flex flex-col gap-1.5">
+                                        <div className="flex flex-col gap-2 xl:gap-3">
                                             {tank.inputSources.map(source => {
                                                 const f = flows.find(f => f.sourceLabel === source);
                                                 const active = f && f.rate > 0;
                                                 return (
-                                                    <div key={source} className={`flex items-center justify-between px-3 py-2 xl:px-4 xl:py-2.5 rounded-xl border ${active ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`w-2 h-2 xl:w-2.5 xl:h-2.5 rounded-full ${active ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-slate-600'}`}></span>
-                                                            <span className={`text-xs xl:text-sm font-bold uppercase tracking-tight ${active ? 'text-emerald-400' : 'text-slate-400'}`}>{source}</span>
+                                                    <div key={source} className={`flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl border ${active ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`w-3 h-3 xl:w-3.5 xl:h-3.5 rounded-full ${active ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-slate-600'}`}></span>
+                                                            <span className={`text-sm xl:text-base font-bold uppercase tracking-tight ${active ? 'text-emerald-400' : 'text-slate-400'}`}>{source}</span>
                                                         </div>
-                                                        <span className={`text-sm xl:text-base font-mono font-black tracking-tighter ${active ? 'text-emerald-400' : 'text-slate-600'}`}>{f ? f.rate.toFixed(1) : '0.0'} <span className="text-[10px] xl:text-xs font-bold opacity-60">t/h</span></span>
+                                                        <span className={`text-lg xl:text-xl font-mono font-black tracking-tighter ${active ? 'text-emerald-400' : 'text-slate-600'}`}>{f ? f.rate.toFixed(1) : '0.0'} <span className="text-xs xl:text-sm font-bold opacity-60 ml-1">t/h</span></span>
                                                     </div>
                                                 );
                                             })}
@@ -254,52 +254,52 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                     </div>
                                 )}
                                 {tank.outputDestinations.length > 0 && (
-                                    <div className="flex flex-col gap-2">
-                                        <p className="text-[10px] xl:text-[11px] text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-0.5 mt-2 xl:mt-0">
-                                            <span className="material-symbols-outlined text-[14px]">turn_right</span> Output Destinations
+                                    <div className="flex flex-col gap-3 xl:gap-4">
+                                        <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-1 mt-2 xl:mt-0">
+                                            <span className="material-symbols-outlined text-[16px] xl:text-[20px]">turn_right</span> Output
                                         </p>
-                                        <div className="flex flex-col gap-1.5">
+                                        <div className="flex flex-col gap-2 xl:gap-3">
                                             {tank.outputDestinations.map(dest => {
                                                 const outFlow = outFlows.find(f => f.destinationLabel === dest.name);
                                                 const outActive = dest.hasFlow
                                                     ? !!(outFlow && outFlow.rate > 0)
                                                     : !!(outFlow?.pump);
                                                 return (
-                                                    <div key={dest.name} className={`flex flex-col gap-1.5 px-3 py-2 xl:px-4 xl:py-2.5 rounded-xl border ${outActive ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
+                                                    <div key={dest.name} className={`flex flex-col gap-2 px-4 py-3 xl:px-5 xl:py-4 rounded-xl border ${outActive ? 'bg-rose-500/10 border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.1)]' : 'bg-slate-700/10 border-slate-700/40'} transition-all`}>
                                                         <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`w-2 h-2 xl:w-2.5 xl:h-2.5 rounded-full ${outActive ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-slate-600'}`}></span>
-                                                                <span className={`text-xs xl:text-sm font-bold uppercase tracking-tight ${outActive ? 'text-rose-400' : 'text-slate-400'}`}>{dest.name}</span>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className={`w-3 h-3 xl:w-3.5 xl:h-3.5 rounded-full ${outActive ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)]' : 'bg-slate-600'}`}></span>
+                                                                <span className={`text-sm xl:text-base font-bold uppercase tracking-tight ${outActive ? 'text-rose-400' : 'text-slate-400'}`}>{dest.name}</span>
                                                             </div>
                                                             {dest.hasFlow && (
-                                                                <span className={`text-sm xl:text-base font-mono font-black tracking-tighter ${outActive ? 'text-rose-400' : 'text-slate-600'}`}>{outFlow ? outFlow.rate.toFixed(1) : '0.0'} <span className="text-[10px] xl:text-xs font-bold opacity-60">t/h</span></span>
+                                                                <span className={`text-lg xl:text-xl font-mono font-black tracking-tighter ${outActive ? 'text-rose-400' : 'text-slate-600'}`}>{outFlow ? outFlow.rate.toFixed(1) : '0.0'} <span className="text-xs xl:text-sm font-bold opacity-60 ml-1">t/h</span></span>
                                                             )}
                                                         </div>
                                                         {dest.pumps && (
-                                                            <div className="flex flex-col gap-1.5 pt-2 mt-0.5 border-t border-slate-600/30">
-                                                                <div className="flex flex-wrap items-center gap-2">
+                                                            <div className="flex flex-col gap-2 pt-3 mt-1.5 border-t border-slate-600/30">
+                                                                <div className="flex flex-wrap items-center gap-2.5">
                                                                     {dest.pumps.map(pump => {
                                                                         const isActive = outFlow?.pump === pump;
                                                                         return isActive ? (
-                                                                            <div key={pump} className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/40 px-2 py-1 xl:px-2.5 xl:py-1 rounded-md shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
-                                                                                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                                                                                <span className="text-[10px] xl:text-[11px] font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
+                                                                            <div key={pump} className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-lg shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
+                                                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                                                                <span className="text-xs xl:text-sm font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
                                                                             </div>
                                                                         ) : (
-                                                                            <div key={pump} className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 px-2 py-1 xl:px-2.5 xl:py-1 rounded-md opacity-60">
-                                                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                                                                                <span className="text-[10px] xl:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
+                                                                            <div key={pump} className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-lg opacity-60">
+                                                                                <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                                                                                <span className="text-xs xl:text-sm font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
                                                                             </div>
                                                                         );
                                                                     })}
                                                                 </div>
                                                                 {/* Aktif sejak — tampil saat pompa aktif */}
                                                                 {outActive && pumpActiveSince && (
-                                                                    <div className="flex items-center gap-1.5 text-[10px] xl:text-[11px] text-emerald-400/70 font-semibold">
-                                                                        <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                                                    <div className="flex items-center gap-2 text-xs xl:text-sm text-emerald-400/70 font-semibold mt-1">
+                                                                        <span className="material-symbols-outlined text-[16px]">schedule</span>
                                                                         Aktif sejak{' '}
-                                                                        <span className="font-black text-emerald-400">
-                                                                            {new Date(pumpActiveSince).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}{' '}
+                                                                        <span className="font-black text-emerald-400 ml-1">
+                                                                            {new Date(pumpActiveSince).toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'short' })}{', '}
                                                                             {new Date(pumpActiveSince).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}
                                                                         </span>
                                                                     </div>
@@ -321,13 +321,18 @@ function TankCard({ tankId }: { tankId: TankId }) {
     );
 }
 
+const CCR_W = 1920;
+const CCR_H = 1080;
+const SIDEBAR_W = 68; // collapsed sidebar width (md+)
+
 export default function TankLevelPage() {
     const { operator, canInputTank, loading: operatorLoading } = useOperator();
     const { currentLevels } = useTankData();
     const router = useRouter();
     const [now, setNow] = useState('');
+    const [scale, setScale] = useState(1);
 
-    // Tick every second for live clock
+    // Live clock
     useEffect(() => {
         const tick = () => setNow(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
         tick();
@@ -335,6 +340,17 @@ export default function TankLevelPage() {
         return () => clearInterval(id);
     }, []);
 
+    // Scale-to-fit 1920×1080 for desktop (account for collapsed sidebar)
+    useEffect(() => {
+        const update = () => {
+            const availW = window.innerWidth - SIDEBAR_W;
+            const availH = window.innerHeight;
+            setScale(Math.min(availW / CCR_W, availH / CCR_H));
+        };
+        update();
+        window.addEventListener('resize', update);
+        return () => window.removeEventListener('resize', update);
+    }, []);
 
     const lastUpdate = Object.values(currentLevels)
         .map(d => d?.timestamp).filter(Boolean).sort().reverse()[0];
@@ -353,110 +369,155 @@ export default function TankLevelPage() {
 
     if (operatorLoading || !operator) return null;
 
+    const bg = 'var(--color-background, #060c1a)';
+
     return (
-        /* Mobile: scrollable min-h-screen | Desktop (lg+): full-screen CCR no-scroll */
-        <div className="flex flex-col gap-3 px-4 py-4 min-h-screen lg:h-screen lg:overflow-hidden lg:px-5 lg:py-4"
-            style={{ background: 'var(--color-background, #060c1a)' }}>
-
-            {/* ── Header ── */}
-            <header className="flex-shrink-0">
-                {/* Mobile header layout */}
-                <div className="flex lg:hidden items-center justify-between gap-2 mb-2">
-                    <div>
-                        <h1 className="text-lg font-black tracking-tight text-white leading-tight">
-                            Tank Level <span className="text-primary">Monitoring UBB</span>
-                        </h1>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-[0.15em] font-bold">CCR Live Display</p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        {canInputTank && (
-                            <button onClick={() => router.push('/input')}
-                                className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer">
-                                <span className="material-symbols-outlined text-sm">edit</span>
-                                Update
-                            </button>
-                        )}
-                        <button onClick={() => window.location.reload()}
-                            className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-primary/20 cursor-pointer">
-                            <span className="material-symbols-outlined text-sm">refresh</span>
-                        </button>
-                        <button onClick={() => router.push('/dashboard')}
-                            className="flex items-center gap-1 text-slate-400 hover:text-white hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer">
-                            <span className="material-symbols-outlined text-sm">arrow_back</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Mobile: Last Update + Clock row */}
-                <div className="flex lg:hidden items-center gap-3 bg-surface-dark border border-primary/20 rounded-xl px-4 py-2.5 shadow-sm">
-                    <span className="material-symbols-outlined text-primary text-lg">schedule</span>
-                    <div className="flex flex-col">
-                        <span className="text-[10px] text-primary font-black uppercase tracking-widest">Last Update</span>
-                        <span className="text-xl font-black font-mono text-white leading-none">{lastUpdateTime}</span>
-                        <span className="text-xs text-slate-400 font-semibold">{lastUpdateDate}</span>
-                    </div>
-                    <div className="ml-auto flex flex-col items-end">
-                        <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Waktu</span>
-                        <span className="text-xl font-black font-mono text-slate-300 leading-none">{now}</span>
-                    </div>
-                </div>
-
-                {/* Desktop header layout */}
-                <div className="hidden lg:flex items-center justify-between gap-6 px-1 lg:py-2">
-                    <div>
-                        <h1 className="text-3xl lg:text-5xl font-black tracking-tighter text-white leading-tight">
-                            Tank Level <span className="text-primary">Monitoring UBB</span>
-                        </h1>
-                        <p className="text-[11px] lg:text-sm text-primary uppercase tracking-[0.3em] font-black mt-2">CCR Live Display</p>
-                    </div>
-
-                    <div className="flex items-stretch gap-6">
-                        <div className="bg-surface-dark border border-primary/30 rounded-[2rem] px-8 py-4 lg:py-5 flex flex-col items-center justify-center gap-1 shadow-[0_0_40px_rgba(43,124,238,0.15)] relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                            <span className="text-xs lg:text-sm uppercase font-black text-primary tracking-[0.2em] relative z-10">Last Data Update</span>
-                            <div className="flex items-center gap-3 mt-1 relative z-10">
-                                <span className="material-symbols-outlined text-primary text-3xl lg:text-4xl">schedule</span>
-                                <span className="text-5xl lg:text-6xl font-black font-mono text-white tracking-tighter leading-none"
-                                    style={{ textShadow: '0 0 30px rgba(43,124,238,0.5)' }}>
-                                    {lastUpdateTime}
-                                </span>
-                            </div>
-                            <span className="text-sm lg:text-base font-bold text-slate-400 mt-1 relative z-10">{lastUpdateDate}</span>
+        <>
+            {/* ─────────────────── MOBILE layout (< lg) ─────────────────── */}
+            <div className="lg:hidden flex flex-col gap-3 px-4 py-4 min-h-screen" style={{ background: bg }}>
+                <header className="flex-shrink-0">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                        <div>
+                            <h1 className="text-lg font-black tracking-tight text-white leading-tight">
+                                Tank Level <span className="text-primary">Monitoring UBB</span>
+                            </h1>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-[0.15em] font-bold">CCR Live Display</p>
                         </div>
-
-                        <div className="bg-surface-dark border border-slate-800 rounded-[2rem] px-8 py-4 lg:py-5 flex flex-col items-center justify-center gap-1 shadow-xl">
-                            <span className="text-xs lg:text-sm uppercase font-black text-slate-500 tracking-[0.2em]">Local Time</span>
-                            <span className="text-4xl lg:text-5xl font-black font-mono text-slate-300 tracking-tighter leading-none mt-2">{now}</span>
+                        <div className="flex items-center gap-1.5">
+                            {canInputTank && (
+                                <button onClick={() => router.push('/input')}
+                                    className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer">
+                                    <span className="material-symbols-outlined text-sm">edit</span>
+                                    Update
+                                </button>
+                            )}
+                            <button onClick={() => window.location.reload()}
+                                className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-primary/20 cursor-pointer">
+                                <span className="material-symbols-outlined text-sm">refresh</span>
+                            </button>
+                            <button onClick={() => router.push('/dashboard')}
+                                className="flex items-center gap-1 text-slate-400 hover:text-white hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer">
+                                <span className="material-symbols-outlined text-sm">arrow_back</span>
+                            </button>
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-4">
-                        {canInputTank && (
-                            <button onClick={() => router.push('/input')}
-                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 lg:px-6 py-3 lg:py-4 rounded-2xl text-sm lg:text-base font-bold transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-emerald-600/30 cursor-pointer">
-                                <span className="material-symbols-outlined text-lg lg:text-xl">edit</span>
-                                Update Level
-                            </button>
-                        )}
-                        <button onClick={() => window.location.reload()}
-                            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-5 lg:px-6 py-3 lg:py-4 rounded-2xl text-sm lg:text-base font-bold transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-primary/30 cursor-pointer">
-                            <span className="material-symbols-outlined text-lg lg:text-xl">refresh</span>
-                            Refresh
-                        </button>
-                        <button onClick={() => router.push('/dashboard')}
-                            className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 px-5 lg:px-6 py-3 lg:py-4 rounded-2xl text-sm lg:text-base font-bold transition-colors cursor-pointer border border-slate-700/50">
-                            <span className="material-symbols-outlined text-lg lg:text-xl">home</span>
-                            Dashboard
-                        </button>
+                    <div className="flex items-center gap-3 bg-surface-dark border border-primary/20 rounded-xl px-4 py-2.5 shadow-sm">
+                        <span className="material-symbols-outlined text-primary text-lg">schedule</span>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-primary font-black uppercase tracking-widest">Last Update</span>
+                            <span className="text-xl font-black font-mono text-white leading-none">{lastUpdateTime}</span>
+                            <span className="text-xs text-slate-400 font-semibold">{lastUpdateDate}</span>
+                        </div>
+                        <div className="ml-auto flex flex-col items-end">
+                            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Waktu</span>
+                            <span className="text-xl font-black font-mono text-slate-300 leading-none">{now}</span>
+                        </div>
                     </div>
+                </header>
+                <div className="grid grid-cols-1 gap-4">
+                    {TANK_IDS.map(id => <TankCard key={id} tankId={id} />)}
                 </div>
-            </header>
-
-            {/* ── Tank Cards ── */}
-            {/* Mobile: stacked, Desktop: 3-col fill remaining height */}
-            <div className="grid grid-cols-1 gap-4 lg:flex-1 lg:grid-cols-3 lg:min-h-0">
-                {TANK_IDS.map(id => <TankCard key={id} tankId={id} />)}
             </div>
-        </div>
+
+            {/* ─────────────────── DESKTOP: fixed 1920×1080 scale-to-fit ─────────────────── */}
+            {/* Outer: fills viewport minus sidebar, centers the scaled canvas */}
+            <div className="hidden lg:block fixed top-0 bottom-0 overflow-hidden"
+                style={{ left: `${SIDEBAR_W}px`, right: 0, background: bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{
+                    width: `${CCR_W}px`,
+                    height: `${CCR_H}px`,
+                    transformOrigin: 'center center',
+                    transform: `scale(${scale})`,
+                    flexShrink: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    padding: '20px 24px 16px',
+                    boxSizing: 'border-box',
+                }}>
+                    {/* Desktop header */}
+                    <header style={{ flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+                            {/* Title */}
+                            <div>
+                                <h1 style={{ fontSize: '48px', fontWeight: 900, letterSpacing: '-2px', color: '#fff', lineHeight: 1, margin: 0 }}>
+                                    Tank Level <span style={{ color: 'var(--color-primary, #2b7cee)' }}>Monitoring UBB</span>
+                                </h1>
+                                <p style={{ fontSize: '13px', color: 'var(--color-primary, #2b7cee)', textTransform: 'uppercase', letterSpacing: '0.3em', fontWeight: 900, marginTop: '6px' }}>CCR Live Display</p>
+                            </div>
+
+                            {/* Clocks */}
+                            <div style={{ display: 'flex', alignItems: 'stretch', gap: '16px' }}>
+                                <div style={{
+                                    background: 'var(--color-surface-dark, #0f1729)',
+                                    border: '1px solid rgba(43,124,238,0.3)',
+                                    borderRadius: '24px', padding: '14px 28px',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: '0 0 40px rgba(43,124,238,0.15)',
+                                    position: 'relative', overflow: 'hidden',
+                                }}>
+                                    <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 900, color: 'var(--color-primary, #2b7cee)', letterSpacing: '0.2em' }}>Last Data Update</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                                        <span className="material-symbols-outlined" style={{ color: 'var(--color-primary, #2b7cee)', fontSize: '36px' }}>schedule</span>
+                                        <span style={{ fontSize: '56px', fontWeight: 900, fontFamily: 'monospace', color: '#fff', letterSpacing: '-2px', lineHeight: 1, textShadow: '0 0 30px rgba(43,124,238,0.5)' }}>{lastUpdateTime}</span>
+                                    </div>
+                                    <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 700, marginTop: '4px' }}>{lastUpdateDate}</span>
+                                </div>
+
+                                <div style={{
+                                    background: 'var(--color-surface-dark, #0f1729)',
+                                    border: '1px solid rgba(255,255,255,0.06)',
+                                    borderRadius: '24px', padding: '14px 28px',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+                                }}>
+                                    <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 900, color: '#64748b', letterSpacing: '0.2em' }}>Local Time</span>
+                                    <span style={{ fontSize: '48px', fontWeight: 900, fontFamily: 'monospace', color: '#cbd5e1', letterSpacing: '-2px', lineHeight: 1, marginTop: '6px' }}>{now}</span>
+                                </div>
+                            </div>
+
+                            {/* Buttons */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                {canInputTank && (
+                                    <button onClick={() => router.push('/input')} style={{
+                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                        background: '#059669', color: '#fff', padding: '14px 22px',
+                                        borderRadius: '16px', fontSize: '14px', fontWeight: 700,
+                                        border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(5,150,105,0.3)',
+                                    }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
+                                        Update Level
+                                    </button>
+                                )}
+                                <button onClick={() => window.location.reload()} style={{
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    background: 'var(--color-primary, #2b7cee)', color: '#fff', padding: '14px 22px',
+                                    borderRadius: '16px', fontSize: '14px', fontWeight: 700,
+                                    border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(43,124,238,0.3)',
+                                }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>refresh</span>
+                                    Refresh
+                                </button>
+                                <button onClick={() => router.push('/dashboard')} style={{
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    background: 'rgba(30,41,59,0.8)', color: '#cbd5e1', padding: '14px 22px',
+                                    borderRadius: '16px', fontSize: '14px', fontWeight: 700,
+                                    border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer',
+                                }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>home</span>
+                                    Dashboard
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Tank cards — fill remaining height */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', flex: 1, minHeight: 0 }}>
+                        {TANK_IDS.map(id => <TankCard key={id} tankId={id} />)}
+                    </div>
+                </div>
+            </div>
+        </>
     );
 }

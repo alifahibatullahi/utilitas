@@ -260,6 +260,7 @@ export default function InputShiftPage() {
         setTimeout(() => setToast(null), 4000);
     };
 
+
     const handleSubmit = async () => {
         if (submitting) return;
         setSubmitting(true);
@@ -282,6 +283,8 @@ export default function InputShiftPage() {
                 tankyard,
                 coalBunker,
                 waterQuality: { ...waterQuality, ...chemicalDosing },
+                prevBoilerA: { totalizer_steam: prevBoilerA.totalizer_steam ?? null },
+                prevBoilerB: { totalizer_steam: prevBoilerB.totalizer_steam ?? null },
             });
             // Save solar unloadings if filled
             const validSolarEntries = solarEntries.filter(e => e.tanggal && e.jumlah && e.perusahaan);

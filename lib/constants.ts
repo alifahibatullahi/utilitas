@@ -21,15 +21,15 @@ export const TANKS: Record<string, {
     DEMIN: {
         id: 'demin',
         name: 'DEMIN',
-        capacity: '1.200 m³',
-        capacityM3: 1200,
+        capacity: '1.250 m³',
+        capacityM3: 1250,
         liquidColor: '#38bdf8',       // sky-400
         liquidColorLight: '#7dd3fc',  // sky-300
         gradientFrom: '#0284c7',      // sky-600
         gradientTo: '#38bdf8',        // sky-400
         inputSources: ['Utilitas 1', 'Demin 3A'],
         outputDestinations: [
-            { name: 'Internal UBB', hasFlow: true },
+            { name: 'Deaerator', hasFlow: true },
             { name: 'Demin Revamp', hasFlow: false, pumps: ['P-1000A', 'P-1000B', 'Demin B'] },
         ],
     },
@@ -44,7 +44,7 @@ export const TANKS: Record<string, {
         gradientTo: '#2dd4bf',        // teal-400
         inputSources: ['Utilitas 1'],
         outputDestinations: [
-            { name: 'Make UP Cooling Tower', hasFlow: true },
+            { name: 'Cooling Tower', hasFlow: true },
             { name: 'Hydrant', hasFlow: true },
             { name: 'Service', hasFlow: true },
         ],

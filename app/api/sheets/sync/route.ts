@@ -113,12 +113,7 @@ async function saveRowToSupabase(
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
-export async function POST(req: NextRequest) {
-    let days = 7;
-    try {
-        const body = await req.json().catch(() => ({}));
-        if (body?.days && typeof body.days === 'number') days = Math.min(body.days, 30);
-    } catch { /* use default */ }
+async function runSync(days: number) {
 
     // Build set of ISO dates to include
     const today = new Date();
@@ -171,10 +166,27 @@ export async function POST(req: NextRequest) {
         }
     }
 
-    return NextResponse.json({
+    return {
         synced,
         skipped,
         range: { from: isoStart, to: isoEnd },
         errors: errors.length > 0 ? errors : undefined,
-    });
+    };
+}
+
+// GET — dipanggil oleh Vercel Cron (setiap jam, default 7 hari)
+export async function GET() {
+    const result = await runSync(7);
+    return NextResponse.json(result);
+}
+
+// POST — dipanggil manual dengan body { days?: number }
+export async function POST(req: NextRequest) {
+    let days = 7;
+    try {
+        const body = await req.json().catch(() => ({}));
+        if (body?.days && typeof body.days === 'number') days = Math.min(body.days, 30);
+    } catch { /* use default */ }
+    const result = await runSync(days);
+    return NextResponse.json(result);
 }

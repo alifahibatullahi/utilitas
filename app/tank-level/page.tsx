@@ -326,7 +326,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
 }
 
 // Canvas size: 1600×900 for large screens (≥1920×1080), 1920×1080 for smaller
-const CANVAS_LG = { w: 1600, h: 900 };
+const CANVAS_LG = { w: 1366, h: 768 };
 const CANVAS_SM = { w: 1920, h: 1080 };
 const SIDEBAR_COLLAPSED_W = 68;
 const SIDEBAR_EXPANDED_W = 260;

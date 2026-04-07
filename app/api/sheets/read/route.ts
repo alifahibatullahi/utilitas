@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
         }
 
         try {
-            const row = await fetchShiftRow(shift, date, group);
+            const row = await fetchShiftRow(shift, date);
             if (!row) {
                 return NextResponse.json({ found: false, data: null });
             }

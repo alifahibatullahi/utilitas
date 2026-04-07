@@ -162,211 +162,288 @@ export default function InputPage() {
     const isValid = Object.entries(allDraftsNow).some(([, d]) => d?.levelM3);
 
     return (
-        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-lg mx-auto">
-            {/* Back button */}
-            <button
-                onClick={() => router.push('/tank-level')}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-200 mb-6 transition-colors cursor-pointer"
-            >
-                <span className="material-symbols-outlined text-base">arrow_back</span>
-                <span className="text-sm">Kembali ke Tank Level</span>
-            </button>
+        <div className="relative min-h-screen bg-slate-900 pb-32">
+            {/* Background decorative elements */}
+            <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-cyan-900/20 to-transparent pointer-events-none" />
+            <div className="absolute top-[-10%] right-[-5%] w-64 h-64 rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
 
-            {/* Title */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-black text-white">Update Level Tank</h1>
-                <p className="text-sm text-slate-400 mt-1">Operator Handling — Pilih tank dan masukkan level terkini</p>
-            </div>
-
-            {/* Tank selector */}
-            <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-300 mb-3">Pilih Tank</label>
-                <TankSelector selected={selectedTank} onSelect={handleTankSelect} savedTanks={savedTanks} />
-            </div>
-
-            {!selectedTank && (
-                <p className="text-slate-500 text-sm text-center py-8">Pilih tank di atas untuk mulai input</p>
-            )}
-
-            {selectedTank && (
-                <>
-                    {/* Level input */}
-                    <div className="mb-5">
-                        <label className="block text-sm font-medium text-slate-300 mb-2">Level (m³){selectedTank === 'SOLAR' ? ' — per tanki' : ''}</label>
-                        {currentLevels[selectedTank]?.operator !== '-' && (
-                            <p className="text-xs text-slate-500 mb-2">
-                                Tersimpan: <span className="text-slate-300 font-medium">{Math.round(currentLevels[selectedTank].level / 100 * capM3).toLocaleString('id-ID')} m³</span>
-                                <span className="text-slate-600"> ({currentLevels[selectedTank].level.toFixed(1)}%)</span>
-                                <span className="text-slate-600"> — {currentLevels[selectedTank].operator}</span>
-                            </p>
-                        )}
-                        <div className="relative">
-                            <input
-                                type="number" inputMode="decimal"
-                                value={current.levelM3}
-                                onChange={e => setField('levelM3', e.target.value)}
-                                placeholder="0"
-                                min="0" max={capM3} step="1"
-                                className="w-full px-5 py-4 bg-slate-800/80 border border-slate-600/50 rounded-xl text-3xl font-bold text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 placeholder:text-slate-600 appearance-none"
-                                style={{ borderColor: `${TANKS[selectedTank].liquidColor}50` }}
-                            />
-                            <span className="absolute right-5 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-500">m³</span>
-                        </div>
-                        {current.levelM3 && (parseFloat(current.levelM3) < 0 || parseFloat(current.levelM3) > capM3) && (
-                            <p className="text-red-400 text-xs mt-1.5">Level harus antara 0 – {capM3.toLocaleString('id-ID')} m³</p>
-                        )}
-                        {selectedTank && current.levelM3 && !isNaN(parseFloat(current.levelM3)) && parseFloat(current.levelM3) >= 0 && parseFloat(current.levelM3) <= capM3 && (
-                            <p className="text-xs mt-2 text-slate-400">
-                                = <span className="text-white font-bold text-sm">{(parseFloat(current.levelM3) / capM3 * 100).toFixed(1)}%</span>
-                                <span className="text-slate-600"> dari {selectedTank === 'SOLAR' ? '200 m³ per tanki' : TANKS[selectedTank].capacity}</span>
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Input flow rates */}
-                    {TANKS[selectedTank].inputSources.length > 0 && (
-                        <div className="mb-5">
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Input Flow Rate (ton/h)</label>
-                            <div className="space-y-3">
-                                {TANKS[selectedTank].inputSources.map(source => {
-                                    const lastRate = flowRates[selectedTank]?.find(f => f.sourceLabel === source);
-                                    return (
-                                        <div key={source}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TANKS[selectedTank].liquidColor }} />
-                                                <span className="text-xs text-slate-400">{source}</span>
-                                                {lastRate && <span className="text-[10px] text-slate-600 ml-auto">terakhir: {lastRate.rate.toFixed(1)} ton/h</span>}
-                                            </div>
-                                            <div className="relative">
-                                                <input
-                                                    type="number" inputMode="decimal"
-                                                    value={current.flowInputs[source] || ''}
-                                                    onChange={e => setField('flowInputs', { ...current.flowInputs, [source]: e.target.value })}
-                                                    placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
-                                                    min="0" step="0.1"
-                                                    className="w-full px-4 py-3 bg-slate-800/80 border border-slate-600/50 rounded-xl text-xl font-bold text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500/50 placeholder:text-slate-600 appearance-none"
-                                                    style={{ borderColor: `${TANKS[selectedTank].liquidColor}30` }}
-                                                />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">ton/h</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Output flow rates */}
-                    {TANKS[selectedTank].outputDestinations.some(d => d.hasFlow) && (
-                        <div className="mb-5">
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Output Flow Rate (ton/h)</label>
-                            <div className="space-y-3">
-                                {TANKS[selectedTank].outputDestinations.filter(d => d.hasFlow).map(dest => {
-                                    const lastRate = currentOutputFlowRates[selectedTank]?.find(f => f.destinationLabel === dest.name);
-                                    return (
-                                        <div key={dest.name}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="w-2 h-2 rounded-full bg-rose-400" />
-                                                <span className="text-xs text-slate-400">{dest.name}</span>
-                                                {lastRate && <span className="text-[10px] text-slate-600 ml-auto">terakhir: {lastRate.rate.toFixed(1)} ton/h</span>}
-                                            </div>
-                                            <div className="relative">
-                                                <input
-                                                    type="number" inputMode="decimal"
-                                                    value={current.outputFlowInputs[dest.name] || ''}
-                                                    onChange={e => setField('outputFlowInputs', { ...current.outputFlowInputs, [dest.name]: e.target.value })}
-                                                    placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
-                                                    min="0" step="0.1"
-                                                    className="w-full px-4 py-3 bg-slate-800/80 border border-rose-500/20 rounded-xl text-xl font-bold text-white text-center focus:outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 appearance-none"
-                                                />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">ton/h</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Pompa aktif */}
-                    {TANKS[selectedTank].outputDestinations.some(d => !d.hasFlow && d.pumps?.length) && (
-                        <div className="mb-5">
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Pompa Aktif</label>
-                            {TANKS[selectedTank].outputDestinations.filter(d => !d.hasFlow && d.pumps?.length).map(dest => {
-                                const lastOut = currentOutputFlowRates[selectedTank]?.find(f => f.destinationLabel === dest.name);
-                                return (
-                                    <div key={dest.name} className="bg-slate-800/50 border border-slate-600/30 rounded-xl p-4">
-                                        <p className="text-xs text-slate-400 font-bold uppercase mb-3">{dest.name}</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            <button type="button" onClick={() => setField('selectedPump', '')}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${!current.selectedPump ? 'bg-slate-600/50 text-slate-200 border-slate-400/50' : 'bg-slate-700/30 text-slate-500 border-slate-700/30 hover:border-slate-600'}`}>
-                                                Mati
-                                            </button>
-                                            {dest.pumps!.map(pump => (
-                                                <button key={pump} type="button" onClick={() => setField('selectedPump', pump)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${current.selectedPump === pump ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-slate-700/50 text-slate-400 border-slate-600/50 hover:border-slate-500'}`}>
-                                                    {pump}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        {lastOut?.pump && (
-                                            <p className="text-[10px] text-slate-500 mt-2">Terakhir: <span className="text-slate-400">{lastOut.pump}</span></p>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {/* Solar unloading */}
-                    {selectedTank === 'SOLAR' && (
-                        <div className="mb-5">
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Data Unloading Solar</label>
-                            <div className="space-y-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-                                <div>
-                                    <label className="text-xs text-slate-400 mb-1 block">Tanggal Unloading</label>
-                                    <input type="date" value={current.solarDate} onChange={e => setField('solarDate', e.target.value)}
-                                        className="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-600/50 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50" />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-slate-400 mb-1 block">Jumlah (liter)</label>
-                                    <div className="relative">
-                                        <input type="number" inputMode="decimal" value={current.solarLiters} onChange={e => setField('solarLiters', e.target.value)}
-                                            placeholder="5000" min="0"
-                                            className="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-600/50 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 placeholder:text-slate-600 appearance-none" />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">liter</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-slate-400 mb-1 block">Perusahaan Pengirim</label>
-                                    <input type="text" value={current.solarSupplier} onChange={e => setField('solarSupplier', e.target.value)}
-                                        placeholder="PT Pertamina"
-                                        className="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-600/50 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 placeholder:text-slate-600" />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                </>
-            )}
-
-            {/* Tombol simpan selalu terlihat */}
-            <div className="mt-6 mb-6">
-                <button onClick={handleSubmit} disabled={!isValid || isSubmitting}
-                    className={`w-full py-4 rounded-xl text-lg font-bold transition-all duration-300 cursor-pointer ${isValid && !isSubmitting
-                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.01] active:scale-[0.99]'
-                        : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'}`}>
-                    {isSubmitting ? (
-                        <span className="flex items-center justify-center gap-2">
-                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                            Menyimpan...
-                        </span>
-                    ) : 'SIMPAN SEMUA'}
+            <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-xl mx-auto relative z-10">
+                {/* Back button */}
+                <button
+                    onClick={() => router.push('/tank-level')}
+                    className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-all cursor-pointer group bg-slate-800/40 hover:bg-slate-700/60 px-3 py-1.5 rounded-full w-max border border-slate-700/50"
+                >
+                    <span className="material-symbols-outlined text-base group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                    <span className="text-sm font-medium">Kembali ke Tank Level</span>
                 </button>
+
+                {/* Title */}
+                <div className="mb-8 text-center sm:text-left">
+                    <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white block to-slate-400 tracking-tight">Update Level Tank</h1>
+                    <p className="text-sm text-slate-400 mt-2 font-medium bg-slate-800/40 px-3 py-1 rounded-full inline-block sm:block sm:bg-transparent sm:px-0 sm:py-0 border border-slate-700/50 sm:border-none">Operator Handling — Pilih tank dan masukkan level</p>
+                </div>
+
+                {/* Tank selector */}
+                <div className="mb-8">
+                    <label className="block text-sm font-bold text-slate-300 mb-3 ml-1">1. Pilih Tank</label>
+                    <TankSelector selected={selectedTank} onSelect={handleTankSelect} savedTanks={savedTanks} />
+                </div>
+
+                {!selectedTank && (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 bg-slate-800/30 border border-slate-700/50 rounded-2xl border-dashed">
+                        <span className="material-symbols-outlined text-4xl text-slate-500 mb-3">touch_app</span>
+                        <p className="text-slate-400 text-sm font-medium text-center">Pilih salah satu tank di atas untuk mulai mengisi data</p>
+                    </div>
+                )}
+
+                {selectedTank && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Level input */}
+                        <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/5 to-transparent opacity-50 rounded-bl-full pointer-events-none" />
+                            
+                            <label className="block text-base font-bold text-white mb-1">
+                                2. Level (m³) {selectedTank === 'SOLAR' ? <span className="text-slate-400 font-normal text-sm">— per tangki</span> : ''}
+                            </label>
+                            
+                            {currentLevels[selectedTank]?.operator !== '-' && (
+                                <div className="flex items-center gap-2 mb-4 bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-700/30 w-max">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                    <p className="text-[11px] sm:text-xs text-slate-400 font-medium">
+                                        Tersimpan:{' '}
+                                        <span className="text-white font-bold">{Math.round(currentLevels[selectedTank].level / 100 * capM3).toLocaleString('id-ID')} m³</span>
+                                        <span className="text-slate-500"> ({currentLevels[selectedTank].level.toFixed(1)}%)</span>
+                                        <span className="text-slate-500 ml-1 block sm:inline">— {currentLevels[selectedTank].operator}</span>
+                                    </p>
+                                </div>
+                            )}
+                            
+                            <div className="relative mt-2">
+                                <input
+                                    type="number" inputMode="decimal"
+                                    value={current.levelM3}
+                                    onChange={e => setField('levelM3', e.target.value)}
+                                    placeholder="0"
+                                    min="0" max={capM3} step="1"
+                                    className="w-full px-5 py-5 sm:py-6 bg-slate-900/80 border-2 rounded-xl text-4xl sm:text-5xl font-black text-white text-center focus:outline-none focus:ring-4 placeholder:text-slate-700 appearance-none transition-all duration-300 shadow-inner"
+                                    style={{ 
+                                        borderColor: current.levelM3 ? TANKS[selectedTank].liquidColor : `${TANKS[selectedTank].liquidColor}40`,
+                                        boxShadow: current.levelM3 ? `inset 0 2px 10px rgba(0,0,0,0.5), 0 0 20px ${TANKS[selectedTank].liquidColor}20` : 'inset 0 2px 10px rgba(0,0,0,0.5)',
+                                        textShadow: current.levelM3 ? `0 0 20px ${TANKS[selectedTank].liquidColor}40` : 'none'
+                                    }}
+                                />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+                                    <span className="text-xl sm:text-2xl font-bold text-slate-500">m³</span>
+                                </div>
+                            </div>
+                            
+                            {current.levelM3 && (parseFloat(current.levelM3) < 0 || parseFloat(current.levelM3) > capM3) && (
+                                <div className="mt-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-sm">error</span>
+                                    Level harus antara 0 – {capM3.toLocaleString('id-ID')} m³
+                                </div>
+                            )}
+                            
+                            {selectedTank && current.levelM3 && !isNaN(parseFloat(current.levelM3)) && parseFloat(current.levelM3) >= 0 && parseFloat(current.levelM3) <= capM3 && (
+                                <div className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-slate-900/50 rounded-lg border border-slate-700/50 w-max mx-auto shadow-sm">
+                                    <span className="material-symbols-outlined text-sm text-slate-400">percent</span>
+                                    <p className="text-sm text-slate-300">
+                                        Persentase: <span className="text-white font-black text-base" style={{ color: TANKS[selectedTank].liquidColor }}>{(parseFloat(current.levelM3) / capM3 * 100).toFixed(1)}%</span>
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Input flow rates */}
+                        {TANKS[selectedTank].inputSources.length > 0 && (
+                            <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                                <label className="block text-base font-bold text-white mb-4">Input Flow Rate (ton/h)</label>
+                                <div className="space-y-4">
+                                    {TANKS[selectedTank].inputSources.map(source => {
+                                        const lastRate = flowRates[selectedTank]?.find(f => f.sourceLabel === source);
+                                        return (
+                                            <div key={source} className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/50 relative overflow-hidden group focus-within:border-cyan-500/50 transition-colors">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ color: TANKS[selectedTank].liquidColor, backgroundColor: TANKS[selectedTank].liquidColor }} />
+                                                    <span className="text-sm font-bold text-slate-300">{source}</span>
+                                                    {lastRate && <span className="text-[10px] sm:text-xs text-slate-500 ml-auto bg-slate-800 px-2 py-0.5 rounded-full">terakhir: {lastRate.rate.toFixed(1)} ton/h</span>}
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number" inputMode="decimal"
+                                                        value={current.flowInputs[source] || ''}
+                                                        onChange={e => setField('flowInputs', { ...current.flowInputs, [source]: e.target.value })}
+                                                        placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
+                                                        min="0" step="0.1"
+                                                        className="w-full px-4 py-3 bg-slate-800 border-none rounded-lg text-xl sm:text-2xl font-black text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 placeholder:text-slate-600 appearance-none"
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 select-none">ton/h</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Output flow rates */}
+                        {TANKS[selectedTank].outputDestinations.some(d => d.hasFlow) && (
+                            <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                                <label className="block text-base font-bold text-white mb-4">Output Flow Rate (ton/h)</label>
+                                <div className="space-y-4">
+                                    {TANKS[selectedTank].outputDestinations.filter(d => d.hasFlow).map(dest => {
+                                        const lastRate = currentOutputFlowRates[selectedTank]?.find(f => f.destinationLabel === dest.name);
+                                        return (
+                                            <div key={dest.name} className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/50 relative overflow-hidden focus-within:border-rose-500/50 transition-colors">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
+                                                    <span className="text-sm font-bold text-slate-300">{dest.name}</span>
+                                                    {lastRate && <span className="text-[10px] sm:text-xs text-slate-500 ml-auto bg-slate-800 px-2 py-0.5 rounded-full">terakhir: {lastRate.rate.toFixed(1)} ton/h</span>}
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number" inputMode="decimal"
+                                                        value={current.outputFlowInputs[dest.name] || ''}
+                                                        onChange={e => setField('outputFlowInputs', { ...current.outputFlowInputs, [dest.name]: e.target.value })}
+                                                        placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
+                                                        min="0" step="0.1"
+                                                        className="w-full px-4 py-3 bg-slate-800 border-none rounded-lg text-xl sm:text-2xl font-black text-white focus:outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 appearance-none"
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 select-none">ton/h</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Pompa aktif */}
+                        {TANKS[selectedTank].outputDestinations.some(d => !d.hasFlow && d.pumps?.length) && (
+                            <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                                <label className="block text-base font-bold text-white mb-4">Status Pompa</label>
+                                <div className="space-y-4">
+                                    {TANKS[selectedTank].outputDestinations.filter(d => !d.hasFlow && d.pumps?.length).map(dest => {
+                                        const lastOut = currentOutputFlowRates[selectedTank]?.find(f => f.destinationLabel === dest.name);
+                                        return (
+                                            <div key={dest.name} className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-4">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <p className="text-sm font-bold text-slate-300 uppercase">{dest.name}</p>
+                                                    {lastOut?.pump && (
+                                                        <p className="text-[10px] bg-slate-800 px-2 py-1 rounded-md text-slate-400">Terakhir: <span className="text-white font-bold">{lastOut.pump}</span></p>
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <button type="button" onClick={() => setField('selectedPump', '')}
+                                                        className={`py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border ${!current.selectedPump ? 'bg-slate-700 text-white border-slate-500 shadow-inner' : 'bg-slate-800/80 text-slate-500 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300'}`}>
+                                                        MATI
+                                                    </button>
+                                                    {dest.pumps!.map(pump => (
+                                                        <button key={pump} type="button" onClick={() => setField('selectedPump', pump)}
+                                                            className={`py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border ${current.selectedPump === pump ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300 hover:border-slate-600'}`}>
+                                                            {pump}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Solar unloading */}
+                        {selectedTank === 'SOLAR' && (
+                            <div className="bg-gradient-to-br from-amber-900/20 to-slate-900/80 backdrop-blur-sm border border-amber-500/30 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-[40px] rounded-full pointer-events-none" />
+                                
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="material-symbols-outlined text-amber-500">local_shipping</span>
+                                    <label className="block text-base font-bold text-white">Data Unloading Solar</label>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div className="bg-slate-900/60 p-1 border border-slate-700/50 rounded-xl">
+                                        <div className="px-3 py-1.5 border-b border-slate-800">
+                                            <label className="text-xs font-bold text-slate-400 drop-shadow-sm">Tanggal Unloading</label>
+                                        </div>
+                                        <input type="date" value={current.solarDate} onChange={e => setField('solarDate', e.target.value)}
+                                            className="w-full px-3 py-2.5 bg-transparent border-none text-sm text-white font-medium focus:outline-none focus:ring-0 [&::-webkit-calendar-picker-indicator]:filter-[invert(1)]" />
+                                    </div>
+                                    
+                                    <div className="bg-slate-900/60 p-1 border border-slate-700/50 rounded-xl focus-within:border-amber-500/50 transition-colors">
+                                        <div className="px-3 py-1.5 border-b border-slate-800">
+                                            <label className="text-xs font-bold text-slate-400">Jumlah Diterima</label>
+                                        </div>
+                                        <div className="relative">
+                                            <input type="number" inputMode="decimal" value={current.solarLiters} onChange={e => setField('solarLiters', e.target.value)}
+                                                placeholder="5000" min="0"
+                                                className="w-full px-3 py-2.5 bg-transparent border-none text-lg font-bold text-white focus:outline-none focus:ring-0 placeholder:text-slate-600 appearance-none" />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-amber-500/80">liter</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-slate-900/60 p-1 border border-slate-700/50 rounded-xl focus-within:border-amber-500/50 transition-colors">
+                                        <div className="px-3 py-1.5 border-b border-slate-800">
+                                            <label className="text-xs font-bold text-slate-400">Perusahaan Pengirim</label>
+                                        </div>
+                                        <input type="text" value={current.solarSupplier} onChange={e => setField('solarSupplier', e.target.value)}
+                                            placeholder="Cth: PT Pertamina"
+                                            className="w-full px-3 py-2.5 bg-transparent border-none text-sm font-medium text-white focus:outline-none focus:ring-0 placeholder:text-slate-600" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                    </div>
+                )}
             </div>
+
+            {/* Sticky Bottom Action Bar */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6 bg-gradient-to-t from-slate-950 via-slate-900/95 to-transparent pt-12 pb-6 sm:pb-8 backdrop-blur-[2px]">
+                <div className="max-w-xl mx-auto">
+                    <button 
+                        onClick={handleSubmit} 
+                        disabled={!isValid || isSubmitting}
+                        className={`w-full py-4 sm:py-5 rounded-2xl text-lg sm:text-xl font-black tracking-wide transition-all duration-300 cursor-pointer flex items-center justify-center gap-3 overflow-hidden relative group
+                        ${isValid && !isSubmitting
+                            ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white shadow-[0_10px_40px_-10px_rgba(16,185,129,0.8)] border border-emerald-400/50 hover:scale-[1.02] active:scale-[0.98]'
+                            : 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed hidden sm:flex'
+                        }`}
+                        // on mobile only show button if valid to save space, but it's okay to keep it visible but disabled
+                        style={{ display: (!isValid && !isSubmitting) ? 'none' : 'flex' }}
+                    >
+                        {/* Button shine effect */}
+                        {isValid && !isSubmitting && (
+                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
+                        )}
+                        
+                        {isSubmitting ? (
+                            <>
+                                <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                                <span>Menyimpan Data...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="material-symbols-outlined text-2xl drop-shadow-sm">save</span>
+                                <span className="drop-shadow-sm text-shadow-sm shadow-black/20">SIMPAN SEMUA DATA</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            {/* Custom animations for tailwind config if not added globally */}
+            <style jsx>{`
+                @keyframes shimmer {
+                    100% { transform: translateX(100%); }
+                }
+            `}</style>
 
             {showToast && (
-                <Toast message={toastMsg} type="success" onClose={() => setShowToast(false)} duration={2500} />
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top fade-in duration-300">
+                    <Toast message={toastMsg} type="success" onClose={() => setShowToast(false)} duration={3000} />
+                </div>
             )}
         </div>
     );

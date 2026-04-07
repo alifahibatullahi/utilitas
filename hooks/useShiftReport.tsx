@@ -584,6 +584,9 @@ export function useShiftReport(date: string, shift: ShiftType) {
         personnel?: Record<string, string | null>;
         coalBunker?: Record<string, number | string | null>;
         waterQuality?: Record<string, number | null>;
+        /** Prev boiler totalizer steam untuk menghitung selisih di Google Sheets */
+        prevBoilerA?: { totalizer_steam?: number | null };
+        prevBoilerB?: { totalizer_steam?: number | null };
     }) => {
         if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
 
@@ -694,7 +697,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
             // Sync tankyard data to tank_levels for real-time monitoring
             const ty = reportData.tankyard;
             const tankMappings: { tank_id: string; value: number | null; capacity_m3: number }[] = [
-                { tank_id: 'DEMIN', value: ty.tk_demin ?? null, capacity_m3: 1200 },
+                { tank_id: 'DEMIN', value: ty.tk_demin ?? null, capacity_m3: 1250 },
                 { tank_id: 'RCW', value: ty.tk_rcw ?? null, capacity_m3: 4600 },
                 { tank_id: 'SOLAR', value: ty.tk_solar_ab ?? null, capacity_m3: 200 },
             ];
@@ -731,6 +734,45 @@ export function useShiftReport(date: string, shift: ShiftType) {
         console.log('[submitReport] VERIFY after save:', JSON.stringify(verify));
 
         console.log('[submitReport] all saves done, errors:', errors);
+
+        // Fire-and-forget: sync to Google Sheets (does not block or fail Supabase save)
+        void (async () => {
+            try {
+                const res = await fetch('/api/sheets/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'shift_report',
+                        data: {
+                            shift,
+                            date,
+                            group_name: reportData.group_name,
+                            turbin: reportData.turbin,
+                            steamDist: reportData.steamDist,
+                            generatorGi: reportData.generatorGi,
+                            powerDist: reportData.powerDist,
+                            espHandling: reportData.espHandling,
+                            tankyard: reportData.tankyard,
+                            personnel: reportData.personnel,
+                            boilerA: reportData.boilerA,
+                            boilerB: reportData.boilerB,
+                            coalBunker: reportData.coalBunker,
+                            waterQuality: reportData.waterQuality,
+                            prevBoilerA: reportData.prevBoilerA,
+                            prevBoilerB: reportData.prevBoilerB,
+                        },
+                    }),
+                });
+                const result = await res.json();
+                if (result.warning) {
+                    console.warn('[submitReport] Sheets warning:', result.warning);
+                } else {
+                    console.log('[submitReport] Sheets sync OK:', result);
+                }
+            } catch (sheetsErr) {
+                console.warn('[submitReport] Sheets sync failed (non-fatal):', sheetsErr);
+            }
+        })();
 
         if (errors.length > 0) {
             console.error('Child table errors:', errors);

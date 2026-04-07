@@ -65,6 +65,13 @@ export default function InputShiftPage() {
 
     useEffect(() => { setMounted(true); }, []);
 
+    // Sync Sheets → Supabase saat halaman pertama kali dibuka, lalu refetch form
+    useEffect(() => {
+        fetch('/api/sheets/sync')
+            .then(() => refetch())
+            .catch(() => {});
+    }, []);
+
     // Form state
     const [boilerA, setBoilerA] = useState<Record<string, number | null>>({});
     const [boilerB, setBoilerB] = useState<Record<string, number | null>>({});

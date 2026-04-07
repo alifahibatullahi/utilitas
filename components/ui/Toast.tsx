@@ -23,11 +23,11 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
 
     return (
         <div
-            className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${visible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+            className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-none transition-all duration-300 ${visible ? 'opacity-100' : 'opacity-0'
                 }`}
         >
             <div
-                className={`flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border ${type === 'success'
+                className={`pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border text-base ${type === 'success'
                         ? 'bg-emerald-900/90 border-emerald-600/50 text-emerald-100'
                         : 'bg-red-900/90 border-red-600/50 text-red-100'
                     }`}

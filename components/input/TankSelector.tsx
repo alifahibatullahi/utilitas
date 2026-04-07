@@ -5,6 +5,7 @@ import { TankId } from '@/lib/constants';
 interface TankSelectorProps {
     selected: TankId | null;
     onSelect: (tankId: TankId) => void;
+    savedTanks?: Set<TankId>;
 }
 
 const tankOptions: { id: TankId; name: string; icon: string; color: string; bgColor: string }[] = [
@@ -13,11 +14,12 @@ const tankOptions: { id: TankId; name: string; icon: string; color: string; bgCo
     { id: 'SOLAR', name: 'SOLAR', icon: '🟡', color: '#fbbf24', bgColor: 'rgba(251, 191, 36, 0.1)' },
 ];
 
-export default function TankSelector({ selected, onSelect }: TankSelectorProps) {
+export default function TankSelector({ selected, onSelect, savedTanks }: TankSelectorProps) {
     return (
         <div className="grid grid-cols-3 gap-3">
             {tankOptions.map((tank) => {
                 const isSelected = selected === tank.id;
+                const isSaved = savedTanks?.has(tank.id);
                 return (
                     <button
                         key={tank.id}
@@ -37,6 +39,12 @@ export default function TankSelector({ selected, onSelect }: TankSelectorProps) 
                         <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-slate-300'}`}>
                             {tank.name}
                         </span>
+                        {/* Saved badge */}
+                        {isSaved && (
+                            <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white font-black">
+                                ✓
+                            </div>
+                        )}
                         {isSelected && (
                             <div
                                 className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px]"

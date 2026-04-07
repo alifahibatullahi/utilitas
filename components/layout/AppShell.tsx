@@ -14,7 +14,7 @@ export default function AppShell({ children }: AppShellProps) {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(pathname === '/tank-level');
 
     // Don't show shell on login page or fullscreen preview pages
-    if (pathname === '/' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical') {
+    if (pathname === '/' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level') {
         return <>{children}</>;
     }
 

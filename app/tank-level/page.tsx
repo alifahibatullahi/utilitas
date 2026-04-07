@@ -6,6 +6,8 @@ import { TANK_IDS, TANKS, TankId, TANK_THRESHOLDS, DEFAULT_THRESHOLDS } from '@/
 import { getAlertStatus } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Sidebar from '@/components/layout/Sidebar';
+import BottomTabBar from '@/components/layout/BottomTabBar';
 
 // Per-tank color themes
 const TANK_COLORS: Record<string, {
@@ -16,7 +18,7 @@ const TANK_COLORS: Record<string, {
     SOLAR: { base: '#f59e0b', bgClass: 'bg-amber-500', textClass: 'text-amber-400', icon: 'oil_barrel', borderClass: 'border-amber-500/30' },
 };
 
-function TankCard({ tankId }: { tankId: TankId }) {
+function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boolean }) {
     const { currentLevels, flowRates, outputFlowRates, solarUnloadings, pumpActiveSince, deleteSolarUnloading, updateSolarUnloading } = useTankData();
     // Edit unloading state
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -234,7 +236,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                 {tank.inputSources.length > 0 && (
                                     <div className="flex flex-col gap-3 xl:gap-4">
                                         <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-1">
-                                            <span className="material-symbols-outlined text-[16px] xl:text-[20px]">turn_left</span> Input
+                                            <span className="material-symbols-outlined text-[16px] xl:text-[20px]">turn_left</span> {compact ? 'Input' : 'Input Sources'}
                                         </p>
                                         <div className="flex flex-col gap-2 xl:gap-3">
                                             {tank.inputSources.map(source => {
@@ -256,7 +258,7 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                 {tank.outputDestinations.length > 0 && (
                                     <div className="flex flex-col gap-3 xl:gap-4">
                                         <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-1 mt-2 xl:mt-0">
-                                            <span className="material-symbols-outlined text-[16px] xl:text-[20px]">turn_right</span> Output
+                                            <span className="material-symbols-outlined text-[16px] xl:text-[20px]">turn_right</span> {compact ? 'Output' : 'Output Destinations'}
                                         </p>
                                         <div className="flex flex-col gap-2 xl:gap-3">
                                             {tank.outputDestinations.map(dest => {
@@ -299,7 +301,9 @@ function TankCard({ tankId }: { tankId: TankId }) {
                                                                         <span className="material-symbols-outlined text-[16px]">schedule</span>
                                                                         Aktif sejak{' '}
                                                                         <span className="font-black text-emerald-400 ml-1">
-                                                                            {new Date(pumpActiveSince).toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'short' })}{', '}
+                                                                            {new Date(pumpActiveSince).toLocaleDateString('id-ID', compact
+                                                                                ? { weekday: 'short', day: '2-digit', month: 'short' }
+                                                                                : { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}{' '}
                                                                             {new Date(pumpActiveSince).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}
                                                                         </span>
                                                                     </div>
@@ -321,9 +325,11 @@ function TankCard({ tankId }: { tankId: TankId }) {
     );
 }
 
-const CCR_W = 1920;
-const CCR_H = 1080;
-const SIDEBAR_W = 68; // collapsed sidebar width (md+)
+// Canvas size: 1600×900 for large screens (≥1920×1080), 1920×1080 for smaller
+const CANVAS_LG = { w: 1600, h: 900 };
+const CANVAS_SM = { w: 1920, h: 1080 };
+const SIDEBAR_COLLAPSED_W = 68;
+const SIDEBAR_EXPANDED_W = 260;
 
 export default function TankLevelPage() {
     const { operator, canInputTank, loading: operatorLoading } = useOperator();
@@ -331,6 +337,8 @@ export default function TankLevelPage() {
     const router = useRouter();
     const [now, setNow] = useState('');
     const [scale, setScale] = useState(1);
+    const [canvas, setCanvas] = useState(CANVAS_SM);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
     // Live clock
     useEffect(() => {
@@ -340,17 +348,28 @@ export default function TankLevelPage() {
         return () => clearInterval(id);
     }, []);
 
-    // Scale-to-fit 1920×1080 for desktop (account for collapsed sidebar)
+    // Scale-to-fit: pick canvas size based on viewport, then compute scale
+    useEffect(() => {
+        const sidebarW = sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W;
+        const availW = window.innerWidth - sidebarW;
+        const availH = window.innerHeight;
+        const cv = (window.innerWidth >= 1920 && window.innerHeight >= 1080) ? CANVAS_LG : CANVAS_SM;
+        setCanvas(cv);
+        setScale(Math.min(availW / cv.w, availH / cv.h));
+    }, [sidebarCollapsed]);
+
     useEffect(() => {
         const update = () => {
-            const availW = window.innerWidth - SIDEBAR_W;
+            const sidebarW = sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W;
+            const availW = window.innerWidth - sidebarW;
             const availH = window.innerHeight;
-            setScale(Math.min(availW / CCR_W, availH / CCR_H));
+            const cv = (window.innerWidth >= 1920 && window.innerHeight >= 1080) ? CANVAS_LG : CANVAS_SM;
+            setCanvas(cv);
+            setScale(Math.min(availW / cv.w, availH / cv.h));
         };
-        update();
         window.addEventListener('resize', update);
         return () => window.removeEventListener('resize', update);
-    }, []);
+    }, [sidebarCollapsed]);
 
     const lastUpdate = Object.values(currentLevels)
         .map(d => d?.timestamp).filter(Boolean).sort().reverse()[0];
@@ -374,7 +393,7 @@ export default function TankLevelPage() {
     return (
         <>
             {/* ─────────────────── MOBILE layout (< lg) ─────────────────── */}
-            <div className="lg:hidden flex flex-col gap-3 px-4 py-4 min-h-screen" style={{ background: bg }}>
+            <div className="lg:hidden flex flex-col gap-3 px-4 py-4 min-h-screen pb-20" style={{ background: bg }}>
                 <header className="flex-shrink-0">
                     <div className="flex items-center justify-between gap-2 mb-2">
                         <div>
@@ -419,14 +438,22 @@ export default function TankLevelPage() {
                 </div>
             </div>
 
+            {/* Bottom tab bar — mobile only */}
+            <div className="lg:hidden">
+                <BottomTabBar />
+            </div>
+
             {/* ─────────────────── DESKTOP: fixed 1920×1080 scale-to-fit ─────────────────── */}
+            {/* Sidebar — desktop only */}
+            <div className="hidden lg:block fixed top-0 left-0 bottom-0 z-30">
+                <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(p => !p)} />
+            </div>
             {/* Outer: fills viewport minus sidebar, centers the scaled canvas */}
-            <div className="hidden lg:block fixed top-0 bottom-0 overflow-hidden"
-                style={{ left: `${SIDEBAR_W}px`, right: 0, background: bg,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="hidden lg:flex fixed top-0 bottom-0 overflow-hidden items-center justify-center"
+                style={{ left: `${sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W}px`, right: 0, background: bg }}>
                 <div style={{
-                    width: `${CCR_W}px`,
-                    height: `${CCR_H}px`,
+                    width: `${canvas.w}px`,
+                    height: `${canvas.h}px`,
                     transformOrigin: 'center center',
                     transform: `scale(${scale})`,
                     flexShrink: 0,
@@ -460,7 +487,7 @@ export default function TankLevelPage() {
                                     <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 900, color: 'var(--color-primary, #2b7cee)', letterSpacing: '0.2em' }}>Last Data Update</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
                                         <span className="material-symbols-outlined" style={{ color: 'var(--color-primary, #2b7cee)', fontSize: '36px' }}>schedule</span>
-                                        <span style={{ fontSize: '56px', fontWeight: 900, fontFamily: 'monospace', color: '#fff', letterSpacing: '-2px', lineHeight: 1, textShadow: '0 0 30px rgba(43,124,238,0.5)' }}>{lastUpdateTime}</span>
+                                        <span style={{ fontSize: '56px', fontWeight: 900, fontFamily: "'Courier New', monospace", color: '#fff', letterSpacing: '2px', lineHeight: 1, textShadow: '0 0 30px rgba(43,124,238,0.5)' }}>{lastUpdateTime}</span>
                                     </div>
                                     <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 700, marginTop: '4px' }}>{lastUpdateDate}</span>
                                 </div>
@@ -473,7 +500,7 @@ export default function TankLevelPage() {
                                     boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
                                 }}>
                                     <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 900, color: '#64748b', letterSpacing: '0.2em' }}>Local Time</span>
-                                    <span style={{ fontSize: '48px', fontWeight: 900, fontFamily: 'monospace', color: '#cbd5e1', letterSpacing: '-2px', lineHeight: 1, marginTop: '6px' }}>{now}</span>
+                                    <span style={{ fontSize: '48px', fontWeight: 900, fontFamily: "'Courier New', monospace", color: '#ffffff', letterSpacing: '2px', lineHeight: 1, marginTop: '6px', textShadow: '0 0 20px rgba(255,255,255,0.2)' }}>{now}</span>
                                 </div>
                             </div>
 
@@ -514,7 +541,7 @@ export default function TankLevelPage() {
 
                     {/* Tank cards — fill remaining height */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', flex: 1, minHeight: 0 }}>
-                        {TANK_IDS.map(id => <TankCard key={id} tankId={id} />)}
+                        {TANK_IDS.map(id => <TankCard key={id} tankId={id} compact />)}
                     </div>
                 </div>
             </div>

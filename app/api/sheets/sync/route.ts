@@ -16,10 +16,10 @@ import type { ShiftTab } from '@/lib/google-sheets';
 // ─── Supabase admin client (service role, bypasses RLS) ───────────────────────
 
 function getSupabase() {
-    return createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) throw new Error(`Supabase env vars missing: URL=${!!url} KEY=${!!key}`);
+    return createClient(url, key);
 }
 
 // ─── Valid DB columns per table ───────────────────────────────────────────────

@@ -503,9 +503,6 @@ export function rowToShiftReport(row: string[]): ShiftRowParsed {
             product_steam_th: parseNum(c(COL.product_steam_th)),
             product_steam_sio2: parseNum(c(COL.product_steam_sio2)),
             product_steam_nh4: parseNum(c(COL.product_steam_nh4)),
-            demin_xtra_ph: parseNum(c(COL.demin_xtra_ph)),
-            demin_xtra_conduct: parseNum(c(COL.demin_xtra_conduct)),
-            demin_xtra_sio2: parseNum(c(COL.demin_xtra_sio2)),
         },
     };
 }

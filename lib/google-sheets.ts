@@ -34,7 +34,9 @@ function getSheetsClient() {
     const auth = new google.auth.GoogleAuth({
         credentials: {
             client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-            private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+                .replace(/^["']|["']$/g, '')   // strip surrounding quotes if accidentally included
+                .replace(/\\n/g, '\n'),         // convert literal \n to real newlines
         },
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
@@ -89,24 +91,13 @@ export async function getSheetRows(tab: string): Promise<string[][]> {
  * Searches col A (No) and col B (Tanggal). Returns null if not found.
  * rowIndex is the actual Sheets row number (accounting for 5 header rows).
  */
-export async function findShiftRow(tab: string, isoDate: string, groupName?: string): Promise<number | null> {
+export async function findShiftRow(tab: string, isoDate: string): Promise<number | null> {
     const rows = await getSheetRows(tab);
     const targetDate = toIndonesianDate(isoDate);
 
     for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const rowDate = (row[1] ?? '').trim(); // col B = Tanggal (0-indexed col 1)
-
-        if (rowDate === targetDate) {
-            if (!groupName) return i + 6; // 5 headers + 1-based index
-
-            // Check group name in col 60 (turbin_grup) or col 127 (boiler_grup)
-            const turbinGrup = (row[60] ?? '').trim();
-            const boilerGrup = (row[127] ?? '').trim();
-            if (turbinGrup === groupName || boilerGrup === groupName) {
-                return i + 6;
-            }
-        }
+        const rowDate = (rows[i][1] ?? '').trim(); // col B = Tanggal (0-indexed col 1)
+        if (rowDate === targetDate) return i + 6;  // 5 headers + 1-based index
     }
     return null;
 }
@@ -170,11 +161,11 @@ async function updateSheetRow(tab: string, rowIndex: number, values: (string | n
 export async function upsertShiftRow(
     shift: ShiftTab,
     isoDate: string,
-    groupName: string,
+    _groupName: string,
     values: (string | number | null)[],
 ): Promise<{ action: 'updated' | 'appended'; rowIndex: number }> {
     const tab = SHEET_TABS[shift];
-    const existingRow = await findShiftRow(tab, isoDate, groupName);
+    const existingRow = await findShiftRow(tab, isoDate);
 
     if (existingRow !== null) {
         await updateSheetRow(tab, existingRow, values);
@@ -195,10 +186,9 @@ export async function upsertShiftRow(
 export async function fetchShiftRow(
     shift: ShiftTab,
     isoDate: string,
-    groupName?: string,
 ): Promise<string[] | null> {
     const tab = SHEET_TABS[shift];
-    const rowIndex = await findShiftRow(tab, isoDate, groupName);
+    const rowIndex = await findShiftRow(tab, isoDate);
     if (rowIndex === null) return null;
     return getShiftRow(tab, rowIndex);
 }

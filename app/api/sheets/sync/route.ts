@@ -17,8 +17,11 @@ import type { ShiftTab } from '@/lib/google-sheets';
 
 function getSupabase() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const key = serviceKey || anonKey;
     if (!url || !key) throw new Error(`Supabase env vars missing: URL=${!!url} KEY=${!!key}`);
+    console.log(`[sync] using ${serviceKey ? 'SERVICE ROLE' : 'ANON'} key`);
     return createClient(url, key);
 }
 
@@ -170,6 +173,7 @@ async function runSync(days: number) {
         synced,
         skipped,
         range: { from: isoStart, to: isoEnd },
+        usingServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
         errors: errors.length > 0 ? errors : undefined,
     };
 }

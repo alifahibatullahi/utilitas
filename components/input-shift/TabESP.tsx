@@ -147,12 +147,12 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
         
         <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
             <Card title="Summary ESP" icon="assessment" color="emerald" isSidebar={true}>
-                <CalculatedField label="Total Unloading Silo A" value={totalAshSiloA} unit="Rit" variant="primary" size="large" />
-                <CalculatedField label="Total Unloading Silo B" value={totalAshSiloB} unit="Rit" variant="secondary" size="large" />
-                
+                <CalculatedField label="Total Unloading Silo A" value={String(totalAshSiloA)} unit="Rit" variant="primary" size="large" />
+                <CalculatedField label="Total Unloading Silo B" value={String(totalAshSiloB)} unit="Rit" variant="secondary" size="large" />
+
                 <div className="h-px bg-slate-700/80 w-full my-1"></div>
-                
-                <CalculatedField label="Total Unloading" value={totalAshSiloA + totalAshSiloB} unit="Rit" variant="purple" size="large" />
+
+                <CalculatedField label="Total Unloading" value={String(totalAshSiloA + totalAshSiloB)} unit="Rit" variant="purple" size="large" />
             </Card>
         </div>
         </>

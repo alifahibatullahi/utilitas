@@ -38,8 +38,8 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
 
     return (
         <>
-            <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 scrollbar-hide w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
 
                     <Card title="Steam Parameters" icon="waves" color="blue">
                         <InputField label="Pressure Steam" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} />

@@ -43,7 +43,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
     return (
         <>
         <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6 w-full">
 
                 <Card title="Trafo A" icon="electrical_services" color="blue">
                     <div className="flex flex-col gap-3">

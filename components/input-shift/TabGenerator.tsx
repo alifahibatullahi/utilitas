@@ -27,8 +27,8 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
 
     return (
         <>
-            <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
 
                     <Card title="Generator Output" icon="flash_on" color="blue">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -47,9 +47,9 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                         <InputField label="Cos θ" color="orange" name="gi_cos_phi" value={gv.gi_cos_phi} onChange={onGeneratorChange} />
                     </Card>
 
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-2 2xl:col-span-3">
                         <Card title="Distribusi Power" icon="account_tree" color="emerald">
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
                                 {DIST_ITEMS.map(({ key, label }) => {
                                     const mwName = `power_${key}`;
                                     const totName = `power_${key}_totalizer`;

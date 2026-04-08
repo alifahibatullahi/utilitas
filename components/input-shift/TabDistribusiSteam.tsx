@@ -27,8 +27,8 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
 
     return (
         <>
-            <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
 
                     <Card title="Pabrik 1" icon="factory" color="blue">
                         <div className="grid grid-cols-2 gap-3">

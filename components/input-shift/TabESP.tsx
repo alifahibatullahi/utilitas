@@ -66,7 +66,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                     </div>
                 </Card>
 
-                <Card title="Unloading Fly Ash" icon="local_shipping" color="orange">
+                <Card title="Input Unloading Fly Ash" icon="local_shipping" color="orange">
                     <div className="space-y-4">
                         {/* Input Form */}
                         <div className="space-y-3 p-3 bg-[#101822]/30 border border-slate-700/50 rounded-lg">
@@ -83,7 +83,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                             
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5 w-full">
-                                    <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">Perusahaan (PT)</label>
+                                    <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">Perusahaan</label>
                                     <input type="text" value={currentEntry.perusahaan} onChange={e => setCurrentEntry({...currentEntry, perusahaan: e.target.value})} placeholder="Nama PT..." className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all" />
                                 </div>
                                 <div className="space-y-1.5 w-full">
@@ -147,7 +147,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
         </div>
         
         <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
-            <Card title="Aktivitas Ash" icon="assessment" color="emerald" isSidebar={true}>
+            <Card title="Unloading Fly Ash" icon="assessment" color="emerald" isSidebar={true}>
                 <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1 mb-1">
                     <span className="material-symbols-outlined text-[13px]">local_shipping</span> Unloading Fly Ash
                 </p>

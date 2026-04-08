@@ -287,9 +287,14 @@ export default function InputShiftPage() {
         if (submitting) return;
         setSubmitting(true);
         try {
-            // Auto-calculate batubara_ton from feeders
-            const batubaraA = (Number(coalBunker.feeder_a) || 0) + (Number(coalBunker.feeder_b) || 0) + (Number(coalBunker.feeder_c) || 0);
-            const batubaraB = (Number(coalBunker.feeder_d) || 0) + (Number(coalBunker.feeder_e) || 0) + (Number(coalBunker.feeder_f) || 0);
+            // Hitung selisih totalizer feeder (current - prev) sebagai konsumsi batubara shift ini
+            const selisih = (key: string) => {
+                const cur = Number(coalBunker[key]) || 0;
+                const prev = Number(prevCoalBunker[key]) || 0;
+                return prev > 0 ? cur - prev : 0;
+            };
+            const batubaraA = selisih('feeder_a') + selisih('feeder_b') + selisih('feeder_c');
+            const batubaraB = selisih('feeder_d') + selisih('feeder_e') + selisih('feeder_f');
 
             const result = await submitReport({
                 group_name: operator?.group || 'A',

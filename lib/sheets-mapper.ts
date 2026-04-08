@@ -238,7 +238,7 @@ export function shiftReportToRow(
     row[COL.boiler_temp_flue_gas_a] = n(bA.temp_flue_gas);
     row[COL.boiler_excess_air_a] = n(bA.o2);
     row[COL.boiler_air_heater_a] = n(bA.air_heater_ti113);
-    row[COL.boiler_batubara_a] = ((Number(bA.feeder_a_flow) || 0) + (Number(bA.feeder_b_flow) || 0) + (Number(bA.feeder_c_flow) || 0)) || null;
+    row[COL.boiler_batubara_a] = n(bA.batubara_ton);
     row[COL.boiler_solar_a] = n(bA.solar_m3);
     row[COL.boiler_stream_days_a] = n(bA.stream_days);
     row[COL.steam_drum_press_a] = n(bA.steam_drum_press);
@@ -256,7 +256,7 @@ export function shiftReportToRow(
     row[COL.boiler_temp_flue_gas_b] = n(bB.temp_flue_gas);
     row[COL.boiler_excess_air_b] = n(bB.excess_air);
     row[COL.boiler_air_heater_b] = n(bB.air_heater_ti113);
-    row[COL.boiler_batubara_b] = ((Number(bB.feeder_d_flow) || 0) + (Number(bB.feeder_e_flow) || 0) + (Number(bB.feeder_f_flow) || 0)) || null;
+    row[COL.boiler_batubara_b] = n(bB.batubara_ton);
     row[COL.boiler_solar_b] = n(bB.solar_m3);
     row[COL.boiler_stream_days_b] = n(bB.stream_days);
     row[COL.steam_drum_press_b] = n(bB.steam_drum_press);

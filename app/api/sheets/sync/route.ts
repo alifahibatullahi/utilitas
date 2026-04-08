@@ -61,22 +61,42 @@ async function saveRowToSupabase(
     const group_name = parsed.personnel?.turbin_grup || 'A';
     const supervisor = parsed.personnel?.turbin_karu || 'Sheets Sync';
 
-    // Upsert shift_reports
-    const { data: sr, error: srErr } = await supabase
+    // Sheets adalah source of truth — cari record by date+shift, update kalau ada
+    const { data: existing } = await supabase
         .from('shift_reports')
-        .upsert(
-            { date, shift, group_name, supervisor, status: 'draft' },
-            { onConflict: 'date,shift,group_name' },
-        )
         .select('id')
-        .single();
+        .eq('date', date)
+        .eq('shift', shift)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-    if (srErr || !sr) {
-        errors.push(`[${date}/${shift}] shift_reports: ${srErr?.message || 'no data'}`);
-        return 'skipped';
+    let reportId: string;
+
+    if (existing) {
+        // Update record yang sudah ada
+        const { error: upErr } = await supabase
+            .from('shift_reports')
+            .update({ group_name, supervisor, status: 'draft' })
+            .eq('id', (existing as { id: string }).id);
+        if (upErr) {
+            errors.push(`[${date}/${shift}] shift_reports update: ${upErr.message}`);
+            return 'skipped';
+        }
+        reportId = (existing as { id: string }).id;
+    } else {
+        // Insert baru
+        const { data: inserted, error: insErr } = await supabase
+            .from('shift_reports')
+            .insert({ date, shift, group_name, supervisor, status: 'draft' })
+            .select('id')
+            .single();
+        if (insErr || !inserted) {
+            errors.push(`[${date}/${shift}] shift_reports insert: ${insErr?.message || 'no data'}`);
+            return 'skipped';
+        }
+        reportId = (inserted as { id: string }).id;
     }
-
-    const reportId = (sr as { id: string }).id;
 
     // Save child table helper
     async function saveChild(table: string, data: Record<string, unknown>) {

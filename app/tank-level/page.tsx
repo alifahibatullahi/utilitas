@@ -19,12 +19,19 @@ const TANK_COLORS: Record<string, {
 };
 
 function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boolean }) {
-    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, pumpActiveSince, deleteSolarUnloading, updateSolarUnloading } = useTankData();
+    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, solarUsages, pumpActiveSince, deleteSolarUnloading, updateSolarUnloading, deleteSolarUsage, updateSolarUsage } = useTankData();
     // Edit unloading state
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editDate, setEditDate] = useState('');
     const [editLiters, setEditLiters] = useState('');
     const [editSupplier, setEditSupplier] = useState('');
+    
+    // Edit usage state
+    const [editingUsageId, setEditingUsageId] = useState<string | null>(null);
+    const [editUsageDate, setEditUsageDate] = useState('');
+    const [editUsageLiters, setEditUsageLiters] = useState('');
+    const [editUsageTujuan, setEditUsageTujuan] = useState('');
+    
     const tank = TANKS[tankId];
     const data = currentLevels[tankId];
     const level = data?.level || 0;
@@ -230,6 +237,67 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 {solarUnloadings.length === 0 && (
                                     <p className="text-sm text-slate-600 italic py-2">Belum ada riwayat unloading</p>
                                 )}
+                                
+                                <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2 mt-4 xl:mt-5 pt-4 border-t border-slate-800/60">
+                                    <span className="material-symbols-outlined text-[14px] xl:text-base">upload</span> 3 Pemakaian Terakhir
+                                </p>
+                                <div className={`${solarUsages.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3 mt-2' : 'mt-2'}`}>
+                                    {solarUsages.slice(0, 3).map((entry, idx) => {
+                                        const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                                        const isEditing = editingUsageId === entry.id;
+                                        if (isEditing) {
+                                            return (
+                                                <div key={entry.id ?? idx} className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/40">
+                                                    <div className="flex gap-2">
+                                                        <input type="date" value={editUsageDate} onChange={e => setEditUsageDate(e.target.value)}
+                                                            className="flex-1 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-rose-500/50" />
+                                                        <input type="number" inputMode="decimal" value={editUsageLiters} onChange={e => setEditUsageLiters(e.target.value)}
+                                                            placeholder="Liter" className="w-24 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white text-center outline-none focus:border-rose-500/50 appearance-none" />
+                                                    </div>
+                                                    <input type="text" value={editUsageTujuan} onChange={e => setEditUsageTujuan(e.target.value)}
+                                                        placeholder="Tujuan (e.g., Boiler)" className="w-full px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-rose-500/50" />
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button onClick={() => setEditingUsageId(null)}
+                                                            className="px-3 py-1 rounded-lg bg-slate-700 text-xs text-slate-300 font-bold cursor-pointer hover:bg-slate-600 transition-colors">Batal</button>
+                                                        <button onClick={async () => {
+                                                            if (entry.id) await updateSolarUsage(entry.id, { date: editUsageDate, liters: parseFloat(editUsageLiters) || 0, tujuan: editUsageTujuan });
+                                                            setEditingUsageId(null);
+                                                        }} className="px-3 py-1 rounded-lg bg-rose-500 text-xs text-white font-bold cursor-pointer hover:bg-rose-400 transition-colors">Simpan</button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return (
+                                            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative">
+                                                <div className="w-full pr-12 relative flex flex-col justify-center">
+                                                    <span className="text-sm xl:text-base font-bold text-white block truncate">{lbl}</span>
+                                                    <span className="text-[11px] xl:text-xs text-slate-400 truncate block mt-0.5 group-hover:text-slate-300 transition-colors" title={entry.tujuan}>{entry.tujuan}</span>
+                                                </div>
+                                                <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                                                    <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none text-rose-400`}>
+                                                        {entry.liters.toLocaleString('id-ID')}
+                                                    </span>
+                                                    <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
+                                                </div>
+                                                {entry.id && (
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/90 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50">
+                                                        <button onClick={() => { setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toString()); setEditUsageTujuan(entry.tujuan); }}
+                                                            className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
+                                                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        </button>
+                                                        <button onClick={() => { if (entry.id && confirm('Hapus data pemakaian ini?')) deleteSolarUsage(entry.id); }}
+                                                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
+                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {solarUsages.length === 0 && (
+                                    <p className="text-sm text-slate-600 italic py-2">Belum ada riwayat pemakaian</p>
+                                )}
                             </>
                         ) : (
                             <div className="flex flex-col gap-3 xl:gap-4 mt-1">
@@ -325,9 +393,6 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
     );
 }
 
-// Canvas size: 1600×900 for large screens (≥1920×1080), 1920×1080 for smaller
-const CANVAS_LG = { w: 1366, h: 768 };
-const CANVAS_SM = { w: 1920, h: 1080 };
 const SIDEBAR_COLLAPSED_W = 68;
 const SIDEBAR_EXPANDED_W = 260;
 
@@ -336,8 +401,6 @@ export default function TankLevelPage() {
     const { currentLevels } = useTankData();
     const router = useRouter();
     const [now, setNow] = useState('');
-    const [scale, setScale] = useState(1);
-    const [canvas, setCanvas] = useState(CANVAS_SM);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
     // Live clock
@@ -347,29 +410,6 @@ export default function TankLevelPage() {
         const id = setInterval(tick, 1000);
         return () => clearInterval(id);
     }, []);
-
-    // Scale-to-fit: pick canvas size based on viewport, then compute scale
-    useEffect(() => {
-        const sidebarW = sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W;
-        const availW = window.innerWidth - sidebarW;
-        const availH = window.innerHeight;
-        const cv = (window.innerWidth >= 1920 && window.innerHeight >= 1080) ? CANVAS_LG : CANVAS_SM;
-        setCanvas(cv);
-        setScale(Math.min(availW / cv.w, availH / cv.h));
-    }, [sidebarCollapsed]);
-
-    useEffect(() => {
-        const update = () => {
-            const sidebarW = sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W;
-            const availW = window.innerWidth - sidebarW;
-            const availH = window.innerHeight;
-            const cv = (window.innerWidth >= 1920 && window.innerHeight >= 1080) ? CANVAS_LG : CANVAS_SM;
-            setCanvas(cv);
-            setScale(Math.min(availW / cv.w, availH / cv.h));
-        };
-        window.addEventListener('resize', update);
-        return () => window.removeEventListener('resize', update);
-    }, [sidebarCollapsed]);
 
     const lastUpdate = Object.values(currentLevels)
         .map(d => d?.timestamp).filter(Boolean).sort().reverse()[0];
@@ -420,16 +460,17 @@ export default function TankLevelPage() {
                             </button>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 bg-surface-dark border border-primary/20 rounded-xl px-4 py-2.5 shadow-sm">
-                        <span className="material-symbols-outlined text-primary text-lg">schedule</span>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] text-primary font-black uppercase tracking-widest">Last Update</span>
-                            <span className="text-xl font-black font-mono text-white leading-none">{lastUpdateTime}</span>
-                            <span className="text-xs text-slate-400 font-semibold">{lastUpdateDate}</span>
+                    <div className="flex items-center gap-3 bg-primary/10 border border-primary/40 rounded-xl px-4 py-2.5 shadow-[0_0_15px_rgba(43,124,238,0.2)] relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent pointer-events-none" />
+                        <span className="material-symbols-outlined text-primary text-xl drop-shadow-[0_0_10px_rgba(43,124,238,0.8)] relative z-10">schedule</span>
+                        <div className="flex flex-col relative z-10">
+                            <span className="text-[10px] text-primary font-black uppercase tracking-widest drop-shadow-md">Last Update</span>
+                            <span className="text-xl font-black font-mono text-white leading-none drop-shadow-md">{lastUpdateTime}</span>
+                            <span className="text-xs text-slate-300 font-bold">{lastUpdateDate}</span>
                         </div>
-                        <div className="ml-auto flex flex-col items-end">
-                            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Waktu</span>
-                            <span className="text-xl font-black font-mono text-slate-300 leading-none">{now}</span>
+                        <div className="ml-auto flex flex-col items-end relative z-10">
+                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest bg-slate-900/50 px-2 py-0.5 rounded-md backdrop-blur-sm mb-0.5">Waktu</span>
+                            <span className="text-xl font-black font-mono text-slate-200 leading-none bg-slate-900/50 px-2 py-1 rounded-md backdrop-blur-sm">{now}</span>
                         </div>
                     </div>
                 </header>
@@ -443,24 +484,21 @@ export default function TankLevelPage() {
                 <BottomTabBar />
             </div>
 
-            {/* ─────────────────── DESKTOP: fixed 1920×1080 scale-to-fit ─────────────────── */}
+            {/* ─────────────────── DESKTOP: Fluid Native (full display) ─────────────────── */}
             {/* Sidebar — desktop only */}
             <div className="hidden lg:block fixed top-0 left-0 bottom-0 z-30">
                 <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(p => !p)} />
             </div>
-            {/* Outer: fills viewport minus sidebar, centers the scaled canvas */}
-            <div className="hidden lg:flex fixed top-0 bottom-0 overflow-hidden items-center justify-center"
+            {/* Outer: fills viewport minus sidebar */}
+            <div className="hidden lg:flex fixed top-0 bottom-0 overflow-hidden transition-all duration-300"
                 style={{ left: `${sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W}px`, right: 0, background: bg }}>
                 <div style={{
-                    width: `${canvas.w}px`,
-                    height: `${canvas.h}px`,
-                    transformOrigin: 'center center',
-                    transform: `scale(${scale})`,
-                    flexShrink: 0,
+                    width: '100%',
+                    height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '12px',
-                    padding: '20px 24px 16px',
+                    gap: '16px',
+                    padding: '24px 32px 32px',
                     boxSizing: 'border-box',
                 }}>
                     {/* Desktop header */}
@@ -468,71 +506,45 @@ export default function TankLevelPage() {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
                             {/* Title */}
                             <div>
-                                <h1 style={{ fontSize: '48px', fontWeight: 900, letterSpacing: '-2px', color: '#fff', lineHeight: 1, margin: 0 }}>
-                                    Tank Level <span style={{ color: 'var(--color-primary, #2b7cee)' }}>Monitoring UBB</span>
+                                <h1 className="text-4xl 2xl:text-[48px] font-black text-white leading-none tracking-tight m-0">
+                                    Tank Level <span className="text-primary">Monitoring UBB</span>
                                 </h1>
-                                <p style={{ fontSize: '13px', color: 'var(--color-primary, #2b7cee)', textTransform: 'uppercase', letterSpacing: '0.3em', fontWeight: 900, marginTop: '6px' }}>CCR Live Display</p>
+                                <p className="text-xs 2xl:text-[13px] text-primary uppercase font-black tracking-[0.3em] mt-2">CCR Live Display</p>
                             </div>
 
                             {/* Clocks */}
-                            <div style={{ display: 'flex', alignItems: 'stretch', gap: '16px' }}>
-                                <div style={{
-                                    background: 'var(--color-surface-dark, #0f1729)',
-                                    border: '1px solid rgba(43,124,238,0.3)',
-                                    borderRadius: '24px', padding: '14px 28px',
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 0 40px rgba(43,124,238,0.15)',
-                                    position: 'relative', overflow: 'hidden',
-                                }}>
-                                    <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 900, color: 'var(--color-primary, #2b7cee)', letterSpacing: '0.2em' }}>Last Data Update</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                                        <span className="material-symbols-outlined" style={{ color: 'var(--color-primary, #2b7cee)', fontSize: '36px' }}>schedule</span>
-                                        <span style={{ fontSize: '56px', fontWeight: 900, fontFamily: "'Courier New', monospace", color: '#fff', letterSpacing: '2px', lineHeight: 1, textShadow: '0 0 30px rgba(43,124,238,0.5)' }}>{lastUpdateTime}</span>
+                            <div className="flex items-stretch gap-4">
+                                <div className="bg-primary/10 border-2 border-primary/50 rounded-2xl md:rounded-[24px] px-6 py-3 2xl:px-7 2xl:py-3.5 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(43,124,238,0.3)] relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent pointer-events-none" />
+                                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-700 animate-pulse pointer-events-none" />
+                                    <span className="text-[10px] 2xl:text-[11px] uppercase font-black text-primary tracking-[0.2em] relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">Last Data Update</span>
+                                    <div className="flex items-center gap-2 2xl:gap-2.5 mt-1 relative z-10">
+                                        <span className="material-symbols-outlined text-primary text-3xl 2xl:text-[36px] drop-shadow-[0_0_15px_rgba(43,124,238,0.8)]">schedule</span>
+                                        <span className="text-4xl 2xl:text-[56px] font-black font-mono text-white tracking-widest leading-none drop-shadow-[0_0_30px_rgba(43,124,238,0.5)]">{lastUpdateTime}</span>
                                     </div>
-                                    <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 700, marginTop: '4px' }}>{lastUpdateDate}</span>
+                                    <span className="text-xs 2xl:text-[13px] text-primary/80 font-bold mt-1 relative z-10">{lastUpdateDate}</span>
                                 </div>
 
-                                <div style={{
-                                    background: 'var(--color-surface-dark, #0f1729)',
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                    borderRadius: '24px', padding: '14px 28px',
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
-                                }}>
-                                    <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 900, color: '#64748b', letterSpacing: '0.2em' }}>Local Time</span>
-                                    <span style={{ fontSize: '48px', fontWeight: 900, fontFamily: "'Courier New', monospace", color: '#ffffff', letterSpacing: '2px', lineHeight: 1, marginTop: '6px', textShadow: '0 0 20px rgba(255,255,255,0.2)' }}>{now}</span>
+                                <div className="bg-surface-dark border border-white/5 rounded-2xl md:rounded-[24px] px-6 py-3 2xl:px-7 2xl:py-3.5 flex flex-col items-center justify-center shadow-xl">
+                                    <span className="text-[10px] 2xl:text-[11px] uppercase font-black text-slate-500 tracking-[0.2em]">Local Time</span>
+                                    <span className="text-4xl 2xl:text-[48px] font-black font-mono text-white tracking-widest leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] mt-1.5">{now}</span>
                                 </div>
                             </div>
 
                             {/* Buttons */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div className="flex items-center gap-3">
                                 {canInputTank && (
-                                    <button onClick={() => router.push('/input')} style={{
-                                        display: 'flex', alignItems: 'center', gap: '8px',
-                                        background: '#059669', color: '#fff', padding: '14px 22px',
-                                        borderRadius: '16px', fontSize: '14px', fontWeight: 700,
-                                        border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(5,150,105,0.3)',
-                                    }}>
-                                        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
+                                    <button onClick={() => router.push('/input')} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold transition-all shadow-[0_4px_20px_rgba(5,150,105,0.3)] cursor-pointer">
+                                        <span className="material-symbols-outlined text-xl">edit</span>
                                         Update Level
                                     </button>
                                 )}
-                                <button onClick={() => window.location.reload()} style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                    background: 'var(--color-primary, #2b7cee)', color: '#fff', padding: '14px 22px',
-                                    borderRadius: '16px', fontSize: '14px', fontWeight: 700,
-                                    border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(43,124,238,0.3)',
-                                }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>refresh</span>
+                                <button onClick={() => window.location.reload()} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold transition-all shadow-[0_4px_20px_rgba(43,124,238,0.3)] cursor-pointer">
+                                    <span className="material-symbols-outlined text-xl">refresh</span>
                                     Refresh
                                 </button>
-                                <button onClick={() => router.push('/dashboard')} style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                    background: 'rgba(30,41,59,0.8)', color: '#cbd5e1', padding: '14px 22px',
-                                    borderRadius: '16px', fontSize: '14px', fontWeight: 700,
-                                    border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer',
-                                }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>home</span>
+                                <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold border border-white/10 transition-all cursor-pointer">
+                                    <span className="material-symbols-outlined text-xl">home</span>
                                     Dashboard
                                 </button>
                             </div>
@@ -540,7 +552,7 @@ export default function TankLevelPage() {
                     </header>
 
                     {/* Tank cards — fill remaining height */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', flex: 1, minHeight: 0 }}>
+                    <div className="grid grid-cols-3 gap-4 2xl:gap-6 flex-1 min-h-0 mt-2">
                         {TANK_IDS.map(id => <TankCard key={id} tankId={id} compact />)}
                     </div>
                 </div>

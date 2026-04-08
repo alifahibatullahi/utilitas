@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { TankId, TANK_IDS, TANKS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
-import type { SolarUnloadingRow, TankLevelRow, TankFlowReadingRow } from '@/lib/supabase/types';
+import type { SolarUnloadingRow, SolarUsageRow, TankLevelRow, TankFlowReadingRow } from '@/lib/supabase/types';
 
 // Flow rate per source (ton/h)
 export interface FlowRate {
@@ -18,12 +18,18 @@ export interface OutputFlowRate {
     pump?: string;      // e.g. 'P-1000A', 'P-1000B', 'Demin B'
 }
 
-// Solar unloading entry
 export interface SolarUnloading {
     id?: string;        // Supabase UUID (tersedia setelah fetch dari DB)
     date: string;       // ISO date string (tanggal unloading)
     liters: number;     // jumlah liter
     supplier: string;   // perusahaan pengirim
+}
+
+export interface SolarUsage {
+    id?: string;
+    date: string;
+    liters: number;
+    tujuan: string;
 }
 
 export interface TankLevel {
@@ -50,6 +56,7 @@ interface TankDataContextType {
     flowRates: Record<TankId, FlowRate[]>;
     outputFlowRates: Record<TankId, OutputFlowRate[]>;
     solarUnloadings: SolarUnloading[];
+    solarUsages: SolarUsage[];
     /** ISO timestamp kapan pompa Demin Revamp mulai aktif (null = mati) */
     pumpActiveSince: string | null;
     submitLevel: (tankId: TankId, level: number, levelM3: number, operator: string, note?: string) => void;
@@ -58,6 +65,9 @@ interface TankDataContextType {
     submitSolarUnloading: (entry: SolarUnloading) => void;
     deleteSolarUnloading: (id: string) => Promise<void>;
     updateSolarUnloading: (id: string, updates: Pick<SolarUnloading, 'date' | 'liters' | 'supplier'>) => Promise<void>;
+    submitSolarUsage: (entry: SolarUsage) => void;
+    deleteSolarUsage: (id: string) => Promise<void>;
+    updateSolarUsage: (id: string, updates: Pick<SolarUsage, 'date' | 'liters' | 'tujuan'>) => Promise<void>;
 }
 
 // Initial empty state
@@ -100,6 +110,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
     const [flowRates, setFlowRates] = useState(emptyFlowRates);
     const [outputFlowRates, setOutputFlowRates] = useState(emptyOutputFlowRates);
     const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloading[]>([]);
+    const [solarUsages, setSolarUsages] = useState<SolarUsage[]>([]);
     const [pumpActiveSince, setPumpActiveSince] = useState<string | null>(null);
     const [trendData, setTrendData] = useState<Record<TankId, { time: string; level: number }[]>>({
         DEMIN: [], RCW: [], SOLAR: [],
@@ -263,6 +274,22 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     supplier: d.supplier,
                 })));
             }
+
+            const { data: usages } = await supabase
+                .from('solar_usages')
+                .select('*')
+                .order('date', { ascending: false })
+                .limit(10);
+            
+            if (usages && usages.length > 0) {
+                const rows = usages as unknown as SolarUsageRow[];
+                setSolarUsages(rows.map(d => ({
+                    id: d.id,
+                    date: d.date,
+                    liters: Number(d.liters),
+                    tujuan: d.tujuan,
+                })));
+            }
         };
 
         fetchTankLevels().then(() => fetchShiftTankyard());
@@ -345,11 +372,35 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             })
             .subscribe();
 
+        // Realtime: solar_usages (INSERT, UPDATE, DELETE)
+        const solarUsageChannel = supabase
+            .channel('solar_usages_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'solar_usages' }, async () => {
+                const { data } = await supabase
+                    .from('solar_usages')
+                    .select('*')
+                    .order('date', { ascending: false })
+                    .limit(10);
+                if (data && data.length > 0) {
+                    const rows = data as unknown as SolarUsageRow[];
+                    setSolarUsages(rows.map(d => ({
+                        id: d.id,
+                        date: d.date,
+                        liters: Number(d.liters),
+                        tujuan: d.tujuan,
+                    })));
+                } else {
+                    setSolarUsages([]);
+                }
+            })
+            .subscribe();
+
         return () => {
             clearInterval(autoRefreshInterval);
             supabase.removeChannel(levelChannel);
             supabase.removeChannel(flowChannel);
             supabase.removeChannel(solarChannel);
+            supabase.removeChannel(solarUsageChannel);
         };
     }, [buildTrendData, applyFlowReadings]);
 
@@ -473,13 +524,54 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const submitSolarUsage = useCallback((entry: SolarUsage) => {
+        setSolarUsages(prev => [entry, ...prev]);
+
+        if (isSupabaseConfigured()) {
+            const supabase = createClient();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            supabase.from('solar_usages').insert({
+                date: entry.date,
+                liters: entry.liters,
+                tujuan: entry.tujuan,
+            } as any).then(({ error }: { error: unknown }) => {
+                if (error) console.error('Failed to insert solar usage:', error);
+            });
+        }
+    }, []);
+
+    const deleteSolarUsage = useCallback(async (id: string) => {
+        setSolarUsages(prev => prev.filter(e => e.id !== id));
+        if (isSupabaseConfigured()) {
+            const supabase = createClient();
+            const { error } = await supabase.from('solar_usages').delete().eq('id', id);
+            if (error) console.error('Failed to delete solar usage:', error);
+        }
+    }, []);
+
+    const updateSolarUsage = useCallback(async (
+        id: string,
+        updates: Pick<SolarUsage, 'date' | 'liters' | 'tujuan'>
+    ) => {
+        setSolarUsages(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+        if (isSupabaseConfigured()) {
+            const supabase = createClient();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error } = await (supabase.from('solar_usages') as any)
+                .update({ date: updates.date, liters: updates.liters, tujuan: updates.tujuan })
+                .eq('id', id);
+            if (error) console.error('Failed to update solar usage:', error);
+        }
+    }, []);
+
     return (
         <TankDataContext.Provider value={{
             currentLevels, history, trendData,
             flowRates, outputFlowRates,
-            solarUnloadings, pumpActiveSince,
+            solarUnloadings, solarUsages, pumpActiveSince,
             submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading,
             deleteSolarUnloading, updateSolarUnloading,
+            submitSolarUsage, deleteSolarUsage, updateSolarUsage,
         }}>
             {children}
         </TankDataContext.Provider>

@@ -497,8 +497,19 @@ export interface ShiftNoteRow {
 export interface SolarUnloadingRow {
     id: string;
     date: string;
+    shift?: string;
     liters: number;
     supplier: string;
+    operator_id: string | null;
+    created_at: string;
+}
+
+export interface SolarUsageRow {
+    id: string;
+    date: string;
+    shift: string;
+    liters: number;
+    tujuan: string;
     operator_id: string | null;
     created_at: string;
 }

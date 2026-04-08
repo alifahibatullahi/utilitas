@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Card, InputField, SelectField } from './SharedComponents';
+import { Card, InputField, SelectField, CalculatedField } from './SharedComponents';
 
 export interface AshUnloadingEntry {
     silo: 'A' | 'B' | '';
@@ -34,7 +34,11 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
         onAshEntriesChange?.(next);
     };
 
+    const totalAshSiloA = savedAshEntries.reduce((sum, e) => e.silo === 'A' ? sum + (e.ritase || 0) : sum, 0);
+    const totalAshSiloB = savedAshEntries.reduce((sum, e) => e.silo === 'B' ? sum + (e.ritase || 0) : sum, 0);
+
     return (
+        <>
         <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
@@ -140,5 +144,17 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
 
             </div>
         </div>
+        
+        <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
+            <Card title="Summary ESP" icon="assessment" color="emerald" isSidebar={true}>
+                <CalculatedField label="Total Unloading Silo A" value={totalAshSiloA} unit="Rit" variant="primary" size="large" />
+                <CalculatedField label="Total Unloading Silo B" value={totalAshSiloB} unit="Rit" variant="secondary" size="large" />
+                
+                <div className="h-px bg-slate-700/80 w-full my-1"></div>
+                
+                <CalculatedField label="Total Unloading" value={totalAshSiloA + totalAshSiloB} unit="Rit" variant="purple" size="large" />
+            </Card>
+        </div>
+        </>
     );
 }

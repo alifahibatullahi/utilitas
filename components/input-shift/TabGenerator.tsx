@@ -16,7 +16,7 @@ const DIST_ITEMS = [
     { key: 'ubb', label: 'Internal UBB' },
     { key: 'pabrik2', label: 'Pabrik 2' },
     { key: 'pabrik3a', label: 'Pabrik 3A' },
-    { key: 'revamping', label: 'Revamping' },
+    { key: 'revamping', label: 'Pabrik 3B' },
     { key: 'pie', label: 'PIU' },
 ] as const;
 

@@ -195,7 +195,7 @@ export function shiftReportToRow(
     row[COL.power_pabrik2] = n(pd.power_pabrik2);
     row[COL.power_pabrik3a] = n(pd.power_pabrik3a);
     row[COL.power_pie] = n(pd.power_pie);
-    row[COL.power_pabrik3b] = n(pd.power_pabrik3b);
+    row[COL.power_pabrik3b] = n(pd.power_revamping);
 
     // ESP + Handling
     const eh = data.espHandling ?? {};
@@ -212,8 +212,8 @@ export function shiftReportToRow(
     row[COL.loading] = s(eh.loading as string | null);
     row[COL.hopper] = s(eh.hopper as string | null);
     row[COL.conveyor] = s(eh.conveyor as string | null);
-    row[COL.pf1] = n(eh.pf1 as number | null);
-    row[COL.pf2] = n(eh.pf2 as number | null);
+    row[COL.pf1] = 0;
+    row[COL.pf2] = 0;
 
     // Tankyard
     const ty = data.tankyard ?? {};
@@ -236,9 +236,9 @@ export function shiftReportToRow(
     row[COL.boiler_flow_bfw_a] = n(bA.flow_bfw);
     row[COL.boiler_temp_furnace_a] = n(bA.temp_furnace);
     row[COL.boiler_temp_flue_gas_a] = n(bA.temp_flue_gas);
-    row[COL.boiler_excess_air_a] = n(bA.excess_air);
+    row[COL.boiler_excess_air_a] = n(bA.o2);
     row[COL.boiler_air_heater_a] = n(bA.air_heater_ti113);
-    row[COL.boiler_batubara_a] = n(bA.batubara_ton);
+    row[COL.boiler_batubara_a] = ((Number(bA.feeder_a_flow) || 0) + (Number(bA.feeder_b_flow) || 0) + (Number(bA.feeder_c_flow) || 0)) || null;
     row[COL.boiler_solar_a] = n(bA.solar_m3);
     row[COL.boiler_stream_days_a] = n(bA.stream_days);
     row[COL.steam_drum_press_a] = n(bA.steam_drum_press);
@@ -256,20 +256,19 @@ export function shiftReportToRow(
     row[COL.boiler_temp_flue_gas_b] = n(bB.temp_flue_gas);
     row[COL.boiler_excess_air_b] = n(bB.excess_air);
     row[COL.boiler_air_heater_b] = n(bB.air_heater_ti113);
-    row[COL.boiler_batubara_b] = n(bB.batubara_ton);
+    row[COL.boiler_batubara_b] = ((Number(bB.feeder_d_flow) || 0) + (Number(bB.feeder_e_flow) || 0) + (Number(bB.feeder_f_flow) || 0)) || null;
     row[COL.boiler_solar_b] = n(bB.solar_m3);
     row[COL.boiler_stream_days_b] = n(bB.stream_days);
     row[COL.steam_drum_press_b] = n(bB.steam_drum_press);
     row[COL.bfw_press_b] = n(bB.bfw_press);
 
-    // Coal Feeders (totalizer)
-    const cb = data.coalBunker ?? {};
-    row[COL.feeder_a] = n(cb.feeder_a as number | null);
-    row[COL.feeder_b] = n(cb.feeder_b as number | null);
-    row[COL.feeder_c] = n(cb.feeder_c as number | null);
-    row[COL.feeder_d] = n(cb.feeder_d as number | null);
-    row[COL.feeder_e] = n(cb.feeder_e as number | null);
-    row[COL.feeder_f] = n(cb.feeder_f as number | null);
+    // Coal Feeders — flow dari boiler tab (CK-CP)
+    row[COL.feeder_a] = n(bA.feeder_a_flow);
+    row[COL.feeder_b] = n(bA.feeder_b_flow);
+    row[COL.feeder_c] = n(bA.feeder_c_flow);
+    row[COL.feeder_d] = n(bB.feeder_d_flow);
+    row[COL.feeder_e] = n(bB.feeder_e_flow);
+    row[COL.feeder_f] = n(bB.feeder_f_flow);
     // Bunkers
     row[COL.bunker_a] = n(cb.bunker_a as number | null);
     row[COL.bunker_b] = n(cb.bunker_b as number | null);

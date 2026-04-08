@@ -174,7 +174,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     )}
 
                     {/* Details — sources / destinations / unloading */}
-                    <div className="flex flex-col gap-3 lg:gap-3 mt-2 xl:mt-3 pt-3 border-t border-slate-800/60 flex-1 min-h-0 overflow-y-auto pr-1">
+                    <div className="flex flex-col gap-3 lg:gap-3 mt-2 xl:mt-3 pt-3 border-t border-slate-800/60 flex-1">
                         {tankId === 'SOLAR' ? (
                             <>
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
@@ -347,18 +347,18 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                                         </div>
                                                         {dest.pumps && (
                                                             <div className="flex flex-col gap-1.5 pt-2 mt-1.5 border-t border-slate-600/30">
-                                                                <div className="flex flex-wrap items-center gap-2.5">
+                                                                <div className="flex flex-wrap items-center gap-1.5 xl:gap-2">
                                                                     {dest.pumps.map(pump => {
                                                                         const isActive = outFlow?.pump === pump;
                                                                         return isActive ? (
-                                                                            <div key={pump} className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-lg shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
-                                                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                                                                                <span className="text-xs xl:text-sm font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
+                                                                            <div key={pump} className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/40 px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
+                                                                                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                                                                <span className="text-[10px] xl:text-xs font-bold text-emerald-400 uppercase tracking-widest">{pump}</span>
                                                                             </div>
                                                                         ) : (
-                                                                            <div key={pump} className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-lg opacity-60">
-                                                                                <span className="w-2 h-2 rounded-full bg-slate-500"></span>
-                                                                                <span className="text-xs xl:text-sm font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
+                                                                            <div key={pump} className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg opacity-60">
+                                                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                                                                                <span className="text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">{pump}</span>
                                                                             </div>
                                                                         );
                                                                     })}

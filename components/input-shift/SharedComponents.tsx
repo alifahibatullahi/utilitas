@@ -36,7 +36,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
             <div className="relative">
                 {negative && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">−</span>}
                 <input
-                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border-slate-700/30' : ((textMode ? (rawText !== '' && rawText !== '-' && rawText !== '.') : (value != null && value !== '')) ? 'bg-[#101822] text-emerald-400 font-bold border-emerald-500/70 shadow-[inset_0_0_10px_rgba(16,185,129,0.05),0_0_8px_rgba(16,185,129,0.15)] focus:ring-1 focus:ring-emerald-400 focus:border-emerald-400' : `bg-[#101822]/50 text-white border-slate-700/80 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500`)} border border-solid rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 text-sm font-mono transition-all text-left outline-none`}
+                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all text-left`}
                     placeholder={placeholder}
                     type={textMode ? "text" : "number"}
                     inputMode={textMode ? "text" : "decimal"}
@@ -105,7 +105,7 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
             </label>
         )}
         <select
-            className={`w-full ${(value != null && value !== '') ? 'bg-[#101822] text-emerald-400 font-bold border-emerald-500/70 shadow-[inset_0_0_10px_rgba(16,185,129,0.05),0_0_8px_rgba(16,185,129,0.15)] focus:ring-1 focus:ring-emerald-400 focus:border-emerald-400' : `bg-[#101822]/50 border-slate-700/80 text-white focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500`} border border-solid rounded-lg py-2.5 px-3 focus:outline-none text-sm font-mono transition-all appearance-none cursor-pointer`}
+            className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all appearance-none cursor-pointer`}
             value={value ?? ''}
             onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : e.target.value)}
         >

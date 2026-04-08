@@ -306,7 +306,7 @@ export default function InputShiftPage() {
                 steamDist,
                 generatorGi,
                 powerDist,
-                espHandling,
+                espHandling: { hopper: 'A', conveyor: 'AB', ...espHandling },
                 tankyard,
                 coalBunker,
                 waterQuality: { ...waterQuality, ...chemicalDosing },

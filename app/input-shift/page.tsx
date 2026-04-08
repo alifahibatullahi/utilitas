@@ -76,7 +76,7 @@ export default function InputShiftPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ days: diffDays }),
         })
-            .then(() => refetch())
+            .then(() => { if (!userModifiedRef.current) refetch(); })
             .catch(() => {});
     }, [selectedDate, selectedShift]);
 

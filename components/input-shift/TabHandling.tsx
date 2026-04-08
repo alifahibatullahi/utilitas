@@ -52,8 +52,9 @@ export default function TabHandling({
                             </label>
                             <select
                                 className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono transition-all"
-                                value={(espValues.hopper as string) ?? 'A'}
+                                value={(espValues.hopper as string) || 'A'}
                                 onChange={e => onEspChange?.('hopper', e.target.value)}
+                                onFocus={() => { if (!espValues.hopper) onEspChange?.('hopper', 'A'); }}
                             >
                                 <option value="A">Hopper A</option>
                                 <option value="B">Hopper B</option>
@@ -66,8 +67,9 @@ export default function TabHandling({
                             </label>
                             <select
                                 className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono transition-all"
-                                value={(espValues.conveyor as string) ?? 'AB'}
+                                value={(espValues.conveyor as string) || 'AB'}
                                 onChange={e => onEspChange?.('conveyor', e.target.value)}
+                                onFocus={() => { if (!espValues.conveyor) onEspChange?.('conveyor', 'AB'); }}
                             >
                                 <option value="AB">Conveyor AB (1&amp;2)</option>
                                 <option value="A">Conveyor A (1)</option>

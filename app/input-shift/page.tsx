@@ -208,6 +208,9 @@ export default function InputShiftPage() {
 
     // Populate form when report data arrives from Supabase
     useEffect(() => {
+        // Jangan overwrite input user yang sedang diketik
+        if (userModifiedRef.current) return;
+
         // After submit+refetch, report matches what we just saved — skip re-populating
         if (lastSubmittedReportId.current && report && (report as unknown as Record<string, unknown>).id === lastSubmittedReportId.current) {
             lastSubmittedReportId.current = null;

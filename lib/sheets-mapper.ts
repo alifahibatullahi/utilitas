@@ -263,6 +263,7 @@ export function shiftReportToRow(
     row[COL.bfw_press_b] = n(bB.bfw_press);
 
     // Coal Feeders — flow dari boiler tab (CK-CP)
+    const cb = data.coalBunker ?? {};
     row[COL.feeder_a] = n(bA.feeder_a_flow);
     row[COL.feeder_b] = n(bA.feeder_b_flow);
     row[COL.feeder_c] = n(bA.feeder_c_flow);

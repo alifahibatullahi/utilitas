@@ -94,8 +94,8 @@ export default function InputShiftPage() {
     const [chemicalDosing, setChemicalDosing] = useState<Record<string, number | null>>({});
     const [solarEntries, setSolarEntries] = useState<{ tanggal: string; jumlah: number | null; perusahaan: string }[]>([]);
     const [outSolarEntries, setOutSolarEntries] = useState<{ tanggal: string; jumlah: number | null; tujuan: string }[]>([]);
-    const [savedSolarEntries, setSavedSolarEntries] = useState<{ tanggal: string; jumlah: number | null; perusahaan: string }[]>([]);
-    const [savedOutSolarEntries, setSavedOutSolarEntries] = useState<{ tanggal: string; jumlah: number | null; tujuan: string }[]>([]);
+    const [savedSolarEntries, setSavedSolarEntries] = useState<{ id?: string; tanggal: string; jumlah: number | null; perusahaan: string }[]>([]);
+    const [savedOutSolarEntries, setSavedOutSolarEntries] = useState<{ id?: string; tanggal: string; jumlah: number | null; tujuan: string }[]>([]);
     const [ashEntries, setAshEntries] = useState<AshUnloadingEntry[]>([]);
     const [savedAshEntries, setSavedAshEntries] = useState<AshUnloadingEntry[]>([]);
 
@@ -117,29 +117,52 @@ export default function InputShiftPage() {
         
         supabase
             .from('ash_unloadings')
-            .select('silo, perusahaan, tujuan, ritase')
+            .select('id, silo, perusahaan, tujuan, ritase')
             .eq('date', selectedDate)
             .eq('shift', shiftMap[selectedShift])
             .order('created_at', { ascending: true })
-            .then(({ data }) => setSavedAshEntries((data ?? []).map(r => ({ silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));
-            
+            .then(({ data }) => setSavedAshEntries((data ?? []).map((r: any) => ({ id: r.id, silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));
+
         supabase
             .from('solar_unloadings')
-            .select('date, supplier, liters')
+            .select('id, date, supplier, liters')
             .eq('date', selectedDate)
             .eq('shift', shiftMap[selectedShift])
             .order('created_at', { ascending: true })
-            .then(({ data }) => setSavedSolarEntries((data ?? []).map((r: any) => ({ tanggal: r.date, jumlah: r.liters, perusahaan: r.supplier }))));
-            
+            .then(({ data }) => setSavedSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, perusahaan: r.supplier }))));
+
         supabase
             .from('solar_usages')
-            .select('date, tujuan, liters')
+            .select('id, date, tujuan, liters')
             .eq('date', selectedDate)
             .eq('shift', shiftMap[selectedShift])
             .order('created_at', { ascending: true })
-            .then(({ data }) => setSavedOutSolarEntries((data ?? []).map((r: any) => ({ tanggal: r.date, jumlah: r.liters, tujuan: r.tujuan }))));
-            
+            .then(({ data }) => setSavedOutSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, tujuan: r.tujuan }))));
+
     }, [selectedDate, selectedShift]);
+
+    // ─── Delete handlers untuk entri yang sudah tersimpan di DB ───
+    const handleDeleteSavedAsh = async (id: string) => {
+        if (!confirm('Hapus data unloading ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('ash_unloadings').delete().eq('id', id);
+        if (error) { showToast('Gagal hapus: ' + error.message, 'error'); return; }
+        setSavedAshEntries(prev => prev.filter(e => e.id !== id));
+    };
+    const handleDeleteSavedSolar = async (id: string) => {
+        if (!confirm('Hapus data kedatangan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').delete().eq('id', id);
+        if (error) { showToast('Gagal hapus: ' + error.message, 'error'); return; }
+        setSavedSolarEntries(prev => prev.filter(e => e.id !== id));
+    };
+    const handleDeleteSavedOutSolar = async (id: string) => {
+        if (!confirm('Hapus data permintaan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').delete().eq('id', id);
+        if (error) { showToast('Gagal hapus: ' + error.message, 'error'); return; }
+        setSavedOutSolarEntries(prev => prev.filter(e => e.id !== id));
+    };
 
     // ─── Navigation Guard ───
     const [showNavWarning, setShowNavWarning] = useState(false);
@@ -692,8 +715,8 @@ export default function InputShiftPage() {
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
                             {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} />}
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
-                            {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} />}
-                            {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} />}
+                            {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} onDeleteSavedSolar={handleDeleteSavedSolar} onDeleteSavedOutSolar={handleDeleteSavedOutSolar} />}
+                            {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} onDeleteSavedAsh={handleDeleteSavedAsh} />}
                             {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
                             {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} />}
                         </div>

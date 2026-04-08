@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Card, InputField, SelectField, CalculatedField } from './SharedComponents';
 
 export interface AshUnloadingEntry {
+    id?: string;
     silo: 'A' | 'B' | '';
     perusahaan: string;
     tujuan: string;
@@ -15,9 +16,10 @@ interface TabESPProps {
     ashEntries?: AshUnloadingEntry[];
     onAshEntriesChange?: (entries: AshUnloadingEntry[]) => void;
     savedAshEntries?: AshUnloadingEntry[];
+    onDeleteSavedAsh?: (id: string) => void;
 }
 
-export default function TabESP({ values = {}, onFieldChange, ashEntries = [], onAshEntriesChange, savedAshEntries = [] }: TabESPProps) {
+export default function TabESP({ values = {}, onFieldChange, ashEntries = [], onAshEntriesChange, savedAshEntries = [], onDeleteSavedAsh }: TabESPProps) {
     const [currentEntry, setCurrentEntry] = useState<AshUnloadingEntry>({ silo: '', perusahaan: '', tujuan: '', ritase: null });
 
     const addEntry = () => {
@@ -100,46 +102,6 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                             </button>
                         </div>
 
-                        {/* Saved Entries (already submitted) */}
-                        {savedAshEntries.length > 0 && (
-                            <div className="space-y-2 mt-4 pt-4 border-t border-slate-700/50">
-                                <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
-                                    Sudah Dilaporkan ({savedAshEntries.length})
-                                </p>
-                                {savedAshEntries.map((entry, idx) => (
-                                    <div key={idx} className="flex items-center p-3 bg-emerald-900/20 border border-emerald-700/40 rounded-lg">
-                                        <div className="flex flex-col flex-1">
-                                            <span className="text-sm font-mono text-emerald-200 font-bold">{entry.ritase} <span className="text-xs text-emerald-400 font-medium">Rit</span> <span className="text-slate-500 mx-1">•</span> <span className="text-emerald-300">Silo {entry.silo}</span></span>
-                                            <span className="text-xs text-slate-400 mt-1"><span className="text-slate-500">PT:</span> {entry.perusahaan}</span>
-                                            <span className="text-xs text-slate-400 mt-0.5"><span className="text-slate-500">Tujuan:</span> {entry.tujuan}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Pending Entries List */}
-                        {ashEntries.length > 0 && (
-                            <div className="space-y-2 mt-4 pt-4 border-t border-slate-700/50">
-                                <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[13px]">pending</span>
-                                    Belum Dikirim ({ashEntries.length})
-                                </p>
-                                {ashEntries.map((entry, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 bg-[#101822] border border-slate-700/80 rounded-lg shadow-inner">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-mono text-white font-bold">{entry.ritase} <span className="text-xs text-orange-400 font-medium">Rit</span> <span className="text-slate-500 mx-1">•</span> <span className="text-orange-200">Silo {entry.silo}</span></span>
-                                            <span className="text-xs text-slate-400 mt-1"><span className="text-slate-500">PT:</span> {entry.perusahaan}</span>
-                                            <span className="text-xs text-slate-400 mt-0.5"><span className="text-slate-500">Tujuan:</span> {entry.tujuan}</span>
-                                        </div>
-                                        <button type="button" onClick={() => removeEntry(idx)} className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 flex items-center justify-center transition-colors">
-                                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </Card>
 
@@ -148,20 +110,40 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
         
         <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
             <Card title="Unloading Fly Ash" icon="assessment" color="emerald" isSidebar={true}>
-                <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                    <span className="material-symbols-outlined text-[13px]">local_shipping</span> Unloading Fly Ash
-                </p>
                 {allAshEntries.length === 0 ? (
-                    <p className="text-xs text-slate-600 italic mb-2">Belum ada data</p>
+                    <p className="text-xs text-slate-600 italic mb-2">Belum ada aktivitas</p>
                 ) : (
-                    <div className="flex flex-col gap-1 mb-2">
-                        {allAshEntries.map((e, i) => (
-                            <div key={i} className="flex flex-col px-2 py-1.5 bg-[#101822]/50 border border-orange-500/20 rounded-lg">
+                    <div className="flex flex-col gap-2 mb-2">
+                        {/* Saved entries (dari DB) */}
+                        {savedAshEntries.map((e) => (
+                            <div key={`saved-${e.id}`} className="relative flex flex-col px-2 py-1.5 bg-emerald-900/10 border border-emerald-500/30 rounded-lg pr-8">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-orange-300">Silo {e.silo}</span>
-                                    <span className="text-xs font-mono font-black text-orange-200">{e.ritase} Rit</span>
+                                    <span className="text-[10px] font-bold text-emerald-300">Silo {e.silo}</span>
+                                    <span className="text-xs font-mono font-black text-emerald-200">{e.ritase} Rit</span>
                                 </div>
-                                <span className="text-[10px] text-slate-500 truncate">{e.perusahaan}</span>
+                                <span className="text-[10px] text-slate-400 truncate"><span className="text-slate-600">PT:</span> {e.perusahaan}</span>
+                                <span className="text-[10px] text-slate-400 truncate"><span className="text-slate-600">Tujuan:</span> {e.tujuan}</span>
+                                {e.id && onDeleteSavedAsh && (
+                                    <button type="button" onClick={() => onDeleteSavedAsh(e.id!)}
+                                        className="absolute top-1 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                        <span className="material-symbols-outlined text-[14px]">delete</span>
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                        {/* Pending entries (belum disimpan) */}
+                        {ashEntries.map((e, idx) => (
+                            <div key={`pending-${idx}`} className="relative flex flex-col px-2 py-1.5 bg-[#101822]/50 border border-amber-500/30 rounded-lg pr-8">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-amber-300">Silo {e.silo} <span className="text-[9px] text-amber-500">(pending)</span></span>
+                                    <span className="text-xs font-mono font-black text-amber-200">{e.ritase} Rit</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 truncate"><span className="text-slate-600">PT:</span> {e.perusahaan}</span>
+                                <span className="text-[10px] text-slate-400 truncate"><span className="text-slate-600">Tujuan:</span> {e.tujuan}</span>
+                                <button type="button" onClick={() => removeEntry(idx)}
+                                    className="absolute top-1 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                                </button>
                             </div>
                         ))}
                     </div>

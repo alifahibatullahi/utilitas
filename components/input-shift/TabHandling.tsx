@@ -3,12 +3,14 @@ import React from 'react';
 import { Card, InputField, CalculatedField } from './SharedComponents';
 
 export interface SolarEntry {
+    id?: string;
     tanggal: string;
     jumlah: number | null;
     perusahaan: string;
 }
 
 export interface OutSolarEntry {
+    id?: string;
     tanggal: string;
     jumlah: number | null;
     tujuan: string;
@@ -25,6 +27,8 @@ interface TabHandlingProps {
     onOutSolarEntriesChange?: (entries: OutSolarEntry[]) => void;
     savedSolarEntries?: SolarEntry[];
     savedOutSolarEntries?: OutSolarEntry[];
+    onDeleteSavedSolar?: (id: string) => void;
+    onDeleteSavedOutSolar?: (id: string) => void;
 }
 
 export default function TabHandling({
@@ -32,7 +36,8 @@ export default function TabHandling({
     onEspChange, onTankyardChange,
     solarEntries = [], onSolarEntriesChange,
     outSolarEntries = [], onOutSolarEntriesChange,
-    savedSolarEntries = [], savedOutSolarEntries = []
+    savedSolarEntries = [], savedOutSolarEntries = [],
+    onDeleteSavedSolar, onDeleteSavedOutSolar
 }: TabHandlingProps) {
     const [currentEntry, setCurrentEntry] = React.useState<SolarEntry>({ tanggal: '', jumlah: null, perusahaan: '' });
     const [currentOutEntry, setCurrentOutEntry] = React.useState<OutSolarEntry>({ tanggal: '', jumlah: null, tujuan: '' });
@@ -213,10 +218,26 @@ export default function TabHandling({
                         <p className="text-xs text-slate-600 italic mb-2">Belum ada data</p>
                     ) : (
                         <div className="flex flex-col gap-1 mb-2">
-                            {allInSolar.map((e, i) => (
-                                <div key={i} className="flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-amber-500/20 rounded-lg">
+                            {savedSolarEntries.map((e) => (
+                                <div key={`saved-${e.id}`} className="relative flex justify-between items-center px-2 py-1.5 bg-amber-900/10 border border-amber-500/30 rounded-lg pr-8">
                                     <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.perusahaan || '—'}</span>
                                     <span className="text-xs font-mono font-bold text-amber-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
+                                    {e.id && onDeleteSavedSolar && (
+                                        <button type="button" onClick={() => onDeleteSavedSolar(e.id!)}
+                                            className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                            <span className="material-symbols-outlined text-[14px]">delete</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            {solarEntries.map((e, idx) => (
+                                <div key={`pending-${idx}`} className="relative flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-amber-500/20 rounded-lg pr-8">
+                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.perusahaan || '—'} <span className="text-[9px] text-amber-500">(pending)</span></span>
+                                    <span className="text-xs font-mono font-bold text-amber-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
+                                    <button type="button" onClick={() => removeEntry(idx)}
+                                        className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                        <span className="material-symbols-outlined text-[14px]">delete</span>
+                                    </button>
                                 </div>
                             ))}
                             <div className="flex justify-between items-center px-2 py-1 mt-0.5">
@@ -236,10 +257,26 @@ export default function TabHandling({
                         <p className="text-xs text-slate-600 italic mb-2">Belum ada data</p>
                     ) : (
                         <div className="flex flex-col gap-1 mb-2">
-                            {allOutSolar.map((e, i) => (
-                                <div key={i} className="flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-rose-500/20 rounded-lg">
+                            {savedOutSolarEntries.map((e) => (
+                                <div key={`saved-${e.id}`} className="relative flex justify-between items-center px-2 py-1.5 bg-rose-900/10 border border-rose-500/30 rounded-lg pr-8">
                                     <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.tujuan || '—'}</span>
                                     <span className="text-xs font-mono font-bold text-rose-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
+                                    {e.id && onDeleteSavedOutSolar && (
+                                        <button type="button" onClick={() => onDeleteSavedOutSolar(e.id!)}
+                                            className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                            <span className="material-symbols-outlined text-[14px]">delete</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            {outSolarEntries.map((e, idx) => (
+                                <div key={`pending-${idx}`} className="relative flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-rose-500/20 rounded-lg pr-8">
+                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.tujuan || '—'} <span className="text-[9px] text-rose-500">(pending)</span></span>
+                                    <span className="text-xs font-mono font-bold text-rose-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
+                                    <button type="button" onClick={() => removeOutEntry(idx)}
+                                        className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                        <span className="material-symbols-outlined text-[14px]">delete</span>
+                                    </button>
                                 </div>
                             ))}
                             <div className="flex justify-between items-center px-2 py-1 mt-0.5">

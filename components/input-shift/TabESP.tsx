@@ -34,8 +34,9 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
         onAshEntriesChange?.(next);
     };
 
-    const totalAshSiloA = savedAshEntries.reduce((sum, e) => e.silo === 'A' ? sum + (e.ritase || 0) : sum, 0);
-    const totalAshSiloB = savedAshEntries.reduce((sum, e) => e.silo === 'B' ? sum + (e.ritase || 0) : sum, 0);
+    const allAshEntries = [...savedAshEntries, ...ashEntries.filter(e => e.silo && e.perusahaan)];
+    const totalAshSiloA = allAshEntries.filter(e => e.silo === 'A').reduce((sum, e) => sum + (e.ritase || 0), 0);
+    const totalAshSiloB = allAshEntries.filter(e => e.silo === 'B').reduce((sum, e) => sum + (e.ritase || 0), 0);
 
     return (
         <>
@@ -146,13 +147,40 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
         </div>
         
         <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
-            <Card title="Summary ESP" icon="assessment" color="emerald" isSidebar={true}>
-                <CalculatedField label="Total Unloading Silo A" value={String(totalAshSiloA)} unit="Rit" variant="primary" size="large" />
-                <CalculatedField label="Total Unloading Silo B" value={String(totalAshSiloB)} unit="Rit" variant="secondary" size="large" />
+            <Card title="Aktivitas Ash" icon="assessment" color="emerald" isSidebar={true}>
+                <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                    <span className="material-symbols-outlined text-[13px]">local_shipping</span> Unloading Fly Ash
+                </p>
+                {allAshEntries.length === 0 ? (
+                    <p className="text-xs text-slate-600 italic mb-2">Belum ada data</p>
+                ) : (
+                    <div className="flex flex-col gap-1 mb-2">
+                        {allAshEntries.map((e, i) => (
+                            <div key={i} className="flex flex-col px-2 py-1.5 bg-[#101822]/50 border border-orange-500/20 rounded-lg">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-orange-300">Silo {e.silo}</span>
+                                    <span className="text-xs font-mono font-black text-orange-200">{e.ritase} Rit</span>
+                                </div>
+                                <span className="text-[10px] text-slate-500 truncate">{e.perusahaan}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="h-px bg-slate-700/80 w-full my-1"></div>
 
-                <CalculatedField label="Total Unloading" value={String(totalAshSiloA + totalAshSiloB)} unit="Rit" variant="purple" size="large" />
+                <div className="flex justify-between items-center px-2 py-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Silo A</span>
+                    <span className="text-xs font-mono font-black text-emerald-400">{totalAshSiloA} Rit</span>
+                </div>
+                <div className="flex justify-between items-center px-2 py-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Silo B</span>
+                    <span className="text-xs font-mono font-black text-emerald-400">{totalAshSiloB} Rit</span>
+                </div>
+                <div className="flex justify-between items-center px-2 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg mt-1">
+                    <span className="text-[10px] text-emerald-300 font-bold uppercase">Total</span>
+                    <span className="text-xs font-mono font-black text-emerald-300">{totalAshSiloA + totalAshSiloB} Rit</span>
+                </div>
             </Card>
         </div>
         </>

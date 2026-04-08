@@ -178,7 +178,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         {tankId === 'SOLAR' ? (
                             <>
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[14px] xl:text-base">local_shipping</span> 3 Unloading Terakhir
+                                    <span className="material-symbols-outlined text-[14px] xl:text-base">local_shipping</span> Input - Unloading Solar
                                 </p>
                                 <div className={`${solarUnloadings.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3' : ''}`}>
                                     {solarUnloadings.slice(0, 3).map((entry, idx) => {
@@ -239,10 +239,10 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 )}
                                 
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2 mt-4 xl:mt-5 pt-4 border-t border-slate-800/60">
-                                    <span className="material-symbols-outlined text-[14px] xl:text-base">upload</span> 3 Pemakaian Terakhir
+                                    <span className="material-symbols-outlined text-[14px] xl:text-base">upload</span> Output - Permintaan Solar
                                 </p>
                                 <div className={`${solarUsages.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3 mt-2' : 'mt-2'}`}>
-                                    {solarUsages.slice(0, 3).map((entry, idx) => {
+                                    {solarUsages.slice(0, 2).map((entry, idx) => {
                                         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
                                         const isEditing = editingUsageId === entry.id;
                                         if (isEditing) {

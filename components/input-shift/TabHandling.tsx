@@ -65,8 +65,10 @@ export default function TabHandling({
         onOutSolarEntriesChange?.(next);
     };
 
-    const totalInSolar = savedSolarEntries.reduce((sum, e) => sum + (e.jumlah || 0), 0);
-    const totalOutSolar = savedOutSolarEntries.reduce((sum, e) => sum + (e.jumlah || 0), 0);
+    const allInSolar = [...savedSolarEntries, ...solarEntries];
+    const allOutSolar = [...savedOutSolarEntries, ...outSolarEntries];
+    const totalInSolar = allInSolar.reduce((sum, e) => sum + (e.jumlah || 0), 0);
+    const totalOutSolar = allOutSolar.reduce((sum, e) => sum + (e.jumlah || 0), 0);
 
     return (
         <>
@@ -253,12 +255,58 @@ export default function TabHandling({
             
             <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
                 <Card title="Summary Solar" icon="assessment" color="amber" isSidebar={true}>
-                    <CalculatedField label="Total In Solar" value={totalInSolar.toLocaleString('id-ID')} unit="L" variant="primary" size="large" />
-                    <CalculatedField label="Total Out Solar" value={totalOutSolar.toLocaleString('id-ID')} unit="L" variant="secondary" size="large" />
-                    
+                    {/* In Solar */}
+                    <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider flex items-center gap-1 mb-1">
+                        <span className="material-symbols-outlined text-[13px]">download</span> Kedatangan (In)
+                    </p>
+                    {allInSolar.length === 0 ? (
+                        <p className="text-xs text-slate-600 italic mb-2">Belum ada data</p>
+                    ) : (
+                        <div className="flex flex-col gap-1 mb-2">
+                            {allInSolar.map((e, i) => (
+                                <div key={i} className="flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-amber-500/20 rounded-lg">
+                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.perusahaan || '—'}</span>
+                                    <span className="text-xs font-mono font-bold text-amber-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
+                                </div>
+                            ))}
+                            <div className="flex justify-between items-center px-2 py-1 mt-0.5">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase">Total</span>
+                                <span className="text-xs font-mono font-black text-amber-400">{totalInSolar.toLocaleString('id-ID')} L</span>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="h-px bg-slate-700/80 w-full my-1"></div>
-                    
-                    <CalculatedField label="Selisih (In - Out)" value={(totalInSolar - totalOutSolar).toLocaleString('id-ID')} unit="L" variant="purple" size="large" />
+
+                    {/* Out Solar */}
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider flex items-center gap-1 mb-1 mt-1">
+                        <span className="material-symbols-outlined text-[13px]">upload</span> Pemakaian (Out)
+                    </p>
+                    {allOutSolar.length === 0 ? (
+                        <p className="text-xs text-slate-600 italic mb-2">Belum ada data</p>
+                    ) : (
+                        <div className="flex flex-col gap-1 mb-2">
+                            {allOutSolar.map((e, i) => (
+                                <div key={i} className="flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-rose-500/20 rounded-lg">
+                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.tujuan || '—'}</span>
+                                    <span className="text-xs font-mono font-bold text-rose-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
+                                </div>
+                            ))}
+                            <div className="flex justify-between items-center px-2 py-1 mt-0.5">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase">Total</span>
+                                <span className="text-xs font-mono font-black text-rose-400">{totalOutSolar.toLocaleString('id-ID')} L</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="h-px bg-slate-700/80 w-full my-1"></div>
+
+                    <div className="flex justify-between items-center px-2 py-1.5">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Selisih</span>
+                        <span className={`text-xs font-mono font-black ${totalInSolar - totalOutSolar >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {(totalInSolar - totalOutSolar).toLocaleString('id-ID')} L
+                        </span>
+                    </div>
                 </Card>
             </div>
         </>

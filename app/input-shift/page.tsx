@@ -65,9 +65,17 @@ export default function InputShiftPage() {
 
     useEffect(() => { setMounted(true); }, []);
 
-    // Sync Sheets → Supabase setiap kali tanggal atau shift berubah, lalu refetch form
+    // Sync Sheets → Supabase setiap kali tanggal atau shift berubah
+    // Range sync = dari tanggal dipilih sampai hari ini (min 1, max 30 hari)
     useEffect(() => {
-        fetch('/api/sheets/sync')
+        const today = new Date();
+        const selected = new Date(selectedDate);
+        const diffDays = Math.max(1, Math.min(30, Math.ceil((today.getTime() - selected.getTime()) / 86400000) + 1));
+        fetch('/api/sheets/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ days: diffDays }),
+        })
             .then(() => refetch())
             .catch(() => {});
     }, [selectedDate, selectedShift]);

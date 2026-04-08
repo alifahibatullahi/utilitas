@@ -439,23 +439,22 @@ export default function InputShiftPage() {
         await handleSubmit();
     };
 
-    // ─── Tab Completeness Checker ───
     const isTabLengkap = React.useCallback((tabId: TabId) => {
         const hasVal = (obj: Record<string, any>, keys: string[]) => keys.every(k => obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
         
         switch (tabId) {
-            case 'Boiler A': return hasVal(boilerA, ['press_steam', 'flow_steam']);
-            case 'Boiler B': return hasVal(boilerB, ['press_steam', 'flow_steam']);
-            case 'Turbin': return hasVal(turbin, ['flow_steam', 'vacuum']);
-            case 'Generator': return hasVal(generatorGi, ['gen_load']);
-            case 'Distribusi Steam': return hasVal(steamDist, ['pabrik1_flow']);
-            case 'Handling': return hasVal(tankyard, ['tk_rcw', 'tk_demin']);
-            case 'ESP': return hasVal(espHandling, ['esp_a1']);
-            case 'Coal Bunker': return hasVal(coalBunker, ['feeder_a', 'bunker_a']);
-            case 'Lab': return hasVal(waterQuality, ['demin_1250_ph', 'demin_750_ph']);
+            case 'Boiler A': return hasVal(boilerA, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam', 'bfw_press', 'temp_bfw', 'flow_bfw', 'totalizer_bfw', 'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas', 'primary_air', 'secondary_air', 'o2', 'steam_drum_press']) && hasVal(coalBunker, ['feeder_a', 'feeder_b', 'feeder_c']);
+            case 'Boiler B': return hasVal(boilerB, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam', 'bfw_press', 'temp_bfw', 'flow_bfw', 'totalizer_bfw', 'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas', 'primary_air', 'secondary_air', 'o2', 'steam_drum_press']) && hasVal(coalBunker, ['feeder_d', 'feeder_e', 'feeder_f']);
+            case 'Turbin': return hasVal(turbin, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam_inlet', 'flow_cond', 'exh_steam', 'vacuum', 'level_condenser', 'hpo_durasi', 'totalizer_condensate', 'thrust_bearing', 'metal_bearing', 'vibrasi', 'winding', 'axial_displacement', 'press_deaerator', 'temp_deaerator', 'press_lps', 'temp_cw_in', 'temp_cw_out']);
+            case 'Generator': return hasVal(generatorGi, ['gen_load', 'gen_ampere', 'gen_tegangan', 'gen_amp_react', 'gen_frequensi', 'gen_cos_phi', 'gi_sum_p', 'gi_sum_q', 'gi_cos_phi']) && hasVal(powerDist, ['power_ubb_totalizer', 'power_pabrik2_totalizer', 'power_pabrik3a_totalizer', 'power_revamping_totalizer', 'power_pie_totalizer']);
+            case 'Distribusi Steam': return hasVal(steamDist, ['pabrik1_flow', 'pabrik1_temp', 'pabrik1_totalizer', 'pabrik2_flow', 'pabrik2_temp', 'pabrik2_totalizer', 'pabrik3a_flow', 'pabrik3a_temp', 'pabrik3a_totalizer']);
+            case 'Handling': return hasVal(tankyard, ['tk_rcw', 'tk_demin']) && hasVal(espHandling, ['w_pressure', 'air_compressor']); // minimal checks for handling esp
+            case 'ESP': return hasVal(espHandling, ['esp_a1', 'esp_a2', 'esp_b1', 'esp_b2', 'level_silo_a', 'level_silo_b']);
+            case 'Coal Bunker': return hasVal(coalBunker, ['bunker_a', 'bunker_b', 'bunker_c', 'bunker_d', 'bunker_e', 'bunker_f']);
+            case 'Lab': return hasVal(waterQuality, ['demin_1250_ph', 'demin_1250_cond', 'demin_750_ph', 'demin_750_cond', 'steam_drum_ph', 'steam_drum_cond', 'bfw_ph', 'bfw_cond', 'cooling_water_ph', 'cooling_water_cond']) && hasVal(chemicalDosing, ['phosphate_lvl', 'phosphate_stroke', 'phosphate_b_lvl', 'phosphate_b_stroke', 'amine_lvl', 'amine_stroke', 'hydrazine_lvl', 'hydrazine_stroke']);
             default: return false;
         }
-    }, [boilerA, boilerB, turbin, generatorGi, steamDist, tankyard, espHandling, coalBunker, waterQuality]);
+    }, [boilerA, boilerB, turbin, generatorGi, powerDist, steamDist, tankyard, espHandling, coalBunker, waterQuality, chemicalDosing]);
 
     const loadSampleData = () => {
         const d = SAMPLE_MALAM_01JAN;

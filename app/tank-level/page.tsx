@@ -174,7 +174,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     )}
 
                     {/* Details — sources / destinations / unloading */}
-                    <div className="flex flex-col gap-3 lg:gap-4 mt-2 xl:mt-4 pt-4 border-t border-slate-800/60 flex-1">
+                    <div className="flex flex-col gap-3 lg:gap-3 mt-2 xl:mt-3 pt-3 border-t border-slate-800/60 flex-1 min-h-0 overflow-y-auto pr-1">
                         {tankId === 'SOLAR' ? (
                             <>
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
@@ -300,13 +300,13 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 )}
                             </>
                         ) : (
-                            <div className="flex flex-col gap-3 xl:gap-4 mt-1">
+                            <div className="flex flex-col gap-2 xl:gap-3 mt-1">
                                 {tank.inputSources.length > 0 && (
-                                    <div className="flex flex-col gap-3 xl:gap-4">
+                                    <div className="flex flex-col gap-2">
                                         <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-1">
                                             <span className="material-symbols-outlined text-[16px] xl:text-[20px]">turn_left</span> {compact ? 'Input' : 'Input Sources'}
                                         </p>
-                                        <div className="flex flex-col gap-2 xl:gap-3">
+                                        <div className="flex flex-col gap-2">
                                             {tank.inputSources.map(source => {
                                                 const f = flows.find(f => f.sourceLabel === source);
                                                 const active = f && f.rate > 0;
@@ -324,11 +324,11 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     </div>
                                 )}
                                 {tank.outputDestinations.length > 0 && (
-                                    <div className="flex flex-col gap-3 xl:gap-4">
-                                        <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-1 mt-2 xl:mt-0">
+                                    <div className="flex flex-col gap-2">
+                                        <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.1em] flex items-center gap-1.5 mb-1 mt-1 xl:mt-0">
                                             <span className="material-symbols-outlined text-[16px] xl:text-[20px]">turn_right</span> {compact ? 'Output' : 'Output Destinations'}
                                         </p>
-                                        <div className="flex flex-col gap-2 xl:gap-3">
+                                        <div className="flex flex-col gap-2">
                                             {tank.outputDestinations.map(dest => {
                                                 const outFlow = outFlows.find(f => f.destinationLabel === dest.name);
                                                 const outActive = dest.hasFlow
@@ -346,7 +346,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                                             )}
                                                         </div>
                                                         {dest.pumps && (
-                                                            <div className="flex flex-col gap-2 pt-3 mt-1.5 border-t border-slate-600/30">
+                                                            <div className="flex flex-col gap-1.5 pt-2 mt-1.5 border-t border-slate-600/30">
                                                                 <div className="flex flex-wrap items-center gap-2.5">
                                                                     {dest.pumps.map(pump => {
                                                                         const isActive = outFlow?.pump === pump;

@@ -207,7 +207,7 @@ export function shiftReportToRow(
     row[COL.esp_b3] = n(eh.esp_b3 as number | null);
     row[COL.silo_a] = n(eh.silo_a as number | null);
     row[COL.silo_b] = n(eh.silo_b as number | null);
-    row[COL.unloading_a] = s(eh.unloading_a as string | null);
+    row[COL.unloading_a] = n(eh.unloading_a as number | null);
     row[COL.unloading_b] = n(eh.unloading_b as number | null);
     row[COL.loading] = s(eh.loading as string | null);
     row[COL.hopper] = s(eh.hopper as string | null);

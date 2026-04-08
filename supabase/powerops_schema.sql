@@ -505,15 +505,30 @@ CREATE TABLE shift_notes (
     timestamp TIMESTAMPTZ DEFAULT now()
 );
 
--- ─── Solar Unloadings ───
+-- ─── Solar Unloadings (kedatangan/in solar per shift) ───
 CREATE TABLE solar_unloadings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL,
+    shift TEXT,
     liters NUMERIC NOT NULL,
     supplier TEXT NOT NULL,
     operator_id UUID REFERENCES operators(id),
     created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- ─── Solar Usages (pemakaian/out solar per shift) ───
+CREATE TABLE solar_usages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    date DATE NOT NULL,
+    shift TEXT NOT NULL,
+    liters NUMERIC NOT NULL,
+    tujuan TEXT NOT NULL,
+    operator_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_solar_usages_date ON solar_usages(date);
+CREATE INDEX idx_solar_usages_date_shift ON solar_usages(date, shift);
 
 -- ─── Ash Unloadings (Unloading Fly Ash per Shift) ───
 CREATE TABLE ash_unloadings (

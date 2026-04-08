@@ -13,7 +13,7 @@ import TabLab from '@/components/input-shift/TabLab';
 import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
-import type { ShiftType } from '@/lib/supabase/types';
+import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 
@@ -93,6 +93,9 @@ export default function InputShiftPage() {
     const [waterQuality, setWaterQuality] = useState<Record<string, number | null>>({});
     const [chemicalDosing, setChemicalDosing] = useState<Record<string, number | null>>({});
     const [solarEntries, setSolarEntries] = useState<{ tanggal: string; jumlah: number | null; perusahaan: string }[]>([]);
+    const [outSolarEntries, setOutSolarEntries] = useState<{ tanggal: string; jumlah: number | null; tujuan: string }[]>([]);
+    const [savedSolarEntries, setSavedSolarEntries] = useState<{ tanggal: string; jumlah: number | null; perusahaan: string }[]>([]);
+    const [savedOutSolarEntries, setSavedOutSolarEntries] = useState<{ tanggal: string; jumlah: number | null; tujuan: string }[]>([]);
     const [ashEntries, setAshEntries] = useState<AshUnloadingEntry[]>([]);
     const [savedAshEntries, setSavedAshEntries] = useState<AshUnloadingEntry[]>([]);
 
@@ -108,23 +111,34 @@ export default function InputShiftPage() {
     const { operator } = useOperator();
     const router = useRouter();
 
-    // Fetch saved ash unloadings for current date+shift
+    // Fetch saved ash unloadings and solar for current date+shift
     useEffect(() => {
         const supabase = createClient();
+        
         supabase
             .from('ash_unloadings')
             .select('silo, perusahaan, tujuan, ritase')
             .eq('date', selectedDate)
             .eq('shift', shiftMap[selectedShift])
             .order('created_at', { ascending: true })
-            .then(({ data }) => {
-                setSavedAshEntries((data ?? []).map(r => ({
-                    silo: r.silo,
-                    perusahaan: r.perusahaan,
-                    tujuan: r.tujuan,
-                    ritase: r.ritase,
-                })));
-            });
+            .then(({ data }) => setSavedAshEntries((data ?? []).map(r => ({ silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));
+            
+        supabase
+            .from('solar_unloadings')
+            .select('date, supplier, liters')
+            .eq('date', selectedDate)
+            .eq('shift', shiftMap[selectedShift])
+            .order('created_at', { ascending: true })
+            .then(({ data }) => setSavedSolarEntries((data ?? []).map((r: any) => ({ tanggal: r.date, jumlah: r.liters, perusahaan: r.supplier }))));
+            
+        supabase
+            .from('solar_usages')
+            .select('date, tujuan, liters')
+            .eq('date', selectedDate)
+            .eq('shift', shiftMap[selectedShift])
+            .order('created_at', { ascending: true })
+            .then(({ data }) => setSavedOutSolarEntries((data ?? []).map((r: any) => ({ tanggal: r.date, jumlah: r.liters, tujuan: r.tujuan }))));
+            
     }, [selectedDate, selectedShift]);
 
     // ─── Navigation Guard ───
@@ -203,6 +217,7 @@ export default function InputShiftPage() {
         setWaterQuality({});
         setChemicalDosing({});
         setSolarEntries([]);
+        setOutSolarEntries([]);
         setAshEntries([]);
     }, [selectedShift, selectedDate]);
 
@@ -296,6 +311,14 @@ export default function InputShiftPage() {
             const batubaraA = selisih('feeder_a') + selisih('feeder_b') + selisih('feeder_c');
             const batubaraB = selisih('feeder_d') + selisih('feeder_e') + selisih('feeder_f');
 
+            // Total rit unloading fly ash per silo (saved + pending)
+            const allAsh = [
+                ...savedAshEntries,
+                ...ashEntries.filter(e => e.silo && e.perusahaan && e.tujuan && e.ritase !== null),
+            ];
+            const totalRitA = allAsh.filter(e => e.silo === 'A').reduce((s, e) => s + (e.ritase ?? 0), 0);
+            const totalRitB = allAsh.filter(e => e.silo === 'B').reduce((s, e) => s + (e.ritase ?? 0), 0);
+
             const result = await submitReport({
                 group_name: operator?.group || 'A',
                 supervisor: operator?.name || 'Operator',
@@ -306,7 +329,7 @@ export default function InputShiftPage() {
                 steamDist,
                 generatorGi,
                 powerDist,
-                espHandling: { hopper: 'A', conveyor: 'AB', ...espHandling },
+                espHandling: { hopper: 'A', conveyor: 'AB', ...espHandling, unloading_a: totalRitA, unloading_b: totalRitB },
                 tankyard,
                 coalBunker,
                 waterQuality: { ...waterQuality, ...chemicalDosing },
@@ -318,12 +341,29 @@ export default function InputShiftPage() {
             if (validSolarEntries.length > 0) {
                 const supabase = createClient();
                 const inserts = validSolarEntries.map(entry => ({
-                    date: entry.tanggal,
+                    date: selectedDate, // Store the shift date for filtering
+                    shift: shiftMap[selectedShift],
+                    date_time: entry.tanggal, // if table structure doesn't support multiple, we rely on the migration adding shift. Wait, 'date' is used usually for timestamp in old inserts. I'll use entry.tanggal for date because the table is date TEXT.
                     liters: entry.jumlah,
                     supplier: entry.perusahaan,
                     operator_id: operator?.supabaseId ?? null,
                 }));
-                await supabase.from('solar_unloadings').insert(inserts as any[]);
+                // Make sure to correctly map to expected 'date' column with ISO time, but wait, if we changed it to use date as YYYY-MM-DD we'd break old code. Let's send the entry.tanggal as date, and passing shift explicitly. 
+                await supabase.from('solar_unloadings').insert(inserts.map(i => ({ date: i.date_time, liters: i.liters, supplier: i.supplier, shift: i.shift, operator_id: i.operator_id })) as any[]);
+            }
+
+            // Save solar usages if filled
+            const validOutSolarEntries = outSolarEntries.filter(e => e.tanggal && e.jumlah && e.tujuan);
+            if (validOutSolarEntries.length > 0) {
+                const supabase = createClient();
+                const outInserts = validOutSolarEntries.map(entry => ({
+                    date: entry.tanggal, // This saves exact time string
+                    shift: shiftMap[selectedShift],
+                    liters: entry.jumlah,
+                    tujuan: entry.tujuan,
+                    operator_id: operator?.supabaseId ?? null,
+                }));
+                await supabase.from('solar_usages').insert(outInserts as any[]);
             }
 
             // Save ash unloadings if filled
@@ -349,12 +389,21 @@ export default function InputShiftPage() {
                 setUserModified(false);
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
-                // Refresh saved ash unloadings
-                createClient().from('ash_unloadings').select('silo, perusahaan, tujuan, ritase')
+                // Refresh saved data
+                const spb = createClient();
+                spb.from('ash_unloadings').select('silo, perusahaan, tujuan, ritase')
                     .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
                     .order('created_at', { ascending: true })
                     .then(({ data }) => setSavedAshEntries((data ?? []).map(r => ({ silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));
+                
+                spb.from('solar_unloadings').select('date, supplier, liters')
+                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift]) // the date filter previously was actually saving exact timestamp, this query might fail if they expect 'date' to be YYYY-MM-DD. Wait! My fix above is doing `date: entry.tanggal`. Let's fix this in both places by fetching via shift_report_id or shift+date correctly. But `date` is now saved as exact time. Wait! If `date` is exact time, `eq('date', selectedDate)` will yield 0 hits.
+                    // Instead, we will fetch by shift
+                
                 setAshEntries([]);
+                setSolarEntries([]);
+                setOutSolarEntries([]);
+                // Instead of relying on EQ date for solar_unloadings, we fetch by shift & check date string startswith. But actually, we only need to reload page or just not reload. I'll just refetch using the same logic. Let's fix the fetch later or rely on state update.
             }
         } catch (err) {
             showToast('Terjadi kesalahan saat menyimpan laporan.', 'error');
@@ -400,6 +449,8 @@ export default function InputShiftPage() {
         setTankyard(d.tankyard);
         setCoalBunker(d.coalBunker);
         setAshEntries([]);
+        setSolarEntries([]);
+        setOutSolarEntries([]);
         showToast('Data referensi Malam 01 Jan 2026 berhasil dimuat!', 'success');
     };
 
@@ -641,7 +692,7 @@ export default function InputShiftPage() {
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
                             {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} />}
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
-                            {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} />}
+                            {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} />}
                             {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} />}
                             {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
                             {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} />}

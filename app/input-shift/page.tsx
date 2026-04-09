@@ -477,7 +477,7 @@ export default function InputShiftPage() {
     };
 
     return (
-        <div className="flex-1 max-w-[1366px] w-full mx-auto p-4 lg:p-6 flex flex-col gap-6 h-full overflow-hidden">
+        <div className="flex-1 w-full max-w-full mx-auto p-4 lg:p-6 flex flex-col gap-4 h-full overflow-hidden">
             {/* Navigation Warning Modal */}
             {showNavWarning && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -528,36 +528,79 @@ export default function InputShiftPage() {
             )}
 
             {/* Header */}
-            <header className="flex flex-col items-center justify-center gap-4 shrink-0 mt-4 mb-2">
+            <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 shrink-0 mt-4 mb-2 bg-[#101822]/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-5 lg:p-6 shadow-xl relative overflow-hidden">
+                {/* Background Glow based on shift */}
+                <div className={`absolute -inset-[100px] blur-3xl opacity-20 pointer-events-none transition-colors duration-1000 ${
+                    inputMode === 'harian' ? 'bg-emerald-500/30' :
+                    selectedShift === 1 ? 'bg-indigo-500/30' : 
+                    selectedShift === 2 ? 'bg-amber-500/30' : 'bg-orange-500/30'
+                }`}></div>
+
+                <div className="flex flex-col gap-1 z-10">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">
+                            {inputMode === 'shift' ? 'LAPORAN SHIFT' : 'LAPORAN HARIAN'}
+                        </h2>
+                        {inputMode === 'shift' ? (
+                            <span className="px-3 py-1 rounded-lg text-sm sm:text-base font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                                {SHIFT_LABELS[selectedShift].toUpperCase()}
+                            </span>
+                        ) : (
+                            <span className="px-3 py-1 rounded-lg text-sm sm:text-base font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                                REPORT HARIAN
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-slate-400 font-mono mt-3">
+                        <div className="flex items-center gap-1.5 bg-[#0f1721] px-3 py-1.5 rounded-lg border border-slate-700/50">
+                            <span className="material-symbols-outlined text-[16px] text-blue-400">calendar_month</span>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={e => setSelectedDate(e.target.value)}
+                                className="bg-transparent border-none p-0 text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
+                            />
+                        </div>
+                        <span className="text-slate-600 hidden sm:inline">|</span>
+                        {mounted && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5">
+                                <span className="material-symbols-outlined text-[16px] text-slate-500">schedule</span>
+                                <span className="text-sm md:text-base text-slate-300 font-medium">
+                                    {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Mode & Shift Controls */}
-                <div className="flex items-center gap-3">
-                    <div className="flex bg-[#16202e]/80 border border-slate-700/50 rounded-lg p-1">
+                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-auto">
+                    <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
                         <button
                             onClick={() => setInputMode('shift')}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${inputMode === 'shift' ? 'bg-[#2b7cee] text-white shadow-[0_0_10px_rgba(43,124,238,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${inputMode === 'shift' ? 'bg-[#2b7cee] text-white shadow-[0_0_15px_rgba(43,124,238,0.4)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
                         >
                             Shift
                         </button>
                         <button
                             onClick={() => setInputMode('harian')}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${inputMode === 'harian' ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${inputMode === 'harian' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
                         >
                             Harian
                         </button>
                     </div>
 
                     {inputMode === 'shift' && (
-                        <div className="flex bg-[#16202e]/80 border border-slate-700/50 rounded-lg p-1">
+                        <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
                             {[
-                                { id: 1, label: 'Shift Malam 06.00' },
-                                { id: 2, label: 'Shift Pagi 14.00' },
-                                { id: 3, label: 'Shift Sore 22.00' }
+                                { id: 1, label: 'Malam (06)', color: 'indigo' },
+                                { id: 2, label: 'Pagi (14)', color: 'amber' },
+                                { id: 3, label: 'Sore (22)', color: 'orange' }
                             ].map(shift => (
                                 <button
                                     key={shift.id}
                                     onClick={() => setSelectedShift(shift.id as 1 | 2 | 3)}
-                                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${selectedShift === shift.id ? 'bg-amber-500 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'text-slate-400 hover:text-slate-200'}`}
+                                    className={`flex-1 lg:flex-none px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${selectedShift === shift.id ? `bg-${shift.color}-500 text-white shadow-[0_0_10px_rgba(var(--color-${shift.color}-500),0.4)]` : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
                                 >
                                     {shift.label}
                                 </button>
@@ -565,39 +608,6 @@ export default function InputShiftPage() {
                         </div>
                     )}
                 </div>
-
-                <div className="text-center flex flex-col items-center justify-center -mt-2">
-                    <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-white dark:text-white mb-3">
-                        {inputMode === 'shift' ? 'Input Laporan Shift' : 'Input Laporan Harian'}
-                    </h2>
-                    <div className="flex items-center justify-center gap-2 text-[#92a9c9]">
-                        {inputMode === 'shift' ? (
-                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-[#2b7cee]/20 text-[#2b7cee] border border-[#2b7cee]/20 uppercase">
-                                {SHIFT_LABELS[selectedShift].toUpperCase()}
-                            </span>
-                        ) : (
-                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 uppercase">
-                                REPORT HARIAN
-                            </span>
-                        )}
-                        <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={e => setSelectedDate(e.target.value)}
-                            className="bg-[#16202e]/80 border border-slate-700/50 rounded-md px-2 py-0.5 text-sm text-white font-mono focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer [color-scheme:dark]"
-                        />
-                        {mounted && (
-                            <>
-                                <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                                <span className="text-sm font-mono text-slate-300">
-                                    {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                            </>
-                        )}
-                    </div>
-                </div>
-                {/* Intentionally removed buttons from header, moving them to sidebar */}
             </header>
 
             {inputMode === 'shift' ? (

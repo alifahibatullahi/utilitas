@@ -483,7 +483,7 @@ export default function InputShiftPage() {
     };
 
     return (
-        <div className="flex-1 w-full max-w-full mx-auto p-4 lg:p-6 flex flex-col gap-4 h-full overflow-hidden">
+        <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 flex flex-col gap-4 h-full overflow-hidden">
             {/* Navigation Warning Modal */}
             {showNavWarning && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -761,7 +761,7 @@ export default function InputShiftPage() {
                         )}
 
                         {/* Shift Tab Content */}
-                        <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-[1200px]">
+                        <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
                             {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} coalBunkerValues={coalBunker as Record<string, number | null>} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevTotalizerBfw={prevBoilerA.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
                             {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} coalBunkerValues={coalBunker as Record<string, number | null>} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevTotalizerBfw={prevBoilerB.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}

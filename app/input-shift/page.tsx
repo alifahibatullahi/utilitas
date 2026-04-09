@@ -60,6 +60,12 @@ export default function InputShiftPage() {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     });
     const [mounted, setMounted] = useState(false);
+    
+    // Header specific states
+    const [supervisor, setSupervisor] = useState('');
+    const [foremanBoiler, setForemanBoiler] = useState('');
+    const [foremanTurbin, setForemanTurbin] = useState('');
+
     const skipNextClear = useRef(false);
     const lastSubmittedReportId = useRef<string | null>(null);
 
@@ -536,39 +542,76 @@ export default function InputShiftPage() {
                     selectedShift === 2 ? 'bg-amber-500/30' : 'bg-orange-500/30'
                 }`}></div>
 
-                <div className="flex flex-col gap-1 z-10">
+                <div className="flex flex-col gap-1 z-10 w-full lg:w-auto">
                     <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">
                             {inputMode === 'shift' ? 'LAPORAN SHIFT' : 'LAPORAN HARIAN'}
                         </h2>
                         {inputMode === 'shift' ? (
-                            <span className="px-3 py-1 rounded-lg text-sm sm:text-base font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-                                {SHIFT_LABELS[selectedShift].toUpperCase()}
-                            </span>
+                            <>
+                                <span className="px-3 py-1 rounded-lg text-sm sm:text-base font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                                    {SHIFT_LABELS[selectedShift].toUpperCase()}
+                                </span>
+                                <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm sm:ml-2 relative">
+                                    <span className="material-symbols-outlined text-[16px] text-blue-400 hidden sm:block">admin_panel_settings</span>
+                                    <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider">SPV:</span>
+                                    <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-[11px] sm:text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none pr-4">
+                                        <option value="" className="bg-[#101822] text-slate-500">Pilih...</option>
+                                        <option value="SPV 1" className="bg-[#101822]">Bapak SPV 1</option>
+                                        <option value="SPV 2" className="bg-[#101822]">Bapak SPV 2</option>
+                                        <option value="SPV 3" className="bg-[#101822]">Bapak SPV 3</option>
+                                    </select>
+                                    <span className="material-symbols-outlined text-[14px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                </div>
+                            </>
                         ) : (
                             <span className="px-3 py-1 rounded-lg text-sm sm:text-base font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)]">
                                 REPORT HARIAN
                             </span>
                         )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 text-slate-400 font-mono mt-3">
-                        <div className="flex items-center gap-1.5 bg-[#0f1721] px-3 py-1.5 rounded-lg border border-slate-700/50">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-slate-400 font-mono mt-3">
+                        <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 sm:px-3 py-1.5 rounded-lg border border-slate-700/50">
                             <span className="material-symbols-outlined text-[16px] text-blue-400">calendar_month</span>
                             <input
                                 type="date"
                                 value={selectedDate}
                                 onChange={e => setSelectedDate(e.target.value)}
-                                className="bg-transparent border-none p-0 text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
+                                className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
                             />
                         </div>
                         <span className="text-slate-600 hidden sm:inline">|</span>
                         {mounted && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5">
-                                <span className="material-symbols-outlined text-[16px] text-slate-500">schedule</span>
-                                <span className="text-sm md:text-base text-slate-300 font-medium">
+                            <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-[#0f1721]/50 rounded-lg border border-slate-700/50">
+                                <span className="material-symbols-outlined text-[16px] text-slate-400">schedule</span>
+                                <span className="text-xs sm:text-sm md:text-base text-slate-300 font-medium">
                                     {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
+                        )}
+                        
+                        {inputMode === 'shift' && (
+                            <>
+                                <span className="text-slate-600 hidden lg:inline">|</span>
+                                <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative">
+                                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest whitespace-nowrap">FM Boiler:</span>
+                                    <select value={foremanBoiler} onChange={e => setForemanBoiler(e.target.value)} className="bg-transparent border-none p-0 text-[11px] sm:text-sm font-bold text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none pr-5 max-w-[120px] truncate">
+                                        <option value="" className="bg-[#101822] text-slate-500">Pilih...</option>
+                                        <option value="FMB 1" className="bg-[#101822]">Bapak FMB 1</option>
+                                        <option value="FMB 2" className="bg-[#101822]">Bapak FMB 2</option>
+                                    </select>
+                                    <span className="material-symbols-outlined text-[14px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative">
+                                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest whitespace-nowrap">FM Turbin:</span>
+                                    <select value={foremanTurbin} onChange={e => setForemanTurbin(e.target.value)} className="bg-transparent border-none p-0 text-[11px] sm:text-sm font-bold text-indigo-100 focus:ring-0 cursor-pointer appearance-none outline-none pr-5 max-w-[120px] truncate">
+                                        <option value="" className="bg-[#101822] text-slate-500">Pilih...</option>
+                                        <option value="FMT 1" className="bg-[#101822]">Bapak FMT 1</option>
+                                        <option value="FMT 2" className="bg-[#101822]">Bapak FMT 2</option>
+                                    </select>
+                                    <span className="material-symbols-outlined text-[14px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
@@ -718,7 +761,7 @@ export default function InputShiftPage() {
                         )}
 
                         {/* Shift Tab Content */}
-                        <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
+                        <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-[1200px]">
                             {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} coalBunkerValues={coalBunker as Record<string, number | null>} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevTotalizerBfw={prevBoilerA.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
                             {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} coalBunkerValues={coalBunker as Record<string, number | null>} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevTotalizerBfw={prevBoilerB.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}

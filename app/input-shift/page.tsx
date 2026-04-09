@@ -80,13 +80,6 @@ export default function InputShiftPage() {
 
     useEffect(() => { setMounted(true); }, []);
 
-    // Restore supervisor/foreman dari report data jika sudah ada
-    useEffect(() => {
-        if (report) {
-            if (report.supervisor) setSupervisor(report.supervisor);
-        }
-    }, [report?.id, report?.date, report?.shift]);
-
     // Persist supervisor/foreman ke localStorage
     useEffect(() => {
         try {
@@ -250,6 +243,13 @@ export default function InputShiftPage() {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, []);
+
+    // Restore supervisor dari report data jika sudah ada (setelah report loaded via useShiftReport)
+    useEffect(() => {
+        if (report?.supervisor) {
+            setSupervisor(report.supervisor);
+        }
+    }, [report?.supervisor]);
 
     const handleNavLeave = useCallback(() => {
         bypassNavRef.current = true;

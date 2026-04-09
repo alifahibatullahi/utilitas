@@ -477,7 +477,7 @@ export default function InputShiftPage() {
     };
 
     return (
-        <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 flex flex-col gap-6 h-full overflow-hidden">
+        <div className="flex-1 max-w-[1366px] w-full mx-auto p-4 lg:p-6 flex flex-col gap-6 h-full overflow-hidden">
             {/* Navigation Warning Modal */}
             {showNavWarning && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">

@@ -78,7 +78,7 @@ export default function TabHandling({
     return (
         <>
             <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
-                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Loading Batubara" icon="local_shipping" color="orange">
                         <InputField label="Total Loading" unit="shovel" color="orange" name="loading" value={espValues.loading} onChange={onEspChange} />

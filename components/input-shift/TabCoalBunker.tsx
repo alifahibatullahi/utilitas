@@ -59,7 +59,7 @@ export default function TabCoalBunker({ values = {}, onFieldChange, onStatusChan
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
                 <Card title="Boiler A" icon="inventory_2" color="blue">
                     <div className="flex flex-col gap-5">

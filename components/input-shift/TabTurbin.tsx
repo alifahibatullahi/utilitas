@@ -21,7 +21,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
     return (
         <>
             <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
-                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Steam Inlet Turbin" icon="waves" color="blue">
                         <InputField label="Pressure Steam Inlet" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} />

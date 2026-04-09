@@ -21,7 +21,7 @@ export default function TabLab({
     return (
         <>
             <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
-                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     {/* Chemical Dosing Section */}
                     <div className="rounded-xl ring-1 ring-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.15)]">

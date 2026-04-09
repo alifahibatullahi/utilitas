@@ -61,15 +61,50 @@ export default function InputShiftPage() {
     });
     const [mounted, setMounted] = useState(false);
     
-    // Header specific states
-    const [supervisor, setSupervisor] = useState('');
-    const [foremanBoiler, setForemanBoiler] = useState('');
-    const [foremanTurbin, setForemanTurbin] = useState('');
+    // Header specific states — persist to localStorage
+    const [supervisor, setSupervisor] = useState(() => {
+        if (typeof window === 'undefined') return '';
+        try { return localStorage.getItem('shift_supervisor') || ''; } catch { return ''; }
+    });
+    const [foremanBoiler, setForemanBoiler] = useState(() => {
+        if (typeof window === 'undefined') return '';
+        try { return localStorage.getItem('shift_foreman_boiler') || ''; } catch { return ''; }
+    });
+    const [foremanTurbin, setForemanTurbin] = useState(() => {
+        if (typeof window === 'undefined') return '';
+        try { return localStorage.getItem('shift_foreman_turbin') || ''; } catch { return ''; }
+    });
 
     const skipNextClear = useRef(false);
     const lastSubmittedReportId = useRef<string | null>(null);
 
     useEffect(() => { setMounted(true); }, []);
+
+    // Restore supervisor/foreman dari report data jika sudah ada
+    useEffect(() => {
+        if (report) {
+            if (report.supervisor) setSupervisor(report.supervisor);
+        }
+    }, [report?.id, report?.date, report?.shift]);
+
+    // Persist supervisor/foreman ke localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem('shift_supervisor', supervisor);
+        } catch { /* ignore */ }
+    }, [supervisor]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('shift_foreman_boiler', foremanBoiler);
+        } catch { /* ignore */ }
+    }, [foremanBoiler]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('shift_foreman_turbin', foremanTurbin);
+        } catch { /* ignore */ }
+    }, [foremanTurbin]);
 
     // Sync Sheets → Supabase setiap kali tanggal atau shift berubah
     // Range sync = dari tanggal dipilih sampai hari ini (min 1, max 30 hari)
@@ -597,14 +632,6 @@ export default function InputShiftPage() {
                             />
                         </div>
                         <span className="text-slate-600 hidden sm:inline">|</span>
-                        {mounted && (
-                            <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-[#0f1721]/50 rounded-lg border border-slate-700/50">
-                                <span className="material-symbols-outlined text-[16px] text-slate-400">schedule</span>
-                                <span className="text-xs sm:text-sm md:text-base text-white font-medium">
-                                    {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                            </div>
-                        )}
 
                         {inputMode === 'shift' && (
                             <>

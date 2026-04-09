@@ -29,7 +29,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     return (
         <div className="space-y-1.5 w-full">
             {label && (
-                <label className={`font-medium text-[#92a9c9] uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+                <label className={`font-medium text-white uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
                     {label}
                 </label>
             )}
@@ -100,7 +100,7 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
 }) => (
     <div className="space-y-1.5 w-full">
         {label && (
-            <label className={`font-medium text-[#92a9c9] uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+            <label className={`font-medium text-white uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
                 {label}
             </label>
         )}
@@ -208,7 +208,7 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
         },
         small: {
             bg: 'bg-[#1f2b3e]/30 border-slate-700/30 p-2.5',
-            label: 'text-[#92a9c9] text-[10px] font-medium uppercase tracking-wider',
+            label: 'text-white text-[10px] font-medium uppercase tracking-wider',
             value: 'text-white font-mono font-bold text-sm',
             unit: 'text-slate-500 text-[10px] font-medium',
         },
@@ -232,7 +232,7 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
         },
         transparent: {
             bg: 'bg-transparent border-slate-700/50 p-2.5',
-            label: 'text-[#92a9c9] text-xs font-bold uppercase tracking-wider',
+            label: 'text-white text-xs font-bold uppercase tracking-wider',
             value: 'text-white font-mono font-black text-2xl',
             unit: 'text-slate-400 text-xs font-bold',
         }

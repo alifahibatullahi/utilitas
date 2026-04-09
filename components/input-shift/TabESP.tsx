@@ -85,11 +85,11 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                             
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5 w-full">
-                                    <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">Perusahaan</label>
+                                    <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Perusahaan</label>
                                     <input type="text" value={currentEntry.perusahaan} onChange={e => setCurrentEntry({...currentEntry, perusahaan: e.target.value})} placeholder="Nama PT..." className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all" />
                                 </div>
                                 <div className="space-y-1.5 w-full">
-                                    <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">Tujuan</label>
+                                    <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tujuan</label>
                                     <input type="text" value={currentEntry.tujuan} onChange={e => setCurrentEntry({...currentEntry, tujuan: e.target.value})} placeholder="Lokasi tujuan..." className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all" />
                                 </div>
                             </div>

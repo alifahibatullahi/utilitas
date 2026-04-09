@@ -84,7 +84,7 @@ export default function TabHandling({
                         <InputField label="Total Loading" unit="shovel" color="orange" name="loading" value={espValues.loading} onChange={onEspChange} />
 
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">
+                            <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">
                                 Hopper Aktif
                             </label>
                             <select
@@ -99,7 +99,7 @@ export default function TabHandling({
                         </div>
 
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">
+                            <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">
                                 Conveyor Status
                             </label>
                             <select
@@ -124,7 +124,7 @@ export default function TabHandling({
                     <Card title="Kedatangan Solar" icon="download" color="amber">
                         <div className="space-y-3 p-3 bg-[#101822]/30 border border-slate-700/50 rounded-lg">
                             <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">Tanggal &amp; Waktu</label>
+                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tanggal &amp; Waktu</label>
                                 <input
                                     type="datetime-local"
                                     value={currentEntry.tanggal}
@@ -135,7 +135,7 @@ export default function TabHandling({
                             <InputField label="Jumlah" unit="Liter" color="amber" name="solar_jumlah" value={currentEntry.jumlah}
                                 onChange={(_, v) => setCurrentEntry({...currentEntry, jumlah: typeof v === 'string' ? (v === '' ? null : parseFloat(v) ?? null) : v as number | null})} />
                             <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">Perusahaan</label>
+                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Perusahaan</label>
                                 <input type="text" value={currentEntry.perusahaan} onChange={e => setCurrentEntry({...currentEntry, perusahaan: e.target.value})}
                                     placeholder="Nama perusahaan..."
                                     className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 text-sm transition-all" />
@@ -166,7 +166,7 @@ export default function TabHandling({
                     <Card title="Permintaan Solar" icon="upload" color="rose">
                         <div className="space-y-3 p-3 bg-[#101822]/30 border border-slate-700/50 rounded-lg">
                             <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">Tanggal &amp; Waktu</label>
+                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tanggal &amp; Waktu</label>
                                 <input
                                     type="datetime-local"
                                     value={currentOutEntry.tanggal}
@@ -177,7 +177,7 @@ export default function TabHandling({
                             <InputField label="Jumlah" unit="Liter" color="rose" name="out_solar_jumlah" value={currentOutEntry.jumlah}
                                 onChange={(_, v) => setCurrentOutEntry({...currentOutEntry, jumlah: typeof v === 'string' ? (v === '' ? null : parseFloat(v) ?? null) : v as number | null})} />
                             <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-[#92a9c9] uppercase tracking-wider block text-left text-xs">Tujuan Permintaan</label>
+                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tujuan Permintaan</label>
                                 <input type="text" value={currentOutEntry.tujuan} onChange={e => setCurrentOutEntry({...currentOutEntry, tujuan: e.target.value})}
                                     placeholder="Cth: Boiler A, Alat Berat..."
                                     className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm transition-all" />

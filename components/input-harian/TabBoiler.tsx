@@ -114,7 +114,7 @@ export default function TabBoiler({
                         <div className="absolute -right-4 -bottom-4 opacity-5 text-blue-500">
                             <span className="material-symbols-outlined text-[100px]">waves</span>
                         </div>
-                        <h4 className="text-[#92a9c9] text-xs font-bold uppercase tracking-wider mb-2 z-10">Total Steam</h4>
+                        <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-2 z-10">Total Steam</h4>
                         <div className="z-10"><CalculatedField label="Boiler A" value={fmt(prodA24)} unit="Ton" variant="small" /></div>
                         <div className="z-10"><CalculatedField label="Boiler B" value={fmt(prodB24)} unit="Ton" variant="small" /></div>
                         <div className="mt-2 pt-2 border-t border-slate-800 z-10">
@@ -127,7 +127,7 @@ export default function TabBoiler({
                         <div className="absolute -right-4 -bottom-4 opacity-5 text-amber-500">
                             <span className="material-symbols-outlined text-[100px]">precision_manufacturing</span>
                         </div>
-                        <h4 className="text-[#92a9c9] text-xs font-bold uppercase tracking-wider mb-2 z-10">Total Batubara</h4>
+                        <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-2 z-10">Total Batubara</h4>
                         <div className="z-10"><CalculatedField label="Boiler A" value={fmt(totalA24)} unit="Ton" variant="small" /></div>
                         <div className="z-10"><CalculatedField label="Boiler B" value={fmt(totalB24)} unit="Ton" variant="small" /></div>
                         <div className="mt-2 pt-2 border-t border-slate-800 z-10">
@@ -140,7 +140,7 @@ export default function TabBoiler({
                         <div className="absolute -right-4 -bottom-4 opacity-5 text-cyan-500">
                             <span className="material-symbols-outlined text-[100px]">water_drop</span>
                         </div>
-                        <h4 className="text-[#92a9c9] text-xs font-bold uppercase tracking-wider mb-2 z-10">Total Konsumsi BFW</h4>
+                        <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-2 z-10">Total Konsumsi BFW</h4>
                         <div className="z-10"><CalculatedField label="Boiler A" value={fmt(bfwConsA)} unit="Ton" variant="small" /></div>
                         <div className="z-10"><CalculatedField label="Boiler B" value={fmt(bfwConsB)} unit="Ton" variant="small" /></div>
                         <div className="mt-2 pt-2 border-t border-slate-800 z-10">

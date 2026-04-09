@@ -110,59 +110,43 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
         
         <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
             <Card title="Unloading Fly Ash" icon="assessment" color="emerald" isSidebar={true}>
-                {allAshEntries.length === 0 ? (
-                    <p className="text-xs text-slate-600 italic mb-2">Belum ada aktivitas</p>
-                ) : (
-                    <div className="flex flex-col gap-2 mb-2">
+                <CalculatedField label="TOTAL SILO A" value={totalAshSiloA.toLocaleString('id-ID')} unit="Rit" variant="primary" />
+                <CalculatedField label="TOTAL SILO B" value={totalAshSiloB.toLocaleString('id-ID')} unit="Rit" variant="transparent" />
+
+                {allAshEntries.length > 0 && (
+                    <div className="flex flex-col gap-1.5 mt-2">
                         {/* Saved entries (dari DB) */}
                         {savedAshEntries.map((e) => (
-                            <div key={`saved-${e.id}`} className="relative flex flex-col px-2 py-1.5 bg-emerald-900/10 border border-emerald-500/30 rounded-lg pr-8">
+                            <div key={`saved-${e.id}`} className="group relative flex flex-col py-1 border-b border-emerald-500/10">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-emerald-300">Silo {e.silo}</span>
-                                    <span className="text-xs font-mono font-black text-emerald-200">{e.ritase} Rit</span>
+                                    <span className="text-[10px] font-bold text-emerald-400">Silo {e.silo} &bull; <span className="font-normal text-slate-400">{e.perusahaan}</span></span>
+                                    <span className="text-[11px] font-mono font-bold text-emerald-300">{e.ritase} Rit</span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 truncate"><span className="text-slate-600">PT:</span> {e.perusahaan}</span>
-                                <span className="text-[10px] text-slate-400 truncate"><span className="text-slate-600">Tujuan:</span> {e.tujuan}</span>
+                                <span className="text-[9px] text-slate-500 truncate w-[90%]">{e.tujuan}</span>
                                 {e.id && onDeleteSavedAsh && (
                                     <button type="button" onClick={() => onDeleteSavedAsh(e.id!)}
-                                        className="absolute top-1 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
-                                        <span className="material-symbols-outlined text-[14px]">delete</span>
+                                        className="absolute right-0 top-1 opacity-0 group-hover:opacity-100 bg-red-500/20 text-red-400 p-1 rounded transition-opacity">
+                                        <span className="material-symbols-outlined text-[12px] block">close</span>
                                     </button>
                                 )}
                             </div>
                         ))}
                         {/* Pending entries (belum disimpan) */}
                         {ashEntries.map((e, idx) => (
-                            <div key={`pending-${idx}`} className="relative flex flex-col px-2 py-1.5 bg-[#101822]/50 border border-amber-500/30 rounded-lg pr-8">
+                            <div key={`pending-${idx}`} className="group relative flex flex-col py-1 border-b border-emerald-500/10">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-amber-300">Silo {e.silo} <span className="text-[9px] text-amber-500">(pending)</span></span>
-                                    <span className="text-xs font-mono font-black text-amber-200">{e.ritase} Rit</span>
+                                    <span className="text-[10px] font-bold text-emerald-400">Silo {e.silo} &bull; <span className="font-normal text-slate-400">{e.perusahaan}</span> <span className="text-[9px] text-amber-500 ml-1">(new)</span></span>
+                                    <span className="text-[11px] font-mono font-bold text-emerald-200">{e.ritase} Rit</span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 truncate"><span className="text-slate-600">PT:</span> {e.perusahaan}</span>
-                                <span className="text-[10px] text-slate-400 truncate"><span className="text-slate-600">Tujuan:</span> {e.tujuan}</span>
+                                <span className="text-[9px] text-slate-500 truncate w-[90%]">{e.tujuan}</span>
                                 <button type="button" onClick={() => removeEntry(idx)}
-                                    className="absolute top-1 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
-                                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                                    className="absolute right-0 top-1 opacity-0 group-hover:opacity-100 bg-red-500/20 text-red-400 p-1 rounded transition-opacity">
+                                    <span className="material-symbols-outlined text-[12px] block">close</span>
                                 </button>
                             </div>
                         ))}
                     </div>
                 )}
-
-                <div className="h-px bg-slate-700/80 w-full my-1"></div>
-
-                <div className="flex justify-between items-center px-2 py-1">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Silo A</span>
-                    <span className="text-xs font-mono font-black text-emerald-400">{totalAshSiloA} Rit</span>
-                </div>
-                <div className="flex justify-between items-center px-2 py-1">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Silo B</span>
-                    <span className="text-xs font-mono font-black text-emerald-400">{totalAshSiloB} Rit</span>
-                </div>
-                <div className="flex justify-between items-center px-2 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg mt-1">
-                    <span className="text-[10px] text-emerald-300 font-bold uppercase">Total</span>
-                    <span className="text-xs font-mono font-black text-emerald-300">{totalAshSiloA + totalAshSiloB} Rit</span>
-                </div>
             </Card>
         </div>
         </>

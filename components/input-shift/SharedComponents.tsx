@@ -36,7 +36,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
             <div className="relative">
                 {negative && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">−</span>}
                 <input
-                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all text-left`}
+                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-base font-mono font-bold tracking-wide transition-all text-left`}
                     placeholder={placeholder}
                     type={textMode ? "text" : "number"}
                     inputMode={textMode ? "text" : "decimal"}
@@ -105,7 +105,7 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
             </label>
         )}
         <select
-            className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all appearance-none cursor-pointer`}
+            className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-base font-mono font-bold tracking-wide transition-all appearance-none cursor-pointer`}
             value={value ?? ''}
             onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : e.target.value)}
         >
@@ -190,7 +190,7 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
     label: string;
     value?: string;
     unit: string;
-    variant?: 'primary' | 'secondary' | 'small' | 'purple' | 'transparent';
+    variant?: 'primary' | 'secondary' | 'small' | 'purple' | 'transparent' | 'amber' | 'rose';
     size?: 'large' | 'medium' | 'small';
 }) => {
     const variantStyles = {
@@ -217,6 +217,18 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
             label: 'text-purple-400 text-xs font-bold uppercase tracking-wider',
             value: 'text-purple-300 font-mono font-black text-2xl',
             unit: 'text-purple-500/80 text-xs font-bold',
+        },
+        amber: {
+            bg: 'bg-amber-500/10 border-amber-500/30 p-3',
+            label: 'text-amber-300 text-xs font-bold uppercase tracking-wider',
+            value: 'text-amber-100 font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-amber-400/70 text-xs font-bold',
+        },
+        rose: {
+            bg: 'bg-rose-500/10 border-rose-500/30 p-3',
+            label: 'text-rose-300 text-xs font-bold uppercase tracking-wider',
+            value: 'text-rose-100 font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-rose-400/70 text-xs font-bold',
         },
         transparent: {
             bg: 'bg-transparent border-slate-700/50 p-2.5',

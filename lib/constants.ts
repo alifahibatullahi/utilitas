@@ -284,7 +284,11 @@ export function getGroupForShift(dateStr: string, shiftType: 'malam' | 'pagi' | 
     if (shiftType === 'malam') {
         const d = new Date(dateStr + 'T00:00:00');
         d.setDate(d.getDate() - 1);
-        lookupDate = d.toISOString().slice(0, 10);
+        // Gunakan tanggal lokal, bukan UTC (toISOString() di UTC+7 akan mundur 1 hari lagi)
+        const y = d.getFullYear();
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const dy = String(d.getDate()).padStart(2, '0');
+        lookupDate = `${y}-${mo}-${dy}`;
     }
     for (const group of ['A', 'B', 'C', 'D'] as const) {
         if (getGroupShiftOnDate(group, lookupDate) === letter) return group;

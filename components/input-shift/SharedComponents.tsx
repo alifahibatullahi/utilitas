@@ -41,8 +41,6 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
         }
     }, [value, thousands]);
 
-    const baseInputClass = `w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-lg font-mono font-bold tracking-wide transition-all text-left`;
-
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -62,12 +60,13 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
 
     // ── Thousands separator mode ───────────────────────────────────────────────
     if (thousands) {
+        const isEmpty = !thuText;
         return (
             <div className="space-y-1.5 w-full">
                 {labelEl}
                 <div className="relative">
                     <input
-                        className={baseInputClass}
+                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-lg font-mono font-bold tracking-wide transition-all text-left`}
                         type="text"
                         inputMode="numeric"
                         placeholder={placeholder}

@@ -22,7 +22,7 @@ export default function TabTurbin({
     // Selisih per distribusi steam item
     const selisih = (key: typeof DIST_ITEMS[number]['totKey']) => {
         const prev = prevSteam ? n(prevSteam[key]) : 0;
-        return prev > 0 ? n(steam[key]) - prev : n(steam[key]);
+        return prev > 0 ? n(steam[key]) - prev : 0;
     };
 
     const totalInlet     = selisih('inlet_turbine_24');
@@ -59,11 +59,6 @@ export default function TabTurbin({
                                         thousands
                                     />
                                     {prevSteam && <SelisihInfo prev={prev} current={n(steam[totKey])} />}
-                                    {prevSteam && prev > 0 && (
-                                        <p className="mt-1 text-[10px] text-slate-500">
-                                            Kemarin: {fmt(prev)} {totUnit}
-                                        </p>
-                                    )}
                                 </div>
                                 <InputField
                                     label={flowUnit}

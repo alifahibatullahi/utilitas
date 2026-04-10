@@ -96,7 +96,7 @@ export default function TabPower({
                         const sel = (key: string) => {
                             const cur = Number(pv[key]) || 0;
                             const prv = Number(prevPD?.[key]) || 0;
-                            return prv > 0 ? cur - prv : cur;
+                            return prv > 0 ? cur - prv : 0;
                         };
                         const totalUbb     = sel('power_ubb_totalizer');
                         const totalUbbInt  = Math.round(totalUbb);

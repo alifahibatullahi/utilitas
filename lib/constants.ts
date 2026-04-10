@@ -251,12 +251,13 @@ export const OPERATORS: Operator[] = [
 // ─── Shift Group Rotation ───
 // Pola 28 hari: M=Malam, P=Pagi, S=Sore, O=Off
 // Group A pos 0 = 9 Maret 2026; tiap grup offset 7 hari
-const SHIFT_PATTERN = 'MMOPPSSSOMMOPPPSSOMMMOPPSSOO';
+// OO = Sabtu-Minggu (pos 0-1), pola berulang 28 hari
+const SHIFT_PATTERN = 'OOMMOPPSSSOMMOPPPSSOMMMOPPSS';
 const GROUP_ANCHORS: Record<string, string> = {
-    A: '2026-03-09',
-    B: '2026-03-02',
-    C: '2026-02-23',
-    D: '2026-02-16',
+    A: '2026-03-07',  // Sabtu (pos 0)
+    B: '2026-02-28',
+    C: '2026-02-21',
+    D: '2026-02-14',
 };
 
 /**
@@ -278,8 +279,15 @@ export function getGroupShiftOnDate(group: 'A' | 'B' | 'C' | 'D', dateStr: strin
 export function getGroupForShift(dateStr: string, shiftType: 'malam' | 'pagi' | 'sore'): string {
     const shiftLetter: Record<string, string> = { malam: 'M', pagi: 'P', sore: 'S' };
     const letter = shiftLetter[shiftType];
+    // Shift malam tanggal X dikerjakan oleh grup shift malam tanggal X-1
+    let lookupDate = dateStr;
+    if (shiftType === 'malam') {
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        lookupDate = d.toISOString().slice(0, 10);
+    }
     for (const group of ['A', 'B', 'C', 'D'] as const) {
-        if (getGroupShiftOnDate(group, dateStr) === letter) return group;
+        if (getGroupShiftOnDate(group, lookupDate) === letter) return group;
     }
     return '';
 }

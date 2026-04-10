@@ -73,8 +73,8 @@ const COL = {
     product_steam_sio2: 125, product_steam_nh4: 126,
     // Personnel boiler 127-129
     // Cols 127-132 (DX-EC): Mesh-200/Out Coal Mill & Boiler personnel — kosongkan
-    // Boiler personnel: ED=133(grup), EE=134(foreman/karu)
-    boiler_grup: 133, boiler_karu: 134,
+    // Boiler personnel: ED=133(grup), EE=134(foreman/karu), EF=135(supervisor)
+    boiler_grup: 133, boiler_karu: 134, boiler_kasi: 135,
     // Pressure Steam Drum & BFW: EJ-EM (139-142)
     steam_drum_press_a: 139, steam_drum_press_b: 140,
     bfw_press_a: 141, bfw_press_b: 142,
@@ -229,9 +229,10 @@ export function shiftReportToRow(
     row[COL.turbin_karu] = s(p.turbin_karu);
     row[COL.turbin_kasi] = s(p.turbin_kasi);
 
-    // Personnel boiler: ED=133(grup), EE=134(foreman boiler)
+    // Personnel boiler: ED=133(grup), EE=134(foreman boiler), EF=135(supervisor)
     row[COL.boiler_grup] = s(p.turbin_grup); // same group as turbin
     row[COL.boiler_karu] = s(p.boiler_karu);
+    row[COL.boiler_kasi] = s(p.turbin_kasi); // supervisor sama dengan turbin
 
     // Boiler A
     const bA = data.boilerA ?? {};

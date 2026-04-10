@@ -19,13 +19,16 @@ export default function TabTurbin({
     const n = (v: number | null | undefined) => Number(v) || 0;
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
 
-    // Internal UBB = selisih Inlet Turbin − selisih Condensate
-    const prevInlet24   = prevSteam ? n(prevSteam.inlet_turbine_24) : 0;
-    const prevCondens24 = prevSteam ? n(prevSteam.fully_condens_24) : 0;
-    const selInlet24    = prevInlet24   > 0 ? n(steam.inlet_turbine_24) - prevInlet24   : n(steam.inlet_turbine_24);
-    const selCondens24  = prevCondens24 > 0 ? n(steam.fully_condens_24) - prevCondens24 : n(steam.fully_condens_24);
-    const internalUbb24 = selInlet24 - selCondens24;
-    const internalUbb00 = n(steam.inlet_turbine_00) - n(steam.fully_condens_00);
+    // Selisih per distribusi steam item
+    const selisih = (key: typeof DIST_ITEMS[number]['totKey']) => {
+        const prev = prevSteam ? n(prevSteam[key]) : 0;
+        return prev > 0 ? n(steam[key]) - prev : n(steam[key]);
+    };
+
+    const totalInlet     = selisih('inlet_turbine_24');
+    const totalPabrik1   = selisih('mps_i_24');
+    const totalPabrik3   = selisih('mps_3a_24');
+    const totalCondensat = selisih('fully_condens_24');
 
     return (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
@@ -55,6 +58,11 @@ export default function TabTurbin({
                                         size="small"
                                     />
                                     {prevSteam && <SelisihInfo prev={prev} current={n(steam[totKey])} />}
+                                    {prevSteam && prev > 0 && (
+                                        <p className="mt-1 text-[10px] text-slate-500">
+                                            Kemarin: {fmt(prev)} {totUnit}
+                                        </p>
+                                    )}
                                 </div>
                                 <InputField
                                     label={flowUnit}
@@ -71,21 +79,13 @@ export default function TabTurbin({
                 })}
             </Card>
 
-            {/* ═══ Calculated Steam ═══ */}
+            {/* ═══ Calculated Steam + Turbine Generator ═══ */}
             <div className="flex flex-col gap-6">
                 <Card title="Calculated Steam" icon="calculate" color="purple">
-                    <CalculatedField
-                        label="Internal UBB — Totalizer (Inlet − Condensate)"
-                        value={fmt(internalUbb24)}
-                        unit="Ton"
-                        variant="primary"
-                    />
-                    <CalculatedField
-                        label="Internal UBB — Flow (Inlet − Condensate)"
-                        value={fmt(internalUbb00)}
-                        unit="T/H"
-                        variant="secondary"
-                    />
+                    <CalculatedField label="Total Inlet Turbin"  value={fmt(totalInlet)}     unit="Ton" variant="primary"     />
+                    <CalculatedField label="Total Pabrik 1"      value={fmt(totalPabrik1)}   unit="Ton" variant="secondary"   />
+                    <CalculatedField label="Total Pabrik 3"      value={fmt(totalPabrik3)}   unit="Ton" variant="secondary"   />
+                    <CalculatedField label="Total Condensate"    value={fmt(totalCondensat)} unit="Ton" variant="transparent" />
                 </Card>
 
                 {/* ═══ Turbine Generator ═══ */}

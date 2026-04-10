@@ -91,19 +91,43 @@ export default function TabPower({
 
             <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
                 <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
-                    <CalculatedField label="LOAD STG" value={fmt(pv.gen_00)} unit="MW" variant="primary" />
+                    {/* ── MWh totals (selisih totalizer) ── */}
+                    {(() => {
+                        const sel = (key: string) => {
+                            const cur = Number(pv[key]) || 0;
+                            const prv = Number(prevPD?.[key]) || 0;
+                            return prv > 0 ? cur - prv : cur;
+                        };
+                        const totalUbb     = sel('power_ubb_totalizer');
+                        const totalUbbInt  = Math.round(totalUbb);
+                        const b1           = Math.floor(totalUbbInt / 2);
+                        const b2           = totalUbbInt - b1;
+                        const totalPabrik2 = sel('power_pabrik2_totalizer');
+                        const totalPabrik3a= sel('power_pabrik3a_totalizer');
+                        const totalStgUbb  = sel('power_stg_ubb_totalizer');
 
-                    <div className="h-px bg-slate-700/80 w-full my-1" />
+                        // MW values
+                        const mwUbb = Number(pv['power_ubb']) || 0;
+                        const mwB1  = mwUbb / 2;
+                        const mwB2  = mwUbb / 2;
 
-                    {DIST_ITEMS.map(({ key, label }) => (
-                        <CalculatedField key={key} label={label.toUpperCase()} value={fmt(pv[`power_${key}`])} unit="MW" variant="transparent" />
-                    ))}
-                    <CalculatedField label="STG UBB" value={fmt(pv.gen_00)} unit="MW" variant="transparent" />
+                        return (
+                            <>
+                                <CalculatedField label="TOTAL INTERNAL UBB" value={totalUbbInt.toString()} unit="MWh" variant="primary" />
+                                <CalculatedField label="Bus Bar 1"           value={b1.toString()}          unit="MWh" variant="transparent" />
+                                <CalculatedField label="Bus Bar 2"           value={b2.toString()}          unit="MWh" variant="transparent" />
+                                <CalculatedField label="TOTAL PABRIK 2"      value={totalPabrik2.toFixed(2)} unit="MWh" variant="secondary"   />
+                                <CalculatedField label="TOTAL PABRIK 3A"     value={totalPabrik3a.toFixed(2)}unit="MWh" variant="secondary"   />
+                                <CalculatedField label="TOTAL STG UBB"       value={totalStgUbb.toFixed(2)}  unit="MWh" variant="secondary"   />
 
-                    <div className="h-px bg-slate-700/80 w-full my-1" />
+                                <div className="h-px bg-slate-700/80 w-full my-1" />
 
-                    <CalculatedField label="PLN (Σ P)" value={fmt(gv.gi_sum_p)}  unit="MW"   variant="transparent" />
-                    <CalculatedField label="PLN (Σ Q)" value={fmt(gv.gi_sum_q)}  unit="MVAR" variant="transparent" />
+                                <CalculatedField label="INTERNAL UBB" value={fmt(pv['power_ubb'])} unit="MW" variant="primary" />
+                                <CalculatedField label="Bus Bar 1"    value={mwB1.toFixed(2)}       unit="MW" variant="transparent" />
+                                <CalculatedField label="Bus Bar 2"    value={mwB2.toFixed(2)}       unit="MW" variant="transparent" />
+                            </>
+                        );
+                    })()}
                 </Card>
             </div>
         </>

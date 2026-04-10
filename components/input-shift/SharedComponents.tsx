@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name, negative, readOnly, textMode }: {
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name, negative, readOnly, textMode, thousands }: {
     label?: string;
     placeholder?: string;
     unit?: string;
@@ -13,10 +13,20 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     negative?: boolean;
     readOnly?: boolean;
     textMode?: boolean;
+    thousands?: boolean;
 }) => {
     // Local state for textMode to handle intermediate values like "-" or "1."
     const [rawText, setRawText] = useState('');
+    const [thuText, setThuText] = useState('');
     const isFocused = useRef(false);
+    const thuFocused = useRef(false);
+
+    const fmtThu = (v: number | string | null | undefined): string => {
+        if (v == null || v === '') return '';
+        const num = Number(v);
+        if (isNaN(num)) return '';
+        return num.toLocaleString('id-ID', { maximumFractionDigits: 3 });
+    };
 
     // Sync rawText when value changes from parent (e.g. loading saved data)
     useEffect(() => {
@@ -25,14 +35,79 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
         }
     }, [value, textMode]);
 
+    useEffect(() => {
+        if (thousands && !thuFocused.current) {
+            setThuText(value != null && value !== '' ? fmtThu(value) : '');
+        }
+    }, [value, thousands]);
+
+    const baseInputClass = `w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-lg font-mono font-bold tracking-wide transition-all text-left`;
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const inputs = Array.from(document.querySelectorAll('input:not([readonly]):not([disabled])'));
+            const idx = inputs.indexOf(e.target as Element);
+            if (idx >= 0 && idx < inputs.length - 1) {
+                (inputs[idx + 1] as HTMLElement).focus();
+            }
+        }
+    };
+
+    const labelEl = label && (
+        <label className={`font-medium text-white uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+            {label}
+        </label>
+    );
+
+    // ── Thousands separator mode ───────────────────────────────────────────────
+    if (thousands) {
+        return (
+            <div className="space-y-1.5 w-full">
+                {labelEl}
+                <div className="relative">
+                    <input
+                        className={baseInputClass}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder={placeholder}
+                        readOnly={readOnly}
+                        tabIndex={readOnly ? -1 : undefined}
+                        value={thuText}
+                        onFocus={() => {
+                            thuFocused.current = true;
+                            // Show raw number for easy editing
+                            const num = value != null && value !== '' ? Number(value) : null;
+                            setThuText(num != null && !isNaN(num) ? String(num) : '');
+                        }}
+                        onBlur={() => {
+                            thuFocused.current = false;
+                            setThuText(fmtThu(value));
+                        }}
+                        onChange={e => {
+                            if (readOnly) return;
+                            const raw = e.target.value;
+                            if (raw !== '' && !/^-?\d*\.?\d*$/.test(raw)) return;
+                            setThuText(raw);
+                            if (raw === '' || raw === '-' || raw.endsWith('.')) {
+                                if (raw === '') onChange?.(name || label || '', null);
+                                return;
+                            }
+                            const num = parseFloat(raw);
+                            if (!isNaN(num)) onChange?.(name || label || '', num);
+                        }}
+                        onKeyDown={handleKeyDown}
+                    />
+                    {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
+                </div>
+            </div>
+        );
+    }
+
     const displayValue = negative && value != null && value !== '' ? Math.abs(Number(value)) : value;
     return (
         <div className="space-y-1.5 w-full">
-            {label && (
-                <label className={`font-medium text-white uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
-                    {label}
-                </label>
-            )}
+            {labelEl}
             <div className="relative">
                 {negative && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">−</span>}
                 <input
@@ -47,7 +122,6 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                     onBlur={() => {
                         if (!textMode) return;
                         isFocused.current = false;
-                        // Clean up intermediate values on blur
                         if (rawText === '-' || rawText === '.' || rawText === '-.') {
                             setRawText('');
                             onChange?.(name || label || '', null);
@@ -57,11 +131,9 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                         if (readOnly) return;
                         if (textMode) {
                             const raw = e.target.value;
-                            // Only allow digits, minus, dot
                             if (raw !== '' && !/^-?\d*\.?\d*$/.test(raw)) return;
                             setRawText(raw);
                             if (raw === '' ) { onChange?.(name || label || '', null); return; }
-                            // Intermediate: don't propagate yet
                             if (raw === '-' || raw === '.' || raw === '-.' || raw.endsWith('.')) return;
                             const num = parseFloat(raw);
                             if (!isNaN(num)) onChange?.(name || label || '', num);
@@ -71,16 +143,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                         const val = negative && raw != null ? -Math.abs(raw) : raw;
                         onChange?.(name || label || '', val);
                     }}
-                    onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const inputs = Array.from(document.querySelectorAll('input:not([readonly]):not([disabled])'));
-                            const idx = inputs.indexOf(e.target as Element);
-                            if (idx >= 0 && idx < inputs.length - 1) {
-                                (inputs[idx + 1] as HTMLElement).focus();
-                            }
-                        }
-                    }}
+                    onKeyDown={handleKeyDown}
                 />
                 {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
             </div>

@@ -123,7 +123,7 @@ const COL = {
 
 const TOTAL_COLS = 127;
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function set(
     row: (string | number | null)[],
@@ -132,6 +132,27 @@ function set(
 ): void {
     if (val !== undefined && val !== null) row[idx] = val;
 }
+
+/** Selisih: today − yesterday. Falls back to today's value if no valid yesterday. */
+function sel(
+    today:     number | null | undefined,
+    yesterday: number | null | undefined,
+): number | null {
+    const t = today != null ? Number(today) : null;
+    const y = yesterday != null ? Number(yesterday) : null;
+    if (t === null) return null;
+    return y != null && y > 0 ? t - y : t;
+}
+
+type PrevDailyData = {
+    steam:     Partial<DailyReportSteamRow>       | null;
+    power:     Partial<DailyReportPowerRow>        | null;
+    coal:      Partial<DailyReportCoalRow>         | null;
+    turbine:   Partial<DailyReportTurbineMiscRow>  | null;
+    stock:     Partial<DailyReportStockTankRow>    | null;
+    transfer:  Partial<DailyReportCoalTransferRow> | null;
+    totalizer: Partial<DailyReportTotalizerRow>    | null;
+} | null;
 
 // ─── Main mapper ──────────────────────────────────────────────────────────────
 
@@ -144,25 +165,38 @@ export function dailyReportToRow(
     stock:    Partial<DailyReportStockTankRow>     | null,
     transfer: Partial<DailyReportCoalTransferRow>  | null,
     totalizer: Partial<DailyReportTotalizerRow>    | null,
+    prev: PrevDailyData = null,
 ): (string | number | null)[] {
     const row: (string | number | null)[] = new Array(TOTAL_COLS).fill(null);
 
     row[COL.no]      = null; // auto-set by upsertDailyRow
     row[COL.tanggal] = toIndonesianDate(isoDate);
 
-    // ── Steam 24h ─────────────────────────────────────────────────────────────
+    // ── Steam 24h (totalizer fields → selisih today−yesterday) ───────────────
     if (steam) {
-        set(row, COL.prod_boiler_a_24,  steam.prod_boiler_a_24);
-        set(row, COL.prod_boiler_b_24,  steam.prod_boiler_b_24);
-        set(row, COL.prod_total_24,     steam.prod_total_24);
-        set(row, COL.inlet_turbine_24,  steam.inlet_turbine_24);
-        set(row, COL.mps_i_24,          steam.mps_i_24);
-        set(row, COL.mps_3a_24,         steam.mps_3a_24);
-        set(row, COL.lps_ii_24,         steam.lps_ii_24);
-        set(row, COL.lps_3a_24,         steam.lps_3a_24);
-        set(row, COL.fully_condens_24,  steam.fully_condens_24);
-        set(row, COL.internal_ubb_24,   steam.internal_ubb_24);
+        const ps = prev?.steam;
+        set(row, COL.prod_boiler_a_24,  sel(steam.prod_boiler_a_24,  ps?.prod_boiler_a_24));
+        set(row, COL.prod_boiler_b_24,  sel(steam.prod_boiler_b_24,  ps?.prod_boiler_b_24));
+        const selA = sel(steam.prod_boiler_a_24, ps?.prod_boiler_a_24) ?? 0;
+        const selB = sel(steam.prod_boiler_b_24, ps?.prod_boiler_b_24) ?? 0;
+        set(row, COL.prod_total_24,     selA + selB || null);
 
+        const selInlet24   = sel(steam.inlet_turbine_24,  ps?.inlet_turbine_24);
+        const selMpsI24    = sel(steam.mps_i_24,          ps?.mps_i_24);
+        const selMps3a24   = sel(steam.mps_3a_24,         ps?.mps_3a_24);
+        const selCondens24 = sel(steam.fully_condens_24,  ps?.fully_condens_24);
+        set(row, COL.inlet_turbine_24,  selInlet24);
+        set(row, COL.mps_i_24,          selMpsI24);
+        set(row, COL.mps_3a_24,         selMps3a24);
+        set(row, COL.lps_ii_24,         steam.lps_ii_24);   // always 0
+        set(row, COL.lps_3a_24,         steam.lps_3a_24);   // always 0
+        set(row, COL.fully_condens_24,  selCondens24);
+        // internal_ubb = selisih inlet − selisih condensate
+        if (selInlet24 !== null || selCondens24 !== null) {
+            set(row, COL.internal_ubb_24, (selInlet24 ?? 0) - (selCondens24 ?? 0));
+        }
+
+        // 00.00 fields are direct readings (not totalizer)
         set(row, COL.prod_boiler_a_00,  steam.prod_boiler_a_00);
         set(row, COL.prod_boiler_b_00,  steam.prod_boiler_b_00);
         set(row, COL.prod_total_00,     steam.prod_total_00);
@@ -207,17 +241,26 @@ export function dailyReportToRow(
         set(row, COL.pie_gi_00,          power.pie_gi_00);
     }
 
-    // ── Batubara 24h & 00.00 ─────────────────────────────────────────────────
+    // ── Batubara 24h (totalizer → selisih) & 00.00 ───────────────────────────
     if (coal) {
-        set(row, COL.coal_a_24,          coal.coal_a_24);
-        set(row, COL.coal_b_24,          coal.coal_b_24);
-        set(row, COL.coal_c_24,          coal.coal_c_24);
-        set(row, COL.total_boiler_a_24,  coal.total_boiler_a_24);
-        set(row, COL.coal_d_24,          coal.coal_d_24);
-        set(row, COL.coal_e_24,          coal.coal_e_24);
-        set(row, COL.coal_f_24,          coal.coal_f_24);
-        set(row, COL.total_boiler_b_24,  coal.total_boiler_b_24);
-        set(row, COL.grand_total_24,     coal.grand_total_24);
+        const pc = prev?.coal;
+        const cA24 = sel(coal.coal_a_24, pc?.coal_a_24);
+        const cB24 = sel(coal.coal_b_24, pc?.coal_b_24);
+        const cC24 = sel(coal.coal_c_24, pc?.coal_c_24);
+        const cD24 = sel(coal.coal_d_24, pc?.coal_d_24);
+        const cE24 = sel(coal.coal_e_24, pc?.coal_e_24);
+        const cF24 = sel(coal.coal_f_24, pc?.coal_f_24);
+        const totA24 = (cA24 ?? 0) + (cB24 ?? 0) + (cC24 ?? 0);
+        const totB24 = (cD24 ?? 0) + (cE24 ?? 0) + (cF24 ?? 0);
+        set(row, COL.coal_a_24,          cA24);
+        set(row, COL.coal_b_24,          cB24);
+        set(row, COL.coal_c_24,          cC24);
+        set(row, COL.total_boiler_a_24,  totA24 || null);
+        set(row, COL.coal_d_24,          cD24);
+        set(row, COL.coal_e_24,          cE24);
+        set(row, COL.coal_f_24,          cF24);
+        set(row, COL.total_boiler_b_24,  totB24 || null);
+        set(row, COL.grand_total_24,     (totA24 + totB24) || null);
 
         set(row, COL.coal_a_00,          coal.coal_a_00);
         set(row, COL.coal_b_00,          coal.coal_b_00);

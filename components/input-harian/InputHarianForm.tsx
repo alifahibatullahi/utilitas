@@ -151,7 +151,35 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         setCoalTransfer({});
         setTotalizer({});
 
-        if (!report) return;
+        if (!report) {
+            // Pre-fill totalizer fields dari data kemarin (default = totalizer kemarin)
+            if (prevReport) {
+                const STEAM_TOT = ['prod_boiler_a_24','prod_boiler_b_24','inlet_turbine_24','mps_i_24','mps_3a_24','fully_condens_24'];
+                const COAL_TOT  = ['coal_a_24','coal_b_24','coal_c_24','coal_d_24','coal_e_24','coal_f_24'];
+                const POWER_TOT = ['power_ubb_totalizer','power_pabrik2_totalizer','power_pabrik3a_totalizer','power_revamping_totalizer','power_pie_totalizer','power_stg_ubb_totalizer'];
+                const TURB_TOT  = ['totalizer_gi','totalizer_export','totalizer_import'];
+                const TANK_TOT  = ['bfw_boiler_a','bfw_boiler_b'];
+
+                const pickKeys = (obj: Record<string, number | string | null>, keys: string[]): Record<string, number | null> => {
+                    const result: Record<string, number | null> = {};
+                    for (const k of keys) if (obj[k] != null) result[k] = obj[k] as number;
+                    return result;
+                };
+
+                const ps = prevReport.daily_report_steam?.[0];
+                const pp = prevReport.daily_report_power?.[0];
+                const pc = prevReport.daily_report_coal?.[0];
+                const pt = prevReport.daily_report_turbine_misc?.[0];
+                const pk = prevReport.daily_report_stock_tank?.[0];
+
+                if (ps) setSteam(pickKeys(extractFields(ps as unknown as Record<string, unknown>), STEAM_TOT));
+                if (pp) setPower(pickKeys(extractFields(pp as unknown as Record<string, unknown>), POWER_TOT));
+                if (pc) setCoal(pickKeys(extractFields(pc as unknown as Record<string, unknown>), COAL_TOT));
+                if (pt) setTurbineMisc(pickKeys(extractFields(pt as unknown as Record<string, unknown>), TURB_TOT));
+                if (pk) setStockTank(pickKeys(extractFields(pk as unknown as Record<string, unknown>), TANK_TOT));
+            }
+            return;
+        }
 
         const steamData = report.daily_report_steam?.[0];
         const powerData = report.daily_report_power?.[0];
@@ -168,7 +196,7 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         if (tankData) setStockTank(extractFields(tankData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (transferData) setCoalTransfer(extractFields(transferData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
-    }, [report]);
+    }, [report, prevReport]);
 
     // ─── Previous report data for selisih calculations ───
     const prevSteam = prevReport?.daily_report_steam?.[0]

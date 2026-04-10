@@ -56,6 +56,7 @@ export default function TabTurbin({
                                         unit={totUnit}
                                         color="cyan"
                                         size="small"
+                                        thousands
                                     />
                                     {prevSteam && <SelisihInfo prev={prev} current={n(steam[totKey])} />}
                                     {prevSteam && prev > 0 && (

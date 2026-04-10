@@ -59,7 +59,7 @@ export default function TabPower({
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <div>
-                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} />
+                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} thousands />
                                                     <SelisihInfo prev={prevTot} current={curTot} />
                                                 </div>
                                                 <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />
@@ -73,7 +73,7 @@ export default function TabPower({
                                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <div>
-                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} />
+                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} thousands />
                                             <SelisihInfo prev={Number(prevPD?.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} />
                                         </div>
                                         <div>

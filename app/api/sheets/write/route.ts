@@ -112,6 +112,12 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ warning: `Daily report untuk ${date} tidak ditemukan di database` });
             }
 
+            // Fetch previous day for selisih calculation
+            const prevDate = new Date(date);
+            prevDate.setDate(prevDate.getDate() - 1);
+            const prevDateStr = prevDate.toISOString().slice(0, 10);
+            const prevData = await fetchDailyReport(prevDateStr);
+
             const row = dailyReportToRow(
                 date,
                 dbData.steam,
@@ -121,6 +127,7 @@ export async function POST(req: NextRequest) {
                 dbData.stock,
                 dbData.transfer,
                 dbData.totalizer,
+                prevData,
             );
 
             const result = await upsertDailyRow(date, row);

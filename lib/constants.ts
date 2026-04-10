@@ -254,10 +254,10 @@ export const OPERATORS: Operator[] = [
 // OO = Sabtu-Minggu (pos 0-1), pola berulang 28 hari
 const SHIFT_PATTERN = 'OOMMOPPSSSOMMOPPPSSOMMMOPPSS';
 const GROUP_ANCHORS: Record<string, string> = {
-    A: '2026-03-07',  // Sabtu (pos 0)
-    B: '2026-02-28',
-    C: '2026-02-21',
-    D: '2026-02-14',
+    A: '2026-03-07',
+    B: '2026-03-14',
+    C: '2026-03-28',
+    D: '2026-03-21',
 };
 
 /**

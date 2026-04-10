@@ -55,6 +55,12 @@ const VALID_COLS: Record<string, string[]> = {
         'gen_00', 'dist_ib_00', 'dist_ii_00', 'dist_3a_00', 'dist_3b_00',
         'internal_bus1_00', 'internal_bus2_00', 'pja_00',
         'revamp_stg175_00', 'revamp_stg125_00', 'exsport_00', 'pie_pln_00', 'pie_import_00', 'pie_gi_00',
+        'power_ubb_totalizer', 'power_ubb',
+        'power_pabrik2_totalizer', 'power_pabrik2',
+        'power_pabrik3a_totalizer', 'power_pabrik3a',
+        'power_revamping_totalizer', 'power_revamping',
+        'power_pie_totalizer', 'power_pie',
+        'power_stg_ubb_totalizer',
     ],
     daily_report_coal: [
         'coal_a_24', 'coal_b_24', 'coal_c_24', 'total_boiler_a_24',
@@ -67,6 +73,8 @@ const VALID_COLS: Record<string, string[]> = {
         'axial_displacement', 'thrust_bearing_temp', 'steam_inlet_press', 'steam_inlet_temp',
         'consumption_rate_a', 'consumption_rate_b', 'consumption_rate_avg',
         'totalizer_gi', 'totalizer_export', 'totalizer_import',
+        'gen_ampere', 'gen_amp_react', 'gen_cos_phi', 'gen_tegangan', 'gen_frequensi',
+        'gi_sum_p', 'gi_sum_q', 'gi_cos_phi',
     ],
     daily_report_stock_tank: [
         'stock_batubara', 'rcw_level_00', 'demin_level_00',

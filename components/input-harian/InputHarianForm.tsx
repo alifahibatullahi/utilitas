@@ -16,8 +16,8 @@ type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'Handling' | 'Chemical' | 'St
 
 const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; colorClass: string }[] = [
     { id: 'Boiler', label: 'Boiler', icon: 'factory', colorClass: 'rose' },
-    { id: 'Turbin', label: 'Turbin', icon: 'mode_fan', colorClass: 'cyan' },
-    { id: 'Power', label: 'Power', icon: 'bolt', colorClass: 'amber' },
+    { id: 'Turbin', label: 'Turbin & Distribusi Steam', icon: 'mode_fan', colorClass: 'cyan' },
+    { id: 'Power', label: 'Generator', icon: 'bolt', colorClass: 'amber' },
     { id: 'Handling', label: 'Handling', icon: 'local_shipping', colorClass: 'orange' },
     { id: 'Chemical', label: 'Chemical', icon: 'science', colorClass: 'purple' },
     { id: 'Stock BB', label: 'Stock BB', icon: 'inventory_2', colorClass: 'indigo' },
@@ -453,7 +453,7 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                     )}
 
                     {/* Tab Content */}
-                    <div className="pb-6">
+                    <div className={`pb-6${activeTab === 'Power' ? ' flex flex-row gap-4 items-start' : ''}`}>
                         {(() => {
                             const tabProps: DailyTabProps = {
                                 steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,

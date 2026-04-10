@@ -288,6 +288,18 @@ export interface DailyReportPowerRow {
     pie_pln_00: number | null;
     pie_import_00: number | null;
     pie_gi_00: number | null;
+    // Distribusi power per factory (tab Generator harian)
+    power_ubb_totalizer: number | null;
+    power_ubb: number | null;
+    power_pabrik2_totalizer: number | null;
+    power_pabrik2: number | null;
+    power_pabrik3a_totalizer: number | null;
+    power_pabrik3a: number | null;
+    power_revamping_totalizer: number | null;
+    power_revamping: number | null;
+    power_pie_totalizer: number | null;
+    power_pie: number | null;
+    power_stg_ubb_totalizer: number | null;
     created_at: string;
 }
 
@@ -330,6 +342,16 @@ export interface DailyReportTurbineMiscRow {
     totalizer_gi: number | null;
     totalizer_export: number | null;
     totalizer_import: number | null;
+    // Generator electrical params (tab Generator harian)
+    gen_ampere: number | null;
+    gen_amp_react: number | null;
+    gen_cos_phi: number | null;
+    gen_tegangan: number | null;
+    gen_frequensi: number | null;
+    // Gardu Induk
+    gi_sum_p: number | null;
+    gi_sum_q: number | null;
+    gi_cos_phi: number | null;
     created_at: string;
 }
 

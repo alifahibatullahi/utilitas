@@ -9,9 +9,55 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { upsertShiftRow, upsertDailyRow } from '@/lib/google-sheets';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
+import { dailyReportToRow } from '@/lib/daily-sheets-mapper';
 import type { ShiftTab } from '@/lib/google-sheets';
+
+// ─── Supabase client (service role / anon fallback) ───────────────────────────
+
+function getSupabase() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) throw new Error('Supabase env vars missing');
+    return createClient(url, key);
+}
+
+// ─── Fetch all daily report child tables for a given date ─────────────────────
+
+async function fetchDailyReport(isoDate: string) {
+    const supabase = getSupabase();
+
+    const { data: report } = await supabase
+        .from('daily_reports')
+        .select('id')
+        .eq('date', isoDate)
+        .maybeSingle();
+
+    if (!report) return null;
+    const id = (report as { id: string }).id;
+
+    const [steam, power, coal, turbine, stock, transfer, totalizer] = await Promise.all([
+        supabase.from('daily_report_steam').select('*').eq('daily_report_id', id).maybeSingle(),
+        supabase.from('daily_report_power').select('*').eq('daily_report_id', id).maybeSingle(),
+        supabase.from('daily_report_coal').select('*').eq('daily_report_id', id).maybeSingle(),
+        supabase.from('daily_report_turbine_misc').select('*').eq('daily_report_id', id).maybeSingle(),
+        supabase.from('daily_report_stock_tank').select('*').eq('daily_report_id', id).maybeSingle(),
+        supabase.from('daily_report_coal_transfer').select('*').eq('daily_report_id', id).maybeSingle(),
+        supabase.from('daily_report_totalizer').select('*').eq('daily_report_id', id).maybeSingle(),
+    ]);
+
+    return {
+        steam:     steam.data     ?? null,
+        power:     power.data     ?? null,
+        coal:      coal.data      ?? null,
+        turbine:   turbine.data   ?? null,
+        stock:     stock.data     ?? null,
+        transfer:  transfer.data  ?? null,
+        totalizer: totalizer.data ?? null,
+    };
+}
 
 export async function POST(req: NextRequest) {
     let body: unknown;
@@ -61,12 +107,21 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-            // Daily report: for now just write date + notes as a placeholder row.
-            // Full column mapping for LHUBB can be added once the tab structure is known.
-            const row: (string | number | null)[] = new Array(10).fill(null);
-            row[0] = null; // No — set by upsertDailyRow
-            row[1] = data.tanggal as string ?? date;
-            // Additional columns can be mapped here once LHUBB structure is confirmed.
+            const dbData = await fetchDailyReport(date);
+            if (!dbData) {
+                return NextResponse.json({ warning: `Daily report untuk ${date} tidak ditemukan di database` });
+            }
+
+            const row = dailyReportToRow(
+                date,
+                dbData.steam,
+                dbData.power,
+                dbData.coal,
+                dbData.turbine,
+                dbData.stock,
+                dbData.transfer,
+                dbData.totalizer,
+            );
 
             const result = await upsertDailyRow(date, row);
             return NextResponse.json(result);

@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
+import { getGroupForShift } from '@/lib/constants';
 
 type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker' | 'Lab';
 
@@ -143,6 +144,9 @@ export default function InputShiftPage() {
     const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const { operator, operators } = useOperator();
+
+    // Auto-kalkulasi grup dari pola jadwal shift
+    const currentGroup = getGroupForShift(selectedDate, shiftMap[selectedShift]);
 
     // Supervisor: semua yg jabatan Supervisor atau Foreman
     const supervisorOptions = operators.filter(op =>
@@ -397,9 +401,9 @@ export default function InputShiftPage() {
             const totalRitB = allAsh.filter(e => e.silo === 'B').reduce((s, e) => s + (e.ritase ?? 0), 0);
 
             const result = await submitReport({
-                group_name: operator?.group || 'A',
-                supervisor: operator?.name || 'Operator',
-                created_by: '',
+                group_name: currentGroup || operator?.group || 'A',
+                supervisor: supervisor || operator?.name || 'Operator',
+                created_by: operator?.supabaseId || '',
                 boilerA: { ...boilerA, batubara_ton: batubaraA },
                 boilerB: { ...boilerB, batubara_ton: batubaraB },
                 turbin,
@@ -408,6 +412,14 @@ export default function InputShiftPage() {
                 powerDist,
                 espHandling: { hopper: 'A', conveyor: 'AB', ...espHandling, unloading_a: totalRitA, unloading_b: totalRitB },
                 tankyard,
+                personnel: {
+                    turbin_grup: currentGroup || operator?.group || null,
+                    turbin_karu: foremanTurbin || null,
+                    turbin_kasi: supervisor || null,
+                    boiler_grup: currentGroup || operator?.group || null,
+                    boiler_karu: foremanBoiler || null,
+                    boiler_kasi: supervisor || null,
+                },
                 coalBunker,
                 waterQuality: { ...waterQuality, ...chemicalDosing },
                 prevBoilerA: { totalizer_steam: prevBoilerA.totalizer_steam ?? null },
@@ -607,6 +619,15 @@ export default function InputShiftPage() {
                         )}
                         {inputMode === 'shift' && (
                             <>
+                                <span className={`px-3 py-1 rounded-lg text-sm font-black border uppercase tracking-widest ${
+                                    currentGroup === 'A' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
+                                    currentGroup === 'B' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                                    currentGroup === 'C' ? 'bg-violet-500/20 text-violet-300 border-violet-500/30' :
+                                    currentGroup === 'D' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                    'bg-slate-700/30 text-slate-400 border-slate-600/30'
+                                }`}>
+                                    {currentGroup ? `Group ${currentGroup}` : 'Off'}
+                                </span>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
                                 <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
                                     <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">

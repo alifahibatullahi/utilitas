@@ -248,6 +248,42 @@ export const OPERATORS: Operator[] = [
     { id: 51, name: 'Admin Sistem', role: 'admin' },
 ];
 
+// ─── Shift Group Rotation ───
+// Pola 28 hari: M=Malam, P=Pagi, S=Sore, O=Off
+// Group A pos 0 = 9 Maret 2026; tiap grup offset 7 hari
+const SHIFT_PATTERN = 'MMOPPSSSOMMOPPPSSOMMMOPPSSOO';
+const GROUP_ANCHORS: Record<string, string> = {
+    A: '2026-03-09',
+    B: '2026-03-02',
+    C: '2026-02-23',
+    D: '2026-02-16',
+};
+
+/**
+ * Returns the shift type for a group on a given date.
+ * Returns 'M' | 'P' | 'S' | 'O'
+ */
+export function getGroupShiftOnDate(group: 'A' | 'B' | 'C' | 'D', dateStr: string): 'M' | 'P' | 'S' | 'O' {
+    const anchor = new Date(GROUP_ANCHORS[group] + 'T00:00:00');
+    const target = new Date(dateStr + 'T00:00:00');
+    const daysDiff = Math.round((target.getTime() - anchor.getTime()) / 86400000);
+    const pos = ((daysDiff % 28) + 28) % 28;
+    return SHIFT_PATTERN[pos] as 'M' | 'P' | 'S' | 'O';
+}
+
+/**
+ * Returns which group is assigned to a shift type on a given date.
+ * shiftType: 'malam' | 'pagi' | 'sore'
+ */
+export function getGroupForShift(dateStr: string, shiftType: 'malam' | 'pagi' | 'sore'): string {
+    const shiftLetter: Record<string, string> = { malam: 'M', pagi: 'P', sore: 'S' };
+    const letter = shiftLetter[shiftType];
+    for (const group of ['A', 'B', 'C', 'D'] as const) {
+        if (getGroupShiftOnDate(group, dateStr) === letter) return group;
+    }
+    return '';
+}
+
 // ─── Shift Configuration ───
 // Shifts: 07:00-15:00, 15:00-23:00, 23:00-07:00
 export const SHIFTS = {

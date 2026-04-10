@@ -39,9 +39,9 @@ const COL = {
     silo_a: 48, silo_b: 49, unloading_a: 50, unloading_b: 51,
     // Handling 52-56
     loading: 52, hopper: 53, conveyor: 54, pf1: 55, pf2: 56,
-    // Tankyard 57-59
+    // Tankyard 57-59: BF=57(rcw), BG=58(demin), BH=59(solar)
     tk_rcw: 57, tk_demin: 58, tk_solar_ab: 59,
-    // Personnel turbin 60-62
+    // Personnel turbin: BI=60(grup), BJ=61(foreman/karu), BK=62(supervisor/kasi)
     turbin_grup: 60, turbin_karu: 61, turbin_kasi: 62,
     // Boiler A/B 63-87
     boiler_press_steam_a: 63, boiler_press_steam_b: 64,
@@ -72,7 +72,9 @@ const COL = {
     product_steam_ph: 122, product_steam_conduct: 123, product_steam_th: 124,
     product_steam_sio2: 125, product_steam_nh4: 126,
     // Personnel boiler 127-129
-    // Cols 127-135 (DX-EF): Mesh-200/Out Coal Mill & Boiler personnel — kosongkan
+    // Cols 127-132 (DX-EC): Mesh-200/Out Coal Mill & Boiler personnel — kosongkan
+    // Boiler personnel: ED=133(grup), EE=134(foreman/karu)
+    boiler_grup: 133, boiler_karu: 134,
     // Pressure Steam Drum & BFW: EJ-EM (139-142)
     steam_drum_press_a: 139, steam_drum_press_b: 140,
     bfw_press_a: 141, bfw_press_b: 142,
@@ -226,6 +228,10 @@ export function shiftReportToRow(
     row[COL.turbin_grup] = s(p.turbin_grup);
     row[COL.turbin_karu] = s(p.turbin_karu);
     row[COL.turbin_kasi] = s(p.turbin_kasi);
+
+    // Personnel boiler: ED=133(grup), EE=134(foreman boiler)
+    row[COL.boiler_grup] = s(p.turbin_grup); // same group as turbin
+    row[COL.boiler_karu] = s(p.boiler_karu);
 
     // Boiler A
     const bA = data.boilerA ?? {};

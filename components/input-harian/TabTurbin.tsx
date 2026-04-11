@@ -33,7 +33,7 @@ export default function TabTurbin({
     return (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
 
-            {/* ═══ Distribusi Steam ═══ */}
+            {/* ═══ Distribusi Steam — kiri ═══ */}
             <Card title="Distribusi Steam" icon="fork_right" color="cyan">
                 {/* Header row */}
                 <div className="grid grid-cols-2 gap-3 mb-1 px-1">
@@ -75,25 +75,25 @@ export default function TabTurbin({
                 })}
             </Card>
 
-            {/* ═══ Calculated Steam + Turbine Generator ═══ */}
-            <div className="flex flex-col gap-6">
-                <Card title="Calculated Steam" icon="calculate" color="purple">
-                    <CalculatedField label="Total Inlet Turbin"  value={fmt(totalInlet)}     unit="Ton" variant="primary"     />
-                    <CalculatedField label="Total Pabrik 1"      value={fmt(totalPabrik1)}   unit="Ton" variant="secondary"   />
-                    <CalculatedField label="Total Pabrik 3"      value={fmt(totalPabrik3)}   unit="Ton" variant="secondary"   />
-                    <CalculatedField label="Total Condensate"    value={fmt(totalCondensat)} unit="Ton" variant="transparent" />
-                </Card>
+            {/* ═══ Turbine Generator — kanan (mobile: row 2) ═══ */}
+            <Card title="Turbine Generator" icon="mode_fan" color="sky">
+                <div className="grid grid-cols-2 gap-4">
+                    <InputField label="Steam Inlet Press"   name="steam_inlet_press"   value={turbineMisc.steam_inlet_press}   onChange={onTurbineMiscChange} unit="MPa" color="sky" />
+                    <InputField label="Steam Inlet Temp"    name="steam_inlet_temp"    value={turbineMisc.steam_inlet_temp}    onChange={onTurbineMiscChange} unit="°C"  color="sky" />
+                    <InputField label="Thrust Bearing Temp" name="thrust_bearing_temp" value={turbineMisc.thrust_bearing_temp} onChange={onTurbineMiscChange} unit="°C"  color="sky" />
+                    <InputField label="Axial Displacement"  name="axial_displacement"  value={turbineMisc.axial_displacement}  onChange={onTurbineMiscChange} unit="mm"  color="sky" textMode />
+                </div>
+            </Card>
 
-                {/* ═══ Turbine Generator ═══ */}
-                <Card title="Turbine Generator" icon="mode_fan" color="sky">
-                    <div className="grid grid-cols-2 gap-4">
-                        <InputField label="Steam Inlet Press"    name="steam_inlet_press"    value={turbineMisc.steam_inlet_press}    onChange={onTurbineMiscChange} unit="MPa" color="sky" />
-                        <InputField label="Steam Inlet Temp"     name="steam_inlet_temp"     value={turbineMisc.steam_inlet_temp}     onChange={onTurbineMiscChange} unit="°C"  color="sky" />
-                        <InputField label="Thrust Bearing Temp"  name="thrust_bearing_temp"  value={turbineMisc.thrust_bearing_temp}  onChange={onTurbineMiscChange} unit="°C"  color="sky" />
-                        <InputField label="Axial Displacement"   name="axial_displacement"   value={turbineMisc.axial_displacement}   onChange={onTurbineMiscChange} unit="mm"  color="sky" textMode />
-                    </div>
-                </Card>
-            </div>
+            {/* ═══ Calculated Steam — bawah (mobile: row 3, desktop: row 2 col 1 via col-span-2) ═══ */}
+            <Card title="Calculated Steam" icon="calculate" color="purple" className="lg:col-span-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <CalculatedField label="Total Inlet Turbin" value={fmt(totalInlet)}     unit="Ton" variant="primary"     />
+                    <CalculatedField label="Total Pabrik 1"     value={fmt(totalPabrik1)}   unit="Ton" variant="secondary"   />
+                    <CalculatedField label="Total Pabrik 3"     value={fmt(totalPabrik3)}   unit="Ton" variant="secondary"   />
+                    <CalculatedField label="Total Condensate"   value={fmt(totalCondensat)} unit="Ton" variant="transparent" />
+                </div>
+            </Card>
         </div>
     );
 }

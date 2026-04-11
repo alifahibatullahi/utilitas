@@ -620,7 +620,12 @@ export default function InputShiftPage() {
                         {/* Group + Supervisor — tampil untuk shift maupun harian */}
                         {(() => {
                             const group = inputMode === 'harian'
-                                ? getGroupForShift(selectedDate, 'malam')
+                                ? (() => {
+                                    const d = new Date(selectedDate);
+                                    d.setDate(d.getDate() - 1);
+                                    const prev = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                                    return getGroupForShift(prev, 'malam');
+                                })()
                                 : currentGroup;
                             return (
                                 <>
@@ -853,7 +858,12 @@ export default function InputShiftPage() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} />
+                <InputHarianForm date={selectedDate} operator={operator} groupName={(() => {
+                    const d = new Date(selectedDate);
+                    d.setDate(d.getDate() - 1);
+                    const prev = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    return getGroupForShift(prev, 'malam');
+                })()} supervisorName={supervisor} />
             )}
         </div>
     );

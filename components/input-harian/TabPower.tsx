@@ -24,8 +24,8 @@ export default function TabPower({
     const fmt = (v: number | string | null | undefined) => (Number(v) || 0).toFixed(2);
 
     return (
-        <>
-            <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+        <div className="flex-1 flex flex-col xl:flex-row gap-6 w-full overflow-y-auto">
+            <div className="flex-1 min-w-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Generator Output" icon="flash_on" color="blue">
@@ -89,7 +89,7 @@ export default function TabPower({
                 </div>
             </div>
 
-            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 flex flex-col">
                 <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
                     {/* ── MWh totals (selisih totalizer) ── */}
                     {(() => {
@@ -130,6 +130,6 @@ export default function TabPower({
                     })()}
                 </Card>
             </div>
-        </>
+        </div>
     );
 }

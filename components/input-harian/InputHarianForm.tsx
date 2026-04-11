@@ -37,9 +37,11 @@ const TAB_STYLES: Record<string, { active: string; inactive: string; icon: strin
 interface InputHarianFormProps {
     date: string;
     operator: Operator | null;
+    groupName?: string | null;
+    supervisorName?: string;
 }
 
-export default function InputHarianForm({ date, operator }: InputHarianFormProps) {
+export default function InputHarianForm({ date, operator, groupName, supervisorName }: InputHarianFormProps) {
     const [activeTab, setActiveTab] = useState<HarianTabId>('Boiler');
     const [submitting, setSubmitting] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -352,7 +354,11 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 turbineMisc: turbWithCalcs,
                 stockTank: tankWithCalcs,
                 coalTransfer: calcTransfer,
-                totalizer,
+                totalizer: {
+                    ...totalizer,
+                    group_name: groupName || totalizer.group_name || null,
+                    kasi_name: supervisorName || totalizer.kasi_name || null,
+                },
             });
 
             if (result?.error) {
@@ -380,8 +386,8 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 return hasVal(steam, ['inlet_turbine_24', 'fully_condens_24']);
             case 'Power':
                 return hasVal(power, ['gen_00']) || hasVal(turbineMisc, ['gen_ampere']);
-            case 'Handling': 
-                return hasVal(coalTransfer, ['darat_24_ton', 'laut_24_ton']);
+            case 'Handling':
+                return hasVal(stockTank, ['rcw_level_00', 'demin_level_00', 'solar_tank_a', 'solar_boiler']);
             case 'Chemical': 
                 return hasVal(stockTank, ['chemical_phosphat', 'chemical_amin', 'chemical_hydrasin']);
             case 'Stock BB': 

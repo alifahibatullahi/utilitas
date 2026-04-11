@@ -203,15 +203,15 @@ function set(
     if (val !== undefined && val !== null) row[idx] = val;
 }
 
-/** Selisih: today − yesterday. Returns 0 if no valid yesterday. */
+/** Selisih: today − yesterday. Returns null if no valid yesterday data. */
 function sel(
     today:     number | null | undefined,
     yesterday: number | null | undefined,
 ): number | null {
     const t = today != null ? Number(today) : null;
     const y = yesterday != null ? Number(yesterday) : null;
-    if (t === null) return null;
-    return y != null && y > 0 ? t - y : t;
+    if (t === null || y === null || y === 0) return null;
+    return t - y;
 }
 
 type PrevDailyData = {

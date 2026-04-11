@@ -129,12 +129,12 @@ export interface PrevBoilerTotalizer {
     totalizer_steam?: number | null;
 }
 
-/** Hitung selisih totalizer. Jika prev null/0, pakai nilai current. Jika rollover (negatif), pakai current. */
+/** Hitung selisih totalizer. Jika prev null/0, kembalikan null (tidak ditulis ke sheet). */
 function diffTotalizer(current: number | null | undefined, prev: number | null | undefined): number | null {
     if (current == null) return null;
-    if (prev == null || prev === 0) return current;
+    if (prev == null || prev === 0) return null;
     const d = current - prev;
-    return d >= 0 ? d : current;
+    return d >= 0 ? d : null;
 }
 
 /** Convert Supabase shift report data → Sheets row array */

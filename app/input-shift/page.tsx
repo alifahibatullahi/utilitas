@@ -617,46 +617,58 @@ export default function InputShiftPage() {
                                 REPORT HARIAN
                             </span>
                         )}
-                        {inputMode === 'shift' && (
-                            <>
-                                <span className={`px-3 py-1 rounded-lg text-sm font-black border uppercase tracking-widest ${
-                                    currentGroup === 'A' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
-                                    currentGroup === 'B' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                                    currentGroup === 'C' ? 'bg-violet-500/20 text-violet-300 border-violet-500/30' :
-                                    currentGroup === 'D' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                                    'bg-slate-700/30 text-slate-400 border-slate-600/30'
-                                }`}>
-                                    {currentGroup ? `Group ${currentGroup}` : 'Off'}
-                                </span>
-                                <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
-                                <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                    <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
-                                        <option value="" className="bg-[#101822]">Pilih...</option>
-                                        {supervisorOptions.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
-                                        ))}
-                                    </select>
-                                    <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
-                                </div>
-                            </>
-                        )}
+                        {/* Group + Supervisor — tampil untuk shift maupun harian */}
+                        {(() => {
+                            const group = inputMode === 'harian'
+                                ? getGroupForShift(selectedDate, 'malam')
+                                : currentGroup;
+                            return (
+                                <>
+                                    <span className={`px-3 py-1 rounded-lg text-sm font-black border uppercase tracking-widest ${
+                                        group === 'A' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
+                                        group === 'B' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                                        group === 'C' ? 'bg-violet-500/20 text-violet-300 border-violet-500/30' :
+                                        group === 'D' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                        'bg-slate-700/30 text-slate-400 border-slate-600/30'
+                                    }`}>
+                                        {group ? `Group ${group}` : 'Off'}
+                                    </span>
+                                    <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
+                                    <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
+                                        <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
+                                            <option value="" className="bg-[#101822]">Pilih...</option>
+                                            {supervisorOptions.map(op => (
+                                                <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
+                                            ))}
+                                        </select>
+                                        <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                     {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin */}
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
-                        <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 sm:px-3 py-1.5 rounded-lg border border-slate-700/50">
-                            <span className="material-symbols-outlined text-[16px] text-blue-400">calendar_month</span>
-                            <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={e => setSelectedDate(e.target.value)}
-                                className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
-                            />
-                        </div>
+                        {(() => {
+                            const today = mounted ? `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}` : '';
+                            const isToday = selectedDate === today;
+                            return (
+                                <div className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border ${isToday ? 'bg-blue-500/15 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-[#0f1721] border-slate-700/50'}`}>
+                                    <span className={`material-symbols-outlined text-[16px] ${isToday ? 'text-blue-400' : 'text-blue-400'}`}>calendar_month</span>
+                                    <input
+                                        type="date"
+                                        value={selectedDate}
+                                        onChange={e => setSelectedDate(e.target.value)}
+                                        className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
+                                    />
+                                    {isToday && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider ml-1">Hari ini</span>}
+                                </div>
+                            );
+                        })()}
                         <span className="text-slate-600 hidden sm:inline">|</span>
 
                         {inputMode === 'shift' && (
                             <>
-                                <span className="text-slate-600 hidden lg:inline">|</span>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Foreman Boiler</span>
                                 <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
                                     <select value={foremanBoiler} onChange={e => setForemanBoiler(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none">

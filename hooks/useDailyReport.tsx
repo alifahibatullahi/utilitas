@@ -80,7 +80,7 @@ const VALID_COLS: Record<string, string[]> = {
         'stock_batubara', 'rcw_level_00', 'demin_level_00',
         'solar_tank_a', 'solar_tank_b', 'solar_tank_total', 'kedatangan_solar',
         'solar_boiler', 'solar_bengkel', 'solar_3b',
-        'bfw_boiler_a', 'bfw_boiler_b', 'bfw_total',
+        'bfw_boiler_a', 'bfw_boiler_b', 'flow_bfw_a', 'flow_bfw_b', 'bfw_total',
         'chemical_phosphat', 'chemical_amin', 'chemical_hydrasin',
         'silo_a_pct', 'silo_b_pct', 'unloading_fly_ash_a', 'unloading_fly_ash_b',
         'total_pf1', 'total_pf2',

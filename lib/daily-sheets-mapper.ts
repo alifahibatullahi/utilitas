@@ -361,7 +361,7 @@ export function dailyReportToRow(
         const ps2 = prev?.stock;
         set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO
         set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b)); // CP
-        set(row, COL.bfw_total,    stock.bfw_total);                             // CQ
+        // CQ(94) = formula (bfw_total) — skip
         set(row, COL.chemical_phosphat,   stock.chemical_phosphat);   // CR
         set(row, COL.chemical_amin,       stock.chemical_amin);       // CS
         set(row, COL.chemical_hydrasin,   stock.chemical_hydrasin);   // CT

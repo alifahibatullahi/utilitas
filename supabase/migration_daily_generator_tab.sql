@@ -27,3 +27,8 @@ ALTER TABLE daily_report_power
     ADD COLUMN IF NOT EXISTS power_pie_totalizer      NUMERIC,
     ADD COLUMN IF NOT EXISTS power_pie                NUMERIC,
     ADD COLUMN IF NOT EXISTS power_stg_ubb_totalizer  NUMERIC;
+
+-- ─── daily_report_stock_tank: tambah field flow BFW ──────────────────────────
+ALTER TABLE daily_report_stock_tank
+    ADD COLUMN IF NOT EXISTS flow_bfw_a NUMERIC,
+    ADD COLUMN IF NOT EXISTS flow_bfw_b NUMERIC;

@@ -174,8 +174,8 @@ export function useDailyReport(date: string) {
                 setReport(data as unknown as DailyReportData);
             }
 
-            // Fetch previous date report for delta calculations
-            const prevDate = new Date(date);
+            // Fetch previous date report for delta calculations (parse as WIB to avoid UTC day shift)
+            const prevDate = new Date(date + 'T00:00:00+07:00');
             prevDate.setDate(prevDate.getDate() - 1);
             const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
 

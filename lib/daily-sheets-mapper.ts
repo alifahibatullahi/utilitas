@@ -276,15 +276,16 @@ export function dailyReportToRow(
         const pp = prev?.power;
 
         // MWh totals (selisih totalizer)
-        const ubbMwh = sel(power.power_stg_ubb_totalizer, pp?.power_stg_ubb_totalizer) ?? 0;
-        const ubbInt = Math.round(ubbMwh);
-        const bb1Mwh = Math.floor(ubbInt / 2);
-        const bb2Mwh = ubbInt - bb1Mwh;
+        const internalUbbMwh = sel(power.power_ubb_totalizer, pp?.power_ubb_totalizer) ?? 0;
+        const internalUbbInt = Math.round(internalUbbMwh);
+        const bb1Mwh = Math.floor(internalUbbInt / 2);
+        const bb2Mwh = internalUbbInt - bb1Mwh;
 
-        set(row, COL.power_stg_ubb_mwh,  ubbMwh || null);                                          // Y
+        const stgUbbMwh = sel(power.power_stg_ubb_totalizer, pp?.power_stg_ubb_totalizer) ?? 0;
+        set(row, COL.power_stg_ubb_mwh,  stgUbbMwh || null);                                       // Y
         set(row, COL.power_pabrik2_mwh,  sel(power.power_pabrik2_totalizer,  pp?.power_pabrik2_totalizer));  // AA
         set(row, COL.power_pabrik3a_mwh, sel(power.power_pabrik3a_totalizer, pp?.power_pabrik3a_totalizer)); // AB
-        if (ubbInt > 0) {
+        if (internalUbbInt > 0) {
             row[COL.power_bb1_mwh] = bb1Mwh; // AD
             row[COL.power_bb2_mwh] = bb2Mwh; // AE
         }

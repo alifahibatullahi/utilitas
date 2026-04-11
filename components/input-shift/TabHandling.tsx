@@ -40,7 +40,8 @@ export default function TabHandling({
     onDeleteSavedSolar, onDeleteSavedOutSolar
 }: TabHandlingProps) {
     const [currentEntry, setCurrentEntry] = React.useState<SolarEntry>({ tanggal: '', jumlah: null, perusahaan: '' });
-    const [currentOutEntry, setCurrentOutEntry] = React.useState<OutSolarEntry>({ tanggal: '', jumlah: null, tujuan: '' });
+    const [currentOutEntry, setCurrentOutEntry] = React.useState<OutSolarEntry>({ tanggal: '', jumlah: null, tujuan: 'Bengkel' });
+    const [tujuanMode, setTujuanMode] = React.useState<'Bengkel' | 'SA/SU 3B' | 'Lainnya'>('Bengkel');
 
     const addEntry = () => {
         if (!currentEntry.tanggal || !currentEntry.jumlah || !currentEntry.perusahaan) {
@@ -62,7 +63,8 @@ export default function TabHandling({
             return;
         }
         onOutSolarEntriesChange?.([...outSolarEntries, currentOutEntry]);
-        setCurrentOutEntry({ tanggal: '', jumlah: null, tujuan: '' });
+        setCurrentOutEntry({ tanggal: '', jumlah: null, tujuan: 'Bengkel' });
+        setTujuanMode('Bengkel');
     };
 
     const removeOutEntry = (idx: number) => {
@@ -178,9 +180,25 @@ export default function TabHandling({
                                 onChange={(_, v) => setCurrentOutEntry({...currentOutEntry, jumlah: typeof v === 'string' ? (v === '' ? null : parseFloat(v) ?? null) : v as number | null})} />
                             <div className="space-y-1.5 w-full">
                                 <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tujuan Permintaan</label>
-                                <input type="text" value={currentOutEntry.tujuan} onChange={e => setCurrentOutEntry({...currentOutEntry, tujuan: e.target.value})}
-                                    placeholder="Cth: Boiler A, Alat Berat..."
-                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm transition-all" />
+                                <select
+                                    value={tujuanMode}
+                                    onChange={e => {
+                                        const mode = e.target.value as typeof tujuanMode;
+                                        setTujuanMode(mode);
+                                        if (mode !== 'Lainnya') setCurrentOutEntry({ ...currentOutEntry, tujuan: mode });
+                                        else setCurrentOutEntry({ ...currentOutEntry, tujuan: '' });
+                                    }}
+                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm transition-all"
+                                >
+                                    <option value="Bengkel">Bengkel</option>
+                                    <option value="SA/SU 3B">SA/SU 3B</option>
+                                    <option value="Lainnya">Lainnya…</option>
+                                </select>
+                                {tujuanMode === 'Lainnya' && (
+                                    <input type="text" value={currentOutEntry.tujuan} onChange={e => setCurrentOutEntry({ ...currentOutEntry, tujuan: e.target.value })}
+                                        placeholder="Tulis tujuan permintaan..."
+                                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm transition-all mt-2" />
+                                )}
                             </div>
                             <button type="button" onClick={addOutEntry}
                                 className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-rose-500/50 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-bold transition-colors mt-2">

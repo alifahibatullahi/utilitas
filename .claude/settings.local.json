@@ -27,7 +27,9 @@
       "Bash(grep -v \"^$\")",
       "Bash(node -e \"require\\('typescript'\\)\")",
       "Bash(node --input-type=module)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(cmd /c \"cd /d \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\\" && npx tsc --noEmit 2>&1\")",
+      "Bash(cmd /c \"cd /d \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\\" && npx tsc --noEmit\")"
     ]
   }
 }

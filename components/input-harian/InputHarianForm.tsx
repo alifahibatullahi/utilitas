@@ -55,7 +55,8 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
     const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
 
-    const [solarUnloadings, setSolarUnloadings] = useState<{ date: string; liters: number; supplier: string }[]>([]);
+    const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string }[]>([]);
+    const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
     const [ashUnloadings, setAshUnloadings] = useState<{ date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
 
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
@@ -66,15 +67,33 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
             
             supabase
                 .from('solar_unloadings')
-                .select('date, liters, supplier')
+                .select('id, date, liters, supplier')
                 .eq('date', date)
                 .order('created_at', { ascending: false })
                 .then(({ data }) => {
                     setSolarUnloadings(
                         (data ?? []).map(r => ({
+                            id: r.id as string,
                             date: r.date as string,
                             liters: Number(r.liters) || 0,
                             supplier: (r.supplier as string) || '',
+                        }))
+                    );
+                });
+
+            supabase
+                .from('solar_usages')
+                .select('id, date, shift, liters, tujuan')
+                .eq('date', date)
+                .order('created_at', { ascending: false })
+                .then(({ data }) => {
+                    setSolarUsages(
+                        (data ?? []).map(r => ({
+                            id: r.id as string,
+                            date: r.date as string,
+                            shift: (r.shift as string) || '',
+                            liters: Number(r.liters) || 0,
+                            tujuan: (r.tujuan as string) || '',
                         }))
                     );
                 });
@@ -97,6 +116,23 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                     );
                 });
         }, [date]);
+
+    // ─── Solar delete handlers ───
+    const handleDeleteSolarUnloading = async (id: string) => {
+        if (!confirm('Hapus data kedatangan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setSolarUnloadings(prev => prev.filter(e => e.id !== id));
+    };
+
+    const handleDeleteSolarUsage = async (id: string) => {
+        if (!confirm('Hapus data permintaan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setSolarUsages(prev => prev.filter(e => e.id !== id));
+    };
 
     // ─── Helpers ───
     const extractFields = (obj: Record<string, unknown> | undefined, skipKeys: string[] = []) => {
@@ -495,6 +531,9 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                                 onTotalizerChange: makeMixedHandler(setTotalizer),
                                 crA, crB,
                                 solarUnloadings,
+                                solarUsages,
+                                onDeleteSolarUnloading: handleDeleteSolarUnloading,
+                                onDeleteSolarUsage: handleDeleteSolarUsage,
                                 ashUnloadings,
                             };
                             return (

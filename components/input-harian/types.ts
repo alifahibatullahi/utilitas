@@ -29,7 +29,10 @@ export interface DailyTabProps {
     crA: number;
     crB: number;
 
-    // Solar and Ash unloadings from shift reports (read-only in daily)
-    solarUnloadings?: { date: string; liters: number; supplier: string }[];
+    // Solar and Ash unloadings from shift reports (deletable in daily)
+    solarUnloadings?: { id?: string; date: string; liters: number; supplier: string }[];
+    solarUsages?: { id?: string; date: string; shift: string; liters: number; tujuan: string }[];
     ashUnloadings?: { date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[];
+    onDeleteSolarUnloading?: (id: string) => void;
+    onDeleteSolarUsage?: (id: string) => void;
 }

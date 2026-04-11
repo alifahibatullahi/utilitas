@@ -360,8 +360,8 @@ export function dailyReportToRow(
         // CE(82) = formula: stock_batubara — skip
         set(row, COL.rcw_level_00,    stock.rcw_level_00);    // CF
         set(row, COL.demin_level_00,  stock.demin_level_00);  // CG
-        set(row, COL.solar_tank_a,    stock.solar_tank_a);    // CH
-        set(row, COL.solar_tank_b,    stock.solar_tank_b);    // CI
+        set(row, COL.solar_tank_a, stock.solar_tank_a); // CH
+        set(row, COL.solar_tank_b, stock.solar_tank_a); // CI (sama dengan CH)
         // CJ(87) = formula: solar_tank_total — skip
         if (solar) {
             if (solar.kedatangan) row[COL.kedatangan_solar] = solar.kedatangan; // CK — total Liter kedatangan

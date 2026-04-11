@@ -32,3 +32,13 @@ ALTER TABLE daily_report_power
 ALTER TABLE daily_report_stock_tank
     ADD COLUMN IF NOT EXISTS flow_bfw_a NUMERIC,
     ADD COLUMN IF NOT EXISTS flow_bfw_b NUMERIC;
+
+-- ─── daily_report_totalizer: tambah field totalizer konsumsi air ──────────────
+ALTER TABLE daily_report_totalizer
+    ADD COLUMN IF NOT EXISTS tot_rcw_1a    NUMERIC,
+    ADD COLUMN IF NOT EXISTS tot_demin     NUMERIC,
+    ADD COLUMN IF NOT EXISTS tot_demin_pb1 NUMERIC,
+    ADD COLUMN IF NOT EXISTS tot_demin_pb3 NUMERIC,
+    ADD COLUMN IF NOT EXISTS tot_hydrant   NUMERIC,
+    ADD COLUMN IF NOT EXISTS tot_basin     NUMERIC,
+    ADD COLUMN IF NOT EXISTS tot_service   NUMERIC;

@@ -9,7 +9,8 @@
  *   BB(53)= total_boiler_a_24    BF(57)= total_boiler_b_24    BG(58)= grand_total_24
  *   BK(62)= total_boiler_a_00    BO(66)= total_boiler_b_00    BP(67)= grand_total_00
  *   BW(74)= consumption_rate_a   BX(75)= consumption_rate_b   BY(76)= consumption_rate_avg
- *   CE(82)= stock_batubara       CJ(87)= solar_tank_total      DN(117)= laut_total_ton
+ *   CE(82)= stock_batubara       CJ(87)= solar_tank_total      CQ(94)= bfw_total
+ *   DN(117)= laut_total_ton
  */
 
 import { toIndonesianDate } from './google-sheets';
@@ -214,6 +215,12 @@ function sel(
     return t - y;
 }
 
+export type SolarSummary = {
+    kedatangan: number; // total Liter dari solar_unloadings
+    bengkel:    number; // total Liter dari solar_usages tujuan=Bengkel
+    sasu:       number; // total Liter dari solar_usages tujuan=SA/SU 3B
+};
+
 type PrevDailyData = {
     steam:     Partial<DailyReportSteamRow>       | null;
     power:     Partial<DailyReportPowerRow>        | null;
@@ -236,6 +243,7 @@ export function dailyReportToRow(
     transfer:  Partial<DailyReportCoalTransferRow>  | null,
     totalizer: Partial<DailyReportTotalizerRow>     | null,
     prev: PrevDailyData = null,
+    solar: SolarSummary | null = null,
 ): (string | number | null)[] {
     const row: (string | number | null)[] = new Array(TOTAL_COLS).fill(null);
 
@@ -355,10 +363,12 @@ export function dailyReportToRow(
         set(row, COL.solar_tank_a,    stock.solar_tank_a);    // CH
         set(row, COL.solar_tank_b,    stock.solar_tank_b);    // CI
         // CJ(87) = formula: solar_tank_total — skip
-        set(row, COL.kedatangan_solar, stock.kedatangan_solar); // CK
-        set(row, COL.solar_boiler,     stock.solar_boiler);     // CL
-        set(row, COL.solar_bengkel,    stock.solar_bengkel);    // CM
-        set(row, COL.solar_3b,         stock.solar_3b);         // CN
+        if (solar) {
+            if (solar.kedatangan) row[COL.kedatangan_solar] = solar.kedatangan; // CK — total Liter kedatangan
+            if (solar.bengkel)    row[COL.solar_bengkel]    = solar.bengkel;    // CM — total Liter bengkel
+            if (solar.sasu)       row[COL.solar_3b]         = solar.sasu;       // CN — total Liter SA/SU 3B
+        }
+        set(row, COL.solar_boiler, stock.solar_boiler); // CL
         const ps2 = prev?.stock;
         set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO
         set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b)); // CP
@@ -394,14 +404,31 @@ export function dailyReportToRow(
 
     // ── Totalizer & Keterangan ───────────────────────────────────────────────
     if (totalizer) {
-        set(row, COL.keterangan,           totalizer.keterangan);           // DO
-        set(row, COL.konsumsi_demin,       totalizer.konsumsi_demin);       // DP
-        set(row, COL.konsumsi_rcw,         totalizer.konsumsi_rcw);         // DQ
-        set(row, COL.penerimaan_demin_3a,  totalizer.penerimaan_demin_3a);  // DR
-        set(row, COL.penerimaan_demin_1b,  totalizer.penerimaan_demin_1b);  // DS
-        set(row, COL.penerimaan_rcw_1a,    totalizer.penerimaan_rcw_1a);    // DT
-        set(row, COL.group_name,           totalizer.group_name);           // DU
-        set(row, COL.kasi_name,            totalizer.kasi_name);            // DV
+        set(row, COL.keterangan, totalizer.keterangan); // DO
+
+        // DP–DT: konsumsi dihitung dari selisih totalizer hari ini − kemarin
+        const pt = prev?.totalizer;
+        const konsDemin  = sel(totalizer.tot_demin,      pt?.tot_demin);
+        const konsHydrant = sel(totalizer.tot_hydrant,   pt?.tot_hydrant);
+        const konsBasin   = sel(totalizer.tot_basin,     pt?.tot_basin);
+        const konsService = sel(totalizer.tot_service,   pt?.tot_service);
+        const konsDemPb3  = sel(totalizer.tot_demin_pb3, pt?.tot_demin_pb3);
+        const konsDemPb1  = sel(totalizer.tot_demin_pb1, pt?.tot_demin_pb1);
+        const konsRcw1a   = sel(totalizer.tot_rcw_1a,    pt?.tot_rcw_1a);
+
+        const konsRcwTotal =
+            (konsHydrant !== null || konsBasin !== null || konsService !== null)
+                ? (konsHydrant ?? 0) + (konsBasin ?? 0) + (konsService ?? 0)
+                : null;
+
+        if (konsDemin !== null)    row[COL.konsumsi_demin]      = konsDemin;    // DP
+        if (konsRcwTotal !== null) row[COL.konsumsi_rcw]        = konsRcwTotal; // DQ
+        if (konsDemPb3  !== null)  row[COL.penerimaan_demin_3a] = konsDemPb3;   // DR
+        if (konsDemPb1  !== null)  row[COL.penerimaan_demin_1b] = konsDemPb1;   // DS
+        if (konsRcw1a   !== null)  row[COL.penerimaan_rcw_1a]   = konsRcw1a;    // DT
+
+        set(row, COL.group_name,            totalizer.group_name);            // DU
+        set(row, COL.kasi_name,             totalizer.kasi_name);             // DV
         set(row, COL.stock_batubara_rendal, totalizer.stock_batubara_rendal); // DW
     }
 

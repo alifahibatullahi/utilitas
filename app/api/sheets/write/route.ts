@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { upsertShiftRow, upsertDailyRow } from '@/lib/google-sheets';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
-import { dailyReportToRow } from '@/lib/daily-sheets-mapper';
+import { dailyReportToRow, type SolarSummary } from '@/lib/daily-sheets-mapper';
 import type { ShiftTab } from '@/lib/google-sheets';
 
 // ─── Supabase client (service role / anon fallback) ───────────────────────────
@@ -118,6 +118,18 @@ export async function POST(req: NextRequest) {
             const prevDateStr = prevDate.toISOString().slice(0, 10);
             const prevData = await fetchDailyReport(prevDateStr);
 
+            // Fetch solar unloadings & usages for this date
+            const supabase = getSupabase();
+            const [solarIn, solarOut] = await Promise.all([
+                supabase.from('solar_unloadings').select('liters').eq('date', date),
+                supabase.from('solar_usages').select('liters, tujuan').eq('date', date),
+            ]);
+            const solarSummary: SolarSummary = {
+                kedatangan: (solarIn.data ?? []).reduce((s, r) => s + (Number(r.liters) || 0), 0),
+                bengkel:    (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === 'Bengkel').reduce((s, r) => s + (Number(r.liters) || 0), 0),
+                sasu:       (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === 'SA/SU 3B').reduce((s, r) => s + (Number(r.liters) || 0), 0),
+            };
+
             const row = dailyReportToRow(
                 date,
                 dbData.steam,
@@ -128,6 +140,7 @@ export async function POST(req: NextRequest) {
                 dbData.transfer,
                 dbData.totalizer,
                 prevData,
+                solarSummary,
             );
 
             const result = await upsertDailyRow(date, row);

@@ -424,6 +424,13 @@ export interface DailyReportTotalizerRow {
     penerimaan_demin_3a: number | null;
     penerimaan_demin_1b: number | null;
     penerimaan_rcw_1a: number | null;
+    tot_rcw_1a: number | null;
+    tot_demin: number | null;
+    tot_demin_pb1: number | null;
+    tot_demin_pb3: number | null;
+    tot_hydrant: number | null;
+    tot_basin: number | null;
+    tot_service: number | null;
     created_at: string;
 }
 

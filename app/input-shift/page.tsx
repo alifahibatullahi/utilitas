@@ -16,7 +16,14 @@ import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
-import { getGroupForShift } from '@/lib/constants';
+import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
+
+function getGroupMalamOnDate(dateStr: string): string {
+    for (const g of ['A', 'B', 'C', 'D'] as const) {
+        if (getGroupShiftOnDate(g, dateStr) === 'M') return g;
+    }
+    return '';
+}
 
 type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker' | 'Lab';
 
@@ -620,7 +627,7 @@ export default function InputShiftPage() {
                         {/* Group + Supervisor — tampil untuk shift maupun harian */}
                         {(() => {
                             const group = inputMode === 'harian'
-                                ? getGroupForShift(selectedDate, 'malam')
+                                ? getGroupMalamOnDate(selectedDate)
                                 : currentGroup;
                             return (
                                 <>
@@ -853,7 +860,7 @@ export default function InputShiftPage() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupForShift(selectedDate, 'malam')} supervisorName={supervisor} />
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} />
             )}
         </div>
     );

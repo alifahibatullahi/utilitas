@@ -29,7 +29,9 @@
       "Bash(node --input-type=module)",
       "Bash(xargs ls:*)",
       "Bash(cmd /c \"cd /d \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\\" && npx tsc --noEmit 2>&1\")",
-      "Bash(cmd /c \"cd /d \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\\" && npx tsc --noEmit\")"
+      "Bash(cmd /c \"cd /d \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\\" && npx tsc --noEmit\")",
+      "Bash(cmd /c \"findstr /n getGroupForShift \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\app\\\\input-shift\\\\page.tsx\\\\\"\")",
+      "Bash(cmd /c \"findstr /n \\\\\"getGroup\\\\\" \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\app\\\\input-shift\\\\page.tsx\\\\\"\")"
     ]
   }
 }

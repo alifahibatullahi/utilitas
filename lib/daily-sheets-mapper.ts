@@ -289,6 +289,9 @@ export function dailyReportToRow(
             row[COL.power_bb2_mwh] = bb2Mwh; // AE
         }
 
+        // AL(37) = Load STG MW (= STG UBB MW = gen_00)
+        set(row, 37, power.gen_00); // AL
+
         // MW aktual
         set(row, COL.power_pabrik2_mw,  power.power_pabrik2);    // AN
         set(row, COL.power_pabrik3a_mw, power.power_pabrik3a);   // AO
@@ -355,9 +358,10 @@ export function dailyReportToRow(
         set(row, COL.solar_boiler,     stock.solar_boiler);     // CL
         set(row, COL.solar_bengkel,    stock.solar_bengkel);    // CM
         set(row, COL.solar_3b,         stock.solar_3b);         // CN
-        set(row, COL.bfw_boiler_a,     stock.bfw_boiler_a);    // CO
-        set(row, COL.bfw_boiler_b,     stock.bfw_boiler_b);    // CP
-        set(row, COL.bfw_total,        stock.bfw_total);        // CQ
+        const ps2 = prev?.stock;
+        set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO
+        set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b)); // CP
+        set(row, COL.bfw_total,    stock.bfw_total);                             // CQ
         set(row, COL.chemical_phosphat,   stock.chemical_phosphat);   // CR
         set(row, COL.chemical_amin,       stock.chemical_amin);       // CS
         set(row, COL.chemical_hydrasin,   stock.chemical_hydrasin);   // CT

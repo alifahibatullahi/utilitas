@@ -342,8 +342,8 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 return hasVal(steam, ['prod_boiler_a_24', 'prod_boiler_b_24']) && hasVal(stockTank, ['bfw_boiler_a', 'bfw_boiler_b']);
             case 'Turbin': 
                 return hasVal(steam, ['inlet_turbine_24', 'fully_condens_24']);
-            case 'Power': 
-                return hasVal(power, ['gen_24', 'exsport_24', 'internal_bus1_24']);
+            case 'Power':
+                return hasVal(power, ['gen_00']) || hasVal(turbineMisc, ['gen_ampere']);
             case 'Handling': 
                 return hasVal(coalTransfer, ['darat_24_ton', 'laut_24_ton']);
             case 'Chemical': 
@@ -354,7 +354,7 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 return hasVal(stockTank, ['silo_a_pct', 'silo_b_pct']);
             default: return false;
         }
-    }, [steam, power, coal, stockTank, coalTransfer]);
+    }, [steam, power, coal, turbineMisc, stockTank, coalTransfer]);
 
     return (
         <>

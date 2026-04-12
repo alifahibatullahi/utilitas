@@ -13,6 +13,9 @@ export default function AppShell({ children }: AppShellProps) {
     const pathname = usePathname();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(pathname === '/tank-level');
 
+    // Zoom 125% on 1920px+ for non-dashboard/non-input pages
+    const shouldZoom = !pathname.startsWith('/dashboard') && pathname !== '/input-shift' && pathname !== '/input';
+
     // Don't show shell on login page or fullscreen preview pages
     if (pathname === '/' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level') {
         return <>{children}</>;
@@ -42,7 +45,8 @@ export default function AppShell({ children }: AppShellProps) {
             <main
                 className={`min-h-screen transition-all duration-300 ease-in-out
                     pb-20 md:pb-0
-                    ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-[260px]'}`}
+                    ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-[260px]'}
+                    ${shouldZoom ? 'zoom-1920' : ''}`}
             >
                 {children}
             </main>

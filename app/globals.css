@@ -138,3 +138,10 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Zoom 125% untuk halaman non-dashboard/non-input pada layar 1920px+ */
+@media (min-width: 1920px) {
+  .zoom-1920 {
+    zoom: 1.25;
+  }
+}

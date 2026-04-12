@@ -59,7 +59,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
     const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string }[]>([]);
     const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
-    const [ashUnloadings, setAshUnloadings] = useState<{ date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
+    const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
 
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
 
@@ -102,12 +102,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
             supabase
                 .from('ash_unloadings')
-                .select('date, shift, silo, perusahaan, tujuan, ritase')
+                .select('id, date, shift, silo, perusahaan, tujuan, ritase')
                 .eq('date', date)
                 .order('created_at', { ascending: false })
                 .then(({ data }) => {
                     setAshUnloadings(
                         (data ?? []).map(r => ({
+                            id: r.id as string,
                             date: r.date as string,
                             shift: r.shift as string,
                             silo: r.silo as string,
@@ -134,6 +135,21 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         const { error } = await supabase.from('solar_usages').delete().eq('id', id);
         if (error) { alert('Gagal hapus: ' + error.message); return; }
         setSolarUsages(prev => prev.filter(e => e.id !== id));
+    };
+
+    const handleDeleteAshUnloading = async (id: string) => {
+        if (!confirm('Hapus data unloading fly ash ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('ash_unloadings').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setAshUnloadings(prev => prev.filter(e => e.id !== id));
+    };
+
+    const handleEditAshUnloading = async (id: string, ritase: number) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('ash_unloadings').update({ ritase }).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        setAshUnloadings(prev => prev.map(e => e.id === id ? { ...e, ritase } : e));
     };
 
     // ─── Helpers ───
@@ -541,6 +557,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 onDeleteSolarUnloading: handleDeleteSolarUnloading,
                                 onDeleteSolarUsage: handleDeleteSolarUsage,
                                 ashUnloadings,
+                                onDeleteAshUnloading: handleDeleteAshUnloading,
+                                onEditAshUnloading: handleEditAshUnloading,
                             };
                             return (
                                 <>

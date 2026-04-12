@@ -67,13 +67,13 @@ export default function TabHandling({
                 <div className="grid grid-cols-2 gap-4">
                     {konsumsiRows.slice(0, 6).map(({ label, name }) => (
                         <div key={name}>
-                            <InputField label={label} name={name} value={totalizer[name] as number | null} onChange={onTotalizerChange} unit="" color="emerald" />
+                            <InputField label={label} name={name} value={totalizer[name] as number | null} onChange={onTotalizerChange} unit="" color="emerald" thousands />
                             <SelisihInfo prev={prevTotalizer ? n(prevTotalizer[name]) : 0} current={n(totalizer[name])} />
                         </div>
                     ))}
                 </div>
                 <div>
-                    <InputField label="Service" name="tot_service" value={totalizer.tot_service as number | null} onChange={onTotalizerChange} unit="" color="emerald" />
+                    <InputField label="Service" name="tot_service" value={totalizer.tot_service as number | null} onChange={onTotalizerChange} unit="" color="emerald" thousands />
                     <SelisihInfo prev={prevTotalizer ? n(prevTotalizer.tot_service) : 0} current={n(totalizer.tot_service)} />
                 </div>
             </Card>

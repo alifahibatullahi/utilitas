@@ -31,7 +31,8 @@
       "Bash(cmd /c \"cd /d \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\\" && npx tsc --noEmit 2>&1\")",
       "Bash(cmd /c \"cd /d \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\\" && npx tsc --noEmit\")",
       "Bash(cmd /c \"findstr /n getGroupForShift \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\app\\\\input-shift\\\\page.tsx\\\\\"\")",
-      "Bash(cmd /c \"findstr /n \\\\\"getGroup\\\\\" \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\app\\\\input-shift\\\\page.tsx\\\\\"\")"
+      "Bash(cmd /c \"findstr /n \\\\\"getGroup\\\\\" \\\\\"d:\\\\INOVASI 2025\\\\PowerOps\\\\app\\\\input-shift\\\\page.tsx\\\\\"\")",
+      "Bash(node -e \"const ts = require\\('typescript'\\); const p = ts.createProgram\\(['components/input-harian/TabSiloFlyAsh.tsx'], {noEmit:true,skipLibCheck:true}\\); const d = ts.getPreEmitDiagnostics\\(p\\); d.forEach\\(x => console.log\\(ts.flattenDiagnosticMessageText\\(x.messageText, '\\\\n'\\)\\)\\); console.log\\(d.length === 0 ? 'OK' : d.length + ' errors'\\);\")"
     ]
   }
 }

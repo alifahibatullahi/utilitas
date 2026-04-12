@@ -112,10 +112,10 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ warning: `Daily report untuk ${date} tidak ditemukan di database` });
             }
 
-            // Fetch previous day for selisih calculation
-            const prevDate = new Date(date + 'T00:00:00+07:00');
-            prevDate.setDate(prevDate.getDate() - 1);
-            const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}-${String(prevDate.getDate()).padStart(2,'0')}`;
+            // Fetch previous day for selisih calculation (use UTC to avoid server timezone offset)
+            const [dy, dm, dd] = date.split('-').map(Number);
+            const prevDateObj = new Date(Date.UTC(dy, dm - 1, dd - 1));
+            const prevDateStr = prevDateObj.toISOString().slice(0, 10);
             const prevData = await fetchDailyReport(prevDateStr);
 
             // Fetch solar unloadings & usages for this date

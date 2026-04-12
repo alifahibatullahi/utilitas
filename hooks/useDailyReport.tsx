@@ -285,25 +285,26 @@ export function useDailyReport(date: string) {
         if (childErrors.length > 0) return { error: childErrors.join('; '), reportId };
 
         // Fire-and-forget: sync to Google Sheets
-        void (async () => {
-            try {
-                const res = await fetch('/api/sheets/write', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'daily_report', data: { date } }),
-                });
-                const result = await res.json();
-                if (result.warning) {
-                    console.warn('[submitDailyReport] Sheets warning:', result.warning);
-                } else {
-                    console.log('[submitDailyReport] Sheets sync OK:', result);
-                }
-            } catch (sheetsErr) {
-                console.warn('[submitDailyReport] Sheets sync failed (non-fatal):', sheetsErr);
+        let sheetsSyncResult: { ok: boolean; warning?: string } = { ok: true };
+        try {
+            const res = await fetch('/api/sheets/write', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'daily_report', data: { date } }),
+            });
+            const result = await res.json();
+            if (result.warning) {
+                console.warn('[submitDailyReport] Sheets warning:', result.warning);
+                sheetsSyncResult = { ok: false, warning: result.warning };
+            } else {
+                console.log('[submitDailyReport] Sheets sync OK:', result);
             }
-        })();
+        } catch (sheetsErr) {
+            console.warn('[submitDailyReport] Sheets sync failed (non-fatal):', sheetsErr);
+            sheetsSyncResult = { ok: false, warning: String(sheetsErr) };
+        }
 
-        return { error: null, reportId };
+        return { error: null, reportId, sheetsWarning: sheetsSyncResult.ok ? undefined : sheetsSyncResult.warning };
     }, [date]);
 
     const refetch = useCallback(() => setFetchKey(k => k + 1), []);

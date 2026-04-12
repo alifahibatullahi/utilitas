@@ -380,7 +380,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             if (result?.error) {
                 showToast('Error: ' + result.error, 'error');
             } else {
-                showToast('Laporan harian berhasil disimpan!', 'success');
+                if (result?.sheetsWarning) {
+                    showToast('Tersimpan, tapi Sheets gagal: ' + result.sheetsWarning, 'error');
+                } else {
+                    showToast('Laporan harian berhasil disimpan!', 'success');
+                }
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
             }

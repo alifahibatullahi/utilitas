@@ -35,6 +35,8 @@ export interface DailyTabProps {
     ashUnloadings?: { id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[];
     onDeleteSolarUnloading?: (id: string) => void;
     onDeleteSolarUsage?: (id: string) => void;
+    onEditSolarUnloading?: (id: string, fields: { liters: number; supplier: string }) => void;
+    onEditSolarUsage?: (id: string, fields: { liters: number; tujuan: string; shift: string }) => void;
     onDeleteAshUnloading?: (id: string) => void;
-    onEditAshUnloading?: (id: string, ritase: number) => void;
+    onEditAshUnloading?: (id: string, fields: { silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number }) => void;
 }

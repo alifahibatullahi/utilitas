@@ -121,6 +121,20 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         }, [date]);
 
     // ─── Solar delete handlers ───
+    const handleEditSolarUnloading = async (id: string, fields: { liters: number; supplier: string }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').update(fields).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        setSolarUnloadings(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    };
+
+    const handleEditSolarUsage = async (id: string, fields: { liters: number; tujuan: string; shift: string }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').update(fields).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        setSolarUsages(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    };
+
     const handleDeleteSolarUnloading = async (id: string) => {
         if (!confirm('Hapus data kedatangan solar ini?')) return;
         const supabase = createClient();
@@ -145,11 +159,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         setAshUnloadings(prev => prev.filter(e => e.id !== id));
     };
 
-    const handleEditAshUnloading = async (id: string, ritase: number) => {
+    const handleEditAshUnloading = async (id: string, fields: { silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number }) => {
         const supabase = createClient();
-        const { error } = await supabase.from('ash_unloadings').update({ ritase }).eq('id', id);
+        const { error } = await supabase.from('ash_unloadings').update(fields).eq('id', id);
         if (error) { alert('Gagal simpan: ' + error.message); return; }
-        setAshUnloadings(prev => prev.map(e => e.id === id ? { ...e, ritase } : e));
+        setAshUnloadings(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
     };
 
     // ─── Helpers ───
@@ -560,6 +574,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 solarUsages,
                                 onDeleteSolarUnloading: handleDeleteSolarUnloading,
                                 onDeleteSolarUsage: handleDeleteSolarUsage,
+                                onEditSolarUnloading: handleEditSolarUnloading,
+                                onEditSolarUsage: handleEditSolarUsage,
                                 ashUnloadings,
                                 onDeleteAshUnloading: handleDeleteAshUnloading,
                                 onEditAshUnloading: handleEditAshUnloading,

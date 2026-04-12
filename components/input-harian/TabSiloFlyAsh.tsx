@@ -3,7 +3,11 @@ import React, { useState } from 'react';
 import { InputField, Card, SectionLabel } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 
-const SILO_LABELS: Record<string, string> = { 'Silo A': 'Silo A', 'Silo B': 'Silo B' };
+type EditFields = { silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number };
+
+const SILO_OPTIONS = ['Silo A', 'Silo B'];
+const SHIFT_OPTIONS = ['pagi', 'siang', 'malam'];
+const SHIFT_LABELS: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
 
 export default function TabSiloFlyAsh({
     stockTank, onStockTankChange,
@@ -11,27 +15,27 @@ export default function TabSiloFlyAsh({
     onDeleteAshUnloading,
     onEditAshUnloading,
 }: DailyTabProps) {
-    // Edit state: { [id]: { open: boolean; ritase: number } }
-    const [editState, setEditState] = useState<Record<string, { open: boolean; ritase: number }>>({});
+    const [editState, setEditState] = useState<Record<string, EditFields & { open: boolean }>>({});
 
-    const startEdit = (id: string, ritase: number) => {
-        setEditState(prev => ({ ...prev, [id]: { open: true, ritase } }));
+    const startEdit = (id: string, item: EditFields) => {
+        setEditState(prev => ({ ...prev, [id]: { open: true, ...item } }));
     };
     const cancelEdit = (id: string) => {
         setEditState(prev => ({ ...prev, [id]: { ...prev[id], open: false } }));
     };
+    const setField = (id: string, key: keyof EditFields, value: string | number) => {
+        setEditState(prev => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
+    };
     const saveEdit = async (id: string) => {
         const s = editState[id];
         if (!s) return;
-        await onEditAshUnloading?.(id, s.ritase);
+        await onEditAshUnloading?.(id, { silo: s.silo, shift: s.shift, perusahaan: s.perusahaan, tujuan: s.tujuan, ritase: s.ritase });
         setEditState(prev => ({ ...prev, [id]: { ...prev[id], open: false } }));
     };
 
-    // Totals per silo
+    // Totals reflect current ashUnloadings (updated after save)
     const totalA = ashUnloadings.filter(e => e.silo === 'Silo A').reduce((s, e) => s + e.ritase, 0);
     const totalB = ashUnloadings.filter(e => e.silo === 'Silo B').reduce((s, e) => s + e.ritase, 0);
-
-    const shiftLabel: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
 
     return (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
@@ -59,10 +63,7 @@ export default function TabSiloFlyAsh({
                     </div>
                 </div>
 
-                <SectionLabel
-                    label="Detail Unloading Hari Ini"
-                    badge={`${ashUnloadings.length} entri`}
-                />
+                <SectionLabel label="Detail Unloading Hari Ini" badge={`${ashUnloadings.length} entri`} />
 
                 {ashUnloadings.length > 0 ? (
                     <div className="space-y-2">
@@ -73,53 +74,95 @@ export default function TabSiloFlyAsh({
 
                             return (
                                 <div key={id} className="bg-[#101822]/50 border border-teal-700/40 rounded-lg px-3 py-2">
+                                    {/* Header row: badges + action buttons */}
                                     <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 min-w-0">
+                                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.silo === 'Silo A' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-teal-500/20 text-teal-400'}`}>
-                                                {SILO_LABELS[item.silo] ?? item.silo}
+                                                {item.silo}
                                             </span>
-                                            <span className="text-[10px] text-slate-400 capitalize">{shiftLabel[item.shift] ?? item.shift}</span>
+                                            <span className="text-[10px] text-slate-400 capitalize">{SHIFT_LABELS[item.shift] ?? item.shift}</span>
                                             <span className="text-[10px] text-slate-500 truncate">{item.perusahaan}</span>
                                         </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            {item.id && !isEditing && (
-                                                <>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => startEdit(id, item.ritase)}
-                                                        className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[13px]">edit</span>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onDeleteAshUnloading?.(item.id!)}
-                                                        className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[13px]">delete</span>
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
+                                        {item.id && !isEditing && (
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <button type="button" onClick={() => startEdit(id, item)}
+                                                    className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors">
+                                                    <span className="material-symbols-outlined text-[13px]">edit</span>
+                                                </button>
+                                                <button type="button" onClick={() => onDeleteAshUnloading?.(item.id!)}
+                                                    className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                                    <span className="material-symbols-outlined text-[13px]">delete</span>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {isEditing ? (
-                                        <div className="mt-2 flex items-center gap-2">
-                                            <label className="text-[10px] text-slate-400 shrink-0">Ritase</label>
-                                            <input
-                                                type="number"
-                                                className="flex-1 bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
-                                                value={es?.ritase ?? item.ritase}
-                                                onChange={e => setEditState(prev => ({ ...prev, [id]: { ...prev[id], ritase: Number(e.target.value) || 0 } }))}
-                                            />
-                                            <button type="button" onClick={() => saveEdit(id)}
-                                                className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 text-xs font-bold transition-colors">
-                                                Simpan
-                                            </button>
-                                            <button type="button" onClick={() => cancelEdit(id)}
-                                                className="px-2 py-1 rounded bg-slate-500/20 text-slate-400 hover:bg-slate-500/40 text-xs transition-colors">
-                                                Batal
-                                            </button>
+                                        <div className="mt-2 space-y-2">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {/* Silo */}
+                                                <div>
+                                                    <label className="text-[10px] text-slate-400 block mb-1">Silo</label>
+                                                    <select
+                                                        className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400"
+                                                        value={es.silo}
+                                                        onChange={e => setField(id, 'silo', e.target.value)}
+                                                    >
+                                                        {SILO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                    </select>
+                                                </div>
+                                                {/* Shift */}
+                                                <div>
+                                                    <label className="text-[10px] text-slate-400 block mb-1">Shift</label>
+                                                    <select
+                                                        className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400"
+                                                        value={es.shift}
+                                                        onChange={e => setField(id, 'shift', e.target.value)}
+                                                    >
+                                                        {SHIFT_OPTIONS.map(s => <option key={s} value={s}>{SHIFT_LABELS[s]}</option>)}
+                                                    </select>
+                                                </div>
+                                                {/* Perusahaan */}
+                                                <div>
+                                                    <label className="text-[10px] text-slate-400 block mb-1">Perusahaan</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400"
+                                                        value={es.perusahaan}
+                                                        onChange={e => setField(id, 'perusahaan', e.target.value)}
+                                                    />
+                                                </div>
+                                                {/* Tujuan */}
+                                                <div>
+                                                    <label className="text-[10px] text-slate-400 block mb-1">Tujuan</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400"
+                                                        value={es.tujuan}
+                                                        onChange={e => setField(id, 'tujuan', e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {/* Ritase */}
+                                            <div>
+                                                <label className="text-[10px] text-slate-400 block mb-1">Ritase</label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
+                                                    value={es.ritase}
+                                                    onChange={e => setField(id, 'ritase', Number(e.target.value) || 0)}
+                                                />
+                                            </div>
+                                            <div className="flex gap-2 justify-end">
+                                                <button type="button" onClick={() => cancelEdit(id)}
+                                                    className="px-3 py-1 rounded bg-slate-500/20 text-slate-400 hover:bg-slate-500/40 text-xs transition-colors">
+                                                    Batal
+                                                </button>
+                                                <button type="button" onClick={() => saveEdit(id)}
+                                                    className="px-3 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 text-xs font-bold transition-colors">
+                                                    Simpan
+                                                </button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="mt-1 flex items-center gap-2">

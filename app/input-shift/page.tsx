@@ -445,7 +445,7 @@ export default function InputShiftPage() {
                     operator_id: operator?.supabaseId ?? null,
                 }));
                 // Make sure to correctly map to expected 'date' column with ISO time, but wait, if we changed it to use date as YYYY-MM-DD we'd break old code. Let's send the entry.tanggal as date, and passing shift explicitly. 
-                await supabase.from('solar_unloadings').insert(inserts.map(i => ({ date: i.date_time, liters: i.liters, supplier: i.supplier, shift: i.shift, operator_id: i.operator_id })) as any[]);
+                await supabase.from('solar_unloadings').insert(inserts.map(i => ({ date: selectedDate, liters: i.liters, supplier: i.supplier, shift: i.shift, operator_id: i.operator_id })) as any[]);
             }
 
             // Save solar usages if filled
@@ -487,19 +487,24 @@ export default function InputShiftPage() {
                 refetch();
                 // Refresh saved data
                 const spb = createClient();
-                spb.from('ash_unloadings').select('silo, perusahaan, tujuan, ritase')
+                spb.from('ash_unloadings').select('id, silo, perusahaan, tujuan, ritase')
                     .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
                     .order('created_at', { ascending: true })
-                    .then(({ data }) => setSavedAshEntries((data ?? []).map(r => ({ silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));
-                
-                spb.from('solar_unloadings').select('date, supplier, liters')
-                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift]) // the date filter previously was actually saving exact timestamp, this query might fail if they expect 'date' to be YYYY-MM-DD. Wait! My fix above is doing `date: entry.tanggal`. Let's fix this in both places by fetching via shift_report_id or shift+date correctly. But `date` is now saved as exact time. Wait! If `date` is exact time, `eq('date', selectedDate)` will yield 0 hits.
-                    // Instead, we will fetch by shift
-                
+                    .then(({ data }) => setSavedAshEntries((data ?? []).map((r: any) => ({ id: r.id, silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));
+
+                spb.from('solar_unloadings').select('id, date, supplier, liters')
+                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
+                    .order('created_at', { ascending: true })
+                    .then(({ data }) => setSavedSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, perusahaan: r.supplier }))));
+
+                spb.from('solar_usages').select('id, date, tujuan, liters')
+                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
+                    .order('created_at', { ascending: true })
+                    .then(({ data }) => setSavedOutSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, tujuan: r.tujuan }))));
+
                 setAshEntries([]);
                 setSolarEntries([]);
                 setOutSolarEntries([]);
-                // Instead of relying on EQ date for solar_unloadings, we fetch by shift & check date string startswith. But actually, we only need to reload page or just not reload. I'll just refetch using the same logic. Let's fix the fetch later or rely on state update.
             }
         } catch (err) {
             showToast('Terjadi kesalahan saat menyimpan laporan.', 'error');

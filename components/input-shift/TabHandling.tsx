@@ -4,7 +4,8 @@ import { Card, InputField, CalculatedField } from './SharedComponents';
 
 export interface SolarEntry {
     id?: string;
-    tanggal: string;
+    tanggal: string;  // kept for backward compat (date YYYY-MM-DD)
+    jam?: string;     // HH:MM 24h
     jumlah: number | null;
     perusahaan: string;
 }
@@ -12,6 +13,7 @@ export interface SolarEntry {
 export interface OutSolarEntry {
     id?: string;
     tanggal: string;
+    jam?: string;
     jumlah: number | null;
     tujuan: string;
 }
@@ -39,17 +41,17 @@ export default function TabHandling({
     savedSolarEntries = [], savedOutSolarEntries = [],
     onDeleteSavedSolar, onDeleteSavedOutSolar
 }: TabHandlingProps) {
-    const [currentEntry, setCurrentEntry] = React.useState<SolarEntry>({ tanggal: '', jumlah: null, perusahaan: '' });
-    const [currentOutEntry, setCurrentOutEntry] = React.useState<OutSolarEntry>({ tanggal: '', jumlah: null, tujuan: 'Bengkel' });
+    const [currentEntry, setCurrentEntry] = React.useState<SolarEntry>({ tanggal: '', jam: '', jumlah: null, perusahaan: '' });
+    const [currentOutEntry, setCurrentOutEntry] = React.useState<OutSolarEntry>({ tanggal: '', jam: '', jumlah: null, tujuan: 'Bengkel' });
     const [tujuanMode, setTujuanMode] = React.useState<'Bengkel' | 'SA/SU 3B' | 'Lainnya'>('Bengkel');
 
     const addEntry = () => {
-        if (!currentEntry.tanggal || !currentEntry.jumlah || !currentEntry.perusahaan) {
+        if (!currentEntry.jam || !currentEntry.jumlah || !currentEntry.perusahaan) {
             alert('Lengkapi semua data kedatangan solar sebelum menambah.');
             return;
         }
-        onSolarEntriesChange?.([...solarEntries, currentEntry]);
-        setCurrentEntry({ tanggal: '', jumlah: null, perusahaan: '' });
+        onSolarEntriesChange?.([...solarEntries, { ...currentEntry, tanggal: currentEntry.jam }]);
+        setCurrentEntry({ tanggal: '', jam: '', jumlah: null, perusahaan: '' });
     };
 
     const removeEntry = (idx: number) => {
@@ -58,12 +60,12 @@ export default function TabHandling({
     };
 
     const addOutEntry = () => {
-        if (!currentOutEntry.tanggal || !currentOutEntry.jumlah || !currentOutEntry.tujuan) {
+        if (!currentOutEntry.jam || !currentOutEntry.jumlah || !currentOutEntry.tujuan) {
             alert('Lengkapi semua data permintaan solar sebelum menambah.');
             return;
         }
-        onOutSolarEntriesChange?.([...outSolarEntries, currentOutEntry]);
-        setCurrentOutEntry({ tanggal: '', jumlah: null, tujuan: 'Bengkel' });
+        onOutSolarEntriesChange?.([...outSolarEntries, { ...currentOutEntry, tanggal: currentOutEntry.jam }]);
+        setCurrentOutEntry({ tanggal: '', jam: '', jumlah: null, tujuan: 'Bengkel' });
         setTujuanMode('Bengkel');
     };
 
@@ -126,15 +128,22 @@ export default function TabHandling({
                     <Card title="Kedatangan Solar" icon="download" color="amber">
                         <div className="space-y-3 p-3 bg-[#101822]/30 border border-slate-700/50 rounded-lg">
                             <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tanggal &amp; Waktu</label>
+                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Jam Kedatangan</label>
                                 <input
-                                    type="datetime-local"
-                                    value={currentEntry.tanggal}
-                                    onChange={e => setCurrentEntry({...currentEntry, tanggal: e.target.value})}
-                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-amber-500 focus:border-amber-500 text-sm font-mono transition-all [color-scheme:dark]"
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="00:00"
+                                    maxLength={5}
+                                    value={currentEntry.jam ?? ''}
+                                    onChange={e => {
+                                        let v = e.target.value.replace(/[^0-9:]/g, '');
+                                        if (v.length === 2 && !v.includes(':') && (currentEntry.jam ?? '').length < 2) v = v + ':';
+                                        setCurrentEntry({ ...currentEntry, jam: v });
+                                    }}
+                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 text-sm font-mono transition-all"
                                 />
                             </div>
-                            <InputField label="Jumlah" unit="Liter" color="amber" name="solar_jumlah" value={currentEntry.jumlah}
+                            <InputField label="Jumlah" unit="Liter" color="amber" name="solar_jumlah" value={currentEntry.jumlah} thousands
                                 onChange={(_, v) => setCurrentEntry({...currentEntry, jumlah: typeof v === 'string' ? (v === '' ? null : parseFloat(v) ?? null) : v as number | null})} />
                             <div className="space-y-1.5 w-full">
                                 <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Perusahaan</label>
@@ -168,15 +177,22 @@ export default function TabHandling({
                     <Card title="Permintaan Solar" icon="upload" color="rose">
                         <div className="space-y-3 p-3 bg-[#101822]/30 border border-slate-700/50 rounded-lg">
                             <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tanggal &amp; Waktu</label>
+                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Jam Permintaan</label>
                                 <input
-                                    type="datetime-local"
-                                    value={currentOutEntry.tanggal}
-                                    onChange={e => setCurrentOutEntry({...currentOutEntry, tanggal: e.target.value})}
-                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm font-mono transition-all [color-scheme:dark]"
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="00:00"
+                                    maxLength={5}
+                                    value={currentOutEntry.jam ?? ''}
+                                    onChange={e => {
+                                        let v = e.target.value.replace(/[^0-9:]/g, '');
+                                        if (v.length === 2 && !v.includes(':') && (currentOutEntry.jam ?? '').length < 2) v = v + ':';
+                                        setCurrentOutEntry({ ...currentOutEntry, jam: v });
+                                    }}
+                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm font-mono transition-all"
                                 />
                             </div>
-                            <InputField label="Jumlah" unit="Liter" color="rose" name="out_solar_jumlah" value={currentOutEntry.jumlah}
+                            <InputField label="Jumlah" unit="Liter" color="rose" name="out_solar_jumlah" value={currentOutEntry.jumlah} thousands
                                 onChange={(_, v) => setCurrentOutEntry({...currentOutEntry, jumlah: typeof v === 'string' ? (v === '' ? null : parseFloat(v) ?? null) : v as number | null})} />
                             <div className="space-y-1.5 w-full">
                                 <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tujuan Permintaan</label>
@@ -245,7 +261,7 @@ export default function TabHandling({
                             ))}
                             {solarEntries.map((e, idx) => (
                                 <div key={`pending-${idx}`} className="relative flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-amber-500/20 rounded-lg pr-8">
-                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.perusahaan || '—'} <span className="text-[9px] text-amber-500">(new)</span></span>
+                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.perusahaan || '—'}{e.jam ? ` · ${e.jam}` : ''} <span className="text-[9px] text-amber-500">(new)</span></span>
                                     <span className="text-[11px] font-mono font-bold text-amber-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
                                     <button type="button" onClick={() => removeEntry(idx)}
                                         className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
@@ -275,7 +291,7 @@ export default function TabHandling({
                             ))}
                             {outSolarEntries.map((e, idx) => (
                                 <div key={`pending-${idx}`} className="relative flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-rose-500/20 rounded-lg pr-8">
-                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.tujuan || '—'} <span className="text-[9px] text-rose-500">(new)</span></span>
+                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.tujuan || '—'}{e.jam ? ` · ${e.jam}` : ''} <span className="text-[9px] text-rose-500">(new)</span></span>
                                     <span className="text-[11px] font-mono font-bold text-rose-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
                                     <button type="button" onClick={() => removeOutEntry(idx)}
                                         className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">

@@ -76,6 +76,17 @@ export default function TabLab({
                         </Card>
                     </div>
 
+                    {/* Stock Chemical memanjang (1 baris penuh) */}
+                    <div className="col-span-1 md:col-span-2 rounded-xl ring-1 ring-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                        <Card title="Stock Chemical" icon="inventory_2" color="emerald">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <InputField label="Phosphate" unit="pcs" color="emerald" name="stock_phosphate" value={cd.stock_phosphate} onChange={onChemicalDosingChange} />
+                                <InputField label="Amine" unit="pcs" color="emerald" name="stock_amine" value={cd.stock_amine} onChange={onChemicalDosingChange} />
+                                <InputField label="Hydrazine" unit="pcs" color="emerald" name="stock_hydrazine" value={cd.stock_hydrazine} onChange={onChemicalDosingChange} />
+                            </div>
+                        </Card>
+                    </div>
+
                     {/* Water Quality Section Divider */}
                     <div className="col-span-1 md:col-span-2 flex items-center gap-3 pt-2">
                         <div className="h-px bg-slate-700/50 flex-1"></div>

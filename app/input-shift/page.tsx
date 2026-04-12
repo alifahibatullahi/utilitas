@@ -347,7 +347,7 @@ export default function InputShiftPage() {
         const wqData = report.shift_water_quality?.[0];
         if (wqData) {
             const allFields = extractFields(wqData as unknown as Record<string, unknown>) as Record<string, number | null>;
-            const chemKeys = ['phosphate_', 'phosphate_b_', 'amine_', 'hydrazine_'];
+            const chemKeys = ['phosphate_', 'phosphate_b_', 'amine_', 'hydrazine_', 'stock_'];
             const wqFields: Record<string, number | null> = {};
             const cdFields: Record<string, number | null> = {};
             for (const [k, v] of Object.entries(allFields)) {

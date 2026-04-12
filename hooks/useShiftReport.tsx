@@ -395,6 +395,9 @@ export interface ShiftReportData {
         hydrazine_stroke_pompa: number | null;
         hydrazine_penambahan_air: number | null;
         hydrazine_penambahan_chemical: number | null;
+        stock_phosphate: number | null;
+        stock_amine: number | null;
+        stock_hydrazine: number | null;
     }[];
     critical_equipment: {
         date: string;
@@ -557,7 +560,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         shift_tankyard: ['tk_rcw','tk_demin','tk_solar_ab'],
         shift_personnel: ['turbin_grup','turbin_karu','turbin_kasi','boiler_grup','boiler_karu','boiler_kasi'],
         shift_coal_bunker: ['feeder_a','feeder_b','feeder_c','feeder_d','feeder_e','feeder_f','bunker_a','bunker_b','bunker_c','bunker_d','bunker_e','bunker_f','status_bunker_a','status_bunker_b','status_bunker_c','status_bunker_d','status_bunker_e','status_bunker_f'],
-        shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4','phosphate_level_tanki','phosphate_stroke_pompa','phosphate_penambahan_air','phosphate_penambahan_chemical','phosphate_b_level_tanki','phosphate_b_stroke_pompa','phosphate_b_penambahan_air','phosphate_b_penambahan_chemical','amine_level_tanki','amine_stroke_pompa','amine_penambahan_air','amine_penambahan_chemical','hydrazine_level_tanki','hydrazine_stroke_pompa','hydrazine_penambahan_air','hydrazine_penambahan_chemical'],
+        shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4','phosphate_level_tanki','phosphate_stroke_pompa','phosphate_penambahan_air','phosphate_penambahan_chemical','phosphate_b_level_tanki','phosphate_b_stroke_pompa','phosphate_b_penambahan_air','phosphate_b_penambahan_chemical','amine_level_tanki','amine_stroke_pompa','amine_penambahan_air','amine_penambahan_chemical','hydrazine_level_tanki','hydrazine_stroke_pompa','hydrazine_penambahan_air','hydrazine_penambahan_chemical','stock_phosphate','stock_amine','stock_hydrazine'],
     };
 
     // Filter object to only include valid DB columns

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import BottomTabBar from './BottomTabBar';
@@ -12,9 +12,18 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
     const pathname = usePathname();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(pathname === '/tank-level');
+    const [isLargeScreen, setIsLargeScreen] = useState(false);
 
-    // Zoom 125% on 1920px+ for non-dashboard/non-input pages
-    const shouldZoom = !pathname.startsWith('/dashboard') && pathname !== '/input-shift' && pathname !== '/input';
+    useEffect(() => {
+        // Cek resolusi monitor fisik (bukan viewport CSS)
+        const check = () => setIsLargeScreen(window.screen.width >= 1920);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
+    // Zoom 125% pada monitor 1920px+ untuk semua halaman kecuali dashboard dan tank-level
+    const shouldZoom = isLargeScreen && !pathname.startsWith('/dashboard');
 
     // Don't show shell on login page or fullscreen preview pages
     if (pathname === '/' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level') {
@@ -45,8 +54,8 @@ export default function AppShell({ children }: AppShellProps) {
             <main
                 className={`min-h-screen transition-all duration-300 ease-in-out
                     pb-20 md:pb-0
-                    ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-[260px]'}
-                    ${shouldZoom ? 'zoom-1920' : ''}`}
+                    ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-[260px]'}`}
+                style={shouldZoom ? { zoom: 1.25 } : undefined}
             >
                 {children}
             </main>

@@ -221,6 +221,12 @@ export type SolarSummary = {
     sasu:       number; // total Liter dari solar_usages tujuan=SA/SU 3B
 };
 
+export type ChemicalSummary = {
+    phosphate:  number | null; // total penambahan phosphate (boiler A + B) semua shift
+    amine:      number | null; // total penambahan amine semua shift
+    hydrazine:  number | null; // total penambahan hydrazine semua shift
+};
+
 type PrevDailyData = {
     steam:     Partial<DailyReportSteamRow>       | null;
     power:     Partial<DailyReportPowerRow>        | null;
@@ -244,6 +250,7 @@ export function dailyReportToRow(
     totalizer: Partial<DailyReportTotalizerRow>     | null,
     prev: PrevDailyData = null,
     solar: SolarSummary | null = null,
+    chemical: ChemicalSummary | null = null,
 ): (string | number | null)[] {
     const row: (string | number | null)[] = new Array(TOTAL_COLS).fill(null);
 
@@ -373,9 +380,17 @@ export function dailyReportToRow(
         set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO
         set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b)); // CP
         // CQ(94) = formula (bfw_total) — skip
-        set(row, COL.chemical_phosphat,   stock.chemical_phosphat);   // CR
-        set(row, COL.chemical_amin,       stock.chemical_amin);       // CS
-        set(row, COL.chemical_hydrasin,   stock.chemical_hydrasin);   // CT
+        // CR/CS/CT diisi dari agregasi shift (bukan input manual)
+    }
+
+    // ── Chemical konsumsi 24h (dari shift_water_quality) ─────────────────────
+    if (chemical) {
+        if (chemical.phosphate != null) row[COL.chemical_phosphat]  = chemical.phosphate; // CR
+        if (chemical.amine     != null) row[COL.chemical_amin]      = chemical.amine;     // CS
+        if (chemical.hydrazine != null) row[COL.chemical_hydrasin]  = chemical.hydrazine; // CT
+    }
+
+    if (stock) {
         set(row, COL.silo_a_pct,          stock.silo_a_pct);          // CU
         set(row, COL.silo_b_pct,          stock.silo_b_pct);          // CV
         set(row, COL.unloading_fly_ash_a, stock.unloading_fly_ash_a); // CW

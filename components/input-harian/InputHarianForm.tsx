@@ -20,7 +20,7 @@ const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; colorClass: s
     { id: 'Power', label: 'Generator', icon: 'bolt', colorClass: 'amber' },
     { id: 'Handling', label: 'Handling', icon: 'local_shipping', colorClass: 'orange' },
     { id: 'Chemical', label: 'Chemical', icon: 'science', colorClass: 'purple' },
-    { id: 'Stock BB', label: 'Stock BB', icon: 'inventory_2', colorClass: 'indigo' },
+    { id: 'Stock BB', label: 'In/Out Batubara', icon: 'local_shipping', colorClass: 'indigo' },
     { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt', colorClass: 'teal' },
 ];
 

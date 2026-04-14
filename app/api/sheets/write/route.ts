@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { upsertShiftRow, upsertDailyRow } from '@/lib/google-sheets';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
-import { dailyReportToRow, type SolarSummary } from '@/lib/daily-sheets-mapper';
+import { dailyReportToRow, type SolarSummary, type ChemicalSummary } from '@/lib/daily-sheets-mapper';
 import type { ShiftTab } from '@/lib/google-sheets';
 
 // ─── Supabase client (service role / anon fallback) ───────────────────────────
@@ -118,16 +118,38 @@ export async function POST(req: NextRequest) {
             const prevDateStr = prevDateObj.toISOString().slice(0, 10);
             const prevData = await fetchDailyReport(prevDateStr);
 
-            // Fetch solar unloadings & usages for this date
+            // Fetch solar unloadings, usages, and chemical consumption for this date
             const supabase = getSupabase();
-            const [solarIn, solarOut] = await Promise.all([
+            const [solarIn, solarOut, shiftChem] = await Promise.all([
                 supabase.from('solar_unloadings').select('liters').eq('date', date),
                 supabase.from('solar_usages').select('liters, tujuan').eq('date', date),
+                supabase
+                    .from('shift_reports')
+                    .select('shift_water_quality(phosphate_penambahan_chemical, phosphate_b_penambahan_chemical, amine_penambahan_chemical, hydrazine_penambahan_chemical)')
+                    .eq('date', date),
             ]);
             const solarSummary: SolarSummary = {
                 kedatangan: (solarIn.data ?? []).reduce((s, r) => s + (Number(r.liters) || 0), 0),
                 bengkel:    (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === 'Bengkel').reduce((s, r) => s + (Number(r.liters) || 0), 0),
                 sasu:       (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === 'SA/SU 3B').reduce((s, r) => s + (Number(r.liters) || 0), 0),
+            };
+
+            let phosphateTotal = 0, amineTotal = 0, hydrazineTotal = 0;
+            let hasPhosphate = false, hasAmine = false, hasHydrazine = false;
+            for (const sr of (shiftChem.data ?? []) as any[]) {
+                const wq = Array.isArray(sr.shift_water_quality) ? sr.shift_water_quality[0] : sr.shift_water_quality;
+                if (!wq) continue;
+                if (wq.phosphate_penambahan_chemical != null || wq.phosphate_b_penambahan_chemical != null) {
+                    phosphateTotal += (Number(wq.phosphate_penambahan_chemical) || 0) + (Number(wq.phosphate_b_penambahan_chemical) || 0);
+                    hasPhosphate = true;
+                }
+                if (wq.amine_penambahan_chemical != null) { amineTotal += Number(wq.amine_penambahan_chemical) || 0; hasAmine = true; }
+                if (wq.hydrazine_penambahan_chemical != null) { hydrazineTotal += Number(wq.hydrazine_penambahan_chemical) || 0; hasHydrazine = true; }
+            }
+            const chemicalSummary: ChemicalSummary = {
+                phosphate:  hasPhosphate  ? phosphateTotal  : null,
+                amine:      hasAmine      ? amineTotal      : null,
+                hydrazine:  hasHydrazine  ? hydrazineTotal  : null,
             };
 
             const row = dailyReportToRow(
@@ -141,6 +163,7 @@ export async function POST(req: NextRequest) {
                 dbData.totalizer,
                 prevData,
                 solarSummary,
+                chemicalSummary,
             );
 
             const result = await upsertDailyRow(date, row);

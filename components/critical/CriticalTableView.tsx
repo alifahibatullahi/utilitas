@@ -96,16 +96,14 @@ function CriticalRow({
     toggleStar: (id: string) => void;
     onEditCritical?: (c: CriticalWithMaintenance) => void;
     onDeleteCritical?: (id: string) => Promise<void>;
-    expandedId, onToggleExpand,
-}: {
-    critical: CriticalWithMaintenance;
-    starred: boolean;
-    isEven: boolean;
-    toggleStar: (id: string) => void;
-    onEditCritical?: (c: CriticalWithMaintenance) => void;
-    onDeleteCritical?: (id: string) => Promise<void>;
+    onEditMaintenance?: (m: MaintenanceLogRow) => void;
+    onDeleteMaintenance?: (id: string) => Promise<void>;
+    onAddMaintenance?: (criticalId: string) => void;
     expandedId: string | null;
     onToggleExpand: (id: string) => void;
+    fetchPhotos?: (maintenanceId: string) => Promise<PhotoRow[]>;
+    deletePhoto?: (photoId: string) => Promise<void>;
+    operatorName?: string;
 }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);

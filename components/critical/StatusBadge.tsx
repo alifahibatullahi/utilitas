@@ -17,12 +17,12 @@ const STATUS_CONFIG_LIGHT: Record<CriticalStatus, { label: string; bg: string; t
     CLOSED: { label: 'Closed', bg: 'bg-white border border-slate-400', text: 'text-slate-600', icon: 'lock' },
 };
 
-export default function StatusBadge({ status, light = false }: { status: CriticalStatus; light?: boolean }) {
+export default function StatusBadge({ status, light = false, className = '' }: { status: CriticalStatus; light?: boolean; className?: string }) {
     const cfg = light ? STATUS_CONFIG_LIGHT[status] : STATUS_CONFIG[status];
     if (!cfg) return null;
     return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.bg} ${cfg.text}`}>
-            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{cfg.icon}</span>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.bg} ${cfg.text} ${className}`}>
+            <span className="material-symbols-outlined" style={{ fontSize: className.includes('text-sm') ? 16 : 12 }}>{cfg.icon}</span>
             {cfg.label}
         </span>
     );

@@ -132,33 +132,32 @@ function CriticalRow({
                     </button>
                 </td>
                 {/* Tanggal */}
-                <td className="px-3 py-3.5 whitespace-nowrap text-sm font-medium text-slate-700">{formatDate(critical.date)}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-base font-bold text-black">{formatDate(critical.date)}</td>
                 {/* Item */}
-                <td className="px-3 py-3.5 text-sm font-bold text-slate-900 whitespace-nowrap">{critical.item}</td>
+                <td className="px-4 py-4 text-base font-black text-black whitespace-nowrap">{critical.item}</td>
                 {/* Deskripsi */}
-                <td className="px-3 py-3.5 text-sm text-slate-700 max-w-[200px]">
-                    <span className="line-clamp-1">{critical.deskripsi}</span>
+                <td className="px-4 py-4 text-base font-medium text-black max-w-[200px]">
+                    <span className="line-clamp-2">{critical.deskripsi}</span>
                 </td>
                 {/* Scope */}
-                <td className="px-3 py-3.5"><ScopeBadge scope={critical.scope} light /></td>
+                <td className="px-4 py-4"><ScopeBadge scope={critical.scope} light /></td>
                 {/* Foreman */}
-                <td className="px-3 py-3.5 text-sm text-slate-700 whitespace-nowrap">{getForemanLabel(critical.foreman)}</td>
+                <td className="px-4 py-4 text-base font-bold text-black whitespace-nowrap">{getForemanLabel(critical.foreman)}</td>
                 {/* Status */}
-                <td className="px-3 py-3.5"><StatusBadge status={critical.status} light /></td>
+                <td className="px-4 py-4"><StatusBadge status={critical.status} light /></td>
                 {/* Notif */}
-                <td className="px-3 py-3.5 text-sm font-mono text-slate-700 whitespace-nowrap">
+                <td className="px-4 py-4 text-base font-mono font-bold text-black whitespace-nowrap">
                     {critical.notif ?? <span className="text-gray-300">—</span>}
                 </td>
-                {/* Actions */}
-                <td className="px-3 py-3.5 text-center">
+                <td className="px-4 py-4 text-center">
                     <div className="flex items-center justify-center gap-2">
                         {/* Detail */}
                         <button
                             onClick={() => onToggleExpand(critical.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:shadow-md hover:from-blue-600 hover:to-blue-700"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:shadow-md hover:from-blue-600 hover:to-blue-700"
                             title="Detail maintenance & aktivitas"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
                                 open_in_new
                             </span>
                             Detail
@@ -166,10 +165,10 @@ function CriticalRow({
                         {/* Edit */}
                         <button
                             onClick={() => onEditCritical?.(critical)}
-                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-sm"
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                             title="Edit"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>edit</span>
                         </button>
                         {/* Delete / Confirm */}
                         {confirmDelete ? (
@@ -177,26 +176,26 @@ function CriticalRow({
                                 <button
                                     onClick={handleDelete}
                                     disabled={deleting}
-                                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow-sm disabled:opacity-50 transition-all font-bold"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow-sm disabled:opacity-50 transition-all font-bold"
                                     title="Konfirmasi hapus"
                                 >
-                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{deleting ? 'more_horiz' : 'check'}</span>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{deleting ? 'more_horiz' : 'check'}</span>
                                 </button>
                                 <button
                                     onClick={() => setConfirmDelete(false)}
-                                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 shadow-sm transition-all"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 shadow-sm transition-all"
                                     title="Batal"
                                 >
-                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
                                 </button>
                             </div>
                         ) : (
                             <button
                                 onClick={() => setConfirmDelete(true)}
-                                className="w-8 h-8 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
                                 title="Hapus"
                             >
-                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
+                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>delete</span>
                             </button>
                         )}
                     </div>
@@ -211,15 +210,15 @@ function TableHeader() {
     return (
         <thead className="bg-[#EAEFF5] border-b border-[#D8E2ED] sticky top-0 z-10 shadow-sm">
             <tr>
-                <th className="w-7 px-2 py-3" />
-                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest whitespace-nowrap">Tanggal</th>
-                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest">Item</th>
-                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest">Deskripsi</th>
-                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest">Scope</th>
-                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest whitespace-nowrap">Foreman</th>
-                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest">Status</th>
-                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest whitespace-nowrap">Notif/SAP</th>
-                <th className="px-3 py-3 text-center text-[11px] font-extrabold text-slate-800 uppercase tracking-widest whitespace-nowrap">Detail / Actions</th>
+                <th className="w-7 px-4 py-4" />
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Tanggal</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Item</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Deskripsi</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Scope</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Foreman</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Status</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Notif/SAP</th>
+                <th className="px-4 py-4 text-center text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Detail / Actions</th>
             </tr>
         </thead>
     );

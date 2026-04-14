@@ -118,13 +118,13 @@ export default function CriticalDetailModal({
                 <div className="flex-shrink-0 bg-[#EAEFF5] border-b border-[#D8E2ED] px-8 py-5 flex items-center justify-between text-slate-800">
                     <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4">
                         <h2 className="text-2xl font-black whitespace-nowrap">{critical.item}</h2>
-                        <StatusBadge status={critical.status} />
+                        <StatusBadge status={critical.status} className="px-3 py-1 text-sm font-bold shadow-sm" />
                         {allScopes.map(s => (
-                            <ScopeBadge key={s} scope={s} />
+                            <ScopeBadge key={s} scope={s} className="px-3 py-1 text-sm font-bold shadow-sm" />
                         ))}
                         {critical.reported_by && (
-                            <span className="px-3 py-1 bg-violet-100 text-violet-700 font-bold text-xs rounded-full whitespace-nowrap whitespace-nowrap">
-                                👤 {critical.reported_by.split(' ')[0]}
+                            <span className="px-3 py-1 bg-violet-100 text-violet-700 font-bold text-sm rounded-full whitespace-nowrap shadow-sm">
+                                👤 {critical.reported_by}
                             </span>
                         )}
                     </div>
@@ -140,18 +140,18 @@ export default function CriticalDetailModal({
                 <div className="p-8 overflow-y-auto light-scrollbar flex-1 bg-slate-50 flex flex-col gap-8">
                     
                     {/* Top Row: Meta info */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                             <span className="text-xs uppercase font-extrabold text-slate-400 block mb-1.5">Tanggal</span>
                             <span className="text-base font-bold text-slate-800">{formatDate(critical.date)}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                            <span className="text-xs uppercase font-extrabold text-slate-400 block mb-1.5">Notif/SAP</span>
-                            <span className="text-base font-bold text-slate-800">{critical.notif || '-'}</span>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-3">
+                            <span className="text-sm uppercase font-extrabold text-slate-400 block mb-1.5">Deskripsi Critical</span>
+                            <span className="text-lg font-bold text-slate-800 leading-relaxed">{critical.deskripsi}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-2">
-                            <span className="text-xs uppercase font-extrabold text-slate-400 block mb-1.5">Deskripsi Critical</span>
-                            <span className="text-sm font-semibold text-slate-700 leading-relaxed">{critical.deskripsi}</span>
+                        <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+                            <span className="text-[10px] uppercase font-extrabold text-slate-400 block mb-1">Notif/SAP</span>
+                            <span className="text-sm font-semibold text-slate-600">{critical.notif || '-'}</span>
                         </div>
                     </div>
 
@@ -198,7 +198,8 @@ export default function CriticalDetailModal({
                                                 </div>
                                                 <div className="flex-1 min-w-0 pr-4">
                                                     <h4 className="text-base font-extrabold text-slate-900 mb-3 break-words">
-                                                        Pekerjaan : <span className="text-slate-700 font-semibold">{m.uraian}</span>
+                                                        <span className="text-slate-500 font-bold">{m.scope.charAt(0).toUpperCase() + m.scope.slice(1)} : </span>
+                                                        <span className="text-slate-800 font-bold">{m.uraian}</span>
                                                     </h4>
                                                     
                                                     {/* Labels */}
@@ -216,7 +217,7 @@ export default function CriticalDetailModal({
                                                         {m.reported_by && (
                                                             <span className="px-3 py-1 bg-teal-100 text-teal-800 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm border border-teal-200">
                                                                 <span className="material-symbols-outlined" style={{fontSize:14}}>person</span>
-                                                                {m.reported_by.split(' ')[0]}
+                                                                {m.reported_by}
                                                             </span>
                                                         )}
                                                     </div>

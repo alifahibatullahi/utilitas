@@ -16,10 +16,10 @@ const SCOPE_CONFIG_LIGHT: Record<HarScope, { label: string; bg: string; text: st
     sipil: { label: 'Sipil', bg: 'bg-white border border-teal-200', text: 'text-teal-600' },
 };
 
-export default function ScopeBadge({ scope, light = false }: { scope: HarScope; light?: boolean }) {
+export default function ScopeBadge({ scope, light = false, className = '' }: { scope: HarScope; light?: boolean; className?: string }) {
     const cfg = light ? SCOPE_CONFIG_LIGHT[scope] : SCOPE_CONFIG[scope];
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.bg} ${cfg.text}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.bg} ${cfg.text} ${className}`}>
             {cfg.label}
         </span>
     );

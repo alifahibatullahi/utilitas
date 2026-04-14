@@ -469,8 +469,8 @@ export function rowToShiftReport(row: string[]): ShiftRowParsed {
             batubara_ton: parseNum(c(COL.boiler_batubara_a)),
             solar_m3: parseNum(c(COL.boiler_solar_a)),
             stream_days: parseNum(c(COL.boiler_stream_days_a)),
-            steam_drum_press: parseNum(c(COL.steam_drum_press_a)),
-            bfw_press: parseNum(c(COL.bfw_press_a)),
+            steam_drum_press: parseNum(c(COL.steam_drum_press_a_pagi)),
+            bfw_press: parseNum(c(COL.bfw_press_a_pagi)),
         },
 
         boilerB: {
@@ -487,8 +487,8 @@ export function rowToShiftReport(row: string[]): ShiftRowParsed {
             batubara_ton: parseNum(c(COL.boiler_batubara_b)),
             solar_m3: parseNum(c(COL.boiler_solar_b)),
             stream_days: parseNum(c(COL.boiler_stream_days_b)),
-            steam_drum_press: parseNum(c(COL.steam_drum_press_b)),
-            bfw_press: parseNum(c(COL.bfw_press_b)),
+            steam_drum_press: parseNum(c(COL.steam_drum_press_b_pagi)),
+            bfw_press: parseNum(c(COL.bfw_press_b_pagi)),
         },
 
         coalBunker: {

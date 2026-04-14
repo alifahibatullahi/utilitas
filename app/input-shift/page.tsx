@@ -107,20 +107,8 @@ export default function InputShiftPage() {
         } catch { /* ignore */ }
     }, [foremanTurbin]);
 
-    // Sync Sheets → Supabase setiap kali tanggal atau shift berubah
-    // Range sync = dari tanggal dipilih sampai hari ini (min 1, max 30 hari)
-    useEffect(() => {
-        const today = new Date();
-        const selected = new Date(selectedDate);
-        const diffDays = Math.max(1, Math.min(30, Math.ceil((today.getTime() - selected.getTime()) / 86400000) + 1));
-        fetch('/api/sheets/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ days: diffDays }),
-        })
-            .then(() => { if (!userModifiedRef.current) refetch(); })
-            .catch(() => {});
-    }, [selectedDate, selectedShift]);
+    // NOTE: Sheets sync dihapus — alur sekarang: input form → Supabase (sumber data utama) → Sheets (fire-and-forget).
+    // Data yang tampil di form selalu diambil dari Supabase melalui useShiftReport.
 
     // Form state
     const [boilerA, setBoilerA] = useState<Record<string, number | null>>({});
@@ -339,13 +327,6 @@ export default function InputShiftPage() {
     useEffect(() => {
         // Jangan overwrite input user yang sedang diketik
         if (userModifiedRef.current) return;
-
-        // After submit+refetch, report matches what we just saved — skip re-populating
-        if (lastSubmittedReportId.current && report && (report as unknown as Record<string, unknown>).id === lastSubmittedReportId.current) {
-            lastSubmittedReportId.current = null;
-            return;
-        }
-        lastSubmittedReportId.current = null;
 
         if (!report) return;
 

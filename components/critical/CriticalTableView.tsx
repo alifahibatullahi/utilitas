@@ -5,11 +5,10 @@ import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow
 import { FOREMAN_OPTIONS } from '@/lib/constants';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
-import PhotoGallery from './PhotoGallery';
-import PhotoUploadButton from './PhotoUploadButton';
+import CriticalDetailModal from './CriticalDetailModal';
 
 const STORAGE_KEY = 'critical-starred-ids';
-const COL_COUNT = 11;
+const COL_COUNT = 9;
 
 interface CriticalTableViewProps {
     criticals: CriticalWithMaintenance[];
@@ -70,10 +69,7 @@ function timeAgo(iso: string): string {
     return `${Math.floor(days / 30)} bln lalu`;
 }
 
-function getLastAction(logs: CriticalActivityLogRow[]): { description: string; created_at: string } | null {
-    if (!logs || logs.length === 0) return null;
-    return [...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-}
+// No getLastAction anymore here
 
 function filterByTab(criticals: CriticalWithMaintenance[], tab: TableStatusTab) {
     return criticals.filter(c => c.status === tab);
@@ -86,145 +82,10 @@ function getTabCounts(criticals: CriticalWithMaintenance[]): Record<TableStatusT
     };
 }
 
-// ─── Maintenance Badge ───
-function MaintBadge({ logs }: { logs: MaintenanceLogRow[] }) {
-    if (logs.length === 0) return <span className="text-gray-300 text-[11px]">—</span>;
-    const open = logs.filter(m => m.status === 'OPEN').length;
-    const ip   = logs.filter(m => m.status === 'IP').length;
-    const ok   = logs.filter(m => m.status === 'OK').length;
-    return (
-        <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[10px] font-bold text-gray-500">{logs.length}x</span>
-            {open > 0 && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-600">{open} open</span>}
-            {ip > 0   && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-600">{ip} IP</span>}
-            {ok > 0   && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-600">{ok} OK</span>}
-        </div>
-    );
-}
+// Expanded components moved to CriticalDetailModal
 
-// ─── Expand Panel: Maintenance (single row) ───
-const STATUS_DOT: Record<string, string> = {
-    OPEN: 'bg-blue-400', IP: 'bg-amber-400', OK: 'bg-emerald-400',
-};
-
-function MaintenancePanelRow({ m, onEdit, onDelete }: {
-    m: MaintenanceLogRow;
-    onEdit?: (m: MaintenanceLogRow) => void;
-    onDelete?: (id: string) => Promise<void>;
-}) {
-    const [confirmDel, setConfirmDel] = useState(false);
-    const [deleting, setDeleting] = useState(false);
-
-    async function handleDelete() {
-        setDeleting(true);
-        await onDelete?.(m.id);
-        setDeleting(false);
-    }
-
-    return (
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-100 last:border-0 group hover:bg-gray-50/60">
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[m.status] ?? 'bg-gray-300'}`} />
-            <div className="flex-1 min-w-0">
-                <span className="text-[11px] text-black line-clamp-1">{m.uraian}</span>
-                <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-black">{formatDate(m.date)}</span>
-                    <ScopeBadge scope={m.scope} light />
-                    <span className="text-[9px] font-bold text-black">{m.tipe}</span>
-                </div>
-            </div>
-            <span className="text-[9px] font-bold text-black whitespace-nowrap">{m.status}</span>
-            {/* Edit / Delete — visible on hover */}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                <button
-                    onClick={() => onEdit?.(m)}
-                    className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Edit"
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit</span>
-                </button>
-                {confirmDel ? (
-                    <div className="flex items-center gap-0.5">
-                        <button
-                            onClick={handleDelete}
-                            disabled={deleting}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50"
-                            title="Konfirmasi hapus"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{deleting ? 'more_horiz' : 'check'}</span>
-                        </button>
-                        <button
-                            onClick={() => setConfirmDel(false)}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
-                            title="Batal"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>close</span>
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => setConfirmDel(true)}
-                        className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                        title="Hapus"
-                    >
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
-                    </button>
-                )}
-            </div>
-        </div>
-    );
-}
-
-// ─── Expand Panel: Maintenance ───
-function MaintenancePanel({ logs, onEdit, onDelete }: {
-    logs: MaintenanceLogRow[];
-    onEdit?: (m: MaintenanceLogRow) => void;
-    onDelete?: (id: string) => Promise<void>;
-}) {
-    if (logs.length === 0) {
-        return <p className="px-3 py-3 text-[11px] text-gray-400 italic">Belum ada maintenance</p>;
-    }
-    const sorted = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    return (
-        <div className="flex flex-col">
-            {sorted.map((m) => (
-                <MaintenancePanelRow key={m.id} m={m} onEdit={onEdit} onDelete={onDelete} />
-            ))}
-        </div>
-    );
-}
-
-// ─── Expand Panel: Activity ───
-function ActivityPanel({ logs }: { logs: CriticalActivityLogRow[] }) {
-    if (logs.length === 0) {
-        return (
-            <div className="flex flex-col items-center py-8 text-gray-400">
-                <span className="material-symbols-outlined text-3xl mb-1 text-gray-200">timeline</span>
-                <p className="text-xs font-semibold">Belum ada aktivitas</p>
-            </div>
-        );
-    }
-    // kronologis: lama → baru
-    const sorted = [...logs].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    return (
-        <div className="flex flex-col">
-            {sorted.map((log) => {
-                const cfg = ACTION_CONFIG[log.action_type] ?? { icon: 'info', color: 'text-gray-400' };
-                return (
-                    <div key={log.id} className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-50 last:border-0">
-                        <span className={`material-symbols-outlined flex-shrink-0 ${cfg.color}`} style={{ fontSize: 13 }}>{cfg.icon}</span>
-                        <span className="text-[11px] text-black flex-1 leading-snug">{log.description}</span>
-                        <span className="text-[10px] text-black whitespace-nowrap flex-shrink-0">
-                            {log.actor ? `${log.actor} · ` : ''}{timeAgo(log.created_at)}
-                        </span>
-                    </div>
-                );
-            })}
-        </div>
-    );
-}
-
-// ─── Expandable Row Pair ───
-function CriticalRowPair({
+// ─── Critical Row ───
+function CriticalRow({
     critical, starred, isEven, toggleStar, onEditCritical, onDeleteCritical,
     onEditMaintenance, onDeleteMaintenance, onAddMaintenance,
     expandedId, onToggleExpand, fetchPhotos, deletePhoto, operatorName,
@@ -235,44 +96,21 @@ function CriticalRowPair({
     toggleStar: (id: string) => void;
     onEditCritical?: (c: CriticalWithMaintenance) => void;
     onDeleteCritical?: (id: string) => Promise<void>;
-    onEditMaintenance?: (m: MaintenanceLogRow) => void;
-    onDeleteMaintenance?: (id: string) => Promise<void>;
-    onAddMaintenance?: (critical: CriticalWithMaintenance) => void;
+    expandedId, onToggleExpand,
+}: {
+    critical: CriticalWithMaintenance;
+    starred: boolean;
+    isEven: boolean;
+    toggleStar: (id: string) => void;
+    onEditCritical?: (c: CriticalWithMaintenance) => void;
+    onDeleteCritical?: (id: string) => Promise<void>;
     expandedId: string | null;
     onToggleExpand: (id: string) => void;
-    fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
-    deletePhoto?: (id: string) => Promise<{ error: string | null }>;
-    operatorName?: string;
 }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
-    const [showPhotoModal, setShowPhotoModal] = useState(false);
-    const [photos, setPhotos] = useState<PhotoRow[]>([]);
-    const [photosLoaded, setPhotosLoaded] = useState(false);
     const isExpanded = expandedId === critical.id;
-    const last = getLastAction(critical.critical_activity_logs);
-    const rowBg = isExpanded ? 'bg-blue-50/40' : isEven ? 'bg-gray-50/30' : 'bg-white';
-
-    async function openPhotoModal() {
-        setShowPhotoModal(true);
-        if (!photosLoaded && fetchPhotos) {
-            const p = await fetchPhotos('critical', critical.id);
-            setPhotos(p);
-            setPhotosLoaded(true);
-        }
-    }
-
-    function handlePhotoUploaded(photo: PhotoRow) {
-        setPhotos(prev => [...prev, photo]);
-    }
-
-    async function handlePhotoDeleted(photoId: string) {
-        if (!deletePhoto) return;
-        const result = await deletePhoto(photoId);
-        if (!result.error) {
-            setPhotos(prev => prev.filter(p => p.id !== photoId));
-        }
-    }
+    const rowBg = isEven ? 'bg-gray-50/40' : 'bg-white';
 
     async function handleDelete() {
         setDeleting(true);
@@ -296,210 +134,76 @@ function CriticalRowPair({
                     </button>
                 </td>
                 {/* Tanggal */}
-                <td className="px-3 py-2 whitespace-nowrap text-xs text-black">{formatDate(critical.date)}</td>
+                <td className="px-3 py-3.5 whitespace-nowrap text-sm font-medium text-slate-700">{formatDate(critical.date)}</td>
                 {/* Item */}
-                <td className="px-3 py-2 text-xs font-bold text-black whitespace-nowrap">{critical.item}</td>
+                <td className="px-3 py-3.5 text-sm font-bold text-slate-900 whitespace-nowrap">{critical.item}</td>
                 {/* Deskripsi */}
-                <td className="px-3 py-2 text-xs text-black max-w-[200px]">
+                <td className="px-3 py-3.5 text-sm text-slate-700 max-w-[200px]">
                     <span className="line-clamp-1">{critical.deskripsi}</span>
                 </td>
                 {/* Scope */}
-                <td className="px-3 py-2"><ScopeBadge scope={critical.scope} light /></td>
+                <td className="px-3 py-3.5"><ScopeBadge scope={critical.scope} light /></td>
                 {/* Foreman */}
-                <td className="px-3 py-2 text-xs text-black whitespace-nowrap">{getForemanLabel(critical.foreman)}</td>
+                <td className="px-3 py-3.5 text-sm text-slate-700 whitespace-nowrap">{getForemanLabel(critical.foreman)}</td>
                 {/* Status */}
-                <td className="px-3 py-2"><StatusBadge status={critical.status} light /></td>
+                <td className="px-3 py-3.5"><StatusBadge status={critical.status} light /></td>
                 {/* Notif */}
-                <td className="px-3 py-2 text-xs font-mono text-black whitespace-nowrap">
+                <td className="px-3 py-3.5 text-sm font-mono text-slate-700 whitespace-nowrap">
                     {critical.notif ?? <span className="text-gray-300">—</span>}
                 </td>
-                {/* Maintenance summary */}
-                <td className="px-3 py-2">
-                    <MaintBadge logs={critical.maintenance_logs} />
-                </td>
-                {/* Notes */}
-                <td className="px-3 py-2">
-                    {last ? (
-                        <div className="flex flex-col gap-0.5 max-w-[170px]">
-                            <span className="text-xs text-black line-clamp-1 leading-tight">{last.description}</span>
-                            <span className="text-[10px] text-gray-400">{timeAgo(last.created_at)}</span>
-                        </div>
-                    ) : (
-                        <span className="text-gray-300 text-[11px]">—</span>
-                    )}
-                </td>
                 {/* Actions */}
-                <td className="px-3 py-2 text-center">
-                    <div className="flex items-center justify-center gap-1">
+                <td className="px-3 py-3.5 text-center">
+                    <div className="flex items-center justify-center gap-2">
                         {/* Detail */}
                         <button
                             onClick={() => onToggleExpand(critical.id)}
-                            className={`flex items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-bold transition-colors border ${
-                                isExpanded
-                                    ? 'bg-blue-100 text-blue-700 border-blue-300'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
-                            }`}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:shadow-md hover:from-blue-600 hover:to-blue-700"
                             title="Detail maintenance & aktivitas"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
-                                {isExpanded ? 'expand_less' : 'expand_more'}
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                                open_in_new
                             </span>
                             Detail
-                        </button>
-                        {/* Foto */}
-                        <button
-                            onClick={openPhotoModal}
-                            className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                            title="Lihat / upload foto"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 19 }}>add_photo_alternate</span>
                         </button>
                         {/* Edit */}
                         <button
                             onClick={() => onEditCritical?.(critical)}
-                            className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-sm"
                             title="Edit"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 19 }}>edit</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
                         </button>
                         {/* Delete / Confirm */}
                         {confirmDelete ? (
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 z-10 relative">
                                 <button
                                     onClick={handleDelete}
                                     disabled={deleting}
-                                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50"
+                                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow-sm disabled:opacity-50 transition-all font-bold"
                                     title="Konfirmasi hapus"
                                 >
-                                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>{deleting ? 'more_horiz' : 'check'}</span>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{deleting ? 'more_horiz' : 'check'}</span>
                                 </button>
                                 <button
                                     onClick={() => setConfirmDelete(false)}
-                                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 shadow-sm transition-all"
                                     title="Batal"
                                 >
-                                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>close</span>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
                                 </button>
                             </div>
                         ) : (
                             <button
                                 onClick={() => setConfirmDelete(true)}
-                                className="p-2 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                className="w-8 h-8 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
                                 title="Hapus"
                             >
-                                <span className="material-symbols-outlined" style={{ fontSize: 19 }}>delete</span>
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
                             </button>
                         )}
                     </div>
                 </td>
             </tr>
-
-            {/* ── Expand Panel Row ── */}
-            {isExpanded && (
-                <tr className="border-b border-gray-200">
-                    <td colSpan={COL_COUNT} className="px-0 py-0">
-                        {/* Indented container — left padding mimics the first columns */}
-                        <div className="pl-10 pr-3 py-2 bg-white">
-                            <div className="rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                                <div className="grid grid-cols-2 divide-x divide-gray-200">
-                                    {/* Maintenance */}
-                                    <div className="max-h-44 overflow-y-auto light-scrollbar">
-                                        <div className="flex items-center justify-between px-3 py-1 bg-emerald-50 border-b border-emerald-100 sticky top-0 z-10">
-                                            <p className="text-[9px] font-extrabold text-emerald-700 uppercase tracking-wider">
-                                                🔧 Maintenance ({critical.maintenance_logs.length})
-                                            </p>
-                                            <button
-                                                onClick={() => onAddMaintenance?.(critical)}
-                                                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-200 transition-colors"
-                                                title="Tambah maintenance untuk critical ini"
-                                            >
-                                                <span className="material-symbols-outlined" style={{ fontSize: 11 }}>add</span>
-                                                Tambah
-                                            </button>
-                                        </div>
-                                        <MaintenancePanel
-                                            logs={critical.maintenance_logs}
-                                            onEdit={onEditMaintenance}
-                                            onDelete={onDeleteMaintenance}
-                                        />
-                                    </div>
-                                    {/* Activity */}
-                                    <div className="max-h-44 overflow-y-auto light-scrollbar flex flex-col">
-                                        <p className="px-3 py-1 text-[9px] font-extrabold text-blue-700 uppercase tracking-wider bg-blue-50 border-b border-blue-100 sticky top-0 z-10">
-                                            📋 Aktivitas ({critical.critical_activity_logs.length})
-                                        </p>
-                                        <ActivityPanel logs={critical.critical_activity_logs} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            )}
-
-            {/* ── Photo Modal ── */}
-            {showPhotoModal && (
-                <tr>
-                    <td colSpan={COL_COUNT} className="p-0">
-                        <div
-                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-                            onClick={() => setShowPhotoModal(false)}
-                        >
-                            <div
-                                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5 flex flex-col gap-4"
-                                onClick={e => e.stopPropagation()}
-                            >
-                                {/* Header */}
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-sm font-extrabold text-gray-800">Foto — {critical.item}</h3>
-                                        <p className="text-[11px] text-gray-400 line-clamp-1">{critical.deskripsi}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <PhotoUploadButton
-                                            criticalId={critical.id}
-                                            uploadedBy={operatorName}
-                                            onUploadSuccess={handlePhotoUploaded}
-                                        />
-                                        <button
-                                            onClick={() => setShowPhotoModal(false)}
-                                            className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Gallery */}
-                                <div className="min-h-[80px]">
-                                    {!photosLoaded ? (
-                                        <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                            <span className="material-symbols-outlined animate-spin" style={{ fontSize: 16 }}>progress_activity</span>
-                                            Memuat foto...
-                                        </div>
-                                    ) : photos.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-8 text-gray-300">
-                                            <span className="material-symbols-outlined text-4xl mb-2">add_photo_alternate</span>
-                                            <p className="text-sm font-semibold text-gray-400">Belum ada foto</p>
-                                            <p className="text-xs text-gray-400">Klik tombol Foto untuk upload</p>
-                                        </div>
-                                    ) : (
-                                        <PhotoGallery
-                                            photos={photos}
-                                            onDelete={deletePhoto ? handlePhotoDeleted : undefined}
-                                        />
-                                    )}
-                                </div>
-
-                                {/* Count */}
-                                {photosLoaded && photos.length > 0 && (
-                                    <p className="text-[10px] text-gray-400 text-right">{photos.length} foto</p>
-                                )}
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            )}
         </>
     );
 }
@@ -507,19 +211,17 @@ function CriticalRowPair({
 // ─── Shared Table Header ───
 function TableHeader() {
     return (
-        <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+        <thead className="bg-[#EAEFF5] border-b border-[#D8E2ED] sticky top-0 z-10 shadow-sm">
             <tr>
-                <th className="w-7 px-2 py-2.5" />
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Tanggal</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Item</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Deskripsi</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Scope</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Foreman</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Notif/SAP</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Maintenance</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Notes</th>
-                <th className="px-3 py-2.5 text-center text-[10px] font-extrabold text-gray-400 uppercase tracking-wider whitespace-nowrap">Detail / Edit</th>
+                <th className="w-7 px-2 py-3" />
+                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest whitespace-nowrap">Tanggal</th>
+                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest">Item</th>
+                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest">Deskripsi</th>
+                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest">Scope</th>
+                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest whitespace-nowrap">Foreman</th>
+                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest">Status</th>
+                <th className="px-3 py-3 text-left text-[11px] font-extrabold text-slate-800 uppercase tracking-widest whitespace-nowrap">Notif/SAP</th>
+                <th className="px-3 py-3 text-center text-[11px] font-extrabold text-slate-800 uppercase tracking-widest whitespace-nowrap">Detail / Actions</th>
             </tr>
         </thead>
     );
@@ -543,12 +245,11 @@ function TableBody({
     onToggleExpand: (id: string) => void;
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
-    operatorName?: string;
 }) {
     return (
         <>
             {items.map((c, idx) => (
-                <CriticalRowPair
+                <CriticalRow
                     key={c.id}
                     critical={c}
                     starred={starredIds.has(c.id)}
@@ -556,14 +257,8 @@ function TableBody({
                     toggleStar={toggleStar}
                     onEditCritical={onEditCritical}
                     onDeleteCritical={onDeleteCritical}
-                    onEditMaintenance={onEditMaintenance}
-                    onDeleteMaintenance={onDeleteMaintenance}
-                    onAddMaintenance={onAddMaintenance}
                     expandedId={expandedId}
                     onToggleExpand={onToggleExpand}
-                    fetchPhotos={fetchPhotos}
-                    deletePhoto={deletePhoto}
-                    operatorName={operatorName}
                 />
             ))}
         </>
@@ -642,14 +337,8 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                                         toggleStar={toggleStar}
                                         onEditCritical={onEditCritical}
                                         onDeleteCritical={onDeleteCritical}
-                                        onEditMaintenance={onEditMaintenance}
-                                        onDeleteMaintenance={onDeleteMaintenance}
-                                        onAddMaintenance={onAddMaintenance}
                                         expandedId={expandedId}
                                         onToggleExpand={handleToggleExpand}
-                                        fetchPhotos={fetchPhotos}
-                                        deletePhoto={deletePhoto}
-                                        operatorName={operatorName}
                                     />
                                 </tbody>
                             </table>
@@ -793,19 +482,27 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                                     toggleStar={toggleStar}
                                     onEditCritical={onEditCritical}
                                     onDeleteCritical={onDeleteCritical}
-                                    onEditMaintenance={onEditMaintenance}
-                                    onDeleteMaintenance={onDeleteMaintenance}
-                                    onAddMaintenance={onAddMaintenance}
                                     expandedId={expandedId}
                                     onToggleExpand={handleToggleExpand}
-                                    fetchPhotos={fetchPhotos}
-                                    deletePhoto={deletePhoto}
-                                    operatorName={operatorName}
                                 />
                             )}
                         </tbody>
                     </table>
                 </div>
+
+                {/* Optional Full Detail Modal popup */}
+                {expandedId && criticals.find(c => c.id === expandedId) && (
+                    <CriticalDetailModal
+                        critical={criticals.find(c => c.id === expandedId)!}
+                        onClose={() => setExpandedId(null)}
+                        onEditMaintenance={onEditMaintenance}
+                        onDeleteMaintenance={onDeleteMaintenance}
+                        onAddMaintenance={onAddMaintenance}
+                        fetchPhotos={fetchPhotos}
+                        deletePhoto={deletePhoto}
+                        operatorName={operatorName}
+                    />
+                )}
 
             </div>
         </div>

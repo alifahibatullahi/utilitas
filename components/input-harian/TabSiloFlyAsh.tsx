@@ -44,8 +44,6 @@ export default function TabSiloFlyAsh({
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Silo A (Data Aktual)" name="silo_a_pct" value={stockTank.silo_a_pct} onChange={onStockTankChange} unit="%" color="emerald" />
                     <InputField label="Silo B (Data Aktual)" name="silo_b_pct" value={stockTank.silo_b_pct} onChange={onStockTankChange} unit="%" color="emerald" />
-                    <InputField label="Unloading Fly Ash A" name="unloading_fly_ash_a" value={stockTank.unloading_fly_ash_a} onChange={onStockTankChange} unit="Silo A" color="emerald" />
-                    <InputField label="Unloading Fly Ash B" name="unloading_fly_ash_b" value={stockTank.unloading_fly_ash_b} onChange={onStockTankChange} unit="Silo B" color="emerald" />
                 </div>
             </Card>
 

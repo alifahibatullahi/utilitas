@@ -43,6 +43,7 @@ interface InputHarianFormProps {
 
 export default function InputHarianForm({ date, operator, groupName, supervisorName }: InputHarianFormProps) {
     const [activeTab, setActiveTab] = useState<HarianTabId>('Boiler');
+    const [visitedTabs, setVisitedTabs] = useState<Set<HarianTabId>>(new Set());
     const [submitting, setSubmitting] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const lastSubmittedReportId = useRef<string | null>(null);
@@ -422,15 +423,15 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 return hasVal(power, ['gen_00']) || hasVal(turbineMisc, ['gen_ampere']);
             case 'Handling':
                 return hasVal(stockTank, ['rcw_level_00', 'demin_level_00', 'solar_tank_a', 'solar_boiler']);
-            case 'Chemical': 
-                return hasVal(stockTank, ['chemical_phosphat', 'chemical_amin', 'chemical_hydrasin']);
-            case 'Stock BB': 
-                return hasVal(stockTank, ['stock_batubara']);
+            case 'Chemical':
+                return visitedTabs.has('Chemical');
+            case 'Stock BB':
+                return hasVal(coalTransfer, ['pb2_pf1_rit', 'pb2_pf1_ton', 'pb2_pf2_rit', 'pb2_pf2_ton', 'pb3_calc_rit', 'pb3_calc_ton', 'darat_24_ton', 'laut_24_ton']);
             case 'Silo & Fly Ash': 
                 return hasVal(stockTank, ['silo_a_pct', 'silo_b_pct']);
             default: return false;
         }
-    }, [steam, power, coal, turbineMisc, stockTank, coalTransfer]);
+    }, [steam, power, coal, turbineMisc, stockTank, coalTransfer, visitedTabs]);
 
     return (
         <>
@@ -480,7 +481,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             return (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
                                     className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? styles.active : styles.inactive}`}
                                 >
                                     <span className={`material-symbols-outlined text-[20px] ${isActive ? styles.icon : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
@@ -508,7 +509,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 return (
                                     <button
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
+                                        onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
                                         className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? styles.active : styles.inactive}`}
                                     >
                                         <span className={`material-symbols-outlined text-[18px] ${isActive ? styles.icon : 'opacity-70'}`}>

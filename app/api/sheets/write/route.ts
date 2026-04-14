@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-            const row = shiftReportToRow(reportData, { boilerA: prevBoilerA, boilerB: prevBoilerB });
+            const row = shiftReportToRow({ ...reportData, shift }, { boilerA: prevBoilerA, boilerB: prevBoilerB });
             const result = await upsertShiftRow(shift, reportData.date, group_name ?? '', row);
             return NextResponse.json(result);
         } catch (err) {

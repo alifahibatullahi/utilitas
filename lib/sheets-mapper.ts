@@ -71,15 +71,19 @@ const COL = {
     boiler_water_b_ph: 118, boiler_water_b_conduct: 119, boiler_water_b_sio2: 120, boiler_water_b_po4: 121,
     product_steam_ph: 122, product_steam_conduct: 123, product_steam_th: 124,
     product_steam_sio2: 125, product_steam_nh4: 126,
-    // Personnel boiler 127-129
-    // Cols 127-132 (DX-EC): Mesh-200/Out Coal Mill & Boiler personnel — kosongkan
-    // Boiler personnel: ED=133(grup), EE=134(foreman/karu), EF=135(supervisor)
-    boiler_grup: 133, boiler_karu: 134, boiler_kasi: 135,
-    // Stock Chemical: EG=136, EH=137, EI=138
+    // Personnel & Pressure (PAGI): ED=133(grup), EE=134(foreman boiler), EF=135(supervisor)
+    boiler_grup_pagi: 133, boiler_karu_pagi: 134, boiler_kasi_pagi: 135,
+    // Stock Chemical (PAGI only): EG=136, EH=137, EI=138
     stock_phosphate: 136, stock_amine: 137, stock_hydrazine: 138,
-    // Pressure Steam Drum & BFW: EJ-EM (139-142)
-    steam_drum_press_a: 139, steam_drum_press_b: 140,
-    bfw_press_a: 141, bfw_press_b: 142,
+    // Pressure Steam Drum & BFW (PAGI): EJ=139, EK=140, EL=141, EM=142
+    steam_drum_press_a_pagi: 139, steam_drum_press_b_pagi: 140,
+    bfw_press_a_pagi: 141, bfw_press_b_pagi: 142,
+
+    // Personnel & Pressure (MALAM/SORE): DX=127(grup), DY=128(foreman boiler), DZ=129(supervisor)
+    boiler_grup_ms: 127, boiler_karu_ms: 128, boiler_kasi_ms: 129,
+    // Pressure Steam Drum & BFW (MALAM/SORE): EA=130, EB=131, EC=132, ED=133
+    steam_drum_press_a_ms: 130, steam_drum_press_b_ms: 131,
+    bfw_press_a_ms: 132, bfw_press_b_ms: 133,
 };
 
 const TOTAL_COLS = 143;
@@ -114,6 +118,7 @@ function parseStr(cell: string | undefined): string | null {
 
 export interface ShiftReportForSheets {
     date: string; // ISO "2025-04-07"
+    shift?: string; // 'pagi' | 'sore' | 'malam'
     turbin?: Record<string, number | null>;
     steamDist?: Record<string, number | null>;
     generatorGi?: Record<string, number | null>;
@@ -225,16 +230,25 @@ export function shiftReportToRow(
     row[COL.tk_demin] = n(ty.tk_demin);
     row[COL.tk_solar_ab] = n(ty.tk_solar_ab);
 
-    // Personnel turbin
+    // Personnel turbin (BI-BK)
     const p = data.personnel ?? {};
     row[COL.turbin_grup] = s(p.turbin_grup);
     row[COL.turbin_karu] = s(p.turbin_karu);
     row[COL.turbin_kasi] = s(p.turbin_kasi);
 
-    // Personnel boiler: ED=133(grup), EE=134(foreman boiler), EF=135(supervisor)
-    row[COL.boiler_grup] = s(p.turbin_grup); // same group as turbin
-    row[COL.boiler_karu] = s(p.boiler_karu);
-    row[COL.boiler_kasi] = s(p.turbin_kasi); // supervisor sama dengan turbin
+    // Personnel boiler: kolom berbeda per shift
+    // Pagi: ED=133(grup), EE=134(foreman boiler), EF=135(supervisor)
+    // Malam/Sore: DX=127(grup), DY=128(foreman boiler), DZ=129(supervisor)
+    const isPagi = data.shift === 'pagi';
+    if (isPagi) {
+        row[COL.boiler_grup_pagi] = s(p.turbin_grup);
+        row[COL.boiler_karu_pagi] = s(p.boiler_karu);
+        row[COL.boiler_kasi_pagi] = s(p.turbin_kasi);
+    } else {
+        row[COL.boiler_grup_ms] = s(p.turbin_grup);
+        row[COL.boiler_karu_ms] = s(p.boiler_karu);
+        row[COL.boiler_kasi_ms] = s(p.turbin_kasi);
+    }
 
     // Boiler A
     const bA = data.boilerA ?? {};
@@ -250,9 +264,6 @@ export function shiftReportToRow(
     row[COL.boiler_batubara_a] = n(bA.batubara_ton);
     row[COL.boiler_solar_a] = n(bA.solar_m3);
     row[COL.boiler_stream_days_a] = n(bA.stream_days);
-    row[COL.steam_drum_press_a] = n(bA.steam_drum_press);
-    row[COL.bfw_press_a] = n(bA.bfw_press);
-
     // Boiler B
     const bB = data.boilerB ?? {};
     row[COL.boiler_press_steam_b] = n(bB.press_steam);
@@ -268,9 +279,6 @@ export function shiftReportToRow(
     row[COL.boiler_batubara_b] = n(bB.batubara_ton);
     row[COL.boiler_solar_b] = n(bB.solar_m3);
     row[COL.boiler_stream_days_b] = n(bB.stream_days);
-    row[COL.steam_drum_press_b] = n(bB.steam_drum_press);
-    row[COL.bfw_press_b] = n(bB.bfw_press);
-
     // Coal Feeders — flow dari boiler tab (CK-CP)
     const cb = data.coalBunker ?? {};
     row[COL.feeder_a] = n(bA.feeder_a_flow);
@@ -316,16 +324,27 @@ export function shiftReportToRow(
     row[COL.product_steam_th] = n(wq.product_steam_th);
     row[COL.product_steam_sio2] = n(wq.product_steam_sio2);
     row[COL.product_steam_nh4] = n(wq.product_steam_nh4);
-    // Stock Chemical EG-EI (136-138)
-    row[COL.stock_phosphate] = n(wq.stock_phosphate as number | null);
-    row[COL.stock_amine] = n(wq.stock_amine as number | null);
-    row[COL.stock_hydrazine] = n(wq.stock_hydrazine as number | null);
+    // Stock Chemical EG-EI (136-138): hanya untuk shift pagi
+    if (isPagi) {
+        row[COL.stock_phosphate] = n(wq.stock_phosphate as number | null);
+        row[COL.stock_amine] = n(wq.stock_amine as number | null);
+        row[COL.stock_hydrazine] = n(wq.stock_hydrazine as number | null);
+    }
 
-    // Pressure Steam Drum & BFW — EJ-EM (139-142)
-    row[COL.steam_drum_press_a] = n(bA.steam_drum_press);
-    row[COL.steam_drum_press_b] = n(bB.steam_drum_press);
-    row[COL.bfw_press_a] = n(bA.bfw_press);
-    row[COL.bfw_press_b] = n(bB.bfw_press);
+    // Pressure Steam Drum & BFW: kolom berbeda per shift
+    // Pagi: EJ=139, EK=140, EL=141, EM=142
+    // Malam/Sore: EA=130, EB=131, EC=132, ED=133
+    if (isPagi) {
+        row[COL.steam_drum_press_a_pagi] = n(bA.steam_drum_press);
+        row[COL.steam_drum_press_b_pagi] = n(bB.steam_drum_press);
+        row[COL.bfw_press_a_pagi] = n(bA.bfw_press);
+        row[COL.bfw_press_b_pagi] = n(bB.bfw_press);
+    } else {
+        row[COL.steam_drum_press_a_ms] = n(bA.steam_drum_press);
+        row[COL.steam_drum_press_b_ms] = n(bB.steam_drum_press);
+        row[COL.bfw_press_a_ms] = n(bA.bfw_press);
+        row[COL.bfw_press_b_ms] = n(bB.bfw_press);
+    }
 
     return row;
 }

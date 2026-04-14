@@ -28,7 +28,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                         <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} />
                         <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} />
                         <div>
-                            <InputField label="Totalizer Steam Inlet" unit="ton" color="blue" name="totalizer_steam_inlet" value={values.totalizer_steam_inlet} onChange={onFieldChange} />
+                            <InputField label="Totalizer Steam Inlet" unit="ton" color="blue" name="totalizer_steam_inlet" value={values.totalizer_steam_inlet} onChange={onFieldChange} placeholder={prevSteamInlet > 0 ? String(prevSteamInlet) : '0.0'} />
                             <SelisihInfo prev={prevSteamInlet} current={currentSteamInlet} />
                         </div>
                     </Card>
@@ -44,7 +44,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                             <InputField label="Durasi HPO" unit="s" color="cyan" name="hpo_durasi" value={values.hpo_durasi} onChange={onFieldChange} />
                         </div>
                         <div>
-                            <InputField label="Totalizer Condensate" unit="ton" color="cyan" name="totalizer_condensate" value={values.totalizer_condensate} onChange={onFieldChange} />
+                            <InputField label="Totalizer Condensate" unit="ton" color="cyan" name="totalizer_condensate" value={values.totalizer_condensate} onChange={onFieldChange} placeholder={prevCondensate > 0 ? String(prevCondensate) : '0.0'} />
                             <SelisihInfo prev={prevCondensate} current={currentCondensate} />
                         </div>
                     </Card>

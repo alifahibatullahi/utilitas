@@ -46,7 +46,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} />
                         <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} />
                         <div>
-                            <InputField label="Totalizer Steam" unit="ton" color="blue" name="totalizer_steam" value={values.totalizer_steam} onChange={onFieldChange} />
+                            <InputField label="Totalizer Steam" unit="ton" color="blue" name="totalizer_steam" value={values.totalizer_steam} onChange={onFieldChange} placeholder={prevSteam > 0 ? String(prevSteam) : '0.0'} />
                             <SelisihInfo prev={prevSteam} current={currentSteam} />
                         </div>
                     </Card>
@@ -56,7 +56,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         <InputField label="Temp BFW" unit="°C" color="cyan" name="temp_bfw" value={values.temp_bfw} onChange={onFieldChange} />
                         <InputField label="Flow BFW" unit="t/h" color="cyan" name="flow_bfw" value={values.flow_bfw} onChange={onFieldChange} />
                         <div>
-                            <InputField label="Totalizer BFW" unit="ton" color="cyan" name="totalizer_bfw" value={values.totalizer_bfw} onChange={onFieldChange} />
+                            <InputField label="Totalizer BFW" unit="ton" color="cyan" name="totalizer_bfw" value={values.totalizer_bfw} onChange={onFieldChange} placeholder={Number(prevTotalizerBfw) > 0 ? String(Number(prevTotalizerBfw)) : '0.0'} />
                             <SelisihInfo prev={Number(prevTotalizerBfw) || 0} current={Number(values.totalizer_bfw) || 0} />
                         </div>
                     </Card>
@@ -86,7 +86,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Feeder {feeder}</p>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <InputField placeholder="Totalizer" unit="ton" color="emerald" size="small" name={feederKeys[idx]} value={coalBunkerValues[feederKeys[idx]]} onChange={onCoalBunkerChange} />
+                                        <InputField placeholder={Number(prevCoalBunkerValues[feederKeys[idx]]) > 0 ? String(Number(prevCoalBunkerValues[feederKeys[idx]])) : 'Totalizer'} unit="ton" color="emerald" size="small" name={feederKeys[idx]} value={coalBunkerValues[feederKeys[idx]]} onChange={onCoalBunkerChange} />
                                         <SelisihInfo prev={Number(prevCoalBunkerValues[feederKeys[idx]]) || 0} current={Number(coalBunkerValues[feederKeys[idx]]) || 0} />
                                     </div>
                                     <InputField placeholder="Flow" unit="t/h" color="emerald" size="small" name={`${feederKeys[idx]}_flow`} value={values[`${feederKeys[idx]}_flow`]} onChange={onFieldChange} />

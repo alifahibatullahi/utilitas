@@ -92,11 +92,11 @@ export default function TabHandling({
                                 Hopper Aktif
                             </label>
                             <select
-                                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono transition-all"
-                                value={(espValues.hopper as string) || 'A'}
-                                onChange={e => onEspChange?.('hopper', e.target.value)}
-                                onFocus={() => { if (!espValues.hopper) onEspChange?.('hopper', 'A'); }}
+                                className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono transition-all ${!espValues.hopper ? 'text-slate-400' : 'text-white'}`}
+                                value={(espValues.hopper as string) || ''}
+                                onChange={e => onEspChange?.('hopper', e.target.value || null)}
                             >
+                                <option value="" className="text-slate-400">Pilih...</option>
                                 <option value="A">Hopper A</option>
                                 <option value="B">Hopper B</option>
                             </select>
@@ -107,11 +107,11 @@ export default function TabHandling({
                                 Conveyor Status
                             </label>
                             <select
-                                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono transition-all"
-                                value={(espValues.conveyor as string) || 'AB'}
-                                onChange={e => onEspChange?.('conveyor', e.target.value)}
-                                onFocus={() => { if (!espValues.conveyor) onEspChange?.('conveyor', 'AB'); }}
+                                className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono transition-all ${!espValues.conveyor ? 'text-slate-400' : 'text-white'}`}
+                                value={(espValues.conveyor as string) || ''}
+                                onChange={e => onEspChange?.('conveyor', e.target.value || null)}
                             >
+                                <option value="" className="text-slate-400">Pilih...</option>
                                 <option value="AB">Conveyor AB (1&amp;2)</option>
                                 <option value="A">Conveyor A (1)</option>
                                 <option value="B">Conveyor B (2)</option>

@@ -61,7 +61,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <div>
-                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} />
+                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} placeholder={prevTot > 0 ? String(prevTot) : '0.0'} />
                                                     <SelisihInfo prev={prevTot} current={curTot} />
                                                 </div>
                                                 <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />
@@ -75,7 +75,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <div>
-                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} />
+                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} placeholder={Number(prevPowerDist.power_stg_ubb_totalizer) > 0 ? String(Number(prevPowerDist.power_stg_ubb_totalizer)) : '0.0'} />
                                             <SelisihInfo prev={Number(prevPowerDist.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} />
                                         </div>
                                         <div>

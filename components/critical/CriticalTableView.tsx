@@ -243,6 +243,7 @@ function TableBody({
     onToggleExpand: (id: string) => void;
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
+    operatorName?: string;
 }) {
     return (
         <>

@@ -555,7 +555,7 @@ export default function InputShiftPage() {
             case 'Handling': return hasVal(espHandling, ['loading', 'hopper', 'conveyor']) && hasVal(tankyard, ['tk_rcw', 'tk_demin', 'tk_solar_ab']);
             case 'ESP': return hasVal(espHandling, ['esp_a1', 'esp_a2', 'esp_a3', 'esp_b1', 'esp_b2', 'esp_b3', 'silo_a', 'silo_b']);
             case 'Coal Bunker': return hasVal(coalBunker, ['bunker_a', 'bunker_b', 'bunker_c', 'bunker_d', 'bunker_e', 'bunker_f']);
-            case 'Lab': return hasVal(waterQuality, ['demin_1250_ph', 'demin_1250_cond', 'demin_750_ph', 'demin_750_cond', 'steam_drum_ph', 'steam_drum_cond', 'bfw_ph', 'bfw_cond', 'cooling_water_ph', 'cooling_water_cond']) && hasVal(chemicalDosing, ['phosphate_lvl', 'phosphate_stroke', 'phosphate_b_lvl', 'phosphate_b_stroke', 'amine_lvl', 'amine_stroke', 'hydrazine_lvl', 'hydrazine_stroke']);
+            case 'Lab': return hasVal(waterQuality, ['demin_1250_ph', 'demin_1250_conduct', 'bfw_ph', 'bfw_conduct', 'boiler_water_a_ph', 'boiler_water_b_ph', 'product_steam_ph']) && hasVal(chemicalDosing, ['phosphate_level_tanki', 'phosphate_stroke_pompa', 'phosphate_b_level_tanki', 'phosphate_b_stroke_pompa', 'amine_level_tanki', 'amine_stroke_pompa', 'hydrazine_level_tanki', 'hydrazine_stroke_pompa']);
             default: return false;
         }
     }, [boilerA, boilerB, turbin, generatorGi, powerDist, steamDist, tankyard, espHandling, coalBunker, waterQuality, chemicalDosing]);

@@ -481,7 +481,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
                     `)
                     .eq('date', date)
                     .eq('shift', shift)
-                    .order('created_at', { ascending: true })
+                    .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle(),
                 supabase
@@ -613,7 +613,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 catatan: reportData.catatan || null,
                 ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any, { onConflict: 'date,shift,group_name' })
+            } as any, { onConflict: 'date,shift' })
             .select()
             .single();
 

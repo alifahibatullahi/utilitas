@@ -75,6 +75,8 @@ const COL = {
     // Cols 127-132 (DX-EC): Mesh-200/Out Coal Mill & Boiler personnel — kosongkan
     // Boiler personnel: ED=133(grup), EE=134(foreman/karu), EF=135(supervisor)
     boiler_grup: 133, boiler_karu: 134, boiler_kasi: 135,
+    // Stock Chemical: EG=136, EH=137, EI=138
+    stock_phosphate: 136, stock_amine: 137, stock_hydrazine: 138,
     // Pressure Steam Drum & BFW: EJ-EM (139-142)
     steam_drum_press_a: 139, steam_drum_press_b: 140,
     bfw_press_a: 141, bfw_press_b: 142,
@@ -314,7 +316,10 @@ export function shiftReportToRow(
     row[COL.product_steam_th] = n(wq.product_steam_th);
     row[COL.product_steam_sio2] = n(wq.product_steam_sio2);
     row[COL.product_steam_nh4] = n(wq.product_steam_nh4);
-    // Cols 127-138 dikosongkan (Mesh-200, Out Coal Mill, Boiler Personnel, Dosing)
+    // Stock Chemical EG-EI (136-138)
+    row[COL.stock_phosphate] = n(wq.stock_phosphate as number | null);
+    row[COL.stock_amine] = n(wq.stock_amine as number | null);
+    row[COL.stock_hydrazine] = n(wq.stock_hydrazine as number | null);
 
     // Pressure Steam Drum & BFW — EJ-EM (139-142)
     row[COL.steam_drum_press_a] = n(bA.steam_drum_press);

@@ -140,6 +140,7 @@ export default function InputShiftPage() {
     const [savedOutSolarEntries, setSavedOutSolarEntries] = useState<{ id?: string; tanggal: string; jumlah: number | null; tujuan: string }[]>([]);
     const [ashEntries, setAshEntries] = useState<AshUnloadingEntry[]>([]);
     const [savedAshEntries, setSavedAshEntries] = useState<AshUnloadingEntry[]>([]);
+    const [lastStock, setLastStock] = useState<{ phosphate: number | null; amine: number | null; hydrazine: number | null }>({ phosphate: null, amine: null, hydrazine: null });
 
     // Shift mapping: button order matches chronological report time
     // 06.00 → shift malam (night shift makes 06.00 report)
@@ -199,6 +200,26 @@ export default function InputShiftPage() {
 
     }, [selectedDate, selectedShift]);
 
+    // Fetch last known chemical stock (latest shift report with non-null stock)
+    useEffect(() => {
+        const supabase = createClient();
+        supabase
+            .from('shift_water_quality')
+            .select('stock_phosphate, stock_amine, stock_hydrazine')
+            .not('stock_phosphate', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .then(({ data }) => {
+                if (data && data[0]) {
+                    setLastStock({
+                        phosphate: data[0].stock_phosphate as number | null,
+                        amine: data[0].stock_amine as number | null,
+                        hydrazine: data[0].stock_hydrazine as number | null,
+                    });
+                }
+            });
+    }, []);
+
     // ─── Delete handlers untuk entri yang sudah tersimpan di DB ───
     const handleDeleteSavedAsh = async (id: string) => {
         if (!confirm('Hapus data unloading ini?')) return;
@@ -255,12 +276,14 @@ export default function InputShiftPage() {
         };
     }, []);
 
-    // Restore supervisor dari report data jika sudah ada (setelah report loaded via useShiftReport)
+    // Restore supervisor/foreman dari report data jika sudah ada (setelah report loaded via useShiftReport)
     useEffect(() => {
-        if (report?.supervisor) {
-            setSupervisor(report.supervisor);
-        }
-    }, [report?.supervisor]);
+        if (!report) return;
+        if (report.supervisor) setSupervisor(report.supervisor);
+        const personnel = (report as any).shift_personnel?.[0];
+        if (personnel?.turbin_karu) setForemanTurbin(personnel.turbin_karu);
+        if (personnel?.boiler_karu) setForemanBoiler(personnel.boiler_karu);
+    }, [report]);
 
     const handleNavLeave = useCallback(() => {
         bypassNavRef.current = true;
@@ -307,6 +330,9 @@ export default function InputShiftPage() {
         setSolarEntries([]);
         setOutSolarEntries([]);
         setAshEntries([]);
+        setSupervisor('');
+        setForemanBoiler('');
+        setForemanTurbin('');
     }, [selectedShift, selectedDate]);
 
     // Populate form when report data arrives from Supabase
@@ -860,7 +886,7 @@ export default function InputShiftPage() {
                             {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} onDeleteSavedSolar={handleDeleteSavedSolar} onDeleteSavedOutSolar={handleDeleteSavedOutSolar} />}
                             {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} onDeleteSavedAsh={handleDeleteSavedAsh} />}
                             {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
-                            {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} />}
+                            {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} />}
                         </div>
                     </div>
                 </div>

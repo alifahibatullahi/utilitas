@@ -7,6 +7,9 @@ interface TabLabProps {
     chemicalDosingValues?: Record<string, number | string | null>;
     onWaterQualityChange?: (name: string, value: number | string | null) => void;
     onChemicalDosingChange?: (name: string, value: number | string | null) => void;
+    lastStockPhosphate?: number | null;
+    lastStockAmine?: number | null;
+    lastStockHydrazine?: number | null;
 }
 
 export default function TabLab({
@@ -14,6 +17,9 @@ export default function TabLab({
     chemicalDosingValues = {},
     onWaterQualityChange,
     onChemicalDosingChange,
+    lastStockPhosphate,
+    lastStockAmine,
+    lastStockHydrazine,
 }: TabLabProps) {
     const wq = waterQualityValues;
     const cd = chemicalDosingValues;
@@ -80,9 +86,24 @@ export default function TabLab({
                     <div className="col-span-1 md:col-span-2 rounded-xl ring-1 ring-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
                         <Card title="Stock Chemical" icon="inventory_2" color="emerald">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <InputField label="Phosphate" unit="pcs" color="emerald" name="stock_phosphate" value={cd.stock_phosphate} onChange={onChemicalDosingChange} />
-                                <InputField label="Amine" unit="pcs" color="emerald" name="stock_amine" value={cd.stock_amine} onChange={onChemicalDosingChange} />
-                                <InputField label="Hydrazine" unit="pcs" color="emerald" name="stock_hydrazine" value={cd.stock_hydrazine} onChange={onChemicalDosingChange} />
+                                <div className="flex flex-col gap-1">
+                                    <InputField label="Phosphate" unit="pcs" color="emerald" name="stock_phosphate" value={cd.stock_phosphate} onChange={onChemicalDosingChange} />
+                                    {lastStockPhosphate != null && (
+                                        <p className="text-[11px] text-slate-400 pl-1">Terakhir: <span className="text-emerald-400 font-semibold">{lastStockPhosphate} pcs</span></p>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <InputField label="Amine" unit="pcs" color="emerald" name="stock_amine" value={cd.stock_amine} onChange={onChemicalDosingChange} />
+                                    {lastStockAmine != null && (
+                                        <p className="text-[11px] text-slate-400 pl-1">Terakhir: <span className="text-emerald-400 font-semibold">{lastStockAmine} pcs</span></p>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <InputField label="Hydrazine" unit="pcs" color="emerald" name="stock_hydrazine" value={cd.stock_hydrazine} onChange={onChemicalDosingChange} />
+                                    {lastStockHydrazine != null && (
+                                        <p className="text-[11px] text-slate-400 pl-1">Terakhir: <span className="text-emerald-400 font-semibold">{lastStockHydrazine} pcs</span></p>
+                                    )}
+                                </div>
                             </div>
                         </Card>
                     </div>

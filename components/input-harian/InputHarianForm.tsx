@@ -586,7 +586,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
                                     {activeTab === 'Power' && <TabPower {...tabProps} />}
                                     {activeTab === 'Handling' && <TabHandling {...tabProps} />}
-                                    {activeTab === 'Chemical' && <TabChemical {...tabProps} />}
+                                    {activeTab === 'Chemical' && <TabChemical date={date} />}
                                     {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}
                                     {activeTab === 'Silo & Fly Ash' && <TabSiloFlyAsh {...tabProps} />}
                                 </>

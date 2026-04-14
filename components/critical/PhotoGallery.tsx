@@ -29,19 +29,18 @@ export default function PhotoGallery({ photos, onDelete, compact = false }: Phot
 
   return (
     <>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {photos.map((photo) => (
-          <div key={photo.id} className="relative group flex-shrink-0">
+          <div key={photo.id} className="relative group w-full aspect-square">
             <button
               onClick={() => setLightboxUrl(photo.url)}
-              className="block rounded-md overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="block w-full h-full rounded-xl overflow-hidden border-2 border-slate-100 hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400"
               title={photo.filename}
             >
               <Image
                 src={photo.url}
                 alt={photo.filename}
-                width={thumbSize}
-                height={thumbSize}
+                fill
                 className="object-cover"
               />
             </button>
@@ -55,12 +54,12 @@ export default function PhotoGallery({ photos, onDelete, compact = false }: Phot
               <button
                 onClick={() => handleDelete(photo.id)}
                 disabled={deletingId === photo.id}
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white
-                           flex items-center justify-center opacity-0 group-hover:opacity-100
-                           transition-opacity disabled:opacity-50 hover:bg-rose-600"
+                className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-rose-500 text-white shadow-md
+                           flex items-center justify-center opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100
+                           transition-all disabled:opacity-50 hover:bg-rose-600"
                 title="Hapus foto"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 10 }}>
+                <span className="material-symbols-outlined font-bold" style={{ fontSize: 16 }}>
                   {deletingId === photo.id ? 'more_horiz' : 'close'}
                 </span>
               </button>
@@ -86,8 +85,8 @@ export default function PhotoGallery({ photos, onDelete, compact = false }: Phot
             />
             <button
               onClick={() => setLightboxUrl(null)}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white
-                         flex items-center justify-center hover:bg-black/80 transition-colors"
+              className="absolute -top-12 right-0 md:-right-12 w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20
+                         flex items-center justify-center transition-colors border border-white/20 backdrop-blur-sm"
             >
               <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
             </button>

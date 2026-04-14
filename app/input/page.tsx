@@ -162,7 +162,7 @@ export default function InputPage() {
     const isValid = Object.entries(allDraftsNow).some(([, d]) => d?.levelM3);
 
     return (
-        <div className="relative min-h-screen bg-slate-900 pb-32">
+        <div className="relative min-h-screen bg-slate-900 pb-[160px] md:pb-32">
             {/* Background decorative elements */}
             <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-cyan-900/20 to-transparent pointer-events-none" />
             <div className="absolute top-[-10%] right-[-5%] w-64 h-64 rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
@@ -400,7 +400,7 @@ export default function InputPage() {
             </div>
 
             {/* Sticky Bottom Action Bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6 bg-gradient-to-t from-slate-950 via-slate-900/95 to-transparent pt-12 pb-6 sm:pb-8 backdrop-blur-[2px]">
+            <div className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6 bg-gradient-to-t from-slate-950 via-slate-900/95 to-transparent pt-12 pb-[calc(64px+env(safe-area-inset-bottom,0px)+8px)] sm:pb-8 md:pb-8 backdrop-blur-[2px]">
                 <div className="max-w-xl mx-auto">
                     <button 
                         onClick={handleSubmit} 

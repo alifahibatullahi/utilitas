@@ -118,12 +118,12 @@ export default function CriticalDetailModal({
                 <div className="flex-shrink-0 bg-[#EAEFF5] border-b border-[#D8E2ED] px-8 py-5 flex items-center justify-between text-slate-800">
                     <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4">
                         <h2 className="text-2xl font-black whitespace-nowrap">{critical.item}</h2>
-                        <StatusBadge status={critical.status} className="px-3 py-1 text-sm font-bold shadow-sm" />
+                        <StatusBadge status={critical.status} className="px-4 py-1.5 text-base font-bold shadow-sm" />
                         {allScopes.map(s => (
-                            <ScopeBadge key={s} scope={s} className="px-3 py-1 text-sm font-bold shadow-sm" />
+                            <ScopeBadge key={s} scope={s} className="px-4 py-1.5 text-base font-bold shadow-sm" />
                         ))}
                         {critical.reported_by && (
-                            <span className="px-3 py-1 bg-violet-100 text-violet-700 font-bold text-sm rounded-full whitespace-nowrap shadow-sm">
+                            <span className="px-4 py-1.5 bg-violet-100 text-violet-700 font-bold text-base rounded-full whitespace-nowrap shadow-sm">
                                 👤 {critical.reported_by}
                             </span>
                         )}
@@ -140,18 +140,18 @@ export default function CriticalDetailModal({
                 <div className="p-8 overflow-y-auto light-scrollbar flex-1 bg-slate-50 flex flex-col gap-8">
                     
                     {/* Top Row: Meta info */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-1">
                             <span className="text-xs uppercase font-extrabold text-slate-400 block mb-1.5">Tanggal</span>
                             <span className="text-base font-bold text-slate-800">{formatDate(critical.date)}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-3">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border-rose-400 border-[1.5px] col-span-4">
                             <span className="text-sm uppercase font-extrabold text-slate-400 block mb-1.5">Deskripsi Critical</span>
                             <span className="text-lg font-bold text-slate-800 leading-relaxed">{critical.deskripsi}</span>
                         </div>
-                        <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
-                            <span className="text-[10px] uppercase font-extrabold text-slate-400 block mb-1">Notif/SAP</span>
-                            <span className="text-sm font-semibold text-slate-600">{critical.notif || '-'}</span>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-1">
+                            <span className="text-xs uppercase font-extrabold text-slate-400 block mb-1.5">Notif/SAP</span>
+                            <span className="text-base font-bold text-slate-800">{critical.notif || '-'}</span>
                         </div>
                     </div>
 
@@ -192,13 +192,18 @@ export default function CriticalDetailModal({
                                             }`}
                                         >
                                             <div className="flex gap-4">
-                                                <div className="flex-shrink-0 flex flex-col items-center justify-center w-8 bg-slate-50 rounded-xl border border-slate-100">
-                                                    <span className="text-xs font-black text-slate-500 mb-1">#{idx + 1}</span>
-                                                    <span className="material-symbols-outlined cursor-grab active:cursor-grabbing text-slate-400 opacity-50 group-hover:opacity-100 transition-opacity">drag_indicator</span>
+                                                <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 bg-slate-50 rounded-xl border border-slate-100">
+                                                    <span className="text-xl font-black text-slate-500 mb-1">#{idx + 1}</span>
+                                                    <span className="material-symbols-outlined cursor-grab active:cursor-grabbing text-slate-400 opacity-50 group-hover:opacity-100 transition-opacity pb-1">drag_indicator</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0 pr-4">
                                                     <h4 className="text-base font-extrabold text-slate-900 mb-3 break-words">
-                                                        <span className="text-slate-500 font-bold">{m.scope.charAt(0).toUpperCase() + m.scope.slice(1)} : </span>
+                                                        <span className={`font-bold ${
+                                                            m.scope === 'mekanik' ? 'text-blue-600' :
+                                                            m.scope === 'listrik' ? 'text-amber-600' :
+                                                            m.scope === 'instrumen' ? 'text-purple-600' :
+                                                            m.scope === 'sipil' ? 'text-teal-600' : 'text-slate-500'
+                                                        }`}>{m.scope.charAt(0).toUpperCase() + m.scope.slice(1)} : </span>
                                                         <span className="text-slate-800 font-bold">{m.uraian}</span>
                                                     </h4>
                                                     
@@ -208,10 +213,9 @@ export default function CriticalDetailModal({
                                                             <span className="material-symbols-outlined" style={{fontSize:14}}>event</span>
                                                             {formatDate(m.date)}
                                                         </span>
-                                                        <ScopeBadge scope={m.scope} light={false} />
                                                         {m.notif && (
                                                             <span className="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-lg shadow-sm border border-indigo-200">
-                                                                SAP: {m.notif}
+                                                                Notif: {m.notif}
                                                             </span>
                                                         )}
                                                         {m.reported_by && (
@@ -229,15 +233,29 @@ export default function CriticalDetailModal({
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-shrink-0 flex flex-col justify-between items-end gap-3 min-w-[90px] border-l border-slate-100 pl-4">
+                                                <div className="flex-shrink-0 flex flex-col justify-between items-end gap-3 min-w-[100px] border-l border-slate-100 pl-4">
                                                     <div className="w-full text-right">
-                                                        <span className={`inline-block px-4 py-2 rounded-xl text-sm font-black border uppercase tracking-wider text-center w-full shadow-sm ${
-                                                            m.status === 'OK' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                                                            m.status === 'IP' ? 'bg-amber-100 text-amber-700 border-amber-300' :
-                                                            'bg-blue-100 text-blue-700 border-blue-300'
-                                                        }`}>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const statuses: ('OPEN' | 'IP' | 'OK')[] = ['OPEN', 'IP', 'OK'];
+                                                                const curr = statuses.indexOf(m.status);
+                                                                const next = statuses[(curr + 1) % statuses.length];
+                                                                setMLogs(prev => {
+                                                                    const n = [...prev];
+                                                                    n[idx] = { ...n[idx], status: next };
+                                                                    return n;
+                                                                });
+                                                                // If a global callback exists, we'd fire it here. For now it updates locally.
+                                                            }}
+                                                            title="Klik untuk mengubah status"
+                                                            className={`inline-block px-4 py-2 rounded-xl text-sm font-black border uppercase tracking-wider text-center w-full shadow-sm cursor-pointer hover:opacity-80 transition-opacity ${
+                                                                m.status === 'OK' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                                                                m.status === 'IP' ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                                                                'bg-blue-100 text-blue-700 border-blue-300'
+                                                            }`}
+                                                        >
                                                             {m.status}
-                                                        </span>
+                                                        </button>
                                                     </div>
                                                     
                                                     <div className="flex flex-col gap-2 w-full mt-auto">

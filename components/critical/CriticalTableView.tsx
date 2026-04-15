@@ -140,11 +140,11 @@ function CriticalRow({
                     <span className="line-clamp-2">{critical.deskripsi}</span>
                 </td>
                 {/* Scope */}
-                <td className="px-4 py-4"><ScopeBadge scope={critical.scope} light /></td>
+                <td className="px-4 py-4"><ScopeBadge scope={critical.scope} light className="px-3 py-1 text-sm shadow-sm" /></td>
                 {/* Foreman */}
                 <td className="px-4 py-4 text-base font-bold text-black whitespace-nowrap">{getForemanLabel(critical.foreman)}</td>
                 {/* Status */}
-                <td className="px-4 py-4"><StatusBadge status={critical.status} light /></td>
+                <td className="px-4 py-4"><StatusBadge status={critical.status} light className="px-3 py-1 text-sm shadow-sm" /></td>
                 {/* Notif */}
                 <td className="px-4 py-4 text-base font-mono font-bold text-black whitespace-nowrap">
                     {critical.notif ?? <span className="text-gray-300">—</span>}
@@ -348,19 +348,19 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
             {/* ── Main Table ── */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                 {/* Status tabs */}
-                <div className="flex items-center gap-1 px-4 pt-3 pb-0 border-b border-gray-100">
+                <div className="flex flex-wrap items-center gap-2 px-4 pt-4 pb-0 border-b border-gray-100">
                     {STATUS_TABS.map(tab => {
                         const isActive = activeTab === tab.key;
                         return (
                             <button
                                 key={tab.key}
                                 onClick={() => { setActiveTab(tab.key); setExpandedId(null); }}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-t-lg text-xs font-bold transition-all border-b-2 -mb-px ${
+                                className={`flex items-center gap-2 px-4 py-3 rounded-t-lg text-sm font-bold transition-all border-b-2 -mb-px ${
                                     isActive ? 'border-blue-500 text-blue-600 bg-blue-50/60' : 'border-transparent text-black hover:text-black hover:bg-gray-50'
                                 }`}
                             >
                                 {tab.label}
-                                <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-extrabold ${
+                                <span className={`inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full text-xs font-extrabold ${
                                     isActive ? 'bg-blue-500 text-white' : 'bg-gray-100 text-black'
                                 }`}>
                                     {tabCounts[tab.key]}
@@ -368,32 +368,39 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                             </button>
                         );
                     })}
-                    <div className="ml-auto pb-2">
+                    <div className="ml-auto pb-3 flex items-center gap-2">
+                        <button
+                            onClick={() => onAddMaintenance?.(undefined as any)}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>build</span>
+                            + Tambah Maintenance
+                        </button>
                         <button
                             onClick={onAddCritical}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold hover:bg-rose-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 text-sm font-bold hover:bg-rose-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>warning</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>warning</span>
                             + Tambah Critical
                         </button>
                     </div>
                 </div>
 
                 {/* Filter Bar */}
-                <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-gray-50/60 border-b border-gray-100">
+                <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
                     {/* Item search */}
-                    <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm min-w-[160px]">
-                        <span className="material-symbols-outlined text-gray-400" style={{ fontSize: 14 }}>search</span>
+                    <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm min-w-[200px]">
+                        <span className="material-symbols-outlined text-gray-400" style={{ fontSize: 16 }}>search</span>
                         <input
                             type="text"
                             placeholder="Cari item..."
                             value={filterItem}
                             onChange={e => { setFilterItem(e.target.value); setExpandedId(null); }}
-                            className="text-xs text-black outline-none bg-transparent w-full placeholder:text-gray-400"
+                            className="text-sm text-black outline-none bg-transparent w-full placeholder:text-gray-400"
                         />
                         {filterItem && (
                             <button onClick={() => setFilterItem('')} className="text-gray-300 hover:text-gray-500">
-                                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>close</span>
+                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
                             </button>
                         )}
                     </div>
@@ -401,7 +408,7 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                     <select
                         value={activeTab}
                         onChange={e => { setActiveTab(e.target.value as TableStatusTab); setExpandedId(null); }}
-                        className="text-xs text-black bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none shadow-sm cursor-pointer"
+                        className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                     >
                         {STATUS_TABS.map(t => (
                             <option key={t.key} value={t.key}>{t.label} ({tabCounts[t.key]})</option>
@@ -411,7 +418,7 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                     <select
                         value={filterScope}
                         onChange={e => { setFilterScope(e.target.value as HarScope | ''); setExpandedId(null); }}
-                        className="text-xs text-black bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none shadow-sm cursor-pointer"
+                        className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                     >
                         <option value="">Semua Scope</option>
                         <option value="mekanik">Mekanik</option>
@@ -420,20 +427,20 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                         <option value="sipil">Sipil</option>
                     </select>
                     {/* Date range */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                         <input
                             type="date"
                             value={filterDateFrom}
                             onChange={e => { setFilterDateFrom(e.target.value); setExpandedId(null); }}
-                            className="text-xs text-black bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none shadow-sm cursor-pointer"
+                            className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                             title="Dari tanggal"
                         />
-                        <span className="text-xs text-gray-400">–</span>
+                        <span className="text-sm font-bold text-gray-400">–</span>
                         <input
                             type="date"
                             value={filterDateTo}
                             onChange={e => { setFilterDateTo(e.target.value); setExpandedId(null); }}
-                            className="text-xs text-black bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none shadow-sm cursor-pointer"
+                            className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                             title="Sampai tanggal"
                         />
                     </div>

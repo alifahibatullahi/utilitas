@@ -12,9 +12,21 @@ interface ItemComboboxProps {
 export default function ItemCombobox({ value, onChange, light = false }: ItemComboboxProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState(value);
+    const [items, setItems] = useState<string[]>([...PREDEFINED_ITEMS]);
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => { setSearch(value); }, [value]);
+
+    useEffect(() => {
+        fetch('/api/equipment-items')
+            .then(r => r.json())
+            .then(data => {
+                if (Array.isArray(data.items) && data.items.length > 0) {
+                    setItems(data.items);
+                }
+            })
+            .catch(() => { /* gunakan PREDEFINED_ITEMS sebagai fallback */ });
+    }, []);
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
@@ -24,7 +36,7 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filtered = PREDEFINED_ITEMS.filter(item =>
+    const filtered = items.filter(item =>
         item.toLowerCase().includes(search.toLowerCase())
     );
 

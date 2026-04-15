@@ -119,18 +119,6 @@ export default function CriticalPage() {
 
                         {/* Right: Actions */}
                         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar justify-end">
-                            {view === 'board' && (
-                                <>
-                                    <button
-                                        onClick={() => setShowMaintenanceForm(true)}
-                                        className="whitespace-nowrap flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer"
-                                    >
-                                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>build</span>
-                                        + Tambah Maintenance
-                                    </button>
-                                    <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block"></div>
-                                </>
-                            )}
                             <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block"></div>
                             
                             {/* NEW: Operator Select */}
@@ -190,24 +178,45 @@ export default function CriticalPage() {
 
                         {view === 'board' && (
                             <div className="w-full flex-1 flex flex-col transition-all animate-in fade-in zoom-in-95 duration-300">
-                                {/* Shift selector — centered above columns */}
-                                <div className="flex items-center justify-center gap-3 mb-5">
-                                    <input
-                                        type="date"
-                                        value={boardDate}
-                                        onChange={e => setBoardDate(e.target.value)}
-                                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium outline-none cursor-pointer shadow-sm"
-                                    />
-                                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
-                                        {SHIFT_OPTIONS.map(s => (
-                                            <button
-                                                key={s.value}
-                                                onClick={() => setBoardShift(s.value)}
-                                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${boardShift === s.value ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
-                                            >
-                                                {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
-                                            </button>
-                                        ))}
+                                {/* Shift selector and Actions — centered above columns */}
+                                <div className="flex flex-wrap items-center justify-center gap-4 mb-5">
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="date"
+                                            value={boardDate}
+                                            onChange={e => setBoardDate(e.target.value)}
+                                            className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium outline-none cursor-pointer shadow-sm"
+                                        />
+                                        <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                                            {SHIFT_OPTIONS.map(s => (
+                                                <button
+                                                    key={s.value}
+                                                    onClick={() => setBoardShift(s.value)}
+                                                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${boardShift === s.value ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                                                >
+                                                    {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="w-px h-8 bg-gray-300 hidden md:block"></div>
+                                    
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setShowMaintenanceForm(true)}
+                                            className="whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer"
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>build</span>
+                                            + Tambah Maintenance
+                                        </button>
+                                        <button
+                                            onClick={() => setShowCriticalForm(true)}
+                                            className="whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 text-sm font-bold hover:bg-rose-100 transition-colors shadow-sm cursor-pointer"
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>warning</span>
+                                            + Tambah Critical
+                                        </button>
                                     </div>
                                 </div>
                                 <KanbanBoard

@@ -7,9 +7,10 @@ interface OperatorComboboxProps {
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
+    dropUp?: boolean;
 }
 
-export default function OperatorCombobox({ value, onChange, placeholder = 'Ketik nama...' }: OperatorComboboxProps) {
+export default function OperatorCombobox({ value, onChange, placeholder = 'Ketik nama...', dropUp = false }: OperatorComboboxProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState(value);
     const ref = useRef<HTMLDivElement>(null);
@@ -37,6 +38,10 @@ export default function OperatorCombobox({ value, onChange, placeholder = 'Ketik
         .sort((a, b) => jabatanOrder(a.jabatan) - jabatanOrder(b.jabatan))
         .slice(0, 15);
 
+    const dropdownPos = dropUp
+        ? 'bottom-full mb-1'
+        : 'top-full mt-1';
+
     return (
         <div ref={ref} className="relative">
             <input
@@ -48,7 +53,7 @@ export default function OperatorCombobox({ value, onChange, placeholder = 'Ketik
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none transition-all shadow-sm placeholder-gray-400"
             />
             {open && filtered.length > 0 && (
-                <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto light-scrollbar rounded-xl border border-gray-200 bg-white shadow-xl">
+                <div className={`absolute z-50 ${dropdownPos} w-full max-h-52 overflow-y-auto light-scrollbar rounded-xl border border-gray-200 bg-white shadow-xl`}>
                     {filtered.map(op => (
                         <button
                             key={op.id}

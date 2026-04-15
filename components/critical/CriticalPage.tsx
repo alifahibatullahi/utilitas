@@ -160,11 +160,13 @@ export default function CriticalPage() {
                                     onEditMaintenance={(m) => setEditingMaintenance({ ...m, critical_equipment: null })}
                                     onDeleteMaintenance={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
                                     onAddMaintenance={(critical) => {
-                                        setMaintenanceInitial({
+                                        setMaintenanceInitial(critical ? {
                                             critical_id: critical.id,
                                             item: critical.item,
                                             scope: critical.scope,
                                             foreman: critical.foreman,
+                                            date: new Date().toISOString().split('T')[0],
+                                        } : {
                                             date: new Date().toISOString().split('T')[0],
                                         });
                                         setShowMaintenanceForm(true);

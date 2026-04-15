@@ -141,6 +141,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                             value={reportedBy}
                             onChange={setReportedBy}
                             placeholder="Pilih atau ketik nama pelapor..."
+                            dropUp
                         />
                     </div>
 

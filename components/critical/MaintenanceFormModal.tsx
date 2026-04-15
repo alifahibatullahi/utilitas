@@ -216,6 +216,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
                             value={reportedBy}
                             onChange={setReportedBy}
                             placeholder="Pilih atau ketik nama..."
+                            dropUp
                         />
                     </div>
 

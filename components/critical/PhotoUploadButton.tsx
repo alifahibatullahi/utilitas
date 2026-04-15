@@ -64,15 +64,15 @@ export default function PhotoUploadButton({
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
-        className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold
-                   bg-violet-100 text-violet-700 hover:bg-violet-200 border border-violet-200
-                   transition-colors disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold
+                   bg-violet-600 text-white hover:bg-violet-700 shadow-sm
+                   transition-all disabled:opacity-50"
         title="Upload foto"
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 11 }}>
-          {uploading ? 'more_horiz' : 'add_photo_alternate'}
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+          {uploading ? 'more_horiz' : 'cloud_upload'}
         </span>
-        {uploading ? 'Mengupload...' : 'Foto'}
+        {uploading ? 'Mengupload...' : 'Upload Foto'}
       </button>
       {error && (
         <span className="text-[9px] text-rose-600 font-medium">{error}</span>

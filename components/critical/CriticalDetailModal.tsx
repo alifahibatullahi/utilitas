@@ -118,9 +118,9 @@ export default function CriticalDetailModal({
                 <div className="flex-shrink-0 bg-[#EAEFF5] border-b border-[#D8E2ED] px-8 py-5 flex items-center justify-between text-slate-800">
                     <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4">
                         <h2 className="text-2xl font-black whitespace-nowrap">{critical.item}</h2>
-                        <StatusBadge status={critical.status} className="px-4 py-1.5 text-base font-bold shadow-sm" />
+                        <StatusBadge status={critical.status} solid className="px-4 py-1.5 text-base shadow-sm" />
                         {allScopes.map(s => (
-                            <ScopeBadge key={s} scope={s} className="px-4 py-1.5 text-base font-bold shadow-sm" />
+                            <ScopeBadge key={s} scope={s} solid className="px-4 py-1.5 text-base shadow-sm" />
                         ))}
                         {critical.reported_by && (
                             <span className="px-4 py-1.5 bg-violet-100 text-violet-700 font-bold text-base rounded-full whitespace-nowrap shadow-sm">
@@ -142,15 +142,15 @@ export default function CriticalDetailModal({
                     {/* Top Row: Meta info */}
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-1">
-                            <span className="text-xs uppercase font-extrabold text-slate-400 block mb-1.5">Tanggal</span>
+                            <span className="text-xs uppercase font-black text-black block mb-1.5">Tanggal</span>
                             <span className="text-base font-bold text-slate-800">{formatDate(critical.date)}</span>
                         </div>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border-rose-400 border-[1.5px] col-span-4">
-                            <span className="text-sm uppercase font-extrabold text-slate-400 block mb-1.5">Deskripsi Critical</span>
+                            <span className="text-sm uppercase font-black text-black block mb-1.5">Deskripsi Critical</span>
                             <span className="text-lg font-bold text-slate-800 leading-relaxed">{critical.deskripsi}</span>
                         </div>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-1">
-                            <span className="text-xs uppercase font-extrabold text-slate-400 block mb-1.5">Notif/SAP</span>
+                            <span className="text-xs uppercase font-black text-black block mb-1.5">Notif/SAP</span>
                             <span className="text-base font-bold text-slate-800">{critical.notif || '-'}</span>
                         </div>
                     </div>
@@ -191,10 +191,9 @@ export default function CriticalDetailModal({
                                                 draggedIdx === idx ? 'border-emerald-400 shadow-xl scale-[1.02] z-10 opacity-90' : 'border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md'
                                             }`}
                                         >
-                                            <div className="flex gap-4">
-                                                <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 bg-slate-50 rounded-xl border border-slate-100">
-                                                    <span className="text-xl font-black text-slate-500 mb-1">#{idx + 1}</span>
-                                                    <span className="material-symbols-outlined cursor-grab active:cursor-grabbing text-slate-400 opacity-50 group-hover:opacity-100 transition-opacity pb-1">drag_indicator</span>
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 h-10 bg-slate-50 rounded-xl border border-slate-100">
+                                                    <span className="text-xl font-black text-slate-500">#{idx + 1}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0 pr-4">
                                                     <h4 className="text-base font-extrabold text-slate-900 mb-3 break-words">
@@ -233,34 +232,34 @@ export default function CriticalDetailModal({
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-shrink-0 flex flex-col justify-between items-end gap-3 min-w-[100px] border-l border-slate-100 pl-4">
-                                                    <div className="w-full text-right">
-                                                        <button 
-                                                            onClick={() => {
-                                                                const statuses: ('OPEN' | 'IP' | 'OK')[] = ['OPEN', 'IP', 'OK'];
-                                                                const curr = statuses.indexOf(m.status);
-                                                                const next = statuses[(curr + 1) % statuses.length];
+                                                <div className="flex-shrink-0 flex flex-col justify-center items-end gap-3 min-w-[100px] border-l border-slate-100 pl-4 h-full">
+                                                    <div className="w-full text-right relative">
+                                                        <select
+                                                            value={m.status}
+                                                            onChange={(e) => {
+                                                                const nextStatus = e.target.value as 'OPEN' | 'IP' | 'OK';
                                                                 setMLogs(prev => {
                                                                     const n = [...prev];
-                                                                    n[idx] = { ...n[idx], status: next };
+                                                                    n[idx] = { ...n[idx], status: nextStatus };
                                                                     return n;
                                                                 });
-                                                                // If a global callback exists, we'd fire it here. For now it updates locally.
                                                             }}
-                                                            title="Klik untuk mengubah status"
-                                                            className={`inline-block px-4 py-2 rounded-xl text-sm font-black border uppercase tracking-wider text-center w-full shadow-sm cursor-pointer hover:opacity-80 transition-opacity ${
+                                                            className={`appearance-none outline-none cursor-pointer inline-block px-4 py-2 pr-8 rounded-xl text-sm font-black border uppercase tracking-wider text-center w-full shadow-sm hover:opacity-80 transition-opacity ${
                                                                 m.status === 'OK' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
                                                                 m.status === 'IP' ? 'bg-amber-100 text-amber-700 border-amber-300' :
                                                                 'bg-blue-100 text-blue-700 border-blue-300'
                                                             }`}
                                                         >
-                                                            {m.status}
-                                                        </button>
+                                                            <option value="OPEN">OPEN</option>
+                                                            <option value="IP">IP</option>
+                                                            <option value="OK">OK</option>
+                                                        </select>
+                                                        <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" style={{ fontSize: 16 }}>expand_more</span>
                                                     </div>
                                                     
-                                                    <div className="flex flex-col gap-2 w-full mt-auto">
-                                                        <button onClick={() => onEditMaintenance?.(m)} className="w-full py-1.5 rounded-lg text-slate-500 font-bold hover:text-blue-600 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 bg-slate-50 flex items-center justify-center gap-1.5 transition-colors text-xs">
-                                                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit</span>
+                                                    <div className="flex flex-col gap-2 w-full mt-2">
+                                                        <button onClick={() => onEditMaintenance?.(m)} className="w-full py-2 rounded-lg text-blue-600 font-bold hover:text-white bg-blue-50 border border-blue-200 hover:bg-blue-600 hover:border-transparent flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm">
+                                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
                                                             Edit
                                                         </button>
                                                         <button onClick={() => {

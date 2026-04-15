@@ -16,8 +16,10 @@ export async function GET() {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const items: string[] = (data ?? []).map((r: { no_item: string; deskripsi: string }) =>
-        r.deskripsi ? `${r.no_item} - ${r.deskripsi}` : r.no_item
-    );
+    const items = (data ?? []).map((r: { no_item: string; deskripsi: string }) => ({
+        no_item: r.no_item.replace(/^20/, ''),
+        deskripsi: r.deskripsi ?? '',
+    }));
+
     return NextResponse.json({ items });
 }

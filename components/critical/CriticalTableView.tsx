@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope, PhotoRow } from '@/lib/supabase/types';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
 import StatusBadge from './StatusBadge';
@@ -17,7 +17,7 @@ interface CriticalTableViewProps {
     onAddCritical?: () => void;
     onEditMaintenance?: (m: MaintenanceLogRow) => void;
     onDeleteMaintenance?: (id: string) => Promise<void>;
-    onAddMaintenance?: (critical: CriticalWithMaintenance) => void;
+    onAddMaintenance?: (critical?: CriticalWithMaintenance) => void;
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
@@ -132,24 +132,33 @@ function CriticalRow({
                     </button>
                 </td>
                 {/* Tanggal */}
-                <td className="px-4 py-4 whitespace-nowrap text-base font-bold text-black">{formatDate(critical.date)}</td>
+                <td className="px-5 py-5 whitespace-nowrap text-lg font-bold text-black">{formatDate(critical.date)}</td>
                 {/* Item */}
-                <td className="px-4 py-4 text-base font-black text-black whitespace-nowrap">{critical.item}</td>
+                <td className="px-5 py-5 text-lg font-black text-black whitespace-nowrap">{critical.item}</td>
                 {/* Deskripsi */}
-                <td className="px-4 py-4 text-base font-medium text-black max-w-[200px]">
+                <td className="px-5 py-5 text-lg font-medium text-black max-w-[250px] leading-relaxed">
                     <span className="line-clamp-2">{critical.deskripsi}</span>
                 </td>
                 {/* Scope */}
-                <td className="px-4 py-4"><ScopeBadge scope={critical.scope} light className="px-3 py-1 text-sm shadow-sm" /></td>
+                <td className="px-5 py-5">
+                    <div className="flex flex-wrap gap-2">
+                        {Array.from(new Set([
+                            critical.scope,
+                            ...(critical.maintenance_logs?.map(m => m.scope) || [])
+                        ])).map(s => (
+                            <ScopeBadge key={s} scope={s} solid className="px-3 py-1.5 text-sm shadow-sm" />
+                        ))}
+                    </div>
+                </td>
                 {/* Foreman */}
-                <td className="px-4 py-4 text-base font-bold text-black whitespace-nowrap">{getForemanLabel(critical.foreman)}</td>
-                {/* Status */}
-                <td className="px-4 py-4"><StatusBadge status={critical.status} light className="px-3 py-1 text-sm shadow-sm" /></td>
+                <td className="px-5 py-5 text-lg font-bold text-black whitespace-nowrap">{getForemanLabel(critical.foreman)}</td>
                 {/* Notif */}
-                <td className="px-4 py-4 text-base font-mono font-bold text-black whitespace-nowrap">
+                <td className="px-5 py-5 text-lg font-mono font-bold text-black whitespace-nowrap">
                     {critical.notif ?? <span className="text-gray-300">—</span>}
                 </td>
-                <td className="px-4 py-4 text-center">
+                {/* Status */}
+                <td className="px-5 py-5"><StatusBadge status={critical.status} solid className="px-4 py-1.5 text-base shadow-sm" /></td>
+                <td className="px-5 py-5 text-center">
                     <div className="flex items-center justify-center gap-2">
                         {/* Detail */}
                         <button
@@ -205,6 +214,59 @@ function CriticalRow({
     );
 }
 
+// ─── Item Search Combobox ───
+function ItemSearchCombobox({ value, onChange, items }: { value: string; onChange: (v: string) => void; items: string[] }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleOutside(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener('mousedown', handleOutside);
+        return () => document.removeEventListener('mousedown', handleOutside);
+    }, []);
+
+    const filtered = value
+        ? items.filter(i => i.toLowerCase().includes(value.toLowerCase()))
+        : items;
+
+    return (
+        <div ref={ref} className="relative min-w-[220px]">
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+                <span className="material-symbols-outlined text-gray-400" style={{ fontSize: 16 }}>search</span>
+                <input
+                    type="text"
+                    placeholder="Cari item..."
+                    value={value}
+                    onChange={e => { onChange(e.target.value); setOpen(true); }}
+                    onFocus={() => setOpen(true)}
+                    className="text-sm text-black outline-none bg-transparent w-full placeholder:text-gray-400"
+                />
+                {value && (
+                    <button onClick={() => { onChange(''); setOpen(false); }} className="text-gray-300 hover:text-gray-500">
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+                    </button>
+                )}
+            </div>
+            {open && filtered.length > 0 && (
+                <div className="absolute z-50 top-full mt-1 w-full max-h-52 overflow-y-auto light-scrollbar rounded-lg border border-gray-200 bg-white shadow-xl">
+                    {filtered.map(item => (
+                        <button
+                            key={item}
+                            type="button"
+                            onClick={() => { onChange(item); setOpen(false); }}
+                            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                        >
+                            {item}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Shared Table Header ───
 function TableHeader() {
     return (
@@ -216,8 +278,8 @@ function TableHeader() {
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Deskripsi</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Scope</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Foreman</th>
-                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Status</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Notif/SAP</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Status</th>
                 <th className="px-4 py-4 text-center text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Detail / Actions</th>
             </tr>
         </thead>
@@ -237,7 +299,7 @@ function TableBody({
     onDeleteCritical?: (id: string) => Promise<void>;
     onEditMaintenance?: (m: MaintenanceLogRow) => void;
     onDeleteMaintenance?: (id: string) => Promise<void>;
-    onAddMaintenance?: (critical: CriticalWithMaintenance) => void;
+    onAddMaintenance?: (critical?: CriticalWithMaintenance) => void;
     expandedId: string | null;
     onToggleExpand: (id: string) => void;
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
@@ -370,7 +432,7 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                     })}
                     <div className="ml-auto pb-3 flex items-center gap-2">
                         <button
-                            onClick={() => onAddMaintenance?.(undefined as any)}
+                            onClick={() => onAddMaintenance?.()}
                             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
                         >
                             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>build</span>
@@ -388,22 +450,12 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
 
                 {/* Filter Bar */}
                 <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
-                    {/* Item search */}
-                    <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm min-w-[200px]">
-                        <span className="material-symbols-outlined text-gray-400" style={{ fontSize: 16 }}>search</span>
-                        <input
-                            type="text"
-                            placeholder="Cari item..."
-                            value={filterItem}
-                            onChange={e => { setFilterItem(e.target.value); setExpandedId(null); }}
-                            className="text-sm text-black outline-none bg-transparent w-full placeholder:text-gray-400"
-                        />
-                        {filterItem && (
-                            <button onClick={() => setFilterItem('')} className="text-gray-300 hover:text-gray-500">
-                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
-                            </button>
-                        )}
-                    </div>
+                    {/* Item search combobox */}
+                    <ItemSearchCombobox
+                        value={filterItem}
+                        onChange={val => { setFilterItem(val); setExpandedId(null); }}
+                        items={[...new Set(criticals.map(c => c.item))].sort()}
+                    />
                     {/* Status */}
                     <select
                         value={activeTab}

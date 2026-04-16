@@ -278,7 +278,13 @@ export default function CriticalPage() {
                         setReturnToDetailId(null);
                     }
                 }}
-                onSubmit={cm.createMaintenance}
+                onSubmit={async (data) => {
+                    const res = await cm.createMaintenance(data);
+                    if (!res.error && data.critical_id) {
+                        setReturnToDetailId(data.critical_id);
+                    }
+                    return res;
+                }}
                 activeCriticals={cm.criticals}
                 initial={maintenanceInitial}
                 operatorName={operator?.name}

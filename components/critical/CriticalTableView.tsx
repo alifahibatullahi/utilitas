@@ -358,7 +358,7 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
     }
 
     function handleToggleExpand(id: string) {
-        setExpandedId(prev => prev === id ? null : id);
+        setExpandedId(expandedId === id ? null : id);
     }
 
     const [filterItem, setFilterItem]         = useState('');

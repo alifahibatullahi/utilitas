@@ -34,7 +34,7 @@ const VALID_COLS: Record<string, string[]> = {
     shift_generator_gi: ['gen_load','gen_ampere','gen_amp_react','gen_cos_phi','gen_tegangan','gen_frequensi','gi_sum_p','gi_sum_q','gi_cos_phi'],
     shift_power_dist: ['power_ubb','power_pabrik2','power_pabrik3a','power_pie','power_pabrik3b'],
     shift_esp_handling: ['esp_a1','esp_a2','esp_a3','esp_b1','esp_b2','esp_b3','silo_a','silo_b','unloading_a','unloading_b','loading','hopper','conveyor','pf1','pf2'],
-    shift_tankyard: ['tk_rcw','tk_demin','tk_solar_ab'],
+    shift_tankyard: ['tk_rcw','tk_rcw_2','tk_rcw_3','tk_rcw_4','tk_demin','tk_solar_ab'],
     shift_personnel: ['turbin_grup','turbin_karu','turbin_kasi'],
     shift_coal_bunker: ['feeder_a','feeder_b','feeder_c','feeder_d','feeder_e','feeder_f','bunker_a','bunker_b','bunker_c','bunker_d','bunker_e','bunker_f'],
     shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4'],

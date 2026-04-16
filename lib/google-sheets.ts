@@ -14,6 +14,11 @@ import { google } from 'googleapis';
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID!;
+const RCW_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_RCW_ID || '1V5QtlqcmpXZAd0AEIbrR0jm-Tr1nfk4DR3yQXJKFtro';
+const RCW_SHEET_GID = 1455642869;
+
+/** Cache: gid → sheet title to avoid repeated API calls */
+const sheetTitleCache: Record<string, string> = {};
 
 export const SHEET_TABS = {
     pagi: 'Pagi',
@@ -240,4 +245,141 @@ export async function fetchDailyRow(isoDate: string): Promise<string[] | null> {
         }
     }
     return null;
+}
+
+// ─── RCW Level Sheet ──────────────────────────────────────────────────────────
+
+/**
+ * Get sheet tab name by GID from a spreadsheet.
+ * Cached to avoid repeated calls.
+ */
+async function getSheetTitleByGid(spreadsheetId: string, gid: number): Promise<string> {
+    const cacheKey = `${spreadsheetId}:${gid}`;
+    if (sheetTitleCache[cacheKey]) return sheetTitleCache[cacheKey];
+
+    const sheets = getSheetsClient();
+    const res = await sheets.spreadsheets.get({ spreadsheetId });
+    const sheet = res.data.sheets?.find(s => s.properties?.sheetId === gid);
+    if (!sheet?.properties?.title) throw new Error(`Sheet dengan GID ${gid} tidak ditemukan di spreadsheet ${spreadsheetId}`);
+    sheetTitleCache[cacheKey] = sheet.properties.title;
+    return sheet.properties.title;
+}
+
+/**
+ * Hitung jam WIB (bilangan ganjil 1–23) dari timestamp ISO.
+ * Dibulatkan ke jam ganjil terdekat berikutnya.
+ * Contoh: 22:45 WIB → jam 23, 00:10 WIB → jam 1, 02:30 WIB → jam 3.
+ *
+ * Logika: setiap slot 2 jam dimulai pada jam ganjil.
+ * Slot jam N mencakup (N-1):00 – (N+1):00, tengahnya di N:00.
+ * Bulatkan ke atas ke jam ganjil terdekat.
+ */
+export function getCurrentRcwJam(isoTimestamp?: string): { jam: number; isoDate: string } {
+    // Gunakan WIB (UTC+7)
+    const now = isoTimestamp ? new Date(isoTimestamp) : new Date();
+    const wibOffsetMs = 7 * 60 * 60 * 1000;
+    const wib = new Date(now.getTime() + wibOffsetMs);
+
+    const hour = wib.getUTCHours();
+    const minute = wib.getUTCMinutes();
+
+    // Total menit dari tengah malam WIB
+    const totalMin = hour * 60 + minute;
+
+    // Slot dimulai setiap :30 (00:30, 02:30, 04:30, ..., 22:30)
+    // Slot 0: 00:30–02:30 → jam 1
+    // Slot 1: 02:30–04:30 → jam 3
+    // ...
+    // Slot 11: 22:30–00:30 → jam 23
+    // Menit sebelum 00:30 (00:00–00:29) masuk slot 11 (jam 23)
+    const minutesFrom0030 = (totalMin - 30 + 24 * 60) % (24 * 60);
+    const slot = Math.floor(minutesFrom0030 / 120);
+    const jam = slot * 2 + 1; // 1, 3, 5, ..., 23
+
+    // Tanggal WIB
+    const isoDate = wib.toISOString().slice(0, 10);
+
+    return { jam, isoDate };
+}
+
+export interface RcwEntry {
+    isoDate: string;
+    jam: number;
+    level: number;
+}
+
+/**
+ * Build 1 RCW entry dari nilai level dan timestamp submit.
+ * @param level   Nilai level RCW (m³)
+ * @param submittedAt  Timestamp ISO saat form disubmit (opsional, default sekarang)
+ */
+export function buildRcwEntry(level: number, submittedAt?: string): RcwEntry {
+    const { jam, isoDate } = getCurrentRcwJam(submittedAt);
+    return { isoDate, jam, level };
+}
+
+
+/**
+ * Upsert multiple RCW entries to the dedicated RCW Google Sheet.
+ * Col B = tanggal (Indonesian), Col C = jam WIB, Col D = level RCW.
+ * Finds existing row by tanggal+jam, updates col D; otherwise appends.
+ */
+export async function upsertRcwRows(
+    entries: RcwEntry[],
+): Promise<{ updated: number; appended: number }> {
+    if (entries.length === 0) return { updated: 0, appended: 0 };
+
+    const sheets = getSheetsClient();
+    const tab = await getSheetTitleByGid(RCW_SPREADSHEET_ID, RCW_SHEET_GID);
+
+    // Read existing data once
+    const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: RCW_SPREADSHEET_ID,
+        range: `${tab}!A2:D`,
+    });
+    const rows = (res.data.values ?? []) as string[][];
+
+    let updated = 0;
+    let appended = 0;
+
+    for (const entry of entries) {
+        const targetDate = toIndonesianDate(entry.isoDate);
+        const jamStr = String(entry.jam);
+
+        // Find existing row
+        let found = false;
+        for (let i = 0; i < rows.length; i++) {
+            const rowDate = (rows[i][1] ?? '').trim();
+            const rowJam  = (rows[i][2] ?? '').trim();
+            if (rowDate === targetDate && rowJam === jamStr) {
+                const rowIndex = i + 2;
+                await sheets.spreadsheets.values.update({
+                    spreadsheetId: RCW_SPREADSHEET_ID,
+                    range: `${tab}!D${rowIndex}`,
+                    valueInputOption: 'USER_ENTERED',
+                    requestBody: { values: [[entry.level]] },
+                });
+                // Update local cache so subsequent entries see this row
+                rows[i][3] = String(entry.level);
+                updated++;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            const rowNo = rows.filter(r => r.some(c => c && c.trim() !== '')).length + 1;
+            await sheets.spreadsheets.values.append({
+                spreadsheetId: RCW_SPREADSHEET_ID,
+                range: `${tab}!A2`,
+                valueInputOption: 'USER_ENTERED',
+                insertDataOption: 'INSERT_ROWS',
+                requestBody: { values: [[rowNo, targetDate, entry.jam, entry.level]] },
+            });
+            rows.push([String(rowNo), targetDate, jamStr, String(entry.level)]);
+            appended++;
+        }
+    }
+
+    return { updated, appended };
 }

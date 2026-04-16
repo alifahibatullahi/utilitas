@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { upsertShiftRow, upsertDailyRow } from '@/lib/google-sheets';
+import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry } from '@/lib/google-sheets';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
 import { dailyReportToRow, type SolarSummary, type ChemicalSummary } from '@/lib/daily-sheets-mapper';
 import type { ShiftTab } from '@/lib/google-sheets';
@@ -172,6 +172,26 @@ export async function POST(req: NextRequest) {
             console.error('[sheets/write] daily_report error:', err);
             return NextResponse.json({
                 warning: `Supabase OK, Google Sheets gagal: ${err instanceof Error ? err.message : String(err)}`,
+            });
+        }
+    }
+
+    // ─── RCW Level ────────────────────────────────────────────────────────────
+    if (type === 'rcw_level') {
+        const { level, submitted_at } = data as { level: number; submitted_at?: string };
+
+        if (level == null) {
+            return NextResponse.json({ error: 'Missing level' }, { status: 400 });
+        }
+
+        try {
+            const entry = buildRcwEntry(level, submitted_at);
+            const result = await upsertRcwRows([entry]);
+            return NextResponse.json(result);
+        } catch (err) {
+            console.error('[sheets/write] rcw_level error:', err);
+            return NextResponse.json({
+                warning: `RCW Sheets gagal: ${err instanceof Error ? err.message : String(err)}`,
             });
         }
     }

@@ -133,6 +133,9 @@ export interface ShiftTankyardRow {
     id: string;
     shift_report_id: string;
     tk_rcw: number | null;
+    tk_rcw_2: number | null;
+    tk_rcw_3: number | null;
+    tk_rcw_4: number | null;
     tk_demin: number | null;
     tk_solar_ab: number | null;
     created_at: string;

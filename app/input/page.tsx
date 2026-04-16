@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import TankSelector from '@/components/input/TankSelector';
 import Toast from '@/components/ui/Toast';
 import { useOperator } from '@/hooks/useOperator';
 import { useTankData, FlowRate, OutputFlowRate } from '@/hooks/useTankData';
 import { TankId, TANKS } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
 
 interface TankDraft {
     levelM3: string;
@@ -43,6 +44,24 @@ export default function InputPage() {
     // Track which tanks have been saved in this session
     const [savedTanks, setSavedTanks] = useState<Set<TankId>>(new Set());
 
+    // Logsheet note: nilai RCW dari Google Sheets untuk jam sekarang
+    const [rcwSheetNote, setRcwSheetNote] = useState<string | null>(null);
+
+    /** Hitung jam WIB ganjil (1,3,5,...,23) dari waktu sekarang.
+     *  Slot: 00:30–02:30→1, 02:30–04:30→3, ..., 22:30–00:30→23 */
+    const getCurrentJamWIB = useCallback((): { jam: number; isoDate: string } => {
+        const now = new Date();
+        const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+        const hour = wib.getUTCHours();
+        const minute = wib.getUTCMinutes();
+        const totalMin = hour * 60 + minute;
+        const minutesFrom0030 = (totalMin - 30 + 24 * 60) % (24 * 60);
+        const slot = Math.floor(minutesFrom0030 / 120);
+        const jam = slot * 2 + 1;
+        const isoDate = wib.toISOString().slice(0, 10);
+        return { jam, isoDate };
+    }, []);
+
     // Ref to read current draft without stale closure issues
     const currentRef = useRef(current);
     useEffect(() => { currentRef.current = current; }, [current]);
@@ -53,6 +72,34 @@ export default function InputPage() {
         if (!operator) router.push('/');
         else if (!isHandling) router.push('/dashboard');
     }, [operator, isHandling, router]);
+
+    // Fetch nilai logsheet dari Supabase saat tank RCW, DEMIN, atau SOLAR dipilih
+    useEffect(() => {
+        if (selectedTank !== 'RCW' && selectedTank !== 'DEMIN' && selectedTank !== 'SOLAR') {
+            setRcwSheetNote(null);
+            return;
+        }
+        const { jam, isoDate } = getCurrentJamWIB();
+        const jamLabel = `${String(jam).padStart(2, '0')}:00`;
+        const tankLabel = selectedTank === 'RCW' ? 'RCW' : selectedTank === 'DEMIN' ? 'Demin' : 'Solar';
+        setRcwSheetNote(null);
+
+        const supabase = createClient();
+        supabase
+            .from('tank_logsheet')
+            .select('level_m3')
+            .eq('tank_id', selectedTank)
+            .eq('date', isoDate)
+            .eq('jam', jam)
+            .maybeSingle()
+            .then(({ data }: { data: { level_m3: number | null } | null }) => {
+                if (data?.level_m3 != null) {
+                    setRcwSheetNote(`Logsheet level ${tankLabel} jam ${jamLabel} adalah ${data.level_m3} m³`);
+                } else {
+                    setRcwSheetNote(`Logsheet level ${tankLabel} jam ${jamLabel} adalah belum terisi`);
+                }
+            });
+    }, [selectedTank, getCurrentJamWIB]);
 
     const handleTankSelect = (tankId: TankId) => {
         // Save current draft before switching
@@ -122,6 +169,16 @@ export default function InputPage() {
         if (tankId === 'SOLAR' && draft.solarLiters && draft.solarSupplier) {
             submitSolarUnloading({ date: draft.solarDate, liters: parseFloat(draft.solarLiters) || 0, supplier: draft.solarSupplier });
         }
+
+        // Upsert ke tank_logsheet (jam ganjil WIB)
+        const { jam, isoDate } = getCurrentJamWIB();
+        const supabase = createClient();
+        supabase.from('tank_logsheet').upsert(
+            { tank_id: tankId, date: isoDate, jam, level_m3: numM3, updated_at: new Date().toISOString() },
+            { onConflict: 'tank_id,date,jam' }
+        ).then(({ error }: { error: unknown }) => {
+            if (error) console.error('[tank_logsheet] upsert error:', error);
+        });
     };
 
     const handleSubmit = () => {
@@ -142,6 +199,25 @@ export default function InputPage() {
         });
 
         if (saved.length === 0) return;
+
+        // Fire-and-forget: sync Level RCW ke Google Sheets
+        if (saved.includes('RCW')) {
+            const rcwDraft = allDrafts['RCW'];
+            const rcwM3 = rcwDraft ? parseFloat(rcwDraft.levelM3) : NaN;
+            if (!isNaN(rcwM3)) {
+                void fetch('/api/sheets/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'rcw_level',
+                        data: { level: rcwM3, submitted_at: new Date().toISOString() },
+                    }),
+                }).then(r => r.json()).then(result => {
+                    if (result.warning) console.warn('[input/RCW] Sheets warning:', result.warning);
+                    else console.log('[input/RCW] Sheets sync OK:', result);
+                }).catch(err => console.warn('[input/RCW] Sheets sync failed (non-fatal):', err));
+            }
+        }
 
         setIsSubmitting(true);
         setTimeout(() => {
@@ -249,6 +325,16 @@ export default function InputPage() {
                                     <span className="material-symbols-outlined text-sm text-slate-400">percent</span>
                                     <p className="text-sm text-slate-300">
                                         Persentase: <span className="text-white font-black text-base" style={{ color: TANKS[selectedTank].liquidColor }}>{(parseFloat(current.levelM3) / capM3 * 100).toFixed(1)}%</span>
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Logsheet note untuk RCW, DEMIN, dan SOLAR */}
+                            {(selectedTank === 'RCW' || selectedTank === 'DEMIN' || selectedTank === 'SOLAR') && (
+                                <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-teal-500/5 border border-teal-500/20 rounded-lg">
+                                    <span className="material-symbols-outlined text-teal-400 text-[16px] shrink-0">info</span>
+                                    <p className="text-xs text-teal-300/80 font-medium">
+                                        {rcwSheetNote ?? 'Memuat data logsheet...'}
                                     </p>
                                 </div>
                             )}

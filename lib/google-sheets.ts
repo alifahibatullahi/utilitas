@@ -356,18 +356,8 @@ export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResul
         }
 
         if (!found) {
-            const rowNo = rows.filter(r => r.some(c => c && c.trim() !== '')).length + 1;
-            await sheets.spreadsheets.values.append({
-                spreadsheetId: RCW_SPREADSHEET_ID,
-                range: `${tab}!A${RCW_ANCHOR_ROW}`,
-                valueInputOption: 'USER_ENTERED',
-                insertDataOption: 'INSERT_ROWS',
-                requestBody: { values: [[rowNo, targetDate, entry.jam, entry.level]] },
-            });
-            const rowIndex = rows.length + 2;
-            rows.push([String(rowNo), targetDate, jamStr, String(entry.level)]);
-            appended++;
-            details.push({ action: 'appended', rowIndex, jam: entry.jam, date: entry.isoDate, level: entry.level });
+            // Template row not found — skip append (sheet template is pre-filled)
+            console.warn(`[upsertRcwRows] Row not found for date=${entry.isoDate} jam=${entry.jam}; skipping.`);
         }
     }
 

@@ -16,7 +16,8 @@ import { google } from 'googleapis';
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID!;
 const RCW_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_RCW_ID || '1V5QtlqcmpXZAd0AEIbrR0jm-Tr1nfk4DR3yQXJKFtro';
 const RCW_SHEET_TAB = 'Level UBB';
-const RCW_ANCHOR_ROW = 1277; // Row pertama tanggal 17 April 2026
+const RCW_ANCHOR_ROW = 1277;        // Row pertama tanggal 17 April 2026, jam 1
+const RCW_ANCHOR_DATE = '2026-04-17'; // Tanggal anchor (ISO)
 
 export const SHEET_TABS = {
     pagi: 'Pagi',
@@ -313,52 +314,41 @@ export interface RcwUpsertResult {
     details: { action: 'updated' | 'appended'; rowIndex: number; jam: number; date: string; level: number }[];
 }
 
+/**
+ * Hitung 1-based spreadsheet row untuk entry RCW berdasarkan anchor.
+ * Anchor: row 1277 = 17 April 2026, jam 1.
+ * Setiap tanggal = 12 baris (jam 1,3,5,...,23).
+ * jam slot index: jam 1→0, jam 3→1, ..., jam 23→11.
+ */
+function rcwRowIndex(isoDate: string, jam: number): number {
+    const anchorMs = Date.UTC(2026, 3, 17); // 17 April 2026
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const targetMs = Date.UTC(y, m - 1, d);
+    const dayOffset = Math.round((targetMs - anchorMs) / 86_400_000);
+    const jamSlot = (jam - 1) / 2; // 0–11
+    return RCW_ANCHOR_ROW + dayOffset * 12 + jamSlot;
+}
+
 export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResult> {
     if (entries.length === 0) return { updated: 0, appended: 0, details: [] };
 
     const sheets = getSheetsClient();
     const tab = RCW_SHEET_TAB;
 
-    const res = await sheets.spreadsheets.values.get({
-        spreadsheetId: RCW_SPREADSHEET_ID,
-        range: `${tab}!A${RCW_ANCHOR_ROW}:D`,
-    });
-    const rows = (res.data.values ?? []) as string[][];
-
     let updated = 0;
-    let appended = 0;
+    const appended = 0;
     const details: RcwUpsertResult['details'] = [];
 
     for (const entry of entries) {
-        const targetDate = toIndonesianDate(entry.isoDate);
-        const jamStr = String(entry.jam);
-
-        let found = false;
-        let currentDate = '';
-        for (let i = 0; i < rows.length; i++) {
-            const cellDate = (rows[i][1] ?? '').trim();
-            if (cellDate) currentDate = cellDate; // col B merged — carry forward
-            const rowJam  = (rows[i][2] ?? '').trim();
-            if (currentDate === targetDate && rowJam === jamStr) {
-                const rowIndex = i + RCW_ANCHOR_ROW; // 1-based spreadsheet row
-                await sheets.spreadsheets.values.update({
-                    spreadsheetId: RCW_SPREADSHEET_ID,
-                    range: `${tab}!D${rowIndex}`,
-                    valueInputOption: 'USER_ENTERED',
-                    requestBody: { values: [[entry.level]] },
-                });
-                rows[i][3] = String(entry.level);
-                updated++;
-                details.push({ action: 'updated', rowIndex, jam: entry.jam, date: entry.isoDate, level: entry.level });
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            // Template row not found — skip append (sheet template is pre-filled)
-            console.warn(`[upsertRcwRows] Row not found for date=${entry.isoDate} jam=${entry.jam}; skipping.`);
-        }
+        const rowIndex = rcwRowIndex(entry.isoDate, entry.jam);
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: RCW_SPREADSHEET_ID,
+            range: `${tab}!D${rowIndex}`,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values: [[entry.level]] },
+        });
+        updated++;
+        details.push({ action: 'updated', rowIndex, jam: entry.jam, date: entry.isoDate, level: entry.level });
     }
 
     return { updated, appended, details };

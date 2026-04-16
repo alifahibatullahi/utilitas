@@ -94,9 +94,9 @@ export default function InputPage() {
             .maybeSingle()
             .then(({ data }: { data: { level_m3: number | null } | null }) => {
                 if (data?.level_m3 != null) {
-                    setRcwSheetNote(`Logsheet level ${tankLabel} jam ${jamLabel} adalah ${data.level_m3} m³`);
+                    setRcwSheetNote(`Logsheet ${tankLabel} jam ${jamLabel} adalah ${data.level_m3} m³`);
                 } else {
-                    setRcwSheetNote(`Logsheet level ${tankLabel} jam ${jamLabel} adalah belum terisi`);
+                    setRcwSheetNote(`Logsheet ${tankLabel} jam ${jamLabel} belum terisi`);
                 }
             });
     }, [selectedTank, getCurrentJamWIB]);

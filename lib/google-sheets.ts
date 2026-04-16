@@ -15,10 +15,7 @@ import { google } from 'googleapis';
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID!;
 const RCW_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_RCW_ID || '1V5QtlqcmpXZAd0AEIbrR0jm-Tr1nfk4DR3yQXJKFtro';
-const RCW_SHEET_GID = 1455642869;
-
-/** Cache: gid → sheet title to avoid repeated API calls */
-const sheetTitleCache: Record<string, string> = {};
+const RCW_SHEET_TAB = 'Level UBB';
 
 export const SHEET_TABS = {
     pagi: 'Pagi',
@@ -249,21 +246,6 @@ export async function fetchDailyRow(isoDate: string): Promise<string[] | null> {
 
 // ─── RCW Level Sheet ──────────────────────────────────────────────────────────
 
-/**
- * Get sheet tab name by GID from a spreadsheet.
- * Cached to avoid repeated calls.
- */
-async function getSheetTitleByGid(spreadsheetId: string, gid: number): Promise<string> {
-    const cacheKey = `${spreadsheetId}:${gid}`;
-    if (sheetTitleCache[cacheKey]) return sheetTitleCache[cacheKey];
-
-    const sheets = getSheetsClient();
-    const res = await sheets.spreadsheets.get({ spreadsheetId });
-    const sheet = res.data.sheets?.find(s => s.properties?.sheetId === gid);
-    if (!sheet?.properties?.title) throw new Error(`Sheet dengan GID ${gid} tidak ditemukan di spreadsheet ${spreadsheetId}`);
-    sheetTitleCache[cacheKey] = sheet.properties.title;
-    return sheet.properties.title;
-}
 
 /**
  * Hitung jam WIB (bilangan ganjil 1–23) dari timestamp ISO.
@@ -334,7 +316,7 @@ export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResul
     if (entries.length === 0) return { updated: 0, appended: 0, details: [] };
 
     const sheets = getSheetsClient();
-    const tab = await getSheetTitleByGid(RCW_SPREADSHEET_ID, RCW_SHEET_GID);
+    const tab = RCW_SHEET_TAB;
 
     const res = await sheets.spreadsheets.values.get({
         spreadsheetId: RCW_SPREADSHEET_ID,

@@ -57,6 +57,8 @@ export default function CriticalPage() {
     const [editingCritical, setEditingCritical] = useState<CriticalWithMaintenance | null>(null);
     const [editingMaintenance, setEditingMaintenance] = useState<MaintenanceWithCritical | null>(null);
     const [maintenanceInitial, setMaintenanceInitial] = useState<Partial<Omit<MaintenanceLogRow, 'id' | 'created_at' | 'updated_at'>> | undefined>(undefined);
+    const [expandedCriticalId, setExpandedCriticalId] = useState<string | null>(null);
+    const [returnToDetailId, setReturnToDetailId] = useState<string | null>(null);
 
     // Apply basic Kanban filters (no scope/foreman filters applied anymore per user request)
     const filteredKanban = cm.maintenances;
@@ -169,8 +171,14 @@ export default function CriticalPage() {
                                         } : {
                                             date: new Date().toISOString().split('T')[0],
                                         });
+                                        if (critical?.id) {
+                                            setReturnToDetailId(critical.id);
+                                            setExpandedCriticalId(null);
+                                        }
                                         setShowMaintenanceForm(true);
                                     }}
+                                    expandedId={expandedCriticalId}
+                                    onSetExpandedId={setExpandedCriticalId}
                                     fetchPhotos={cm.fetchPhotos}
                                     deletePhoto={cm.deletePhoto}
                                     operatorName={operator?.name}
@@ -262,7 +270,14 @@ export default function CriticalPage() {
             <MaintenanceFormModal
                 key={showMaintenanceForm ? `open-${maintenanceInitial?.critical_id ?? 'none'}` : 'closed'}
                 open={showMaintenanceForm}
-                onClose={() => { setShowMaintenanceForm(false); setMaintenanceInitial(undefined); }}
+                onClose={() => {
+                    setShowMaintenanceForm(false);
+                    setMaintenanceInitial(undefined);
+                    if (returnToDetailId) {
+                        setExpandedCriticalId(returnToDetailId);
+                        setReturnToDetailId(null);
+                    }
+                }}
                 onSubmit={cm.createMaintenance}
                 activeCriticals={cm.criticals}
                 initial={maintenanceInitial}

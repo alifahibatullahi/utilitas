@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { HAR_SCOPES, FOREMAN_OPTIONS } from '@/lib/constants';
@@ -72,25 +72,25 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Item */}
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
                         <ItemCombobox value={item} onChange={setItem} light={true} />
                     </div>
 
                     {/* Deskripsi */}
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Deskripsi Masalah</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Deskripsi Masalah</label>
                         <textarea
                             value={deskripsi}
                             onChange={e => setDeskripsi(e.target.value)}
                             rows={3}
                             placeholder="Jelaskan kondisi critical..."
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none resize-none transition-all shadow-sm placeholder-gray-400"
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none resize-none transition-all shadow-sm placeholder-gray-600"
                         />
                     </div>
 
                     {/* Scope */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Scope HAR</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
                         <div className="relative">
                             <select
                                 value={scope}
@@ -101,25 +101,25 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                                     <option key={s.value} value={s.value}>{s.label}</option>
                                 ))}
                             </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
                         </div>
                     </div>
 
                     {/* Notif SAP */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Notif SAP</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Notif SAP</label>
                         <input
                             type="text"
                             value={notif}
                             onChange={e => setNotif(e.target.value)}
                             placeholder="Nomor notifikasi SAP (opsional)"
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none transition-all shadow-sm placeholder-gray-400"
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none transition-all shadow-sm placeholder-gray-600"
                         />
                     </div>
 
                     {/* Penanggung Jawab */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Penanggung Jawab</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Penanggung Jawab</label>
                         <div className="relative">
                             <select
                                 value={foreman}
@@ -130,13 +130,13 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                                     <option key={f.value} value={f.value}>{f.label}</option>
                                 ))}
                             </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
                         </div>
                     </div>
 
                     {/* Yang Melaporkan */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Yang Melaporkan</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Yang Melaporkan</label>
                         <OperatorCombobox
                             value={reportedBy}
                             onChange={setReportedBy}
@@ -158,7 +158,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                 <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-2xl">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-500 bg-white text-sm font-bold hover:bg-gray-50 hover:text-gray-700 transition-colors cursor-pointer shadow-sm"
+                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-black bg-white text-sm font-bold hover:bg-gray-50 hover:text-gray-700 transition-colors cursor-pointer shadow-sm"
                     >
                         Batal
                     </button>

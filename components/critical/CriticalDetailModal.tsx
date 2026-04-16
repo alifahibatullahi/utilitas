@@ -35,6 +35,7 @@ function timeAgo(iso: string): string {
 
 interface CriticalDetailModalProps {
     critical: CriticalWithMaintenance;
+    rowIndex?: number;
     onClose: () => void;
     onEditMaintenance?: (m: MaintenanceLogRow) => void;
     onDeleteMaintenance?: (id: string) => Promise<void>;
@@ -45,7 +46,7 @@ interface CriticalDetailModalProps {
 }
 
 export default function CriticalDetailModal({
-    critical, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, fetchPhotos, deletePhoto, operatorName
+    critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, fetchPhotos, deletePhoto, operatorName
 }: CriticalDetailModalProps) {
     const [photos, setPhotos] = useState<PhotoRow[]>([]);
     const [photosLoaded, setPhotosLoaded] = useState(false);
@@ -117,6 +118,11 @@ export default function CriticalDetailModal({
                 {/* Header (Table-like, Black Bold text) */}
                 <div className="flex-shrink-0 bg-[#EAEFF5] border-b border-[#D8E2ED] px-8 py-5 flex items-center justify-between text-slate-800">
                     <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4">
+                        {rowIndex !== undefined && (
+                            <span className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] text-slate-500 text-base font-black shadow-sm">
+                                {rowIndex}
+                            </span>
+                        )}
                         <h2 className="text-2xl font-black whitespace-nowrap">{critical.item}</h2>
                         <StatusBadge status={critical.status} solid className="px-4 py-1.5 text-base shadow-sm" />
                         {allScopes.map(s => (
@@ -196,15 +202,40 @@ export default function CriticalDetailModal({
                                                     <span className="text-xl font-black text-slate-500">#{idx + 1}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0 pr-4">
-                                                    <h4 className="text-base font-extrabold text-slate-900 mb-3 break-words">
-                                                        <span className={`font-bold ${
-                                                            m.scope === 'mekanik' ? 'text-blue-600' :
-                                                            m.scope === 'listrik' ? 'text-amber-600' :
-                                                            m.scope === 'instrumen' ? 'text-purple-600' :
-                                                            m.scope === 'sipil' ? 'text-teal-600' : 'text-slate-500'
-                                                        }`}>{m.scope.charAt(0).toUpperCase() + m.scope.slice(1)} : </span>
-                                                        <span className="text-slate-800 font-bold">{m.uraian}</span>
-                                                    </h4>
+                                                    <div className="flex flex-wrap items-center gap-3 mb-3 break-words">
+                                                        <span className={`text-lg font-black uppercase tracking-wide ${
+                                                            m.scope === 'mekanik' ? 'text-blue-600 bg-blue-50 border-blue-200' :
+                                                            m.scope === 'listrik' ? 'text-amber-600 bg-amber-50 border-amber-200' :
+                                                            m.scope === 'instrumen' ? 'text-purple-600 bg-purple-50 border-purple-200' :
+                                                            m.scope === 'sipil' ? 'text-teal-600 bg-teal-50 border-teal-200' : 'text-slate-500 bg-slate-50 border-slate-200'
+                                                        } px-2 py-0.5 rounded shadow-sm border`}>{m.scope}</span>
+                                                        <span className="text-xl font-black text-slate-800 leading-tight flex-1">{m.uraian}</span>
+                                                        
+                                                        {/* Status Dropdown Inline */}
+                                                        <div className="relative flex-shrink-0">
+                                                            <select
+                                                                value={m.status}
+                                                                onChange={(e) => {
+                                                                    const nextStatus = e.target.value as 'OPEN' | 'IP' | 'OK';
+                                                                    setMLogs(prev => {
+                                                                        const n = [...prev];
+                                                                        n[idx] = { ...n[idx], status: nextStatus };
+                                                                        return n;
+                                                                    });
+                                                                }}
+                                                                className={`appearance-none outline-none cursor-pointer inline-block px-4 py-1.5 pr-8 rounded-lg text-sm font-black border uppercase tracking-wider text-center shadow-sm hover:opacity-80 transition-opacity ${
+                                                                    m.status === 'OK' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                                                                    m.status === 'IP' ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                                                                    'bg-blue-100 text-blue-700 border-blue-300'
+                                                                }`}
+                                                            >
+                                                                <option value="OPEN" className="bg-blue-100 text-blue-700 font-bold">OPEN</option>
+                                                                <option value="IP" className="bg-amber-100 text-amber-700 font-bold">IP</option>
+                                                                <option value="OK" className="bg-emerald-100 text-emerald-700 font-bold">OK</option>
+                                                            </select>
+                                                            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-800" style={{ fontSize: 16 }}>expand_more</span>
+                                                        </div>
+                                                    </div>
                                                     
                                                     {/* Labels */}
                                                     <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -232,43 +263,17 @@ export default function CriticalDetailModal({
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-shrink-0 flex flex-col justify-center items-end gap-3 min-w-[100px] border-l border-slate-100 pl-4 h-full">
-                                                    <div className="w-full text-right relative">
-                                                        <select
-                                                            value={m.status}
-                                                            onChange={(e) => {
-                                                                const nextStatus = e.target.value as 'OPEN' | 'IP' | 'OK';
-                                                                setMLogs(prev => {
-                                                                    const n = [...prev];
-                                                                    n[idx] = { ...n[idx], status: nextStatus };
-                                                                    return n;
-                                                                });
-                                                            }}
-                                                            className={`appearance-none outline-none cursor-pointer inline-block px-4 py-2 pr-8 rounded-xl text-sm font-black border uppercase tracking-wider text-center w-full shadow-sm hover:opacity-80 transition-opacity ${
-                                                                m.status === 'OK' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                                                                m.status === 'IP' ? 'bg-amber-100 text-amber-700 border-amber-300' :
-                                                                'bg-blue-100 text-blue-700 border-blue-300'
-                                                            }`}
-                                                        >
-                                                            <option value="OPEN">OPEN</option>
-                                                            <option value="IP">IP</option>
-                                                            <option value="OK">OK</option>
-                                                        </select>
-                                                        <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" style={{ fontSize: 16 }}>expand_more</span>
-                                                    </div>
-                                                    
-                                                    <div className="flex flex-col gap-2 w-full mt-2">
-                                                        <button onClick={() => onEditMaintenance?.(m)} className="w-full py-2 rounded-lg text-blue-600 font-bold hover:text-white bg-blue-50 border border-blue-200 hover:bg-blue-600 hover:border-transparent flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm">
-                                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
-                                                            Edit
-                                                        </button>
-                                                        <button onClick={() => {
-                                                            if (confirm('Hapus log maintenance ini?')) onDeleteMaintenance?.(m.id);
-                                                        }} className="w-full py-1.5 rounded-lg text-slate-500 font-bold hover:text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 bg-slate-50 flex items-center justify-center gap-1.5 transition-colors text-xs">
-                                                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
-                                                            Hapus
-                                                        </button>
-                                                    </div>
+                                                <div className="flex-shrink-0 flex flex-col justify-center gap-2 min-w-[100px] border-l border-slate-100 pl-4">
+                                                    <button onClick={() => onEditMaintenance?.(m)} className="w-full py-2.5 rounded-lg text-blue-600 font-bold hover:text-white bg-blue-50 border border-blue-200 hover:bg-blue-600 hover:border-transparent flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm">
+                                                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
+                                                        Edit
+                                                    </button>
+                                                    <button onClick={() => {
+                                                        if (confirm('Hapus log maintenance ini?')) onDeleteMaintenance?.(m.id);
+                                                    }} className="w-full py-2.5 rounded-lg text-slate-500 font-bold hover:text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 bg-slate-50 flex items-center justify-center gap-1.5 transition-colors text-sm shadow-sm">
+                                                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
+                                                        Hapus
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>

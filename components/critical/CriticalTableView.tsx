@@ -21,6 +21,8 @@ interface CriticalTableViewProps {
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
+    expandedId?: string | null;
+    onSetExpandedId?: (id: string | null) => void;
 }
 
 type TableStatusTab = 'OPEN' | 'CLOSED';
@@ -86,13 +88,14 @@ function getTabCounts(criticals: CriticalWithMaintenance[]): Record<TableStatusT
 
 // ─── Critical Row ───
 function CriticalRow({
-    critical, starred, isEven, toggleStar, onEditCritical, onDeleteCritical,
+    critical, starred, isEven, rowIndex, toggleStar, onEditCritical, onDeleteCritical,
     onEditMaintenance, onDeleteMaintenance, onAddMaintenance,
     expandedId, onToggleExpand, fetchPhotos, deletePhoto, operatorName,
 }: {
     critical: CriticalWithMaintenance;
     starred: boolean;
     isEven: boolean;
+    rowIndex: number;
     toggleStar: (id: string) => void;
     onEditCritical?: (c: CriticalWithMaintenance) => void;
     onDeleteCritical?: (id: string) => Promise<void>;
@@ -120,7 +123,7 @@ function CriticalRow({
     return (
         <>
             {/* ── Data Row ── */}
-            <tr className={`border-b border-gray-100 transition-colors hover:bg-blue-50/20 ${rowBg}`}>
+            <tr className={`border-b border-gray-100 transition-colors hover:bg-blue-50 ${rowBg}`}>
                 {/* Star */}
                 <td className="px-2 py-2 text-center">
                     <button
@@ -229,7 +232,7 @@ function ItemSearchCombobox({ value, onChange, items }: { value: string; onChang
 
     const filtered = value
         ? items.filter(i => i.toLowerCase().includes(value.toLowerCase()))
-        : items;
+        : items.slice(0, 8);
 
     return (
         <div ref={ref} className="relative min-w-[220px]">
@@ -314,6 +317,7 @@ function TableBody({
                     critical={c}
                     starred={starredIds.has(c.id)}
                     isEven={idx % 2 === 1}
+                    rowIndex={idx + 1}
                     toggleStar={toggleStar}
                     onEditCritical={onEditCritical}
                     onDeleteCritical={onDeleteCritical}
@@ -326,10 +330,16 @@ function TableBody({
 }
 
 // ─── Main Export ───
-export default function CriticalTableView({ criticals, onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, fetchPhotos, deletePhoto, operatorName }: CriticalTableViewProps) {
+export default function CriticalTableView({ criticals, onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId }: CriticalTableViewProps) {
     const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<TableStatusTab>('OPEN');
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [expandedIdLocal, setExpandedIdLocal] = useState<string | null>(null);
+
+    const expandedId = expandedIdProp !== undefined ? expandedIdProp : expandedIdLocal;
+    function setExpandedId(id: string | null) {
+        if (onSetExpandedId) onSetExpandedId(id);
+        else setExpandedIdLocal(id);
+    }
 
     useEffect(() => {
         try {
@@ -409,28 +419,8 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
 
             {/* ── Main Table ── */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                {/* Status tabs */}
-                <div className="flex flex-wrap items-center gap-2 px-4 pt-4 pb-0 border-b border-gray-100">
-                    {STATUS_TABS.map(tab => {
-                        const isActive = activeTab === tab.key;
-                        return (
-                            <button
-                                key={tab.key}
-                                onClick={() => { setActiveTab(tab.key); setExpandedId(null); }}
-                                className={`flex items-center gap-2 px-4 py-3 rounded-t-lg text-sm font-bold transition-all border-b-2 -mb-px ${
-                                    isActive ? 'border-blue-500 text-blue-600 bg-blue-50/60' : 'border-transparent text-black hover:text-black hover:bg-gray-50'
-                                }`}
-                            >
-                                {tab.label}
-                                <span className={`inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full text-xs font-extrabold ${
-                                    isActive ? 'bg-blue-500 text-white' : 'bg-gray-100 text-black'
-                                }`}>
-                                    {tabCounts[tab.key]}
-                                </span>
-                            </button>
-                        );
-                    })}
-                    <div className="ml-auto pb-3 flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3 px-4 pt-4 pb-3 bg-gray-50/60 border-b border-gray-100">
+                    <div className="ml-auto flex items-center gap-2 w-full justify-end">
                         <button
                             onClick={() => onAddMaintenance?.()}
                             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
@@ -449,7 +439,7 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                 </div>
 
                 {/* Filter Bar */}
-                <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
+                <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-white border-b border-gray-100">
                     {/* Item search combobox */}
                     <ItemSearchCombobox
                         value={filterItem}
@@ -548,18 +538,22 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                 </div>
 
                 {/* Optional Full Detail Modal popup */}
-                {expandedId && criticals.find(c => c.id === expandedId) && (
-                    <CriticalDetailModal
-                        critical={criticals.find(c => c.id === expandedId)!}
-                        onClose={() => setExpandedId(null)}
-                        onEditMaintenance={onEditMaintenance}
-                        onDeleteMaintenance={onDeleteMaintenance}
-                        onAddMaintenance={onAddMaintenance}
-                        fetchPhotos={fetchPhotos}
-                        deletePhoto={deletePhoto}
-                        operatorName={operatorName}
-                    />
-                )}
+                {expandedId && criticals.find(c => c.id === expandedId) && (() => {
+                    const idx = criticals.findIndex(c => c.id === expandedId);
+                    return (
+                        <CriticalDetailModal
+                            critical={criticals[idx]}
+                            rowIndex={idx + 1}
+                            onClose={() => setExpandedId(null)}
+                            onEditMaintenance={onEditMaintenance}
+                            onDeleteMaintenance={onDeleteMaintenance}
+                            onAddMaintenance={onAddMaintenance}
+                            fetchPhotos={fetchPhotos}
+                            deletePhoto={deletePhoto}
+                            operatorName={operatorName}
+                        />
+                    );
+                })()}
 
             </div>
         </div>

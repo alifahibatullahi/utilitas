@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { HAR_SCOPES, FOREMAN_OPTIONS } from '@/lib/constants';
@@ -106,12 +106,12 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Row 1: Item | Tipe Maintenance */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
                         <ItemCombobox value={item} onChange={handleItemChange} light={true} />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Tipe Maintenance</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Tipe Maintenance</label>
                         <div className="relative">
                             <select
                                 value={criticalId || 'preventif'}
@@ -121,20 +121,20 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
                                 <option value="preventif">Preventif (tanpa critical)</option>
                                 {matchingCriticals.map(c => (
                                     <option key={c.id} value={c.id}>
-                                        Critical: {c.item} — {c.deskripsi.slice(0, 40)}
+                                        Critical: {c.item} â€” {c.deskripsi.slice(0, 40)}
                                     </option>
                                 ))}
                             </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
                         </div>
                         {item.trim() && matchingCriticals.length === 0 && (
-                            <p className="text-[10px] font-semibold text-gray-400 mt-1.5 tracking-wide">Tidak ada critical aktif untuk item ini</p>
+                            <p className="text-[10px] font-semibold text-black mt-1.5 tracking-wide">Tidak ada critical aktif untuk item ini</p>
                         )}
                         {/* Deskripsi critical yang dipilih */}
                         {criticalId && criticalId !== 'preventif' && (() => {
                             const selectedCrit = activeCriticals.find(c => c.id === criticalId);
                             return selectedCrit ? (
-                                <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
+                                <p className="text-[11px] text-black mt-1.5 leading-snug">
                                     <span className="font-bold">Critical : </span>{selectedCrit.deskripsi}
                                 </p>
                             ) : null;
@@ -143,19 +143,19 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
 
                     {/* Row 2: Uraian (full width) */}
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Uraian Pekerjaan</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Uraian Pekerjaan</label>
                         <textarea
                             value={uraian}
                             onChange={e => setUraian(e.target.value)}
                             rows={3}
                             placeholder="Deskripsi pekerjaan maintenance..."
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none resize-none transition-all shadow-sm placeholder-gray-400"
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none resize-none transition-all shadow-sm placeholder-gray-600"
                         />
                     </div>
 
                     {/* Row 3: Scope HAR | Notif SAP */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Scope HAR</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
                         <div className="relative">
                             <select
                                 value={scope}
@@ -166,18 +166,18 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
                                     <option key={s.value} value={s.value}>{s.label}</option>
                                 ))}
                             </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Notif SAP (ops)</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Notif SAP (ops)</label>
                         <input
                             type="text"
                             value={notif}
                             onChange={e => setNotif(e.target.value)}
                             placeholder="Nomor SA..."
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all shadow-sm placeholder-gray-400"
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all shadow-sm placeholder-gray-600"
                         />
                         {criticalId && criticalId !== 'preventif' && (() => {
                             const selectedCrit = activeCriticals.find(c => c.id === criticalId);
@@ -195,7 +195,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
 
                     {/* Row 4: Foreman | Yang Membuat */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">P. Jawab</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">P. Jawab</label>
                         <div className="relative">
                             <select
                                 value={foreman}
@@ -206,12 +206,12 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
                                     <option key={f.value} value={f.value}>{f.label}</option>
                                 ))}
                             </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Yang Membuat Maintenance</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Yang Membuat Maintenance</label>
                         <OperatorCombobox
                             value={reportedBy}
                             onChange={setReportedBy}
@@ -233,7 +233,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
                 <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-2xl">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-500 bg-white text-sm font-bold hover:bg-gray-50 hover:text-gray-700 transition-colors cursor-pointer shadow-sm"
+                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-black bg-white text-sm font-bold hover:bg-gray-50 hover:text-gray-700 transition-colors cursor-pointer shadow-sm"
                     >
                         Batal
                     </button>

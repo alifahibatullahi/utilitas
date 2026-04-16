@@ -205,20 +205,24 @@ export default function InputPage() {
             const rcwDraft = allDrafts['RCW'];
             const rcwM3 = rcwDraft ? parseFloat(rcwDraft.levelM3) : NaN;
             if (!isNaN(rcwM3)) {
+                const submittedAt = new Date().toISOString();
+                console.log(`[input/RCW] Mengirim ke Sheets → level ${rcwM3} m³ | submitted_at ${submittedAt}`);
                 void fetch('/api/sheets/write', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         type: 'rcw_level',
-                        data: { level: rcwM3, submitted_at: new Date().toISOString() },
+                        data: { level: rcwM3, submitted_at: submittedAt },
                     }),
                 }).then(r => r.json()).then(result => {
                     if (result.warning) {
                         console.warn('[input/RCW] Sheets gagal:', result.warning);
+                    } else if (!result.details || result.details.length === 0) {
+                        console.warn('[input/RCW] Sheets: row tidak ditemukan di template, data tidak tersimpan');
                     } else {
-                        for (const d of (result.details ?? [])) {
+                        for (const d of result.details) {
                             console.log(
-                                `[input/RCW] Sheets ${d.action === 'updated' ? 'UPDATE' : 'APPEND'} → row ${d.rowIndex} | jam ${String(d.jam).padStart(2,'0')}:00 | ${d.date} | level ${d.level} m³`
+                                `[input/RCW] Sheets UPDATE → row ${d.rowIndex} | jam ${String(d.jam).padStart(2,'0')}:00 | ${d.date} | level ${d.level} m³`
                             );
                         }
                     }

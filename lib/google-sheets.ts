@@ -16,6 +16,7 @@ import { google } from 'googleapis';
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID!;
 const RCW_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_RCW_ID || '1V5QtlqcmpXZAd0AEIbrR0jm-Tr1nfk4DR3yQXJKFtro';
 const RCW_SHEET_TAB = 'Level UBB';
+const RCW_ANCHOR_ROW = 1277; // Row pertama tanggal 17 April 2026
 
 export const SHEET_TABS = {
     pagi: 'Pagi',
@@ -320,7 +321,7 @@ export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResul
 
     const res = await sheets.spreadsheets.values.get({
         spreadsheetId: RCW_SPREADSHEET_ID,
-        range: `${tab}!A2:D`,
+        range: `${tab}!A${RCW_ANCHOR_ROW}:D`,
     });
     const rows = (res.data.values ?? []) as string[][];
 
@@ -333,11 +334,13 @@ export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResul
         const jamStr = String(entry.jam);
 
         let found = false;
+        let currentDate = '';
         for (let i = 0; i < rows.length; i++) {
-            const rowDate = (rows[i][1] ?? '').trim();
+            const cellDate = (rows[i][1] ?? '').trim();
+            if (cellDate) currentDate = cellDate; // col B merged — carry forward
             const rowJam  = (rows[i][2] ?? '').trim();
-            if (rowDate === targetDate && rowJam === jamStr) {
-                const rowIndex = i + 2; // 1-based spreadsheet row
+            if (currentDate === targetDate && rowJam === jamStr) {
+                const rowIndex = i + RCW_ANCHOR_ROW; // 1-based spreadsheet row
                 await sheets.spreadsheets.values.update({
                     spreadsheetId: RCW_SPREADSHEET_ID,
                     range: `${tab}!D${rowIndex}`,
@@ -356,7 +359,7 @@ export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResul
             const rowNo = rows.filter(r => r.some(c => c && c.trim() !== '')).length + 1;
             await sheets.spreadsheets.values.append({
                 spreadsheetId: RCW_SPREADSHEET_ID,
-                range: `${tab}!A2`,
+                range: `${tab}!A${RCW_ANCHOR_ROW}`,
                 valueInputOption: 'USER_ENTERED',
                 insertDataOption: 'INSERT_ROWS',
                 requestBody: { values: [[rowNo, targetDate, entry.jam, entry.level]] },

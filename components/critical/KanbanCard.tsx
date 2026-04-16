@@ -58,12 +58,9 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
                 shadow-sm hover:shadow-md transition-shadow p-3 cursor-grab active:cursor-grabbing
                 ${overlay ? 'shadow-xl rotate-2 scale-105' : ''}`}
         >
-            {/* Nomor urut + up/down controls */}
+            {/* up/down controls */}
             {showControls && (
-                <div className="flex items-center justify-between mb-2">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-extrabold border border-gray-200">
-                        {index}
-                    </span>
+                <div className="flex items-center justify-end mb-2">
                     <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                         <button
                             onPointerDown={e => e.stopPropagation()}
@@ -90,9 +87,9 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             {/* Item name + critical deskripsi + status */}
             <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-bold text-gray-800 leading-tight">{item.item}</h4>
+                    <h4 className="text-sm font-bold text-black leading-tight">{item.item}</h4>
                     {item.critical_equipment?.deskripsi && (
-                        <p className="text-[10px] font-semibold text-rose-600 leading-tight mt-0.5 line-clamp-1">
+                        <p className="text-[10px] font-bold text-rose-600 leading-tight mt-0.5 line-clamp-1">
                             Critical : {item.critical_equipment.deskripsi}
                         </p>
                     )}
@@ -101,8 +98,8 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             </div>
 
             {/* Uraian */}
-            <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-                <span className="font-bold text-gray-500">Maintenance : </span>{item.uraian}
+            <p className="text-xs text-black font-medium mb-2 line-clamp-2">
+                <span className="font-bold text-black">Maintenance : </span>{item.uraian}
             </p>
 
             {/* Badges row */}
@@ -112,23 +109,19 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-100 text-cyan-700">
                         Preventif
                     </span>
-                ) : item.critical_equipment ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
-                        CR: {item.critical_equipment.item}
-                    </span>
                 ) : null}
             </div>
 
             {/* Footer info */}
-            <div className="flex items-center justify-between text-[10px] text-gray-500">
-                <span className="font-medium">{getForemanLabel(item.foreman)}</span>
+            <div className="flex items-center justify-between text-[10px] text-black">
+                <span className="font-bold">{getForemanLabel(item.foreman)}</span>
                 <div className="flex items-center gap-2">
                     {item.notif && (
-                        <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-                            {item.notif}
+                        <span className="bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded font-bold text-indigo-900">
+                            Notif: {item.notif}
                         </span>
                     )}
-                    <span>{item.date}</span>
+                    <span className="font-bold">{item.date}</span>
                 </div>
             </div>
 

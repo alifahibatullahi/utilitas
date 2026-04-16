@@ -13,6 +13,9 @@ import type {
     HarScope,
     ActivityActionType,
     PhotoRow,
+    WorkOrderRow,
+    WorkOrderWithPekerjaan,
+    WorkOrderStatus,
 } from '@/lib/supabase/types';
 
 export interface CriticalMaintenanceFilters {
@@ -87,6 +90,7 @@ async function insertActivityLog(
 export function useCriticalMaintenance() {
     const [criticals, setCriticals] = useState<CriticalWithMaintenance[]>([]);
     const [maintenances, setMaintenances] = useState<MaintenanceWithCritical[]>([]);
+    const [workOrders, setWorkOrders] = useState<WorkOrderWithPekerjaan[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -97,22 +101,23 @@ export function useCriticalMaintenance() {
         setLoading(true);
         setError(null);
         try {
-            const { data: critData, error: critErr } = await supabase
-                .from('critical_equipment')
-                .select('*, maintenance_logs(*), critical_activity_logs(*)')
-                .order('created_at', { ascending: false });
+            const [
+                { data: critData, error: critErr },
+                { data: maintData, error: maintErr },
+                { data: woData, error: woErr },
+            ] = await Promise.all([
+                supabase.from('critical_equipment').select('*, maintenance_logs(*), critical_activity_logs(*)').order('created_at', { ascending: false }),
+                supabase.from('maintenance_logs').select('*, critical_equipment(*)').order('created_at', { ascending: false }),
+                supabase.from('work_orders').select('*, maintenance_logs(*)').order('created_at', { ascending: false }),
+            ]);
 
             if (critErr) throw critErr;
-
-            const { data: maintData, error: maintErr } = await supabase
-                .from('maintenance_logs')
-                .select('*, critical_equipment(*)')
-                .order('created_at', { ascending: false });
-
             if (maintErr) throw maintErr;
+            if (woErr) throw woErr;
 
             setCriticals((critData ?? []) as CriticalWithMaintenance[]);
             setMaintenances((maintData ?? []) as MaintenanceWithCritical[]);
+            setWorkOrders((woData ?? []) as WorkOrderWithPekerjaan[]);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Gagal memuat data');
         } finally {
@@ -125,18 +130,19 @@ export function useCriticalMaintenance() {
     // ─── Silent background sync (no loading state, for optimistic flows) ───
     const silentFetch = useCallback(async () => {
         try {
-            const { data: critData, error: critErr } = await supabase
-                .from('critical_equipment')
-                .select('*, maintenance_logs(*), critical_activity_logs(*)')
-                .order('created_at', { ascending: false });
-            if (critErr) return;
-            const { data: maintData, error: maintErr } = await supabase
-                .from('maintenance_logs')
-                .select('*, critical_equipment(*)')
-                .order('created_at', { ascending: false });
-            if (maintErr) return;
+            const [
+                { data: critData, error: critErr },
+                { data: maintData, error: maintErr },
+                { data: woData, error: woErr },
+            ] = await Promise.all([
+                supabase.from('critical_equipment').select('*, maintenance_logs(*), critical_activity_logs(*)').order('created_at', { ascending: false }),
+                supabase.from('maintenance_logs').select('*, critical_equipment(*)').order('created_at', { ascending: false }),
+                supabase.from('work_orders').select('*, maintenance_logs(*)').order('created_at', { ascending: false }),
+            ]);
+            if (critErr || maintErr || woErr) return;
             setCriticals((critData ?? []) as CriticalWithMaintenance[]);
             setMaintenances((maintData ?? []) as MaintenanceWithCritical[]);
+            setWorkOrders((woData ?? []) as WorkOrderWithPekerjaan[]);
         } catch { /* silent */ }
     }, [supabase]);
 
@@ -354,6 +360,38 @@ export function useCriticalMaintenance() {
         return { error: null };
     }, [supabase, fetchData, silentFetch, maintenances]);
 
+    // ─── CRUD Work Orders ───
+    const createWorkOrder = useCallback(async (data: Omit<WorkOrderRow, 'id' | 'created_at' | 'updated_at'>) => {
+        const { error: err } = await supabase.from('work_orders').insert(data);
+        if (err) return { error: err.message };
+        await fetchData();
+        return { error: null };
+    }, [supabase, fetchData]);
+
+    const updateWorkOrder = useCallback(async (id: string, data: Partial<WorkOrderRow>) => {
+        setWorkOrders(prev => prev.map(w => w.id === id ? { ...w, ...data } : w));
+        const { error: err } = await supabase.from('work_orders').update(data).eq('id', id);
+        if (err) { await fetchData(); return { error: err.message }; }
+        await silentFetch();
+        return { error: null };
+    }, [supabase, fetchData, silentFetch]);
+
+    const deleteWorkOrder = useCallback(async (id: string) => {
+        await supabase.from('maintenance_logs').delete().eq('work_order_id', id);
+        const { error: err } = await supabase.from('work_orders').delete().eq('id', id);
+        if (err) return { error: err.message };
+        await fetchData();
+        return { error: null };
+    }, [supabase, fetchData]);
+
+    const moveWorkOrderStatus = useCallback(async (id: string, newStatus: WorkOrderStatus) => {
+        setWorkOrders(prev => prev.map(w => w.id === id ? { ...w, status: newStatus } : w));
+        const { error: err } = await supabase.from('work_orders').update({ status: newStatus }).eq('id', id);
+        if (err) { await fetchData(); return { error: err.message }; }
+        await silentFetch();
+        return { error: null };
+    }, [supabase, fetchData, silentFetch]);
+
     // ─── Add manual activity note ───
     const addActivityNote = useCallback(async (criticalId: string, note: string, actor?: string | null) => {
         const { error: err } = await supabase.from('critical_activity_logs').insert({
@@ -416,6 +454,7 @@ export function useCriticalMaintenance() {
     return {
         criticals,
         maintenances,
+        workOrders,
         loading,
         error,
         refetch: fetchData,
@@ -434,5 +473,9 @@ export function useCriticalMaintenance() {
         fetchPhotos,
         deletePhoto,
         fetchPhotosForMaintList,
+        createWorkOrder,
+        updateWorkOrder,
+        deleteWorkOrder,
+        moveWorkOrderStatus,
     };
 }

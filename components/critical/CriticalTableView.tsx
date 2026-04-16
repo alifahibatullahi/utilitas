@@ -1,28 +1,36 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope, PhotoRow } from '@/lib/supabase/types';
+import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope, PhotoRow, MaintenanceType, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
 import CriticalDetailModal from './CriticalDetailModal';
+import WorkOrderDetailModal from './WorkOrderDetailModal';
 
 const STORAGE_KEY = 'critical-starred-ids';
 const COL_COUNT = 9;
 
 interface CriticalTableViewProps {
     criticals: CriticalWithMaintenance[];
+    workOrders?: WorkOrderWithPekerjaan[];
     onEditCritical?: (c: CriticalWithMaintenance) => void;
     onDeleteCritical?: (id: string) => Promise<void>;
     onAddCritical?: () => void;
     onEditMaintenance?: (m: MaintenanceLogRow) => void;
     onDeleteMaintenance?: (id: string) => Promise<void>;
     onAddMaintenance?: (critical?: CriticalWithMaintenance) => void;
+    onEditWorkOrder?: (wo: WorkOrderWithPekerjaan) => void;
+    onDeleteWorkOrder?: (id: string) => Promise<void>;
+    onAddWorkOrder?: () => void;
+    onAddPekerjaanToWO?: (wo: WorkOrderWithPekerjaan) => void;
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
     expandedId?: string | null;
     onSetExpandedId?: (id: string | null) => void;
+    expandedWOId?: string | null;
+    onSetExpandedWOId?: (id: string | null) => void;
 }
 
 type TableStatusTab = 'OPEN' | 'CLOSED';
@@ -71,7 +79,11 @@ function timeAgo(iso: string): string {
     return `${Math.floor(days / 30)} bln lalu`;
 }
 
-// No getLastAction anymore here
+function getTipeLabel(tipe: MaintenanceType): string {
+    if (tipe === 'preventif') return 'Preventif';
+    if (tipe === 'modifikasi') return 'Modifikasi';
+    return 'Maintenance';
+}
 
 function filterByTab(criticals: CriticalWithMaintenance[], tab: TableStatusTab) {
     return criticals.filter(c => c.status === tab);
@@ -160,7 +172,12 @@ function CriticalRow({
                     {critical.notif ?? <span className="text-gray-300">—</span>}
                 </td>
                 {/* Status */}
-                <td className="px-5 py-5"><StatusBadge status={critical.status} solid className="px-4 py-1.5 text-base shadow-sm" /></td>
+                <td className="px-5 py-5 whitespace-nowrap">
+                    <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Critical</span>
+                        <StatusBadge status={critical.status} solid className="px-3 py-1 text-sm shadow-sm" />
+                    </div>
+                </td>
                 <td className="px-5 py-5 text-center">
                     <div className="flex items-center justify-center gap-2">
                         {/* Detail */}
@@ -214,6 +231,96 @@ function CriticalRow({
                 </td>
             </tr>
         </>
+    );
+}
+
+// ─── Work Order Row ───
+function WorkOrderRow({
+    wo, isEven, onEdit, onDelete, onToggleExpand,
+}: {
+    wo: WorkOrderWithPekerjaan;
+    isEven: boolean;
+    onEdit?: (wo: WorkOrderWithPekerjaan) => void;
+    onDelete?: (id: string) => Promise<void>;
+    onToggleExpand: (id: string) => void;
+}) {
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const rowBg = isEven ? 'bg-gray-50/40' : 'bg-white';
+    const isPreventif = wo.tipe === 'preventif';
+    const tipeColor = isPreventif ? 'text-emerald-600' : 'text-violet-600';
+
+    async function handleDelete() {
+        setDeleting(true);
+        await onDelete?.(wo.id);
+        setDeleting(false);
+        setConfirmDelete(false);
+    }
+
+    return (
+        <tr className={`border-b border-gray-100 transition-colors hover:bg-slate-50 ${rowBg}`}>
+            {/* Star placeholder */}
+            <td className="px-2 py-2" />
+            {/* Tanggal */}
+            <td className="px-5 py-4 whitespace-nowrap text-base font-bold text-black">{formatDate(wo.date)}</td>
+            {/* Item */}
+            <td className="px-5 py-4 text-base font-black text-black whitespace-nowrap">{wo.item}</td>
+            {/* Deskripsi */}
+            <td className="px-5 py-4 text-base font-medium text-black max-w-[250px] leading-relaxed">
+                <span className="line-clamp-2">{wo.deskripsi}</span>
+            </td>
+            {/* Scope */}
+            <td className="px-5 py-4">
+                <ScopeBadge scope={wo.scope} solid className="px-3 py-1.5 text-sm shadow-sm" />
+            </td>
+            {/* Foreman */}
+            <td className="px-5 py-4 text-base font-bold text-black whitespace-nowrap">{getForemanLabel(wo.foreman)}</td>
+            {/* Notif */}
+            <td className="px-5 py-4 text-base font-mono font-bold text-black whitespace-nowrap">
+                {wo.notif ?? <span className="text-gray-300">—</span>}
+            </td>
+            {/* Status dengan tipe */}
+            <td className="px-5 py-4 whitespace-nowrap">
+                <div className="flex flex-col gap-0.5">
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${tipeColor}`}>{isPreventif ? 'Preventif' : 'Modifikasi'}</span>
+                    <StatusBadge status={wo.status} solid className="px-3 py-1 text-sm shadow-sm" />
+                </div>
+            </td>
+            {/* Actions */}
+            <td className="px-5 py-4 text-center">
+                <div className="flex items-center justify-center gap-2">
+                    <button
+                        onClick={() => onToggleExpand(wo.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-sm hover:from-slate-600 hover:to-slate-700 transition-all"
+                        title="Detail pekerjaan"
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>open_in_new</span>
+                        Detail
+                    </button>
+                    <button onClick={() => onEdit?.(wo)}
+                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>edit</span>
+                    </button>
+                    {confirmDelete ? (
+                        <div className="flex items-center gap-1">
+                            <button onClick={handleDelete} disabled={deleting}
+                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow-sm disabled:opacity-50 transition-all">
+                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{deleting ? 'more_horiz' : 'check'}</span>
+                            </button>
+                            <button onClick={() => setConfirmDelete(false)}
+                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 shadow-sm transition-all">
+                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <button onClick={() => setConfirmDelete(true)}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm">
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>delete</span>
+                        </button>
+                    )}
+                </div>
+            </td>
+        </tr>
     );
 }
 
@@ -330,7 +437,7 @@ function TableBody({
 }
 
 // ─── Main Export ───
-export default function CriticalTableView({ criticals, onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId }: CriticalTableViewProps) {
+export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId }: CriticalTableViewProps) {
     const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<TableStatusTab>('OPEN');
     const [expandedIdLocal, setExpandedIdLocal] = useState<string | null>(null);
@@ -339,6 +446,13 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
     function setExpandedId(id: string | null) {
         if (onSetExpandedId) onSetExpandedId(id);
         else setExpandedIdLocal(id);
+    }
+
+    const [expandedWOIdLocal, setExpandedWOIdLocal] = useState<string | null>(null);
+    const expandedWOId = expandedWOIdProp !== undefined ? expandedWOIdProp : expandedWOIdLocal;
+    function setExpandedWOId(id: string | null) {
+        if (onSetExpandedWOId) onSetExpandedWOId(id);
+        else setExpandedWOIdLocal(id);
     }
 
     useEffect(() => {
@@ -375,16 +489,31 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
         setFilterDateTo('');
     }
 
-    const tabCounts    = getTabCounts(criticals);
+    const tabCounts = {
+        OPEN:   criticals.filter(c => c.status === 'OPEN').length + workOrders.filter(w => w.status !== 'OK').length,
+        CLOSED: criticals.filter(c => c.status === 'CLOSED').length + workOrders.filter(w => w.status === 'OK').length,
+    };
     const starredItems = criticals.filter(c => starredIds.has(c.id));
 
-    const filteredItems = filterByTab(criticals, activeTab).filter(c => {
+    const filteredCriticals = filterByTab(criticals, activeTab).filter(c => {
         if (filterItem && !c.item.toLowerCase().includes(filterItem.toLowerCase())) return false;
         if (filterScope && c.scope !== filterScope) return false;
         if (filterDateFrom && c.date < filterDateFrom) return false;
         if (filterDateTo   && c.date > filterDateTo)   return false;
         return true;
     });
+
+    const filteredWorkOrders = workOrders.filter(w => {
+        if (activeTab === 'OPEN' && w.status === 'OK') return false;
+        if (activeTab === 'CLOSED' && w.status !== 'OK') return false;
+        if (filterItem && !w.item.toLowerCase().includes(filterItem.toLowerCase())) return false;
+        if (filterScope && w.scope !== filterScope) return false;
+        if (filterDateFrom && w.date < filterDateFrom) return false;
+        if (filterDateTo   && w.date > filterDateTo)   return false;
+        return true;
+    });
+
+    const allFilteredItems = filteredCriticals.length + filteredWorkOrders.length;
 
     return (
         <div className="flex flex-col gap-4">
@@ -417,34 +546,39 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                 </div>
             )}
 
+            {/* ── Action Buttons ── */}
+            <div className="flex items-center justify-center gap-3 py-2 flex-wrap">
+                <button
+                    onClick={() => onAddMaintenance?.()}
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-blue-50 text-blue-600 border-2 border-blue-200 text-sm font-black hover:bg-blue-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>build</span>
+                    + Maintenance (Critical)
+                </button>
+                <button
+                    onClick={onAddWorkOrder}
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 border-2 border-emerald-200 text-sm font-black hover:bg-emerald-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>event_available</span>
+                    + Preventif / Modifikasi
+                </button>
+                <button
+                    onClick={onAddCritical}
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-rose-50 text-rose-600 border-2 border-rose-200 text-sm font-black hover:bg-rose-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>warning</span>
+                    + Tambah Critical
+                </button>
+            </div>
+
             {/* ── Main Table ── */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="flex flex-wrap items-center gap-3 px-4 pt-4 pb-3 bg-gray-50/60 border-b border-gray-100">
-                    <div className="ml-auto flex items-center gap-2 w-full justify-end">
-                        <button
-                            onClick={() => onAddMaintenance?.()}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>build</span>
-                            + Tambah Maintenance
-                        </button>
-                        <button
-                            onClick={onAddCritical}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 text-sm font-bold hover:bg-rose-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>warning</span>
-                            + Tambah Critical
-                        </button>
-                    </div>
-                </div>
-
-                {/* Filter Bar */}
                 <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-white border-b border-gray-100">
                     {/* Item search combobox */}
                     <ItemSearchCombobox
                         value={filterItem}
                         onChange={val => { setFilterItem(val); setExpandedId(null); }}
-                        items={[...new Set(criticals.map(c => c.item))].sort()}
+                        items={[...new Set([...criticals.map(c => c.item), ...workOrders.map(w => w.item)])].sort()}
                     />
                     {/* Status */}
                     <select
@@ -497,7 +631,7 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                         </button>
                     )}
                     <span className="ml-auto text-[10px] text-black font-semibold">
-                        {filteredItems.length} item
+                        {allFilteredItems} item
                     </span>
                 </div>
 
@@ -506,7 +640,7 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                     <table className="w-full min-w-[960px] text-xs border-collapse">
                         <TableHeader />
                         <tbody>
-                            {filteredItems.length === 0 ? (
+                            {allFilteredItems === 0 ? (
                                 <tr>
                                     <td colSpan={COL_COUNT} className="py-16 text-center">
                                         <span className="material-symbols-outlined text-gray-200 block mb-2" style={{ fontSize: 40 }}>search_off</span>
@@ -523,15 +657,27 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                                     </td>
                                 </tr>
                             ) : (
-                                <TableBody
-                                    items={filteredItems}
-                                    starredIds={starredIds}
-                                    toggleStar={toggleStar}
-                                    onEditCritical={onEditCritical}
-                                    onDeleteCritical={onDeleteCritical}
-                                    expandedId={expandedId}
-                                    onToggleExpand={handleToggleExpand}
-                                />
+                                <>
+                                    <TableBody
+                                        items={filteredCriticals}
+                                        starredIds={starredIds}
+                                        toggleStar={toggleStar}
+                                        onEditCritical={onEditCritical}
+                                        onDeleteCritical={onDeleteCritical}
+                                        expandedId={expandedId}
+                                        onToggleExpand={handleToggleExpand}
+                                    />
+                                    {filteredWorkOrders.map((wo, idx) => (
+                                        <WorkOrderRow
+                                            key={wo.id}
+                                            wo={wo}
+                                            isEven={(filteredCriticals.length + idx) % 2 === 1}
+                                            onEdit={onEditWorkOrder}
+                                            onDelete={onDeleteWorkOrder}
+                                            onToggleExpand={id => setExpandedWOId(expandedWOId === id ? null : id)}
+                                        />
+                                    ))}
+                                </>
                             )}
                         </tbody>
                     </table>
@@ -550,6 +696,21 @@ export default function CriticalTableView({ criticals, onEditCritical, onDeleteC
                             onAddMaintenance={onAddMaintenance}
                             fetchPhotos={fetchPhotos}
                             deletePhoto={deletePhoto}
+                            operatorName={operatorName}
+                        />
+                    );
+                })()}
+
+                {expandedWOId && workOrders.find(w => w.id === expandedWOId) && (() => {
+                    const idx = workOrders.findIndex(w => w.id === expandedWOId);
+                    return (
+                        <WorkOrderDetailModal
+                            workOrder={workOrders[idx]}
+                            rowIndex={filteredCriticals.length + idx + 1}
+                            onClose={() => setExpandedWOId(null)}
+                            onEditPekerjaan={onEditMaintenance}
+                            onDeletePekerjaan={onDeleteMaintenance}
+                            onAddPekerjaan={onAddPekerjaanToWO}
                             operatorName={operatorName}
                         />
                     );

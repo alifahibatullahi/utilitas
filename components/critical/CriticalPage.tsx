@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useCriticalMaintenance } from '@/hooks/useCriticalMaintenance';
 import { useOperator } from '@/hooks/useOperator';
 import { SHIFT_OPTIONS, getShiftWindow, detectCurrentShift } from '@/lib/constants';
-import type { CriticalWithMaintenance, MaintenanceWithCritical, MaintenanceLogRow, PhotoRow } from '@/lib/supabase/types';
+import type { CriticalWithMaintenance, MaintenanceWithCritical, MaintenanceLogRow, PhotoRow, WorkOrderWithPekerjaan, WorkOrderRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 import HistoryView from './HistoryView';
 import CriticalTableView from './CriticalTableView';
 import CriticalFormModal from './CriticalFormModal';
 import MaintenanceFormModal from './MaintenanceFormModal';
+import WorkOrderFormModal from './WorkOrderFormModal';
 
 function HeaderOperatorSelect() {
     const { operator, operators, login } = useOperator();
@@ -59,6 +60,11 @@ export default function CriticalPage() {
     const [maintenanceInitial, setMaintenanceInitial] = useState<Partial<Omit<MaintenanceLogRow, 'id' | 'created_at' | 'updated_at'>> | undefined>(undefined);
     const [expandedCriticalId, setExpandedCriticalId] = useState<string | null>(null);
     const [returnToDetailId, setReturnToDetailId] = useState<string | null>(null);
+    const [expandedWOId, setExpandedWOId] = useState<string | null>(null);
+    const [showWorkOrderForm, setShowWorkOrderForm] = useState(false);
+    const [editingWorkOrder, setEditingWorkOrder] = useState<WorkOrderWithPekerjaan | null>(null);
+    const [returnToWOId, setReturnToWOId] = useState<string | null>(null);
+    const [activeWorkOrderContext, setActiveWorkOrderContext] = useState<WorkOrderWithPekerjaan | null>(null);
 
     // Apply basic Kanban filters (no scope/foreman filters applied anymore per user request)
     const filteredKanban = cm.maintenances;
@@ -106,7 +112,7 @@ export default function CriticalPage() {
                                 }`}
                             >
                                 <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>table_view</span>
-                                Critical
+                                List
                             </button>
                             <button
                                 onClick={() => setView('board')}
@@ -115,7 +121,7 @@ export default function CriticalPage() {
                                 }`}
                             >
                                 <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>view_kanban</span>
-                                Maintenance
+                                Board Pekerjaan
                             </button>
                         </div>
 
@@ -156,6 +162,25 @@ export default function CriticalPage() {
                             <div className="w-full flex-1 transition-all animate-in fade-in zoom-in-95 duration-300">
                                 <CriticalTableView
                                     criticals={cm.criticals}
+                                    workOrders={cm.workOrders}
+                                    expandedWOId={expandedWOId}
+                                    onSetExpandedWOId={setExpandedWOId}
+                                    onAddWorkOrder={() => setShowWorkOrderForm(true)}
+                                    onEditWorkOrder={(wo) => setEditingWorkOrder(wo)}
+                                    onDeleteWorkOrder={async (id) => { await cm.deleteWorkOrder(id); }}
+                                    onAddPekerjaanToWO={(wo) => {
+                                        setMaintenanceInitial({
+                                            work_order_id: wo.id,
+                                            item: wo.item,
+                                            scope: wo.scope,
+                                            foreman: wo.foreman,
+                                            date: new Date().toISOString().split('T')[0],
+                                        });
+                                        setActiveWorkOrderContext(wo);
+                                        setReturnToWOId(wo.id);
+                                        setExpandedWOId(null);
+                                        setShowMaintenanceForm(true);
+                                    }}
                                     onEditCritical={(c) => setEditingCritical(c)}
                                     onDeleteCritical={async (id) => { await cm.deleteCritical(id); }}
                                     onAddCritical={() => setShowCriticalForm(true)}
@@ -218,7 +243,7 @@ export default function CriticalPage() {
                                             className="whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer"
                                         >
                                             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>build</span>
-                                            + Tambah Maintenance
+                                            + Tambah Pekerjaan
                                         </button>
                                         <button
                                             onClick={() => setShowCriticalForm(true)}
@@ -268,24 +293,31 @@ export default function CriticalPage() {
                 operatorName={operator?.name}
             />
             <MaintenanceFormModal
-                key={showMaintenanceForm ? `open-${maintenanceInitial?.critical_id ?? 'none'}` : 'closed'}
+                key={showMaintenanceForm ? `open-${maintenanceInitial?.critical_id ?? maintenanceInitial?.work_order_id ?? 'none'}` : 'closed'}
                 open={showMaintenanceForm}
                 onClose={() => {
                     setShowMaintenanceForm(false);
                     setMaintenanceInitial(undefined);
+                    setActiveWorkOrderContext(null);
                     if (returnToDetailId) {
                         setExpandedCriticalId(returnToDetailId);
                         setReturnToDetailId(null);
                     }
+                    if (returnToWOId) {
+                        setExpandedWOId(returnToWOId);
+                        setReturnToWOId(null);
+                    }
                 }}
                 onSubmit={async (data) => {
                     const res = await cm.createMaintenance(data);
-                    if (!res.error && data.critical_id) {
-                        setReturnToDetailId(data.critical_id);
+                    if (!res.error) {
+                        if (data.critical_id) setReturnToDetailId(data.critical_id);
+                        if (data.work_order_id) setReturnToWOId(data.work_order_id);
                     }
                     return res;
                 }}
                 activeCriticals={cm.criticals}
+                workOrderContext={activeWorkOrderContext ?? undefined}
                 initial={maintenanceInitial}
                 operatorName={operator?.name}
             />
@@ -315,6 +347,25 @@ export default function CriticalPage() {
                         return res;
                     }}
                     operatorName={operator?.name}
+                />
+            )}
+            {/* Work Order modals */}
+            <WorkOrderFormModal
+                key={showWorkOrderForm ? 'wo-open' : 'wo-closed'}
+                open={showWorkOrderForm}
+                onClose={() => setShowWorkOrderForm(false)}
+                onSubmit={cm.createWorkOrder}
+            />
+            {editingWorkOrder && (
+                <WorkOrderFormModal
+                    open={true}
+                    onClose={() => setEditingWorkOrder(null)}
+                    initial={editingWorkOrder}
+                    onSubmit={async (data) => {
+                        const res = await cm.updateWorkOrder(editingWorkOrder.id, data as Partial<WorkOrderRow>);
+                        if (!res.error) setEditingWorkOrder(null);
+                        return res;
+                    }}
                 />
             )}
         </div>

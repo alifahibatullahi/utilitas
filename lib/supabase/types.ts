@@ -439,7 +439,9 @@ export interface DailyReportTotalizerRow {
 export type CriticalEquipmentStatus = 'OPEN' | 'CLOSED';
 export type MaintenanceStatus = 'OPEN' | 'IP' | 'OK';
 export type CriticalStatus = CriticalEquipmentStatus | MaintenanceStatus;
-export type MaintenanceType = 'corrective' | 'preventif';
+export type MaintenanceType = 'corrective' | 'preventif' | 'modifikasi';
+export type WorkOrderType = 'preventif' | 'modifikasi';
+export type WorkOrderStatus = 'OPEN' | 'IP' | 'OK';
 export type HarScope = 'mekanik' | 'listrik' | 'instrumen' | 'sipil';
 export type ForemanType = 'foreman_turbin' | 'foreman_boiler';
 export type ActivityActionType = 'created' | 'status_changed' | 'note' | 'maintenance_added' | 'maintenance_updated' | 'maintenance_deleted';
@@ -461,10 +463,30 @@ export interface CriticalEquipmentRow {
     updated_at: string;
 }
 
+export interface WorkOrderRow {
+    id: string;
+    date: string;
+    item: string;
+    deskripsi: string;
+    tipe: WorkOrderType;
+    scope: HarScope;
+    foreman: ForemanType;
+    status: WorkOrderStatus;
+    notif: string | null;
+    reported_by: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface WorkOrderWithPekerjaan extends WorkOrderRow {
+    maintenance_logs: MaintenanceLogRow[];
+}
+
 export interface MaintenanceLogRow {
     id: string;
     shift_report_id: string | null;
     critical_id: string | null;
+    work_order_id: string | null;
     date: string;
     item: string;
     uraian: string;

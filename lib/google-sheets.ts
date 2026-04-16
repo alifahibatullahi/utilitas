@@ -324,15 +324,18 @@ export function buildRcwEntry(level: number, submittedAt?: string): RcwEntry {
  * Col B = tanggal (Indonesian), Col C = jam WIB, Col D = level RCW.
  * Finds existing row by tanggal+jam, updates col D; otherwise appends.
  */
-export async function upsertRcwRows(
-    entries: RcwEntry[],
-): Promise<{ updated: number; appended: number }> {
-    if (entries.length === 0) return { updated: 0, appended: 0 };
+export interface RcwUpsertResult {
+    updated: number;
+    appended: number;
+    details: { action: 'updated' | 'appended'; rowIndex: number; jam: number; date: string; level: number }[];
+}
+
+export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResult> {
+    if (entries.length === 0) return { updated: 0, appended: 0, details: [] };
 
     const sheets = getSheetsClient();
     const tab = await getSheetTitleByGid(RCW_SPREADSHEET_ID, RCW_SHEET_GID);
 
-    // Read existing data once
     const res = await sheets.spreadsheets.values.get({
         spreadsheetId: RCW_SPREADSHEET_ID,
         range: `${tab}!A2:D`,
@@ -341,27 +344,27 @@ export async function upsertRcwRows(
 
     let updated = 0;
     let appended = 0;
+    const details: RcwUpsertResult['details'] = [];
 
     for (const entry of entries) {
         const targetDate = toIndonesianDate(entry.isoDate);
         const jamStr = String(entry.jam);
 
-        // Find existing row
         let found = false;
         for (let i = 0; i < rows.length; i++) {
             const rowDate = (rows[i][1] ?? '').trim();
             const rowJam  = (rows[i][2] ?? '').trim();
             if (rowDate === targetDate && rowJam === jamStr) {
-                const rowIndex = i + 2;
+                const rowIndex = i + 2; // 1-based spreadsheet row
                 await sheets.spreadsheets.values.update({
                     spreadsheetId: RCW_SPREADSHEET_ID,
                     range: `${tab}!D${rowIndex}`,
                     valueInputOption: 'USER_ENTERED',
                     requestBody: { values: [[entry.level]] },
                 });
-                // Update local cache so subsequent entries see this row
                 rows[i][3] = String(entry.level);
                 updated++;
+                details.push({ action: 'updated', rowIndex, jam: entry.jam, date: entry.isoDate, level: entry.level });
                 found = true;
                 break;
             }
@@ -376,10 +379,12 @@ export async function upsertRcwRows(
                 insertDataOption: 'INSERT_ROWS',
                 requestBody: { values: [[rowNo, targetDate, entry.jam, entry.level]] },
             });
+            const rowIndex = rows.length + 2;
             rows.push([String(rowNo), targetDate, jamStr, String(entry.level)]);
             appended++;
+            details.push({ action: 'appended', rowIndex, jam: entry.jam, date: entry.isoDate, level: entry.level });
         }
     }
 
-    return { updated, appended };
+    return { updated, appended, details };
 }

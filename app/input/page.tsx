@@ -213,8 +213,15 @@ export default function InputPage() {
                         data: { level: rcwM3, submitted_at: new Date().toISOString() },
                     }),
                 }).then(r => r.json()).then(result => {
-                    if (result.warning) console.warn('[input/RCW] Sheets warning:', result.warning);
-                    else console.log('[input/RCW] Sheets sync OK:', result);
+                    if (result.warning) {
+                        console.warn('[input/RCW] Sheets gagal:', result.warning);
+                    } else {
+                        for (const d of (result.details ?? [])) {
+                            console.log(
+                                `[input/RCW] Sheets ${d.action === 'updated' ? 'UPDATE' : 'APPEND'} → row ${d.rowIndex} | jam ${String(d.jam).padStart(2,'0')}:00 | ${d.date} | level ${d.level} m³`
+                            );
+                        }
+                    }
                 }).catch(err => console.warn('[input/RCW] Sheets sync failed (non-fatal):', err));
             }
         }

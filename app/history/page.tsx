@@ -86,9 +86,9 @@ export default function HistoryPage() {
             <div className="w-full bg-slate-50 border-b-2 border-slate-300 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 relative">
                 {/* Back Button & Logos - Top Left */}
                 <div className="flex gap-4 items-center z-10 relative">
-                    <button onClick={() => window.close()} className="flex items-center gap-2 px-3 py-1.5 bg-white text-black font-extrabold text-sm rounded shadow hover:bg-slate-100 transition-colors cursor-pointer border-b-2 border-slate-300">
-                        <span className="material-symbols-outlined text-black font-bold">arrow_back</span>
-                        Kembali
+                    <button onClick={() => { window.close(); }} className="flex items-center gap-2 px-3 py-1.5 bg-white text-black font-extrabold text-sm rounded shadow hover:bg-slate-100 transition-colors cursor-pointer border-b-2 border-slate-300">
+                        <span className="material-symbols-outlined text-black font-bold">close</span>
+                        Tutup Tab
                     </button>
                     <Image src="/logo/Danantara_Indonesia_(no_SW).png" alt="Danantara" width={140} height={40} className="object-contain" />
                     <Image src="/logo/Logo_Pupuk_Indonesia__Persero_-removebg-preview.png" alt="Pupuk Indonesia" width={120} height={40} className="object-contain" />

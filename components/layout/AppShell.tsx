@@ -25,8 +25,8 @@ export default function AppShell({ children }: AppShellProps) {
     // Zoom 125% pada monitor 1920px+ untuk semua halaman kecuali dashboard dan tank-level
     const shouldZoom = isLargeScreen && !pathname.startsWith('/dashboard');
 
-    // Don't show shell on login page or fullscreen preview pages
-    if (pathname === '/' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level') {
+    // Don't show shell on login page, fullscreen preview, or history data page
+    if (pathname === '/' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level' || pathname === '/history' || pathname.startsWith('/history/')) {
         return <>{children}</>;
     }
 

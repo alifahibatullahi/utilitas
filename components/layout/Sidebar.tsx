@@ -44,7 +44,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     const handleNav = (item: any) => {
         if (item.id === 'history') {
-            window.open(item.path, '_blank');
+            const a = document.createElement('a');
+            a.href = item.path;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         } else {
             router.push(item.path);
         }

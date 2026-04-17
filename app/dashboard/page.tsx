@@ -54,11 +54,11 @@ const STG_DATA = {
 // ─── Boiler Card ───
 function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }) {
     return (
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl overflow-hidden shadow-xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all duration-300 hover:scale-[1.01] flex flex-col h-full">
+        <div className="bg-surface-dark border border-slate-800 hover:border-emerald-500/30 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default">
             {/* Header */}
-            <div className="p-5 border-b border-white/20 flex justify-between items-center bg-gradient-to-r from-emerald-500/20 to-transparent">
+            <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-surface-highlight/50 to-transparent">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-500/30 rounded-lg backdrop-blur-md shadow-inner">
+                    <div className="p-2 bg-emerald-500/10 rounded-lg">
                         <span className="material-symbols-outlined text-emerald-500">water_heater</span>
                     </div>
                     <div>
@@ -73,10 +73,10 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                     </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-4xl font-black text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]">
-                        {data.steam.flow.toFixed(0)} <span className="text-base font-normal text-white/70">t/h</span>
+                    <p className="text-4xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">
+                        {data.steam.flow.toFixed(0)} <span className="text-base font-normal text-slate-400">t/h</span>
                     </p>
-                    <p className="text-xs text-white/80 mt-1 font-medium tracking-wide">Steam Flow</p>
+                    <p className="text-xs text-text-secondary mt-1">Steam Flow</p>
                 </div>
             </div>
 
@@ -84,29 +84,29 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                 {/* Row 1: Furnace Temp + Vakum Boiler */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <p className="text-xs text-white/80 uppercase font-bold tracking-wider flex items-center gap-1">
+                        <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm text-orange-400">thermometer</span>
                             Furnace Temp
                         </p>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xl font-bold text-white">{data.tempFurnace}</span>
-                            <span className="text-sm text-white/70">°C</span>
+                            <span className="text-sm text-slate-400">°C</span>
                         </div>
-                        <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden shadow-inner">
+                        <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
                             <div className="bg-gradient-to-r from-orange-500 to-red-500 h-full rounded-full" style={{ width: `${(data.tempFurnace / 1100) * 100}%` }}></div>
                         </div>
                     </div>
 
                     <div className="space-y-1.5">
-                        <p className="text-xs text-white/80 uppercase font-bold tracking-wider flex items-center gap-1">
+                        <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm text-cyan-400">compress</span>
                             Vakum Boiler
                         </p>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xl font-bold text-white">{data.vakumBoiler}</span>
-                            <span className="text-sm text-white/70">KPa</span>
+                            <span className="text-sm text-slate-400">KPa</span>
                         </div>
-                        <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden shadow-inner">
+                        <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
                             <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full" style={{ width: `${Math.min(Math.abs(data.vakumBoiler) / 200 * 100, 100)}%` }}></div>
                         </div>
                     </div>
@@ -115,31 +115,31 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                 {/* Row 2: Hot Air + O2 */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                        <p className="text-xs text-white/80 uppercase font-bold tracking-wider flex items-center gap-1">
+                        <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm text-red-400">local_fire_department</span>
                             Hot Air
                         </p>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xl font-bold text-white">{data.hotAir}</span>
-                            <span className="text-sm text-white/70">°C</span>
+                            <span className="text-sm text-slate-400">°C</span>
                         </div>
                     </div>
 
                     <div className="space-y-1">
-                        <p className="text-xs text-white/80 uppercase font-bold tracking-wider flex items-center gap-1">
+                        <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm text-green-400">science</span>
                             O2
                         </p>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xl font-bold text-white">{data.o2}</span>
-                            <span className="text-sm text-white/70">%</span>
+                            <span className="text-sm text-slate-400">%</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Coal Feeders with active highlighting */}
-                <div className="border-t border-white/20 pt-4">
-                    <p className="text-xs text-white/80 uppercase font-bold tracking-wider mb-3 flex items-center gap-1.5">
+                <div className="border-t border-slate-700 pt-4">
+                    <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider mb-3 flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-sm text-amber-400">local_fire_department</span>
                         Coal Feeders
                     </p>
@@ -149,24 +149,24 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                             return (
                                 <div
                                     key={f.id}
-                                    className={`p-3 rounded-lg text-center transition-all duration-300 relative overflow-hidden backdrop-blur-md
+                                    className={`p-3 rounded-lg text-center transition-all duration-300 relative overflow-hidden group hover:scale-[1.02] cursor-default
                                         ${isActive
-                                            ? 'bg-emerald-500/20 border-2 border-emerald-400/50 shadow-[0_0_15px_rgba(52,211,153,0.3)] hover:scale-105'
-                                            : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                                            ? 'bg-emerald-500/15 border-2 border-emerald-500/40 shadow-[0_0_12px_rgba(52,211,153,0.15)] hover:bg-emerald-500/20'
+                                            : 'bg-slate-800/50 border border-dashed border-slate-600/50 hover:border-slate-500'
                                         }`}
                                 >
                                     {isActive && (
-                                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-400 rounded-r shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-400 rounded-r"></div>
                                     )}
-                                    <p className={`text-[11px] mb-1.5 font-bold uppercase tracking-wider ${isActive ? 'text-white' : 'text-white/60'}`}>
+                                    <p className={`text-[11px] mb-1.5 font-bold uppercase tracking-wider ${isActive ? 'text-emerald-300' : 'text-slate-500'}`}>
                                         Feeder {f.id}
                                     </p>
                                     {isActive ? (
                                         <p className="text-lg font-black text-white">
-                                            {f.flow.toFixed(1)} <span className="text-[10px] font-bold text-emerald-300">t/h</span>
+                                            {f.flow.toFixed(1)} <span className="text-[10px] font-normal text-emerald-300/70">t/h</span>
                                         </p>
                                     ) : (
-                                        <p className="text-[11px] font-bold text-white/50 italic uppercase tracking-wider">Standby</p>
+                                        <p className="text-[11px] font-semibold text-slate-500 italic uppercase tracking-wider">Standby</p>
                                     )}
                                 </div>
                             );
@@ -182,9 +182,9 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
 function STGCard() {
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between pb-2 border-b border-white/20">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/20 rounded-lg backdrop-blur-sm">
+                    <div className="p-2 bg-primary/20 rounded-lg">
                         <span className="material-symbols-outlined text-primary">settings_motion_mode</span>
                     </div>
                     <h3 className="text-white text-xl font-bold tracking-tight">STG Overview</h3>
@@ -200,76 +200,76 @@ function STGCard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Generator Load */}
-                <div className="bg-gradient-to-br from-primary/10 to-transparent p-6 rounded-2xl border border-white/20 flex flex-col justify-center relative overflow-hidden group backdrop-blur-md shadow-lg hover:shadow-primary/20 hover:scale-[1.02] transition-all duration-300">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <div className="bg-surface-dark p-6 rounded-2xl border border-slate-700/50 hover:border-primary/50 flex flex-col justify-center relative overflow-hidden group transition-all duration-300 hover:shadow-[0_8px_30px_rgba(43,124,238,0.15)] hover:-translate-y-1 cursor-default">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500">
                         <span className="material-symbols-outlined text-primary" style={{ fontSize: '120px' }}>electric_bolt</span>
                     </div>
-                    <p className="text-xs text-white/80 font-bold uppercase tracking-widest mb-2 z-10">Generator Load</p>
+                    <p className="text-xs text-text-secondary font-bold uppercase tracking-widest mb-2 z-10">Generator Load</p>
                     <div className="flex items-baseline gap-2 z-10">
                         <p className="text-7xl font-black text-white tracking-tighter drop-shadow-[0_0_35px_rgba(43,124,238,0.6)]">{STG_DATA.loadMW}</p>
                         <span className="text-3xl font-bold text-primary">MW</span>
                     </div>
                     <div className="flex items-center gap-2 mt-3 z-10">
-                        <span className="material-symbols-outlined text-sm text-white/80">show_chart</span>
-                        <span className="text-sm font-mono text-white/80">{STG_DATA.frequency} Hz</span>
-                        <span className="text-xs text-white/50 ml-1">Frequency</span>
+                        <span className="material-symbols-outlined text-sm text-text-secondary">show_chart</span>
+                        <span className="text-sm font-mono text-text-secondary">{STG_DATA.frequency} Hz</span>
+                        <span className="text-xs text-text-secondary/60 ml-1">Frequency</span>
                     </div>
                 </div>
 
                 {/* Steam Inlet & Condensate */}
                 <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/10 flex items-center justify-between hover:border-white/30 hover:bg-white/15 transition-all duration-300">
+                    <div className="bg-surface-dark p-5 rounded-xl border border-slate-800 flex items-center justify-between hover:border-primary/40 hover:bg-surface-highlight transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg cursor-default">
                         <div>
                             <div className="flex items-center gap-2 mb-1 text-primary">
                                 <span className="material-symbols-outlined text-lg">air</span>
                                 <span className="text-xs font-bold uppercase tracking-wide">Steam Inlet</span>
                             </div>
-                            <p className="text-3xl font-bold text-white">{STG_DATA.steamInlet.flow.toFixed(1)} <span className="text-sm font-normal text-white/50">t/h</span></p>
+                            <p className="text-3xl font-bold text-white">{STG_DATA.steamInlet.flow.toFixed(1)} <span className="text-sm font-normal text-slate-400">t/h</span></p>
                         </div>
-                        <span className="text-xs text-white/70">T: {STG_DATA.steamInlet.totaliser.toLocaleString()} ton</span>
+                        <span className="text-xs text-text-secondary">T: {STG_DATA.steamInlet.totaliser.toLocaleString()} ton</span>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/10 flex items-center justify-between hover:border-white/30 hover:bg-white/15 transition-all duration-300">
+                    <div className="bg-surface-dark p-5 rounded-xl border border-slate-800 flex items-center justify-between hover:border-blue-400/40 hover:bg-surface-highlight transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg cursor-default">
                         <div>
                             <div className="flex items-center gap-2 mb-1 text-blue-400">
                                 <span className="material-symbols-outlined text-lg">water_drop</span>
                                 <span className="text-xs font-bold uppercase tracking-wide">Condensate</span>
                             </div>
-                            <p className="text-3xl font-bold text-white">{STG_DATA.condensate.flow.toFixed(1)} <span className="text-sm font-normal text-white/50">t/h</span></p>
+                            <p className="text-3xl font-bold text-white">{STG_DATA.condensate.flow.toFixed(1)} <span className="text-sm font-normal text-slate-400">t/h</span></p>
                         </div>
-                        <span className="text-xs text-white/70">T: {STG_DATA.condensate.totaliser.toLocaleString()} ton</span>
+                        <span className="text-xs text-text-secondary">T: {STG_DATA.condensate.totaliser.toLocaleString()} ton</span>
                     </div>
                 </div>
             </div>
 
             {/* Vacuum & Thrust Bearing */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/20 hover:bg-white/15 hover:shadow-lg transition-all duration-300">
+                <div className="bg-surface-dark p-5 rounded-xl border border-slate-800 hover:border-cyan-500/40 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/5 cursor-default">
                     <div className="flex items-center gap-2 mb-2 text-cyan-400">
                         <span className="material-symbols-outlined text-lg">speed</span>
                         <span className="text-xs font-bold uppercase tracking-wide">Vacuum</span>
                     </div>
                     <div className="flex items-end justify-between">
-                        <p className="text-3xl font-bold text-white">{STG_DATA.vacuum} <span className="text-sm font-normal text-white/50">Mpa</span></p>
+                        <p className="text-3xl font-bold text-white">{STG_DATA.vacuum} <span className="text-sm font-normal text-slate-400">Mpa</span></p>
                         <div className="flex flex-col items-end gap-1">
-                            <div className="w-24 bg-white/20 h-2 rounded-full overflow-hidden shadow-inner">
+                            <div className="w-24 bg-slate-700 h-2 rounded-full overflow-hidden">
                                 <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full" style={{ width: '55%' }}></div>
                             </div>
-                            <span className="text-[10px] text-white/60">Normal Range</span>
+                            <span className="text-[10px] text-text-secondary">Normal Range</span>
                         </div>
                     </div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/20 hover:bg-white/15 hover:shadow-lg transition-all duration-300">
+                <div className="bg-surface-dark p-5 rounded-xl border border-slate-800 hover:border-red-400/40 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-red-400/5 cursor-default">
                     <div className="flex items-center gap-2 mb-2 text-red-400">
                         <span className="material-symbols-outlined text-lg">precision_manufacturing</span>
                         <span className="text-xs font-bold uppercase tracking-wide">Thrust Bearing</span>
                     </div>
                     <div className="flex items-end justify-between">
-                        <p className="text-3xl font-bold text-white">{STG_DATA.thrustBearing} <span className="text-sm font-normal text-white/50">°C</span></p>
+                        <p className="text-3xl font-bold text-white">{STG_DATA.thrustBearing} <span className="text-sm font-normal text-slate-400">°C</span></p>
                         <div className="flex flex-col items-end gap-1">
-                            <div className="w-24 bg-white/20 h-2 rounded-full overflow-hidden shadow-inner">
+                            <div className="w-24 bg-slate-700 h-2 rounded-full overflow-hidden">
                                 <div className="bg-gradient-to-r from-orange-500 to-red-500 h-full rounded-full" style={{ width: '65%' }}></div>
                             </div>
-                            <span className="text-[10px] text-white/60">Normal Range</span>
+                            <span className="text-[10px] text-text-secondary">Normal Range</span>
                         </div>
                     </div>
                 </div>
@@ -287,10 +287,10 @@ function SteamDistribution() {
     ];
 
     return (
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl overflow-hidden shadow-xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:scale-[1.01] transition-all duration-300 flex flex-col h-full">
-            <div className="p-5 border-b border-white/20 bg-gradient-to-r from-purple-500/10 to-transparent">
+        <div className="bg-surface-dark border border-slate-800 hover:border-purple-500/30 rounded-xl overflow-hidden shadow-md hover:shadow-xl hover:shadow-purple-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default">
+            <div className="p-5 border-b border-slate-800 bg-gradient-to-r from-surface-highlight/50 to-transparent">
                 <div className="flex items-center gap-2">
-                    <span className="p-1.5 bg-purple-500/30 rounded-md backdrop-blur-md">
+                    <span className="p-1.5 bg-purple-500/20 rounded-md">
                         <span className="material-symbols-outlined text-purple-400 text-sm">factory</span>
                     </span>
                     <h3 className="text-white text-lg font-bold tracking-tight">Distribusi Steam</h3>
@@ -298,14 +298,14 @@ function SteamDistribution() {
             </div>
             <div className="p-5 flex-1 flex flex-col gap-4 justify-center">
                 {factories.map(f => (
-                    <div key={f.name} className="bg-white/5 p-5 rounded-lg border border-white/10 flex justify-between items-center hover:bg-white/10 transition-colors">
+                    <div key={f.name} className="bg-surface-highlight/30 hover:bg-surface-highlight p-5 rounded-lg border border-slate-700/50 hover:border-slate-500 transition-all duration-300 flex justify-between items-center hover:scale-[1.02]">
                         <div>
-                            <p className={`${f.color} text-xs font-bold uppercase mb-1 drop-shadow-md`}>{f.name}</p>
-                            <p className="text-2xl font-bold text-white">{f.data.flow.toFixed(1)} <span className="text-sm font-normal text-white/50">t/h</span></p>
+                            <p className={`${f.color} text-xs font-bold uppercase mb-1`}>{f.name}</p>
+                            <p className="text-2xl font-bold text-white">{f.data.flow.toFixed(1)} <span className="text-sm font-normal text-slate-400">t/h</span></p>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs text-white/60 font-medium">Totaliser</p>
-                            <p className="text-base font-bold text-white/90">{f.data.totaliser} ton</p>
+                            <p className="text-xs text-text-secondary">Totaliser</p>
+                            <p className="text-base font-medium text-slate-300">{f.data.totaliser} ton</p>
                         </div>
                     </div>
                 ))}
@@ -339,32 +339,31 @@ export default function DashboardPage() {
     const totalCoal = BOILER_DATA.A.coalFeeders.reduce((s, f) => s + f.flow, 0) + BOILER_DATA.B.coalFeeders.reduce((s, f) => s + f.flow, 0);
 
     return (
-        <div className="min-h-screen bg-slate-900 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black text-white px-4 sm:px-6 lg:px-8 py-6">
-            <div className="max-w-[1400px] mx-auto space-y-8 relative z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto space-y-8">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white mb-2">{greeting}, {operator.name.split(' ')[0]}</h2>
-                    <div className="flex items-center gap-2 text-white/80">
-                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-primary/30 text-primary-light border border-primary/40 backdrop-blur-sm">SHIFT {currentShift}</span>
+                    <div className="flex items-center gap-2 text-text-secondary">
+                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-primary/20 text-primary border border-primary/20">SHIFT {currentShift}</span>
                         {operator.group && (
                             <>
-                                <span className="w-1 h-1 rounded-full bg-white/40"></span>
-                                <span className="px-2 py-0.5 rounded text-xs font-bold bg-white/10 text-white border border-white/20 backdrop-blur-sm">Group {operator.group}</span>
+                                <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-surface-highlight text-text-secondary border border-slate-700">Group {operator.group}</span>
                             </>
                         )}
-                        <span className="w-1 h-1 rounded-full bg-white/40"></span>
-                        <span className="text-sm font-medium">{dateStr}</span>
-                        <span className="w-1 h-1 rounded-full bg-white/40"></span>
-                        <span className="text-sm font-mono text-white/90 font-bold">{timeStr} WIB</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                        <span className="text-sm">{dateStr}</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                        <span className="text-sm font-mono text-slate-300">{timeStr} WIB</span>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-[0_4px_15px_rgba(255,255,255,0.1)] cursor-pointer">
-                        <span className="material-symbols-outlined text-base">notifications</span>
-                        Alerts <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-inner font-bold">3</span>
+                    <button className="flex items-center gap-2 bg-surface-dark hover:bg-surface-highlight border border-slate-700 hover:border-slate-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer">
+                        <span className="material-symbols-outlined text-base group-hover:scale-110">notifications</span>
+                        Alerts <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-inner">3</span>
                     </button>
-                    <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 cursor-pointer">
+                    <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 cursor-pointer">
                         <span className="material-symbols-outlined text-base">refresh</span>
                         Refresh Data
                     </button>
@@ -387,38 +386,38 @@ export default function DashboardPage() {
 
             {/* Quick Stats + Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-5 flex flex-col justify-between shadow-lg hover:bg-white/15 transition-all">
-                    <p className="text-sm font-bold text-white/80 uppercase tracking-wide">Total Steam</p>
+                <div className="bg-surface-dark border border-slate-800 hover:border-emerald-500/30 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/5 cursor-default">
+                    <p className="text-sm font-medium text-text-secondary">Total Steam</p>
                     <div className="flex items-end justify-between mt-2">
-                        <span className="text-2xl font-bold text-white">{totalSteam.toFixed(1)} <span className="text-sm font-normal text-white/70">t/h</span></span>
-                        <div className="flex items-center text-emerald-400 text-sm font-bold bg-emerald-500/10 px-2 py-1 rounded-lg">
+                        <span className="text-2xl font-bold text-white">{totalSteam.toFixed(1)} t/h</span>
+                        <div className="flex items-center text-emerald-500 text-sm font-medium">
                             <span className="material-symbols-outlined text-base">trending_up</span>
                             <span>+2.3%</span>
                         </div>
                     </div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-5 flex flex-col justify-between shadow-lg hover:bg-white/15 transition-all">
-                    <p className="text-sm font-bold text-white/80 uppercase tracking-wide">Total Coal</p>
+                <div className="bg-surface-dark border border-slate-800 hover:border-rose-500/30 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-500/5 cursor-default">
+                    <p className="text-sm font-medium text-text-secondary">Total Coal</p>
                     <div className="flex items-end justify-between mt-2">
-                        <span className="text-2xl font-bold text-white">{totalCoal.toFixed(1)} <span className="text-sm font-normal text-white/70">t/h</span></span>
-                        <div className="flex items-center text-rose-400 text-sm font-bold bg-rose-500/10 px-2 py-1 rounded-lg">
+                        <span className="text-2xl font-bold text-white">{totalCoal.toFixed(1)} t/h</span>
+                        <div className="flex items-center text-rose-500 text-sm font-medium">
                             <span className="material-symbols-outlined text-base">trending_down</span>
                             <span>-1.1%</span>
                         </div>
                     </div>
                 </div>
-                <div className="lg:col-span-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-5 shadow-lg">
-                    <p className="text-sm font-bold text-white/80 uppercase tracking-wide mb-3">Quick Actions</p>
+                <div className="lg:col-span-2 bg-surface-dark border border-slate-800 hover:border-slate-600 rounded-xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                    <p className="text-sm font-medium text-text-secondary mb-3">Quick Actions</p>
                     <div className="flex flex-wrap gap-3">
-                        <button onClick={() => router.push('/input-shift')} className="flex-1 min-w-[140px] bg-primary/20 hover:bg-primary/40 text-white border border-primary/30 px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.02]">
+                        <button onClick={() => router.push('/input-shift')} className="flex-1 min-w-[140px] bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/40 hover:border-primary px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5">
                             <span className="material-symbols-outlined">edit_square</span>
                             Input Laporan
                         </button>
-                        <button onClick={() => router.push('/laporan-shift')} className="flex-1 min-w-[140px] bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.02]">
+                        <button onClick={() => router.push('/laporan-shift')} className="flex-1 min-w-[140px] bg-surface-highlight hover:bg-slate-700 text-white border border-slate-600 hover:border-slate-400 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg hover:-translate-y-0.5">
                             <span className="material-symbols-outlined">description</span>
                             Laporan Shift
                         </button>
-                        <button onClick={() => router.push('/tank-level')} className="flex-1 min-w-[140px] bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.02]">
+                        <button onClick={() => router.push('/tank-level')} className="flex-1 min-w-[140px] bg-surface-highlight hover:bg-slate-700 text-white border border-slate-600 hover:border-slate-400 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg hover:-translate-y-0.5">
                             <span className="material-symbols-outlined">propane_tank</span>
                             Tank Level
                         </button>
@@ -426,10 +425,9 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <footer className="text-center py-4 border-t border-white/10 mt-8">
-                <p className="text-white/40 text-xs font-medium tracking-wide">© 2023 PowerOps Control Systems. All systems operational.</p>
+            <footer className="text-center py-4 border-t border-slate-800 mt-8">
+                <p className="text-slate-500 text-xs">© 2023 PowerOps Control Systems. All systems operational.</p>
             </footer>
-            </div>
         </div>
     );
 }

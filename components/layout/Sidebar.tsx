@@ -43,17 +43,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const systemNav = filteredNav.filter(item => ['history', 'admin-users'].includes(item.id));
 
     const handleNav = (item: any) => {
-        if (item.id === 'history') {
-            const a = document.createElement('a');
-            a.href = item.path;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        } else {
-            router.push(item.path);
-        }
+        router.push(item.path);
     };
 
     return (

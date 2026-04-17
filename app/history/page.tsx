@@ -14,7 +14,7 @@ const SHIFT_TIME_MAP: Record<string, string> = {
 };
 
 export default function HistoryPage() {
-    const { operator } = useOperator();
+    const { operator, loading: operatorLoading } = useOperator();
     const router = useRouter();
 
     const [reports, setReports] = useState<any[]>([]);
@@ -25,8 +25,8 @@ export default function HistoryPage() {
     const [columns, setColumns] = useState<string[]>(['boiler_a_flow_steam', 'turbin_steam_inlet']);
 
     useEffect(() => {
-        if (!operator) router.push('/');
-    }, [operator, router]);
+        if (!operatorLoading && !operator) router.push('/');
+    }, [operator, operatorLoading, router]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -78,6 +78,7 @@ export default function HistoryPage() {
         setColumns(newCols);
     };
 
+    if (operatorLoading) return null;
     if (!operator) return null;
 
     return (
@@ -160,10 +161,10 @@ export default function HistoryPage() {
                                         ))}
 
                                         {/* Tambah Kolom Button */}
-                                        <th rowSpan={2} className="px-6 py-4 bg-[#f8f9fa] align-middle text-center border-l-2 border-slate-300">
-                                            <button onClick={addColumn} className="flex flex-col items-center justify-center gap-2 p-4 bg-white text-blue-600 font-black text-lg border-2 border-dashed border-blue-400 hover:border-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer whitespace-nowrap group">
+                                        <th rowSpan={2} className="px-6 py-4 bg-[#f8f9fa] align-middle text-center border-l-2 border-slate-300 min-w-[160px]">
+                                            <button onClick={addColumn} className="flex flex-col items-center justify-center w-full gap-2 p-4 bg-white text-blue-600 font-black text-lg border-2 border-dashed border-blue-400 hover:border-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer group">
                                                 <span className="material-symbols-outlined text-4xl font-black group-hover:scale-110 transition-transform">add_circle</span>
-                                                <span className="w-24 break-words leading-tight">Tambah Kolom</span>
+                                                <span className="leading-tight text-center break-words w-full">Tambah Kolom</span>
                                             </button>
                                         </th>
                                     </tr>
@@ -230,6 +231,10 @@ export default function HistoryPage() {
                     width: 20px;
                     height: 20px;
                     background-color: #ffffff; /* White background as requested */
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background-color: #ffffff; /* Ensure track is pure white */
+                    border-radius: 0;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
                     background-color: #94a3b8; /* Gray thumb */

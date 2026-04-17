@@ -42,6 +42,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const reportNav = filteredNav.filter(item => ['laporan-shift', 'laporan-harian'].includes(item.id));
     const systemNav = filteredNav.filter(item => ['history', 'admin-users'].includes(item.id));
 
+    const handleNav = (item: any) => {
+        if (item.id === 'history') {
+            window.open(item.path, '_blank');
+        } else {
+            router.push(item.path);
+        }
+    };
+
     return (
         <aside
             className={`fixed left-0 top-0 h-full z-40 flex flex-col
@@ -72,7 +80,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     return (
                         <button
                             key={item.id}
-                            onClick={() => router.push(item.path)}
+                            onClick={() => handleNav(item)}
                             title={collapsed ? item.label : undefined}
                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                                 transition-all duration-200 cursor-pointer
@@ -100,7 +108,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             return (
                                 <button
                                     key={item.id}
-                                    onClick={() => router.push(item.path)}
+                                    onClick={() => handleNav(item)}
                                     title={collapsed ? item.label : undefined}
                                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                                         transition-all duration-200 cursor-pointer
@@ -130,7 +138,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             return (
                                 <button
                                     key={item.id}
-                                    onClick={() => router.push(item.path)}
+                                    onClick={() => handleNav(item)}
                                     title={collapsed ? item.label : undefined}
                                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                                         transition-all duration-200 cursor-pointer

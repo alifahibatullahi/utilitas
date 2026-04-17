@@ -1,930 +1,296 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
+import { PARAMETERS, groupedParameters, ParameterDef } from '@/lib/history-parameters';
 
-// ─── Types for raw DB rows ───
-interface AnyRow { [key: string]: unknown }
+const SHIFT_TIME_MAP: Record<string, string> = {
+    'malam': '06:00',
+    'pagi': '14:00',
+    'sore': '22:00'
+};
 
-interface TableSection {
-    id: string;
-    label: string;
-    icon: string;
-    color: string;
-    tables: { name: string; label: string; query: string; joinInfo?: string }[];
-}
-
-// ─── Sections definition ───
-const SECTIONS: TableSection[] = [
-    {
-        id: 'shift', label: 'Laporan Shift', icon: 'schedule', color: '#2b7cee',
-        tables: [
-            { name: 'shift_reports', label: 'Shift Reports (Anchor)', query: 'id,date,shift,group_name,supervisor,status,catatan,created_at' },
-            { name: 'shift_turbin', label: 'Turbin', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_boiler', label: 'Boiler', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_steam_dist', label: 'Steam Distribution', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_generator_gi', label: 'Generator & GI', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_power_dist', label: 'Power Distribution', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_esp_handling', label: 'ESP & Handling', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_tankyard', label: 'Tankyard', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_coal_bunker', label: 'Coal & Bunker', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_water_quality', label: 'Water Quality', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-            { name: 'shift_personnel', label: 'Personnel', query: '*', joinInfo: 'shift_reports(date,shift,group_name,supervisor)' },
-        ],
-    },
-    {
-        id: 'daily', label: 'Laporan Harian', icon: 'summarize', color: '#8b5cf6',
-        tables: [
-            { name: 'daily_reports', label: 'Daily Reports (Anchor)', query: '*' },
-            { name: 'daily_report_steam', label: 'Steam', query: '*', joinInfo: 'daily_reports(date,status)' },
-            { name: 'daily_report_power', label: 'Power', query: '*', joinInfo: 'daily_reports(date,status)' },
-            { name: 'daily_report_coal', label: 'Coal', query: '*', joinInfo: 'daily_reports(date,status)' },
-            { name: 'daily_report_turbine_misc', label: 'Turbine Misc', query: '*', joinInfo: 'daily_reports(date,status)' },
-            { name: 'daily_report_stock_tank', label: 'Stock & Tank', query: '*', joinInfo: 'daily_reports(date,status)' },
-            { name: 'daily_report_coal_transfer', label: 'Coal Transfer', query: '*', joinInfo: 'daily_reports(date,status)' },
-            { name: 'daily_report_totalizer', label: 'Totalizer', query: '*', joinInfo: 'daily_reports(date,status)' },
-        ],
-    },
-    {
-        id: 'tank', label: 'Tank Level & Flow', icon: 'water_drop', color: '#0ea5e9',
-        tables: [
-            { name: 'tank_levels', label: 'Tank Levels', query: '*' },
-            { name: 'tank_flow_readings', label: 'Tank Flow Readings', query: '*' },
-        ],
-    },
-    {
-        id: 'critical', label: 'Critical & Maintenance', icon: 'warning', color: '#f59e0b',
-        tables: [
-            { name: 'critical_equipment', label: 'Critical Equipment', query: '*' },
-            { name: 'maintenance_logs', label: 'Maintenance Logs', query: '*' },
-            { name: 'critical_activity_logs', label: 'Activity Logs', query: '*' },
-        ],
-    },
-    {
-        id: 'unloading', label: 'Unloading', icon: 'local_shipping', color: '#10b981',
-        tables: [
-            { name: 'solar_unloadings', label: 'Solar Unloadings', query: '*' },
-            { name: 'ash_unloadings', label: 'Fly Ash Unloadings', query: '*' },
-        ],
-    },
-    {
-        id: 'equipment', label: 'Equipment List', icon: 'build', color: '#e879f9',
-        tables: [
-            { name: 'equipment_items', label: 'Equipment Items', query: '*' },
-        ],
-    },
-    {
-        id: 'system', label: 'Sistem', icon: 'settings', color: '#64748b',
-        tables: [
-            { name: 'operators', label: 'Operators', query: '*' },
-            { name: 'app_settings', label: 'App Settings', query: '*' },
-            { name: 'shift_notes', label: 'Shift Notes', query: '*' },
-        ],
-    },
-];
-
-// ─── Excluded columns from display ───
-const EXCLUDED_COLS = ['id', 'shift_report_id', 'daily_report_id'];
-
-// ─── Format column header ───
-function formatCol(col: string): string {
-    return col.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
-
-// ─── Format cell value ───
-function formatVal(val: unknown): string {
-    if (val === null || val === undefined) return '-';
-    if (typeof val === 'object') return JSON.stringify(val);
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(val)) {
-        const d = new Date(val);
-        return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-            + ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
-    }
-    if (typeof val === 'number') {
-        return Number.isInteger(val) ? val.toLocaleString('id-ID') : val.toLocaleString('id-ID', { maximumFractionDigits: 2 });
-    }
-    return String(val);
-}
-
-// ─── DataTable component ───
-function DataTable({ tableName, label, joinInfo, color }: {
-    tableName: string; label: string; joinInfo?: string; color: string;
-}) {
-    const [rows, setRows] = useState<AnyRow[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [expanded, setExpanded] = useState(false);
-
-    const fetchData = useCallback(async () => {
-        if (rows.length > 0 || loading) return;
-        setLoading(true);
-        setError(null);
-        try {
-            const supabase = createClient();
-            let selectStr = '*';
-            if (joinInfo) selectStr = `*,${joinInfo}`;
-
-            const { data, error: err } = await supabase
-                .from(tableName)
-                .select(selectStr)
-                .order('created_at', { ascending: false })
-                .limit(500);
-
-            if (err) {
-                // Retry without join if join fails
-                if (joinInfo) {
-                    const { data: d2, error: e2 } = await supabase
-                        .from(tableName).select('*')
-                        .order('created_at', { ascending: false }).limit(500);
-                    if (e2) throw e2;
-                    setRows((d2 as unknown as AnyRow[]) || []);
-                } else {
-                    throw err;
-                }
-            } else {
-                setRows((data as unknown as AnyRow[]) || []);
-            }
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : String(e));
-        } finally {
-            setLoading(false);
-        }
-    }, [tableName, joinInfo, rows.length, loading]);
-
-    const handleToggle = () => {
-        const next = !expanded;
-        setExpanded(next);
-        if (next) fetchData();
-    };
-
-    // Get visible columns (exclude id/FK cols)
-    const columns = rows.length > 0
-        ? Object.keys(rows[0]).filter(c => !EXCLUDED_COLS.includes(c) && typeof rows[0][c] !== 'object')
-        : [];
-
-    // Also gather joined data columns
-    const joinedKey = rows.length > 0 ? Object.keys(rows[0]).find(k => typeof rows[0][k] === 'object' && rows[0][k] !== null && !Array.isArray(rows[0][k])) : null;
-    const joinedCols = (joinedKey && rows.length > 0 && rows[0][joinedKey] && typeof rows[0][joinedKey] === 'object')
-        ? Object.keys(rows[0][joinedKey] as Record<string, unknown>)
-        : [];
-
-    return (
-        <div className="border border-slate-700/50 rounded-lg overflow-hidden">
-            {/* Toggle header */}
-            <button onClick={handleToggle}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-highlight/60 transition-colors cursor-pointer"
-                style={{ backgroundColor: expanded ? `${color}10` : 'transparent' }}>
-                <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-sm" style={{ color }}>
-                        {expanded ? 'expand_less' : 'expand_more'}
-                    </span>
-                    <span className="text-sm font-bold text-white">{label}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-                        style={{ backgroundColor: `${color}20`, color }}>{tableName}</span>
-                    {rows.length > 0 && (
-                        <span className="text-xs text-slate-500">{rows.length} rows</span>
-                    )}
-                </div>
-                {loading && <span className="text-xs text-slate-500">Memuat...</span>}
-            </button>
-
-            {/* Table content */}
-            {expanded && (
-                <div className="border-t border-slate-700/30 overflow-x-auto max-h-[500px] overflow-y-auto">
-                    {error ? (
-                        <p className="p-4 text-rose-400 text-xs">{error}</p>
-                    ) : rows.length === 0 && !loading ? (
-                        <p className="p-4 text-slate-500 text-xs italic">Tabel kosong atau belum ada data.</p>
-                    ) : rows.length > 0 ? (
-                        <table className="w-full text-xs min-w-[800px]">
-                            <thead className="sticky top-0 z-10">
-                                <tr style={{ backgroundColor: `${color}15` }}>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30 whitespace-nowrap">#</th>
-                                    {joinedCols.map(c => (
-                                        <th key={`j-${c}`} className="text-left px-3 py-2 uppercase tracking-wider font-semibold border-b border-slate-700/30 whitespace-nowrap"
-                                            style={{ color }}>
-                                            {formatCol(c)}
-                                        </th>
-                                    ))}
-                                    {columns.map(c => (
-                                        <th key={c} className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30 whitespace-nowrap">
-                                            {formatCol(c)}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/20">
-                                {rows.map((row, i) => (
-                                    <tr key={i} className="hover:bg-surface-highlight/30 transition-colors">
-                                        <td className="px-3 py-2 text-slate-600 tabular-nums">{i + 1}</td>
-                                        {joinedCols.map(c => (
-                                            <td key={`j-${c}`} className="px-3 py-2 whitespace-nowrap font-semibold" style={{ color }}>
-                                                {formatVal((row[joinedKey!] as Record<string, unknown>)?.[c])}
-                                            </td>
-                                        ))}
-                                        {columns.map(c => (
-                                            <td key={c} className="px-3 py-2 text-slate-300 whitespace-nowrap">
-                                                {c === 'status' ? (
-                                                    <StatusBadge value={String(row[c] ?? '')} />
-                                                ) : (
-                                                    formatVal(row[c])
-                                                )}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : null}
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Status Badge ───
-function StatusBadge({ value }: { value: string }) {
-    const v = value.toLowerCase();
-    let bg = '#334155'; let fg = '#94a3b8';
-    if (v === 'open') { bg = '#1e3a5f'; fg = '#60a5fa'; }
-    if (v === 'ip' || v === 'in progress') { bg = '#422006'; fg = '#fbbf24'; }
-    if (v === 'ok' || v === 'closed' || v === 'approved' || v === 'submitted') { bg = '#052e16'; fg = '#4ade80'; }
-    if (v === 'draft') { bg = '#1e293b'; fg = '#94a3b8'; }
-    return (
-        <span className="px-2 py-0.5 rounded-md text-xs font-bold uppercase" style={{ backgroundColor: bg, color: fg }}>
-            {value || '-'}
-        </span>
-    );
-}
-
-// ─── Solar Unloading Table (with Edit/Delete) ───
-function SolarUnloadingTable({ color }: { color: string }) {
-    const [rows, setRows] = useState<AnyRow[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [expanded, setExpanded] = useState(false);
-    const [editRow, setEditRow] = useState<AnyRow | null>(null);
-    const [isAdding, setIsAdding] = useState(false);
-    const [editForm, setEditForm] = useState({ date: '', liters: '', supplier: '' });
-    const [saving, setSaving] = useState(false);
-
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        const supabase = createClient();
-        const { data } = await supabase.from('solar_unloadings').select('*').order('created_at', { ascending: false }).limit(500);
-        setRows((data as unknown as AnyRow[]) || []);
-        setLoading(false);
-    }, []);
-
-    const handleToggle = () => {
-        const next = !expanded;
-        setExpanded(next);
-        if (next && rows.length === 0) fetchData();
-    };
-
-    const handleEdit = (row: AnyRow) => {
-        setEditRow(row);
-        setEditForm({
-            date: String(row.date || ''),
-            liters: String(row.liters || ''),
-            supplier: String(row.supplier || '').toUpperCase(),
-        });
-    };
-
-    const handleAdd = () => {
-        const today = new Date().toISOString().split('T')[0];
-        setIsAdding(true);
-        setEditRow({ _new: true });
-        setEditForm({ date: today, liters: '', supplier: '' });
-    };
-
-    const handleSave = async () => {
-        if (!editRow) return;
-        setSaving(true);
-        const supabase = createClient();
-        const payload = {
-            date: editForm.date,
-            liters: Number(editForm.liters),
-            supplier: editForm.supplier.toUpperCase(),
-        };
-        if (isAdding) {
-            await supabase.from('solar_unloadings').insert(payload);
-        } else {
-            await supabase.from('solar_unloadings').update(payload).eq('id', editRow.id);
-        }
-        setEditRow(null);
-        setIsAdding(false);
-        setSaving(false);
-        await fetchData();
-    };
-
-    const handleDelete = async (id: unknown) => {
-        if (!confirm('Hapus data solar unloading ini?')) return;
-        const supabase = createClient();
-        await supabase.from('solar_unloadings').delete().eq('id', String(id));
-        await fetchData();
-    };
-
-    return (
-        <div className="border border-slate-700/50 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 hover:bg-surface-highlight/60 transition-colors"
-                style={{ backgroundColor: expanded ? `${color}10` : 'transparent' }}>
-                <button onClick={handleToggle} className="flex items-center gap-3 cursor-pointer">
-                    <span className="material-symbols-outlined text-sm" style={{ color }}>{expanded ? 'expand_less' : 'expand_more'}</span>
-                    <span className="text-sm font-bold text-white">Solar Unloadings</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-mono" style={{ backgroundColor: `${color}20`, color }}>solar_unloadings</span>
-                    {rows.length > 0 && <span className="text-xs text-slate-500">{rows.length} rows</span>}
-                </button>
-                <div className="flex items-center gap-2">
-                    {loading && <span className="text-xs text-slate-500">Memuat...</span>}
-                    {expanded && (
-                        <button onClick={handleAdd}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                            style={{ backgroundColor: `${color}20`, color }}>
-                            <span className="material-symbols-outlined text-sm">add</span>
-                            Tambah
-                        </button>
-                    )}
-                </div>
-            </div>
-            {expanded && (
-                <div className="border-t border-slate-700/30 overflow-x-auto max-h-[500px] overflow-y-auto">
-                    {rows.length === 0 && !loading ? (
-                        <p className="p-4 text-slate-500 text-xs italic">Tabel kosong atau belum ada data.</p>
-                    ) : rows.length > 0 ? (
-                        <table className="w-full text-xs min-w-[700px]">
-                            <thead className="sticky top-0 z-10">
-                                <tr style={{ backgroundColor: `${color}15` }}>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">#</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Tanggal</th>
-                                    <th className="text-right px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Liter</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Supplier</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Dibuat</th>
-                                    <th className="text-center px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/20">
-                                {rows.map((row, i) => (
-                                    <tr key={String(row.id)} className="hover:bg-surface-highlight/30 transition-colors">
-                                        <td className="px-3 py-2 text-slate-600 tabular-nums">{i + 1}</td>
-                                        <td className="px-3 py-2 text-slate-300 whitespace-nowrap">{formatVal(row.date)}</td>
-                                        <td className="px-3 py-2 text-white font-mono font-semibold text-right tabular-nums">{Number(row.liters || 0).toLocaleString('id-ID')}</td>
-                                        <td className="px-3 py-2 text-slate-300 font-bold uppercase">{String(row.supplier || '-').toUpperCase()}</td>
-                                        <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{formatVal(row.created_at)}</td>
-                                        <td className="px-3 py-2 text-center">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <button onClick={() => handleEdit(row)} className="p-1.5 rounded-lg hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer" title="Edit">
-                                                    <span className="material-symbols-outlined text-sm">edit</span>
-                                                </button>
-                                                <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" title="Hapus">
-                                                    <span className="material-symbols-outlined text-sm">delete</span>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : null}
-                </div>
-            )}
-            {/* Add/Edit Modal */}
-            {editRow && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => { setEditRow(null); setIsAdding(false); }}>
-                    <div className="bg-surface-dark border border-slate-700 rounded-2xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
-                        <h4 className="text-base font-bold text-white flex items-center gap-2">
-                            <span className="material-symbols-outlined text-lg" style={{ color }}>{isAdding ? 'add_circle' : 'edit'}</span>
-                            {isAdding ? 'Tambah Solar Unloading' : 'Edit Solar Unloading'}
-                        </h4>
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Tanggal</label>
-                                <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Liter</label>
-                                <input type="number" value={editForm.liters} onChange={e => setEditForm(f => ({ ...f, liters: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Supplier</label>
-                                <input type="text" value={editForm.supplier} onChange={e => setEditForm(f => ({ ...f, supplier: e.target.value.toUpperCase() }))}
-                                    className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 uppercase focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                            <button onClick={() => { setEditRow(null); setIsAdding(false); }} className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors cursor-pointer">Batal</button>
-                            <button onClick={handleSave} disabled={saving}
-                                className="px-4 py-2 text-sm font-bold text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors cursor-pointer disabled:opacity-50">
-                                {saving ? 'Menyimpan...' : 'Simpan'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Ash Unloading Table (with Edit/Delete) ───
-function AshUnloadingTable({ color }: { color: string }) {
-    const [rows, setRows] = useState<AnyRow[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [expanded, setExpanded] = useState(false);
-    const [editRow, setEditRow] = useState<AnyRow | null>(null);
-    const [isAdding, setIsAdding] = useState(false);
-    const [editForm, setEditForm] = useState({ date: '', shift: '', silo: '', perusahaan: '', tujuan: '', ritase: '' });
-    const [saving, setSaving] = useState(false);
-
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        const supabase = createClient();
-        const { data } = await supabase.from('ash_unloadings').select('*').order('created_at', { ascending: false }).limit(500);
-        setRows((data as unknown as AnyRow[]) || []);
-        setLoading(false);
-    }, []);
-
-    const handleToggle = () => {
-        const next = !expanded;
-        setExpanded(next);
-        if (next && rows.length === 0) fetchData();
-    };
-
-    const handleEdit = (row: AnyRow) => {
-        setEditRow(row);
-        setEditForm({
-            date: String(row.date || ''),
-            shift: String(row.shift || ''),
-            silo: String(row.silo || ''),
-            perusahaan: String(row.perusahaan || '').toUpperCase(),
-            tujuan: String(row.tujuan || '').toUpperCase(),
-            ritase: String(row.ritase || ''),
-        });
-    };
-
-    const handleAdd = () => {
-        const today = new Date().toISOString().split('T')[0];
-        setIsAdding(true);
-        setEditRow({ _new: true });
-        setEditForm({ date: today, shift: 'pagi', silo: 'A', perusahaan: '', tujuan: '', ritase: '' });
-    };
-
-    const handleSave = async () => {
-        if (!editRow) return;
-        setSaving(true);
-        const supabase = createClient();
-        const payload = {
-            date: editForm.date,
-            shift: editForm.shift,
-            silo: editForm.silo,
-            perusahaan: editForm.perusahaan.toUpperCase(),
-            tujuan: editForm.tujuan.toUpperCase(),
-            ritase: Number(editForm.ritase),
-        };
-        if (isAdding) {
-            await supabase.from('ash_unloadings').insert(payload);
-        } else {
-            await supabase.from('ash_unloadings').update(payload).eq('id', editRow.id);
-        }
-        setEditRow(null);
-        setIsAdding(false);
-        setSaving(false);
-        await fetchData();
-    };
-
-    const handleDelete = async (id: unknown) => {
-        if (!confirm('Hapus data fly ash unloading ini?')) return;
-        const supabase = createClient();
-        await supabase.from('ash_unloadings').delete().eq('id', String(id));
-        await fetchData();
-    };
-
-    return (
-        <div className="border border-slate-700/50 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 hover:bg-surface-highlight/60 transition-colors"
-                style={{ backgroundColor: expanded ? `${color}10` : 'transparent' }}>
-                <button onClick={handleToggle} className="flex items-center gap-3 cursor-pointer">
-                    <span className="material-symbols-outlined text-sm" style={{ color }}>{expanded ? 'expand_less' : 'expand_more'}</span>
-                    <span className="text-sm font-bold text-white">Fly Ash Unloadings</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-mono" style={{ backgroundColor: `${color}20`, color }}>ash_unloadings</span>
-                    {rows.length > 0 && <span className="text-xs text-slate-500">{rows.length} rows</span>}
-                </button>
-                <div className="flex items-center gap-2">
-                    {loading && <span className="text-xs text-slate-500">Memuat...</span>}
-                    {expanded && (
-                        <button onClick={handleAdd}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                            style={{ backgroundColor: `${color}20`, color }}>
-                            <span className="material-symbols-outlined text-sm">add</span>
-                            Tambah
-                        </button>
-                    )}
-                </div>
-            </div>
-            {expanded && (
-                <div className="border-t border-slate-700/30 overflow-x-auto max-h-[500px] overflow-y-auto">
-                    {rows.length === 0 && !loading ? (
-                        <p className="p-4 text-slate-500 text-xs italic">Tabel kosong atau belum ada data.</p>
-                    ) : rows.length > 0 ? (
-                        <table className="w-full text-xs min-w-[800px]">
-                            <thead className="sticky top-0 z-10">
-                                <tr style={{ backgroundColor: `${color}15` }}>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">#</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Tanggal</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Shift</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Silo</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Perusahaan</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Tujuan</th>
-                                    <th className="text-right px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Ritase</th>
-                                    <th className="text-left px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Dibuat</th>
-                                    <th className="text-center px-3 py-2 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/20">
-                                {rows.map((row, i) => (
-                                    <tr key={String(row.id)} className="hover:bg-surface-highlight/30 transition-colors">
-                                        <td className="px-3 py-2 text-slate-600 tabular-nums">{i + 1}</td>
-                                        <td className="px-3 py-2 text-slate-300 whitespace-nowrap">{formatVal(row.date)}</td>
-                                        <td className="px-3 py-2 text-slate-300 capitalize">{String(row.shift || '-')}</td>
-                                        <td className="px-3 py-2 text-slate-300">{String(row.silo || '-')}</td>
-                                        <td className="px-3 py-2 text-slate-300 font-bold uppercase">{String(row.perusahaan || '-').toUpperCase()}</td>
-                                        <td className="px-3 py-2 text-slate-300 font-bold uppercase">{String(row.tujuan || '-').toUpperCase()}</td>
-                                        <td className="px-3 py-2 text-white font-mono font-semibold text-right tabular-nums">{Number(row.ritase || 0).toLocaleString('id-ID')}</td>
-                                        <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{formatVal(row.created_at)}</td>
-                                        <td className="px-3 py-2 text-center">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <button onClick={() => handleEdit(row)} className="p-1.5 rounded-lg hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer" title="Edit">
-                                                    <span className="material-symbols-outlined text-sm">edit</span>
-                                                </button>
-                                                <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" title="Hapus">
-                                                    <span className="material-symbols-outlined text-sm">delete</span>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : null}
-                </div>
-            )}
-            {/* Add/Edit Modal */}
-            {editRow && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => { setEditRow(null); setIsAdding(false); }}>
-                    <div className="bg-surface-dark border border-slate-700 rounded-2xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
-                        <h4 className="text-base font-bold text-white flex items-center gap-2">
-                            <span className="material-symbols-outlined text-lg" style={{ color }}>{isAdding ? 'add_circle' : 'edit'}</span>
-                            {isAdding ? 'Tambah Fly Ash Unloading' : 'Edit Fly Ash Unloading'}
-                        </h4>
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Tanggal</label>
-                                    <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
-                                        className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Shift</label>
-                                    <select value={editForm.shift} onChange={e => setEditForm(f => ({ ...f, shift: e.target.value }))}
-                                        className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
-                                        <option value="pagi">Pagi</option>
-                                        <option value="sore">Sore</option>
-                                        <option value="malam">Malam</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Silo</label>
-                                <select value={editForm.silo} onChange={e => setEditForm(f => ({ ...f, silo: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
-                                    <option value="A">Silo A</option>
-                                    <option value="B">Silo B</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Perusahaan</label>
-                                <input type="text" value={editForm.perusahaan} onChange={e => setEditForm(f => ({ ...f, perusahaan: e.target.value.toUpperCase() }))}
-                                    className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 uppercase focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Tujuan</label>
-                                <input type="text" value={editForm.tujuan} onChange={e => setEditForm(f => ({ ...f, tujuan: e.target.value.toUpperCase() }))}
-                                    className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 uppercase focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Ritase</label>
-                                <input type="number" value={editForm.ritase} onChange={e => setEditForm(f => ({ ...f, ritase: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                            <button onClick={() => { setEditRow(null); setIsAdding(false); }} className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors cursor-pointer">Batal</button>
-                            <button onClick={handleSave} disabled={saving}
-                                className="px-4 py-2 text-sm font-bold text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors cursor-pointer disabled:opacity-50">
-                                {saving ? 'Menyimpan...' : 'Simpan'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Equipment List Table (with CRUD & Search) ───
-function EquipmentListTable({ color }: { color: string }) {
-    const [rows, setRows] = useState<AnyRow[]>([]);
-    const [filteredRows, setFilteredRows] = useState<AnyRow[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [editRow, setEditRow] = useState<AnyRow | null>(null);
-    const [isAdding, setIsAdding] = useState(false);
-    const [editForm, setEditForm] = useState({ no_item: '', deskripsi: '' });
-    const [saving, setSaving] = useState(false);
-    const [search, setSearch] = useState('');
-
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        const supabase = createClient();
-        const { data } = await supabase.from('equipment_items').select('*').order('no_item', { ascending: true });
-        const result = (data as unknown as AnyRow[]) || [];
-        setRows(result);
-        setFilteredRows(result);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    // Filter rows by search
-    useEffect(() => {
-        if (!search.trim()) {
-            setFilteredRows(rows);
-        } else {
-            const q = search.toLowerCase();
-            setFilteredRows(rows.filter(r =>
-                String(r.no_item || '').toLowerCase().includes(q) ||
-                String(r.deskripsi || '').toLowerCase().includes(q)
-            ));
-        }
-    }, [search, rows]);
-
-    const handleEdit = (row: AnyRow) => {
-        setEditRow(row);
-        setIsAdding(false);
-        setEditForm({
-            no_item: String(row.no_item || ''),
-            deskripsi: String(row.deskripsi || ''),
-        });
-    };
-
-    const handleAdd = () => {
-        setIsAdding(true);
-        setEditRow({ _new: true });
-        setEditForm({ no_item: '', deskripsi: '' });
-    };
-
-    const handleSave = async () => {
-        if (!editRow) return;
-        if (!editForm.no_item.trim() || !editForm.deskripsi.trim()) return;
-        setSaving(true);
-        const supabase = createClient();
-        const payload = {
-            no_item: editForm.no_item.trim(),
-            deskripsi: editForm.deskripsi.trim(),
-        };
-        if (isAdding) {
-            await supabase.from('equipment_items').insert(payload);
-        } else {
-            await supabase.from('equipment_items').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editRow.id);
-        }
-        setEditRow(null);
-        setIsAdding(false);
-        setSaving(false);
-        await fetchData();
-    };
-
-    const handleDelete = async (id: unknown) => {
-        if (!confirm('Hapus equipment item ini?')) return;
-        const supabase = createClient();
-        await supabase.from('equipment_items').delete().eq('id', String(id));
-        await fetchData();
-    };
-
-    return (
-        <div className="space-y-4">
-            {/* Search & Add Bar */}
-            <div className="flex items-center gap-3">
-                <div className="flex-1 relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Cari no item atau deskripsi..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-surface-highlight border border-slate-700 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
-                    />
-                    {search && (
-                        <button onClick={() => setSearch('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer">
-                            <span className="material-symbols-outlined text-sm">close</span>
-                        </button>
-                    )}
-                </div>
-                <button onClick={handleAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer hover:scale-105"
-                    style={{ backgroundColor: `${color}20`, color, border: `1px solid ${color}40` }}>
-                    <span className="material-symbols-outlined text-lg">add_circle</span>
-                    Tambah Item
-                </button>
-            </div>
-
-            {/* Stats */}
-            <div className="flex items-center gap-4 text-xs text-slate-500">
-                <span>Total: <strong className="text-slate-300">{rows.length}</strong> item</span>
-                {search && (
-                    <span>Ditemukan: <strong className="text-slate-300">{filteredRows.length}</strong> item</span>
-                )}
-            </div>
-
-            {/* Table */}
-            <div className="border border-slate-700/50 rounded-xl overflow-hidden">
-                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <div className="flex items-center gap-3 text-slate-500">
-                                <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                                <span className="text-sm">Memuat data equipment...</span>
-                            </div>
-                        </div>
-                    ) : filteredRows.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-                            <span className="material-symbols-outlined text-4xl mb-2 opacity-40">inventory_2</span>
-                            <p className="text-sm">{search ? 'Tidak ada item yang cocok dengan pencarian.' : 'Belum ada data equipment.'}</p>
-                        </div>
-                    ) : (
-                        <table className="w-full text-sm">
-                            <thead className="sticky top-0 z-10">
-                                <tr style={{ backgroundColor: `${color}12` }}>
-                                    <th className="text-left px-4 py-3 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30 w-16">#</th>
-                                    <th className="text-left px-4 py-3 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30 w-[280px]">No Item</th>
-                                    <th className="text-left px-4 py-3 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30">Deskripsi</th>
-                                    <th className="text-center px-4 py-3 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-700/30 w-24">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/20">
-                                {filteredRows.map((row, i) => (
-                                    <tr key={String(row.id)} className="hover:bg-surface-highlight/40 transition-colors group">
-                                        <td className="px-4 py-2.5 text-slate-600 tabular-nums text-xs">{i + 1}</td>
-                                        <td className="px-4 py-2.5">
-                                            <span className="font-mono font-bold text-sm" style={{ color }}>{String(row.no_item || '-')}</span>
-                                        </td>
-                                        <td className="px-4 py-2.5 text-slate-300">{String(row.deskripsi || '-')}</td>
-                                        <td className="px-4 py-2.5 text-center">
-                                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEdit(row)}
-                                                    className="p-1.5 rounded-lg hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer" title="Edit">
-                                                    <span className="material-symbols-outlined text-sm">edit</span>
-                                                </button>
-                                                <button onClick={() => handleDelete(row.id)}
-                                                    className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" title="Hapus">
-                                                    <span className="material-symbols-outlined text-sm">delete</span>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
-            </div>
-
-            {/* Add/Edit Modal */}
-            {editRow && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => { setEditRow(null); setIsAdding(false); }}>
-                    <div className="bg-surface-dark border border-slate-700 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <h4 className="text-base font-bold text-white flex items-center gap-2">
-                            <span className="material-symbols-outlined text-lg" style={{ color }}>{isAdding ? 'add_circle' : 'edit'}</span>
-                            {isAdding ? 'Tambah Equipment Item' : 'Edit Equipment Item'}
-                        </h4>
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">No Item</label>
-                                <input type="text" value={editForm.no_item}
-                                    onChange={e => setEditForm(f => ({ ...f, no_item: e.target.value }))}
-                                    placeholder="Contoh: 20 K-08.01 A/B"
-                                    className="w-full px-3 py-2.5 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono" />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-text-secondary mb-1 uppercase tracking-wider">Deskripsi</label>
-                                <input type="text" value={editForm.deskripsi}
-                                    onChange={e => setEditForm(f => ({ ...f, deskripsi: e.target.value }))}
-                                    placeholder="Contoh: ID Fan"
-                                    className="w-full px-3 py-2.5 bg-surface-highlight border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                            <button onClick={() => { setEditRow(null); setIsAdding(false); }}
-                                className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors cursor-pointer">Batal</button>
-                            <button onClick={handleSave} disabled={saving || !editForm.no_item.trim() || !editForm.deskripsi.trim()}
-                                className="px-4 py-2 text-sm font-bold text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors cursor-pointer disabled:opacity-50">
-                                {saving ? 'Menyimpan...' : 'Simpan'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Main Page ───
 export default function HistoryPage() {
     const { operator } = useOperator();
     const router = useRouter();
-    const [activeSection, setActiveSection] = useState<string>('shift');
+
+    const [reports, setReports] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Initial selected parameters
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set([
+        'boiler_a_flow_steam', 'boiler_b_flow_steam', 'turbin_steam_inlet', 'gen_load'
+    ]));
+
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [tempSelectedIds, setTempSelectedIds] = useState<Set<string>>(new Set(selectedIds));
 
     useEffect(() => {
         if (!operator) router.push('/');
     }, [operator, router]);
 
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const supabase = createClient();
+            // Fetch last 100 shift reports including their relations
+            const { data, error: err } = await supabase
+                .from('shift_reports')
+                .select(`
+                    id, date, shift, created_at,
+                    shift_boiler (*),
+                    shift_turbin (*),
+                    shift_steam_dist (*),
+                    shift_generator_gi (*),
+                    shift_water_quality (*),
+                    shift_tankyard (*)
+                `)
+                .order('date', { ascending: false })
+                // Sort descending to get latest first, but since shift is string, we'll sort in JS or use created_at
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (err) throw err;
+            setReports(data || []);
+        } catch (e: any) {
+            setError(e.message || String(e));
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (operator) fetchData();
+    }, [operator, fetchData]);
+
+    // Handle Filter Modal
+    const openFilter = () => {
+        setTempSelectedIds(new Set(selectedIds));
+        setIsFilterModalOpen(true);
+    };
+
+    const toggleParam = (id: string) => {
+        setTempSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const applyFilter = () => {
+        setSelectedIds(tempSelectedIds);
+        setIsFilterModalOpen(false);
+    };
+
+    const activeParameters = useMemo(() => {
+        return PARAMETERS.filter(p => selectedIds.has(p.id));
+    }, [selectedIds]);
+
     if (!operator) return null;
 
-    const currentSection = SECTIONS.find(s => s.id === activeSection) || SECTIONS[0];
-
     return (
-        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto space-y-5">
-            {/* Header */}
-            <header className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/20 rounded-xl">
-                        <span className="material-symbols-outlined text-primary text-2xl">history</span>
+        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8 font-sans">
+            <div className="max-w-[1600px] mx-auto space-y-6">
+                
+                {/* HEADER */}
+                <header className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                            <span className="material-symbols-outlined text-3xl">query_stats</span>
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Compare Data Parameter</h1>
+                            <p className="text-sm text-slate-500 font-medium">Tabulasi ringkas parameter operasional historis dari Log Sheet Shift</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-black tracking-tight text-white">History Data</h2>
-                        <p className="text-text-secondary text-sm mt-1">Seluruh data operasional dari database, dikelompokkan per konteks</p>
+                    <div className="flex items-center gap-3">
+                        <button onClick={fetchData} className="flex items-center justify-center p-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors shadow-sm cursor-pointer" title="Refresh Data">
+                            <span className="material-symbols-outlined text-xl">refresh</span>
+                        </button>
+                        <button onClick={openFilter} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-600/20 cursor-pointer">
+                            <span className="material-symbols-outlined text-xl">filter_list</span>
+                            Pilih Parameter ({selectedIds.size})
+                        </button>
+                        <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 border border-slate-200 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+                            <span className="material-symbols-outlined text-xl">arrow_back</span>
+                            Dashboard
+                        </button>
                     </div>
-                </div>
-                <button onClick={() => router.push('/dashboard')}
-                    className="flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-700 px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer">
-                    <span className="material-symbols-outlined text-base">arrow_back</span>
-                    Dashboard
-                </button>
-            </header>
+                </header>
 
-            {/* Section Tabs */}
-            <div className="flex flex-wrap gap-2">
-                {SECTIONS.map(s => (
-                    <button key={s.id} onClick={() => setActiveSection(s.id)}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border"
-                        style={activeSection === s.id ? {
-                            backgroundColor: `${s.color}18`,
-                            borderColor: `${s.color}50`,
-                            color: s.color,
-                            boxShadow: `0 0 12px ${s.color}20`,
-                        } : {
-                            backgroundColor: 'transparent',
-                            borderColor: '#1e293b',
-                            color: '#64748b',
-                        }}>
-                        <span className="material-symbols-outlined text-base">{s.icon}</span>
-                        {s.label}
-                        <span className="opacity-60">({s.tables.length})</span>
-                    </button>
-                ))}
-            </div>
-
-            {/* Active Section Tables */}
-            <div className="bg-surface-dark rounded-xl border border-slate-800 p-5 space-y-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-lg" style={{ color: currentSection.color }}>{currentSection.icon}</span>
-                    {currentSection.label}
-                    <span className="text-xs text-slate-500 font-normal ml-1">{currentSection.tables.length} tabel</span>
-                </h3>
-                <div className="space-y-2">
-                    {activeSection === 'unloading' ? (
-                        <>
-                            <SolarUnloadingTable color={currentSection.color} />
-                            <AshUnloadingTable color={currentSection.color} />
-                        </>
-                    ) : activeSection === 'equipment' ? (
-                        <EquipmentListTable color={currentSection.color} />
+                {/* TABLE CONTAINER */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
+                            <span className="material-symbols-outlined animate-spin text-4xl mb-3 text-blue-500">progress_activity</span>
+                            <p className="font-medium">Memuat data parameter historis...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="p-6 text-center text-red-500 font-medium bg-red-50 border-b border-red-100">
+                            Terjadi kesalahan: {error}
+                        </div>
+                    ) : activeParameters.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400">
+                            <span className="material-symbols-outlined text-5xl mb-3 opacity-20">table_chart</span>
+                            <p className="font-medium text-slate-500">Belum ada parameter yang dipilih.</p>
+                            <button onClick={openFilter} className="mt-4 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium transition cursor-pointer">
+                                Pilih Parameter Sekarang
+                            </button>
+                        </div>
                     ) : (
-                        currentSection.tables.map(t => (
-                            <DataTable
-                                key={t.name}
-                                tableName={t.name}
-                                label={t.label}
-                                joinInfo={t.joinInfo}
-                                color={currentSection.color}
-                            />
-                        ))
+                        <div className="overflow-x-auto max-h-[70vh] overflow-y-auto custom-scrollbar">
+                            <table className="w-full text-sm text-left border-collapse min-w-max">
+                                <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
+                                    <tr>
+                                        {/* Frozen Left Columns */}
+                                        <th className="px-4 py-3 font-bold text-slate-700 uppercase tracking-wider sticky left-0 bg-slate-50 border-r border-b border-slate-200 shadow-[1px_0_0_#e2e8f0] min-w-[120px] text-center">Tanggal</th>
+                                        <th className="px-4 py-3 font-bold text-slate-700 uppercase tracking-wider sticky left-[120px] bg-slate-50 border-r border-b border-slate-200 shadow-[1px_0_0_#e2e8f0] text-center w-24">Jam</th>
+                                        
+                                        {/* Dynamic Parameter Columns */}
+                                        {activeParameters.map(param => (
+                                            <th key={param.id} className="px-4 py-3 font-semibold text-slate-600 border-b border-slate-200 text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{param.group}</span>
+                                                    <span>{param.label}</span>
+                                                </div>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {reports.map((row) => (
+                                        <tr key={row.id} className="hover:bg-blue-50/50 transition-colors group">
+                                            {/* Date Column */}
+                                            <td className="px-4 py-2.5 font-semibold text-slate-700 sticky left-0 bg-white group-hover:bg-blue-50/50 border-r border-slate-100 shadow-[1px_0_0_#f1f5f9] text-center tabular-nums whitespace-nowrap">
+                                                {new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            </td>
+                                            {/* Time Column */}
+                                            <td className="px-4 py-2.5 font-bold text-slate-800 sticky left-[120px] bg-slate-50/50 group-hover:bg-blue-50/50 border-r border-slate-100 shadow-[1px_0_0_#f1f5f9] text-center tabular-nums">
+                                                {SHIFT_TIME_MAP[row.shift ?? ''] || row.shift}
+                                            </td>
+                                            
+                                            {/* Parameter Columns */}
+                                            {activeParameters.map(param => {
+                                                const val = param.extract(row);
+                                                return (
+                                                    <td key={param.id} className="px-4 py-2.5 text-right font-mono text-slate-600 whitespace-nowrap">
+                                                        {val !== null && val !== undefined ? (
+                                                            typeof val === 'number' && val % 1 !== 0 ? val.toLocaleString('id-ID', { maximumFractionDigits: 2 }) : val.toLocaleString('id-ID')
+                                                        ) : (
+                                                            <span className="text-slate-300">-</span>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                    {reports.length === 0 && !loading && (
+                                        <tr>
+                                            <td colSpan={activeParameters.length + 2} className="px-6 py-12 text-center text-slate-500 font-medium">
+                                                Tidak ada data ditemukan di database.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
+
+                {/* Helper text */}
+                <p className="text-xs text-slate-400 text-center font-medium mt-4">
+                    Data diambil dari laporan log sheet. Baris merepresentasikan rekaman input pada jam operasional tertentu (Shift 1 = 06:00, Shift 2 = 14:00, Shift 3 = 22:00).
+                </p>
+
             </div>
+
+            {/* FILTER MODAL */}
+            {isFilterModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                <span className="material-symbols-outlined text-blue-600">checklist</span>
+                                Pilih Parameter Tersedia
+                            </h3>
+                            <button onClick={() => setIsFilterModalOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
+                                <span className="material-symbols-outlined text-xl">close</span>
+                            </button>
+                        </div>
+                        
+                        {/* Modal Content */}
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {Object.entries(groupedParameters).map(([groupName, params]) => (
+                                    <div key={groupName} className="space-y-3">
+                                        <h4 className="font-bold text-sm text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">{groupName}</h4>
+                                        <div className="space-y-2">
+                                            {params.map(p => {
+                                                const isChecked = tempSelectedIds.has(p.id);
+                                                return (
+                                                    <label key={p.id} className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors border ${isChecked ? 'bg-blue-50/80 border-blue-200' : 'bg-white border-transparent hover:bg-slate-50'}`}>
+                                                        <div className="relative flex items-start pt-0.5">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="peer sr-only" 
+                                                                checked={isChecked}
+                                                                onChange={() => toggleParam(p.id)}
+                                                            />
+                                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isChecked ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white peer-hover:border-blue-400'}`}>
+                                                                {isChecked && <span className="material-symbols-outlined text-white text-[14px] font-bold">check</span>}
+                                                            </div>
+                                                        </div>
+                                                        <span className={`text-sm font-semibold select-none ${isChecked ? 'text-blue-900' : 'text-slate-600'}`}>
+                                                            {p.label}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                            <span className="text-sm font-bold text-slate-500">{tempSelectedIds.size} parameter dipilih</span>
+                            <div className="flex items-center gap-3">
+                                <button onClick={() => setTempSelectedIds(new Set())} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-xl transition cursor-pointer">
+                                    Reset
+                                </button>
+                                <button onClick={applyFilter} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm cursor-pointer transition-colors">
+                                    Terapkan Filter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom scrollbar for table container */}
+            <style jsx global>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 8px;
+                    height: 8px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: #94a3b8;
+                }
+            `}</style>
         </div>
     );
 }

@@ -82,22 +82,23 @@ export default function HistoryPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 w-full font-sans pb-10">
-            {/* TOP HEADER - Full Width */}
-            <div className="w-full bg-white border-b-2 border-slate-300 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-6">
-                    <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-black font-extrabold text-lg rounded hover:bg-slate-300 transition-colors cursor-pointer border border-slate-400">
-                        <span className="material-symbols-outlined text-black font-bold">arrow_back</span>
-                        Kembali ke Dashboard
-                    </button>
-                    <div className="flex gap-4 items-center">
-                        <Image src="/logo/Danantara_Indonesia_(no_SW).png" alt="Danantara" width={140} height={40} className="object-contain" />
-                        <Image src="/logo/Logo_Pupuk_Indonesia__Persero_-removebg-preview.png" alt="Pupuk Indonesia" width={120} height={40} className="object-contain" />
-                        <Image src="/logo/logo-PG-agro-trans-small-removebg-preview.png" alt="Petrokimia Gresik" width={120} height={40} className="object-contain" />
-                    </div>
+            {/* TOP HEADER - Full Width Without Navigation button */}
+            <div className="w-full bg-slate-50 border-b-2 border-slate-300 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 relative">
+                {/* Logos - Top Left */}
+                <div className="flex gap-4 items-center">
+                    <Image src="/logo/Danantara_Indonesia_(no_SW).png" alt="Danantara" width={140} height={40} className="object-contain" />
+                    <Image src="/logo/Logo_Pupuk_Indonesia__Persero_-removebg-preview.png" alt="Pupuk Indonesia" width={120} height={40} className="object-contain" />
+                    <Image src="/logo/logo-PG-agro-trans-small-removebg-preview.png" alt="Petrokimia Gresik" width={120} height={40} className="object-contain" />
                 </div>
-                <div className="text-right">
-                    <h1 className="text-3xl font-black text-black tracking-tight uppercase">Pusat Data UBB</h1>
+                
+                {/* Clean Beautiful Title Centered */}
+                <div className="flex-1 flex justify-center w-full">
+                    <h1 className="text-4xl font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-800 drop-shadow-sm pb-1">
+                        Pusat Data UBB
+                    </h1>
                 </div>
+
+                <div className="w-[300px] hidden md:block"></div> {/* Spacer for centering */}
             </div>
 
             {/* TABLE CONTAINER - Full Width */}
@@ -113,68 +114,63 @@ export default function HistoryPage() {
                             Terjadi kesalahan: {error}
                         </div>
                     ) : (
-                        <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
+                        <div className="overflow-x-auto max-h-[75vh] overflow-y-auto custom-scrollbar">
                             <table className="w-full text-left border-collapse min-w-max">
-                                <thead className="bg-[#f8f9fa] sticky top-0 z-20 border-b-2 border-slate-400 shadow-sm">
+                                <thead className="bg-[#f8f9fa] sticky top-0 z-20 shadow-sm">
                                     <tr>
                                         {/* Tanggal & Jam (Sticky Left) */}
-                                        <th className="px-6 py-4 font-black text-black text-lg uppercase tracking-wider sticky left-0 bg-[#f8f9fa] border-r-2 border-b-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] min-w-[150px] text-center" rowSpan={2}>Tanggal</th>
-                                        <th className="px-6 py-4 font-black text-black text-lg uppercase tracking-wider sticky left-[150px] bg-[#f8f9fa] border-r-2 border-b-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] w-28 text-center" rowSpan={2}>Jam</th>
+                                        <th className="px-6 py-4 font-black text-black text-xl uppercase tracking-wider sticky left-0 bg-[#f8f9fa] border-r-2 border-b-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] min-w-[150px] text-center">Tanggal</th>
+                                        <th className="px-6 py-4 font-black text-black text-xl uppercase tracking-wider sticky left-[150px] bg-[#f8f9fa] border-r-2 border-b-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] w-32 text-center">Jam</th>
                                         
-                                        {/* Parameter Header Row 1 (Selector) */}
+                                        {/* Parameter Header (Selector row) */}
                                         {columns.map((colId, index) => (
-                                            <th key={`sel-${index}`} className="px-4 py-2 bg-[#f8f9fa] border-b-2 border-slate-400 text-center font-bold relative group">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <select 
-                                                        value={colId} 
-                                                        onChange={(e) => changeColumn(index, e.target.value)}
-                                                        className="w-full p-2 bg-white border-2 border-slate-400 text-black font-bold text-base rounded cursor-pointer hover:border-black appearance-none truncate outline-none"
-                                                    >
-                                                        {Object.entries(groupedParameters).map(([groupName, params]) => (
-                                                            <optgroup key={groupName} label={groupName} className="font-black bg-slate-100">
-                                                                {params.map(p => (
-                                                                    <option key={p.id} value={p.id} className="font-bold text-black bg-white">
-                                                                        {p.label}
-                                                                    </option>
-                                                                ))}
-                                                            </optgroup>
-                                                        ))}
-                                                    </select>
+                                            <th key={`sel-${index}`} className="px-4 py-3 bg-[#f8f9fa] border-b-2 border-slate-400 text-center relative group min-w-[320px]">
+                                                <div className="flex items-center justify-between gap-3 relative">
+                                                    <div className="relative w-full">
+                                                        <select 
+                                                            value={colId} 
+                                                            onChange={(e) => changeColumn(index, e.target.value)}
+                                                            className="w-full p-2.5 pr-10 bg-white border-2 border-slate-400 text-black font-black text-lg rounded cursor-pointer hover:border-black appearance-none truncate outline-none shadow-sm"
+                                                        >
+                                                            {Object.entries(groupedParameters).map(([groupName, params]) => (
+                                                                <optgroup key={groupName} label={groupName} className="font-black bg-slate-100 text-sm">
+                                                                    {params.map(p => (
+                                                                        <option key={p.id} value={p.id} className="font-bold text-black bg-white text-base">
+                                                                            {p.label}
+                                                                        </option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            ))}
+                                                        </select>
+                                                        {/* Arrow icon fixed on the right of the select */}
+                                                        <span className="material-symbols-outlined text-3xl font-bold text-black absolute top-1/2 -translate-y-1/2 right-2 pointer-events-none">
+                                                            expand_more
+                                                        </span>
+                                                    </div>
+                                                    
                                                     {columns.length > 1 && (
-                                                        <button onClick={() => removeColumn(index)} className="p-1 text-red-600 hover:text-red-800 hover:bg-red-100 rounded transition-colors cursor-pointer" title="Hapus Kolom">
-                                                            <span className="material-symbols-outlined text-2xl font-bold">close</span>
+                                                        <button onClick={() => removeColumn(index)} className="p-2 text-red-600 border-2 border-transparent hover:border-red-600 bg-red-50 hover:bg-red-100 rounded transition-all cursor-pointer flex-shrink-0" title="Hapus Kolom">
+                                                            <span className="material-symbols-outlined text-2xl font-black">close</span>
                                                         </button>
                                                     )}
                                                 </div>
                                             </th>
                                         ))}
-                                        
-                                    </tr>
-                                    <tr>
-                                        {/* Parameter Header Row 2 (Unit & Add Button Location) */}
-                                        {columns.map((colId, index) => {
-                                            const paramDef = PARAMETERS.find(p => p.id === colId);
-                                            return (
-                                                <th key={`unit-${index}`} className={`px-4 py-3 bg-[#eef2f6] border-b-2 border-slate-400 text-center uppercase ${index % 2 === 0 ? 'bg-[#e2e8f0]' : 'bg-[#f1f5f9]'}`}>
-                                                    <span className="text-black font-black text-lg tracking-widest">{paramDef?.unit || '-'}</span>
-                                                </th>
-                                            );
-                                        })}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {reports.map((row, rowIdx) => (
                                         <tr key={row.id} className="hover:bg-[#dbeafe] transition-colors border-b border-slate-300">
                                             {/* Date */}
-                                            <td className="px-6 py-4 font-black text-black text-lg sticky left-0 bg-white border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center whitespace-nowrap z-10 group-hover:bg-[#dbeafe]">
+                                            <td className="px-6 py-4 font-black text-black text-xl sticky left-0 bg-white border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center whitespace-nowrap z-10 group-hover:bg-[#dbeafe]">
                                                 {new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </td>
                                             {/* Time */}
-                                            <td className="px-6 py-4 font-black text-black text-lg sticky left-[150px] bg-slate-50 border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center z-10 group-hover:bg-[#dbeafe]">
+                                            <td className="px-6 py-4 font-black text-black text-xl sticky left-[150px] bg-slate-50 border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center z-10 group-hover:bg-[#dbeafe]">
                                                 {SHIFT_TIME_MAP[row.shift ?? ''] || row.shift}
                                             </td>
                                             
-                                            {/* Dynamic Data */}
+                                            {/* Dynamic Data Cells */}
                                             {columns.map((colId, index) => {
                                                 const paramDef = PARAMETERS.find(p => p.id === colId);
                                                 const val = paramDef ? paramDef.extract(row) : null;
@@ -182,9 +178,12 @@ export default function HistoryPage() {
                                                 const CellBg = index % 2 === 0 ? 'bg-transparent' : 'bg-slate-50';
 
                                                 return (
-                                                    <td key={`data-${row.id}-${index}`} className={`px-6 py-4 text-center font-bold text-black text-xl border-x border-slate-200 ${CellBg} group-hover:bg-transparent`}>
+                                                    <td key={`data-${row.id}-${index}`} className={`px-6 py-4 text-center font-black text-black text-2xl border-x border-slate-200 ${CellBg} group-hover:bg-transparent`}>
                                                         {val !== null && val !== undefined ? (
-                                                            typeof val === 'number' && val % 1 !== 0 ? val.toLocaleString('id-ID', { maximumFractionDigits: 2 }) : val.toLocaleString('id-ID')
+                                                            <div className="flex items-baseline justify-center gap-1.5">
+                                                                <span>{typeof val === 'number' && val % 1 !== 0 ? val.toLocaleString('id-ID', { maximumFractionDigits: 2 }) : val.toLocaleString('id-ID')}</span>
+                                                                <span className="text-[13px] font-bold text-slate-600 uppercase tracking-widest">{paramDef?.unit || ''}</span>
+                                                            </div>
                                                         ) : (
                                                             <span className="text-slate-400">-</span>
                                                         )}
@@ -195,7 +194,7 @@ export default function HistoryPage() {
                                     ))}
                                     {reports.length === 0 && !loading && (
                                         <tr>
-                                            <td colSpan={columns.length + 2} className="px-6 py-12 text-center text-black font-black text-xl">
+                                            <td colSpan={columns.length + 2} className="px-6 py-12 text-center text-black font-black text-2xl">
                                                 Tidak ada data ditemukan di database.
                                             </td>
                                         </tr>
@@ -207,15 +206,71 @@ export default function HistoryPage() {
                 </div>
                 
                 {/* TOMBOL TAMBAH KOLOM */}
-                <div className="mt-4 flex justify-between items-center bg-white p-4 items-center border border-slate-300 rounded shadow-sm">
-                   <p className="text-black font-bold text-base uppercase">Data Pusat Log Sheet Operasional UBB</p>
-                   <button onClick={addColumn} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-black text-lg rounded hover:bg-blue-800 transition-colors cursor-pointer border-2 border-blue-900 shadow-md">
-                        <span className="material-symbols-outlined text-2xl font-bold">add</span>
+                <div className="mt-4 flex justify-between items-center bg-white p-5 border border-slate-300 rounded shadow-sm">
+                   <p className="text-black font-extrabold text-lg uppercase tracking-wider">Log Sheet Operasional UBB</p>
+                   <button onClick={addColumn} className="flex items-center gap-2 px-8 py-4 bg-blue-600 text-white font-black text-xl rounded shadow-md hover:bg-blue-800 transition-colors cursor-pointer border-2 border-blue-900 border-b-4 active:border-b-2 active:translate-y-[2px]">
+                        <span className="material-symbols-outlined text-3xl font-black">add_circle</span>
                         Tambah Kolom Parameter
                     </button>
                 </div>
-
             </div>
+
+            {/* Custom scrollbar with arrows */}
+            <style jsx global>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 20px;
+                    height: 20px;
+                    background-color: #f1f5f9;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background-color: #94a3b8;
+                    border: 4px solid #f1f5f9;
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background-color: #64748b;
+                }
+                
+                /* Scrollbar buttons (arrows) */
+                .custom-scrollbar::-webkit-scrollbar-button {
+                    display: block;
+                    width: 20px;
+                    height: 20px;
+                    background-color: #cbd5e1;
+                    border-radius: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-button:hover {
+                    background-color: #94a3b8;
+                }
+
+                /* Up Arrow */
+                .custom-scrollbar::-webkit-scrollbar-button:vertical:start:decrement {
+                    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="%23475569" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z"/></svg>');
+                    background-repeat: no-repeat;
+                    background-position: center;
+                }
+                
+                /* Down Arrow */
+                .custom-scrollbar::-webkit-scrollbar-button:vertical:end:increment {
+                    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="%23475569" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+                    background-repeat: no-repeat;
+                    background-position: center;
+                }
+
+                /* Left Arrow */
+                .custom-scrollbar::-webkit-scrollbar-button:horizontal:start:decrement {
+                    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="%23475569" viewBox="0 0 24 24"><path d="M14 7l-5 5 5 5z"/></svg>');
+                    background-repeat: no-repeat;
+                    background-position: center;
+                }
+
+                /* Right Arrow */
+                .custom-scrollbar::-webkit-scrollbar-button:horizontal:end:increment {
+                    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="%23475569" viewBox="0 0 24 24"><path d="M10 7l5 5-5 5z"/></svg>');
+                    background-repeat: no-repeat;
+                    background-position: center;
+                }
+            `}</style>
         </div>
     );
 }

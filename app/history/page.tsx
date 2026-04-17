@@ -127,13 +127,13 @@ export default function HistoryPage() {
                                         
                                         {/* Parameter Header (Selector row) */}
                                         {columns.map((colId, index) => (
-                                            <th key={`sel-${index}`} className="px-4 py-3 bg-[#f8f9fa] border-b border-slate-300 text-center relative group min-w-[320px]">
-                                                <div className="flex items-center justify-between gap-3 relative">
+                                            <th key={`sel-${index}`} className="px-3 py-3 bg-[#f8f9fa] border-b border-slate-300 text-center relative group min-w-[200px] w-[200px] max-w-[250px]">
+                                                <div className="flex items-center justify-between gap-2 relative">
                                                     <div className="relative w-full">
                                                         <select 
                                                             value={colId} 
                                                             onChange={(e) => changeColumn(index, e.target.value)}
-                                                            className="w-full p-2.5 pr-10 bg-white border-2 border-slate-400 text-black font-black text-lg rounded cursor-pointer hover:border-black appearance-none truncate outline-none shadow-sm"
+                                                            className="w-full p-2 pr-8 bg-white border-2 border-slate-400 text-black font-black text-sm md:text-base rounded cursor-pointer hover:border-black appearance-none truncate outline-none shadow-sm"
                                                         >
                                                             {Object.entries(groupedParameters).map(([groupName, params]) => (
                                                                 <optgroup key={groupName} label={groupName} className="font-black bg-slate-100 text-sm">
@@ -146,7 +146,7 @@ export default function HistoryPage() {
                                                             ))}
                                                         </select>
                                                         {/* Arrow icon fixed on the right of the select */}
-                                                        <span className="material-symbols-outlined text-3xl font-bold text-black absolute top-1/2 -translate-y-1/2 right-2 pointer-events-none">
+                                                        <span className="material-symbols-outlined text-2xl font-bold text-black absolute top-1/2 -translate-y-1/2 right-1 pointer-events-none">
                                                             expand_more
                                                         </span>
                                                     </div>

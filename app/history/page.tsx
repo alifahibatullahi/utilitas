@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
-import { PARAMETERS, groupedParameters, ParameterDef } from '@/lib/history-parameters';
+import { PARAMETERS, groupedParameters } from '@/lib/history-parameters';
 
 const SHIFT_TIME_MAP: Record<string, string> = {
     'malam': '06:00',
@@ -20,13 +21,8 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Initial selected parameters
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set([
-        'boiler_a_flow_steam', 'boiler_b_flow_steam', 'turbin_steam_inlet', 'gen_load'
-    ]));
-
-    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-    const [tempSelectedIds, setTempSelectedIds] = useState<Set<string>>(new Set(selectedIds));
+    // Filter per kolom (Array of parameter IDs)
+    const [columns, setColumns] = useState<string[]>(['boiler_a_flow_steam', 'turbin_steam_inlet']);
 
     useEffect(() => {
         if (!operator) router.push('/');
@@ -37,7 +33,6 @@ export default function HistoryPage() {
         setError(null);
         try {
             const supabase = createClient();
-            // Fetch last 100 shift reports including their relations
             const { data, error: err } = await supabase
                 .from('shift_reports')
                 .select(`
@@ -50,7 +45,6 @@ export default function HistoryPage() {
                     shift_tankyard (*)
                 `)
                 .order('date', { ascending: false })
-                // Sort descending to get latest first, but since shift is string, we'll sort in JS or use created_at
                 .order('created_at', { ascending: false })
                 .limit(100);
 
@@ -67,122 +61,132 @@ export default function HistoryPage() {
         if (operator) fetchData();
     }, [operator, fetchData]);
 
-    // Handle Filter Modal
-    const openFilter = () => {
-        setTempSelectedIds(new Set(selectedIds));
-        setIsFilterModalOpen(true);
+    // Handle column changes
+    const changeColumn = (index: number, newParamId: string) => {
+        const newCols = [...columns];
+        newCols[index] = newParamId;
+        setColumns(newCols);
     };
 
-    const toggleParam = (id: string) => {
-        setTempSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
+    const addColumn = () => {
+        setColumns([...columns, PARAMETERS[0].id]);
     };
 
-    const applyFilter = () => {
-        setSelectedIds(tempSelectedIds);
-        setIsFilterModalOpen(false);
+    const removeColumn = (index: number) => {
+        const newCols = [...columns];
+        newCols.splice(index, 1);
+        setColumns(newCols);
     };
-
-    const activeParameters = useMemo(() => {
-        return PARAMETERS.filter(p => selectedIds.has(p.id));
-    }, [selectedIds]);
 
     if (!operator) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8 font-sans">
-            <div className="max-w-[1600px] mx-auto space-y-6">
-                
-                {/* HEADER */}
-                <header className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                            <span className="material-symbols-outlined text-3xl">query_stats</span>
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Compare Data Parameter</h1>
-                            <p className="text-sm text-slate-500 font-medium">Tabulasi ringkas parameter operasional historis dari Log Sheet Shift</p>
-                        </div>
+        <div className="min-h-screen bg-slate-50 w-full font-sans pb-10">
+            {/* TOP HEADER - Full Width */}
+            <div className="w-full bg-white border-b-2 border-slate-300 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-6">
+                    <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-black font-extrabold text-lg rounded hover:bg-slate-300 transition-colors cursor-pointer border border-slate-400">
+                        <span className="material-symbols-outlined text-black font-bold">arrow_back</span>
+                        Kembali ke Dashboard
+                    </button>
+                    <div className="flex gap-4 items-center">
+                        <Image src="/logo/Danantara_Indonesia_(no_SW).png" alt="Danantara" width={140} height={40} className="object-contain" />
+                        <Image src="/logo/Logo_Pupuk_Indonesia__Persero_-removebg-preview.png" alt="Pupuk Indonesia" width={120} height={40} className="object-contain" />
+                        <Image src="/logo/logo-PG-agro-trans-small-removebg-preview.png" alt="Petrokimia Gresik" width={120} height={40} className="object-contain" />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button onClick={fetchData} className="flex items-center justify-center p-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors shadow-sm cursor-pointer" title="Refresh Data">
-                            <span className="material-symbols-outlined text-xl">refresh</span>
-                        </button>
-                        <button onClick={openFilter} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-600/20 cursor-pointer">
-                            <span className="material-symbols-outlined text-xl">filter_list</span>
-                            Pilih Parameter ({selectedIds.size})
-                        </button>
-                        <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 border border-slate-200 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
-                            <span className="material-symbols-outlined text-xl">arrow_back</span>
-                            Dashboard
-                        </button>
-                    </div>
-                </header>
+                </div>
+                <div className="text-right">
+                    <h1 className="text-3xl font-black text-black tracking-tight uppercase">Pusat Data UBB</h1>
+                </div>
+            </div>
 
-                {/* TABLE CONTAINER */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            {/* TABLE CONTAINER - Full Width */}
+            <div className="w-full px-6 mt-6">
+                <div className="bg-white border-2 border-slate-300 shadow-sm overflow-hidden rounded">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
-                            <span className="material-symbols-outlined animate-spin text-4xl mb-3 text-blue-500">progress_activity</span>
-                            <p className="font-medium">Memuat data parameter historis...</p>
+                        <div className="flex flex-col items-center justify-center min-h-[400px] text-black">
+                            <span className="material-symbols-outlined animate-spin text-5xl mb-3 text-black font-bold">progress_activity</span>
+                            <p className="font-extrabold text-xl">Memuat data...</p>
                         </div>
                     ) : error ? (
-                        <div className="p-6 text-center text-red-500 font-medium bg-red-50 border-b border-red-100">
+                        <div className="p-6 text-center text-red-700 font-extrabold bg-red-100 text-xl border-b border-red-300">
                             Terjadi kesalahan: {error}
                         </div>
-                    ) : activeParameters.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400">
-                            <span className="material-symbols-outlined text-5xl mb-3 opacity-20">table_chart</span>
-                            <p className="font-medium text-slate-500">Belum ada parameter yang dipilih.</p>
-                            <button onClick={openFilter} className="mt-4 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium transition cursor-pointer">
-                                Pilih Parameter Sekarang
-                            </button>
-                        </div>
                     ) : (
-                        <div className="overflow-x-auto max-h-[70vh] overflow-y-auto custom-scrollbar">
-                            <table className="w-full text-sm text-left border-collapse min-w-max">
-                                <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
+                        <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
+                            <table className="w-full text-left border-collapse min-w-max">
+                                <thead className="bg-[#f8f9fa] sticky top-0 z-20 border-b-2 border-slate-400 shadow-sm">
                                     <tr>
-                                        {/* Frozen Left Columns */}
-                                        <th className="px-4 py-3 font-bold text-slate-700 uppercase tracking-wider sticky left-0 bg-slate-50 border-r border-b border-slate-200 shadow-[1px_0_0_#e2e8f0] min-w-[120px] text-center">Tanggal</th>
-                                        <th className="px-4 py-3 font-bold text-slate-700 uppercase tracking-wider sticky left-[120px] bg-slate-50 border-r border-b border-slate-200 shadow-[1px_0_0_#e2e8f0] text-center w-24">Jam</th>
+                                        {/* Tanggal & Jam (Sticky Left) */}
+                                        <th className="px-6 py-4 font-black text-black text-lg uppercase tracking-wider sticky left-0 bg-[#f8f9fa] border-r-2 border-b-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] min-w-[150px] text-center" rowSpan={2}>Tanggal</th>
+                                        <th className="px-6 py-4 font-black text-black text-lg uppercase tracking-wider sticky left-[150px] bg-[#f8f9fa] border-r-2 border-b-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] w-28 text-center" rowSpan={2}>Jam</th>
                                         
-                                        {/* Dynamic Parameter Columns */}
-                                        {activeParameters.map(param => (
-                                            <th key={param.id} className="px-4 py-3 font-semibold text-slate-600 border-b border-slate-200 text-right">
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{param.group}</span>
-                                                    <span>{param.label}</span>
+                                        {/* Parameter Header Row 1 (Selector) */}
+                                        {columns.map((colId, index) => (
+                                            <th key={`sel-${index}`} className="px-4 py-2 bg-[#f8f9fa] border-b-2 border-slate-400 text-center font-bold relative group">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <select 
+                                                        value={colId} 
+                                                        onChange={(e) => changeColumn(index, e.target.value)}
+                                                        className="w-full p-2 bg-white border-2 border-slate-400 text-black font-bold text-base rounded cursor-pointer hover:border-black appearance-none truncate outline-none"
+                                                    >
+                                                        {Object.entries(groupedParameters).map(([groupName, params]) => (
+                                                            <optgroup key={groupName} label={groupName} className="font-black bg-slate-100">
+                                                                {params.map(p => (
+                                                                    <option key={p.id} value={p.id} className="font-bold text-black bg-white">
+                                                                        {p.label}
+                                                                    </option>
+                                                                ))}
+                                                            </optgroup>
+                                                        ))}
+                                                    </select>
+                                                    {columns.length > 1 && (
+                                                        <button onClick={() => removeColumn(index)} className="p-1 text-red-600 hover:text-red-800 hover:bg-red-100 rounded transition-colors cursor-pointer" title="Hapus Kolom">
+                                                            <span className="material-symbols-outlined text-2xl font-bold">close</span>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </th>
                                         ))}
+                                        
+                                    </tr>
+                                    <tr>
+                                        {/* Parameter Header Row 2 (Unit & Add Button Location) */}
+                                        {columns.map((colId, index) => {
+                                            const paramDef = PARAMETERS.find(p => p.id === colId);
+                                            return (
+                                                <th key={`unit-${index}`} className={`px-4 py-3 bg-[#eef2f6] border-b-2 border-slate-400 text-center uppercase ${index % 2 === 0 ? 'bg-[#e2e8f0]' : 'bg-[#f1f5f9]'}`}>
+                                                    <span className="text-black font-black text-lg tracking-widest">{paramDef?.unit || '-'}</span>
+                                                </th>
+                                            );
+                                        })}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {reports.map((row) => (
-                                        <tr key={row.id} className="hover:bg-blue-50/50 transition-colors group">
-                                            {/* Date Column */}
-                                            <td className="px-4 py-2.5 font-semibold text-slate-700 sticky left-0 bg-white group-hover:bg-blue-50/50 border-r border-slate-100 shadow-[1px_0_0_#f1f5f9] text-center tabular-nums whitespace-nowrap">
+                                <tbody>
+                                    {reports.map((row, rowIdx) => (
+                                        <tr key={row.id} className="hover:bg-[#dbeafe] transition-colors border-b border-slate-300">
+                                            {/* Date */}
+                                            <td className="px-6 py-4 font-black text-black text-lg sticky left-0 bg-white border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center whitespace-nowrap z-10 group-hover:bg-[#dbeafe]">
                                                 {new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </td>
-                                            {/* Time Column */}
-                                            <td className="px-4 py-2.5 font-bold text-slate-800 sticky left-[120px] bg-slate-50/50 group-hover:bg-blue-50/50 border-r border-slate-100 shadow-[1px_0_0_#f1f5f9] text-center tabular-nums">
+                                            {/* Time */}
+                                            <td className="px-6 py-4 font-black text-black text-lg sticky left-[150px] bg-slate-50 border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center z-10 group-hover:bg-[#dbeafe]">
                                                 {SHIFT_TIME_MAP[row.shift ?? ''] || row.shift}
                                             </td>
                                             
-                                            {/* Parameter Columns */}
-                                            {activeParameters.map(param => {
-                                                const val = param.extract(row);
+                                            {/* Dynamic Data */}
+                                            {columns.map((colId, index) => {
+                                                const paramDef = PARAMETERS.find(p => p.id === colId);
+                                                const val = paramDef ? paramDef.extract(row) : null;
+                                                // Alternate column background slightly
+                                                const CellBg = index % 2 === 0 ? 'bg-transparent' : 'bg-slate-50';
+
                                                 return (
-                                                    <td key={param.id} className="px-4 py-2.5 text-right font-mono text-slate-600 whitespace-nowrap">
+                                                    <td key={`data-${row.id}-${index}`} className={`px-6 py-4 text-center font-bold text-black text-xl border-x border-slate-200 ${CellBg} group-hover:bg-transparent`}>
                                                         {val !== null && val !== undefined ? (
                                                             typeof val === 'number' && val % 1 !== 0 ? val.toLocaleString('id-ID', { maximumFractionDigits: 2 }) : val.toLocaleString('id-ID')
                                                         ) : (
-                                                            <span className="text-slate-300">-</span>
+                                                            <span className="text-slate-400">-</span>
                                                         )}
                                                     </td>
                                                 );
@@ -191,7 +195,7 @@ export default function HistoryPage() {
                                     ))}
                                     {reports.length === 0 && !loading && (
                                         <tr>
-                                            <td colSpan={activeParameters.length + 2} className="px-6 py-12 text-center text-slate-500 font-medium">
+                                            <td colSpan={columns.length + 2} className="px-6 py-12 text-center text-black font-black text-xl">
                                                 Tidak ada data ditemukan di database.
                                             </td>
                                         </tr>
@@ -201,96 +205,17 @@ export default function HistoryPage() {
                         </div>
                     )}
                 </div>
-
-                {/* Helper text */}
-                <p className="text-xs text-slate-400 text-center font-medium mt-4">
-                    Data diambil dari laporan log sheet. Baris merepresentasikan rekaman input pada jam operasional tertentu (Shift 1 = 06:00, Shift 2 = 14:00, Shift 3 = 22:00).
-                </p>
+                
+                {/* TOMBOL TAMBAH KOLOM */}
+                <div className="mt-4 flex justify-between items-center bg-white p-4 items-center border border-slate-300 rounded shadow-sm">
+                   <p className="text-black font-bold text-base uppercase">Data Pusat Log Sheet Operasional UBB</p>
+                   <button onClick={addColumn} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-black text-lg rounded hover:bg-blue-800 transition-colors cursor-pointer border-2 border-blue-900 shadow-md">
+                        <span className="material-symbols-outlined text-2xl font-bold">add</span>
+                        Tambah Kolom Parameter
+                    </button>
+                </div>
 
             </div>
-
-            {/* FILTER MODAL */}
-            {isFilterModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                        {/* Modal Header */}
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-blue-600">checklist</span>
-                                Pilih Parameter Tersedia
-                            </h3>
-                            <button onClick={() => setIsFilterModalOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
-                                <span className="material-symbols-outlined text-xl">close</span>
-                            </button>
-                        </div>
-                        
-                        {/* Modal Content */}
-                        <div className="p-6 overflow-y-auto flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {Object.entries(groupedParameters).map(([groupName, params]) => (
-                                    <div key={groupName} className="space-y-3">
-                                        <h4 className="font-bold text-sm text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">{groupName}</h4>
-                                        <div className="space-y-2">
-                                            {params.map(p => {
-                                                const isChecked = tempSelectedIds.has(p.id);
-                                                return (
-                                                    <label key={p.id} className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors border ${isChecked ? 'bg-blue-50/80 border-blue-200' : 'bg-white border-transparent hover:bg-slate-50'}`}>
-                                                        <div className="relative flex items-start pt-0.5">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                className="peer sr-only" 
-                                                                checked={isChecked}
-                                                                onChange={() => toggleParam(p.id)}
-                                                            />
-                                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isChecked ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white peer-hover:border-blue-400'}`}>
-                                                                {isChecked && <span className="material-symbols-outlined text-white text-[14px] font-bold">check</span>}
-                                                            </div>
-                                                        </div>
-                                                        <span className={`text-sm font-semibold select-none ${isChecked ? 'text-blue-900' : 'text-slate-600'}`}>
-                                                            {p.label}
-                                                        </span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-                            <span className="text-sm font-bold text-slate-500">{tempSelectedIds.size} parameter dipilih</span>
-                            <div className="flex items-center gap-3">
-                                <button onClick={() => setTempSelectedIds(new Set())} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-xl transition cursor-pointer">
-                                    Reset
-                                </button>
-                                <button onClick={applyFilter} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm cursor-pointer transition-colors">
-                                    Terapkan Filter
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Custom scrollbar for table container */}
-            <style jsx global>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 8px;
-                    height: 8px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: #cbd5e1;
-                    border-radius: 4px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: #94a3b8;
-                }
-            `}</style>
         </div>
     );
 }

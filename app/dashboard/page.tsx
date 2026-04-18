@@ -59,7 +59,7 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
             <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-surface-highlight/50 to-transparent">
                 <div className="flex items-center gap-3">
                     <div>
-                        <h3 className="text-white font-black text-2xl tracking-tight drop-shadow-sm">BOILER {name}</h3>
+                        <h3 className="text-white font-black text-4xl tracking-tight drop-shadow-md">BOILER {name}</h3>
                         <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>

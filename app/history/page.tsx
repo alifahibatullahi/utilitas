@@ -22,7 +22,7 @@ export default function HistoryPage() {
     const [error, setError] = useState<string | null>(null);
 
     // Filter per kolom (Array of parameter IDs)
-    const [columns, setColumns] = useState<string[]>(['boiler_a_flow_steam', 'turbin_steam_inlet']);
+    const [columns, setColumns] = useState<string[]>(['', '']);
 
     useEffect(() => {
         if (!operatorLoading && !operator) router.push('/');
@@ -69,7 +69,7 @@ export default function HistoryPage() {
     };
 
     const addColumn = () => {
-        setColumns([...columns, PARAMETERS[0].id]);
+        setColumns([...columns, '']);
     };
 
     const removeColumn = (index: number) => {
@@ -121,57 +121,69 @@ export default function HistoryPage() {
                             <table className="w-full text-left border-collapse min-w-max">
                                 <thead className="bg-[#f8f9fa] sticky top-0 z-20 shadow-sm border-b-4 border-slate-400">
                                     <tr>
-                                        {/* Tanggal & Jam (Sticky Left) */}
-                                        <th className="px-6 py-4 font-black text-black text-xl uppercase tracking-wider sticky left-0 bg-[#f8f9fa] border-r-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] min-w-[150px] text-center" rowSpan={2}>Tanggal</th>
-                                        <th className="px-6 py-4 font-black text-black text-xl uppercase tracking-wider sticky left-[150px] bg-[#f8f9fa] border-r-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] w-32 text-center" rowSpan={2}>Jam</th>
-                                        
-                                        {/* Parameter Header (Selector row) */}
+                                        {/* Tanggal & Jam (Sticky Left) - diperkecil */}
+                                        <th className="px-3 py-3 font-black text-black text-sm uppercase tracking-wider sticky left-0 bg-[#f8f9fa] border-r-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] min-w-[100px] text-center" rowSpan={2}>Tanggal</th>
+                                        <th className="px-2 py-3 font-black text-black text-sm uppercase tracking-wider sticky left-[100px] bg-[#f8f9fa] border-r-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] w-16 text-center" rowSpan={2}>Jam</th>
+
+                                        {/* Parameter Header - baris 1: Label judul */}
+                                        {columns.map((colId, index) => {
+                                            const paramDef = colId ? PARAMETERS.find(p => p.id === colId) : null;
+                                            return (
+                                                <th key={`label-${index}`} className="px-3 pt-2 pb-0 bg-[#f8f9fa] text-center min-w-[180px]">
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <span className="font-black text-black text-sm leading-tight text-center">
+                                                            {paramDef ? paramDef.label : 'Pilih . . .'}
+                                                        </span>
+                                                        {paramDef?.unit && (
+                                                            <span className="text-[11px] font-bold text-slate-500">({paramDef.unit})</span>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                            );
+                                        })}
+
+                                        {/* Tambah Kolom Button */}
+                                        <th rowSpan={2} className="px-4 py-3 bg-[#f8f9fa] align-middle text-center border-l-2 border-slate-300 min-w-[120px]">
+                                            <button onClick={addColumn} className="flex flex-col items-center justify-center w-full gap-1.5 p-3 bg-white text-blue-600 font-black text-sm border-2 border-dashed border-blue-400 hover:border-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer group">
+                                                <span className="material-symbols-outlined text-3xl font-black group-hover:scale-110 transition-transform">add_circle</span>
+                                                <span className="leading-tight text-center">Tambah Kolom</span>
+                                            </button>
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        {/* Parameter Header - baris 2: Dropdown select */}
                                         {columns.map((colId, index) => (
-                                            <th key={`sel-${index}`} className="px-3 py-3 bg-[#f8f9fa] border-b border-slate-300 text-center relative group min-w-[200px] w-[200px] max-w-[250px]">
-                                                <div className="flex items-center justify-between gap-2 relative">
+                                            <th key={`sel-${index}`} className="px-3 pt-1 pb-2 bg-[#f8f9fa] border-b border-slate-300 text-center">
+                                                <div className="flex items-center gap-1">
                                                     <div className="relative w-full">
-                                                        <select 
-                                                            value={colId} 
+                                                        <select
+                                                            value={colId}
                                                             onChange={(e) => changeColumn(index, e.target.value)}
-                                                            className="w-full p-2 pr-8 bg-white border-2 border-slate-400 text-black font-black text-sm md:text-base rounded cursor-pointer hover:border-black appearance-none truncate outline-none shadow-sm"
+                                                            className={`w-full p-1.5 pr-7 bg-white border-2 border-slate-400 font-bold text-xs rounded cursor-pointer hover:border-black appearance-none truncate outline-none shadow-sm ${colId ? 'text-black' : 'text-slate-400'}`}
                                                         >
+                                                            <option value="" className="text-slate-400">Pilih . . .</option>
                                                             {Object.entries(groupedParameters).map(([groupName, params]) => (
-                                                                <optgroup key={groupName} label={groupName} className="font-black bg-slate-100 text-sm">
+                                                                <optgroup key={groupName} label={groupName} className="font-black bg-slate-100 text-xs">
                                                                     {params.map(p => (
-                                                                        <option key={p.id} value={p.id} className="font-bold text-black bg-white text-base">
+                                                                        <option key={p.id} value={p.id} className="font-bold text-black bg-white text-sm">
                                                                             {p.label}
                                                                         </option>
                                                                     ))}
                                                                 </optgroup>
                                                             ))}
                                                         </select>
-                                                        {/* Arrow icon fixed on the right of the select */}
-                                                        <span className="material-symbols-outlined text-2xl font-bold text-black absolute top-1/2 -translate-y-1/2 right-1 pointer-events-none">
+                                                        <span className="material-symbols-outlined text-lg font-bold text-black absolute top-1/2 -translate-y-1/2 right-0.5 pointer-events-none">
                                                             expand_more
                                                         </span>
                                                     </div>
-                                                    
+
                                                     {columns.length > 1 && (
-                                                        <button onClick={() => removeColumn(index)} className="p-2 text-red-600 border-2 border-transparent hover:border-red-600 bg-red-50 hover:bg-red-100 rounded transition-all cursor-pointer flex-shrink-0" title="Hapus Kolom">
-                                                            <span className="material-symbols-outlined text-2xl font-black">close</span>
+                                                        <button onClick={() => removeColumn(index)} className="p-1 text-red-600 border border-transparent hover:border-red-600 bg-red-50 hover:bg-red-100 rounded transition-all cursor-pointer flex-shrink-0" title="Hapus Kolom">
+                                                            <span className="material-symbols-outlined text-lg font-black">close</span>
                                                         </button>
                                                     )}
                                                 </div>
                                             </th>
-                                        ))}
-
-                                        {/* Tambah Kolom Button */}
-                                        <th rowSpan={2} className="px-6 py-4 bg-[#f8f9fa] align-middle text-center border-l-2 border-slate-300 min-w-[160px]">
-                                            <button onClick={addColumn} className="flex flex-col items-center justify-center w-full gap-2 p-4 bg-white text-blue-600 font-black text-lg border-2 border-dashed border-blue-400 hover:border-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer group">
-                                                <span className="material-symbols-outlined text-4xl font-black group-hover:scale-110 transition-transform">add_circle</span>
-                                                <span className="leading-tight text-center break-words w-full">Tambah Kolom</span>
-                                            </button>
-                                        </th>
-                                    </tr>
-                                    <tr>
-                                       {/* Decorative Space underneath select if we want it, or just keep it simple */}
-                                       {columns.map((colId, index) => (
-                                            <th key={`space-${index}`} className="h-2 bg-[#f8f9fa] border-slate-300"></th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -179,11 +191,11 @@ export default function HistoryPage() {
                                     {reports.map((row, rowIdx) => (
                                         <tr key={row.id} className="hover:bg-[#dbeafe] transition-colors border-b border-slate-300 group">
                                             {/* Date */}
-                                            <td className="px-6 py-4 font-black text-black text-xl sticky left-0 bg-white border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center whitespace-nowrap z-10 group-hover:bg-[#dbeafe]">
+                                            <td className="px-3 py-3 font-black text-black text-sm sticky left-0 bg-white border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center whitespace-nowrap z-10 group-hover:bg-[#dbeafe]">
                                                 {new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </td>
                                             {/* Time */}
-                                            <td className="px-6 py-4 font-black text-black text-xl sticky left-[150px] bg-slate-50 border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center z-10 group-hover:bg-[#dbeafe]">
+                                            <td className="px-2 py-3 font-black text-black text-sm sticky left-[100px] bg-slate-50 border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center z-10 group-hover:bg-[#dbeafe]">
                                                 {SHIFT_TIME_MAP[row.shift ?? ''] || row.shift}
                                             </td>
                                             

@@ -72,42 +72,36 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                         </div>
                     </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-4xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">
-                        {data.steam.flow.toFixed(0)} <span className="text-base font-normal text-slate-400">t/h</span>
+                <div className="text-right bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.15)]">
+                    <p className="text-4xl font-black text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]">
+                        {data.steam.flow.toFixed(0)} <span className="text-base font-normal text-emerald-400/70">t/h</span>
                     </p>
-                    <p className="text-xs text-text-secondary mt-1">Steam Flow</p>
+                    <p className="text-[11px] font-bold text-emerald-500/80 uppercase tracking-widest mt-0.5">Steam Flow</p>
                 </div>
             </div>
 
             <div className="p-5 flex-1 flex flex-col justify-between gap-5">
                 {/* Row 1: Furnace Temp + Vakum Boiler */}
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                         <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm text-orange-400">thermometer</span>
                             Furnace Temp
                         </p>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-xl font-bold text-white">{data.tempFurnace}</span>
+                            <span className="text-3xl font-black text-white drop-shadow-sm">{data.tempFurnace}</span>
                             <span className="text-sm text-slate-400">°C</span>
-                        </div>
-                        <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-gradient-to-r from-orange-500 to-red-500 h-full rounded-full" style={{ width: `${(data.tempFurnace / 1100) * 100}%` }}></div>
                         </div>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                         <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm text-cyan-400">compress</span>
-                            Vakum Boiler
+                            Vacuum
                         </p>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-xl font-bold text-white">{data.vakumBoiler}</span>
+                            <span className="text-3xl font-black text-white drop-shadow-sm">{data.vakumBoiler}</span>
                             <span className="text-sm text-slate-400">KPa</span>
-                        </div>
-                        <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full" style={{ width: `${Math.min(Math.abs(data.vakumBoiler) / 200 * 100, 100)}%` }}></div>
                         </div>
                     </div>
                 </div>
@@ -120,7 +114,7 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                             Hot Air
                         </p>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-xl font-bold text-white">{data.hotAir}</span>
+                            <span className="text-3xl font-black text-white drop-shadow-sm">{data.hotAir}</span>
                             <span className="text-sm text-slate-400">°C</span>
                         </div>
                     </div>
@@ -131,7 +125,7 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                             O2
                         </p>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-xl font-bold text-white">{data.o2}</span>
+                            <span className="text-3xl font-black text-white drop-shadow-sm">{data.o2}</span>
                             <span className="text-sm text-slate-400">%</span>
                         </div>
                     </div>
@@ -162,8 +156,8 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                                         Feeder {f.id}
                                     </p>
                                     {isActive ? (
-                                        <p className="text-lg font-black text-white">
-                                            {f.flow.toFixed(1)} <span className="text-[10px] font-normal text-emerald-300/70">t/h</span>
+                                        <p className="text-2xl font-black text-white">
+                                            {f.flow.toFixed(1)} <span className="text-xs font-normal text-emerald-300/70">t/h</span>
                                         </p>
                                     ) : (
                                         <p className="text-[11px] font-semibold text-slate-500 italic uppercase tracking-wider">Standby</p>
@@ -282,8 +276,8 @@ function STGCard() {
 function SteamDistribution() {
     const factories = [
         { name: 'Pabrik 1', data: STG_DATA.steamPabrik1, color: 'text-purple-400' },
-        { name: 'Pabrik 2', data: STG_DATA.steamPabrik2, color: 'text-cyan-400' },
         { name: 'Pabrik 3', data: STG_DATA.steamPabrik3, color: 'text-orange-400' },
+        { name: 'Inlet Turbin', data: STG_DATA.steamInlet, color: 'text-cyan-400' },
     ];
 
     return (
@@ -300,12 +294,11 @@ function SteamDistribution() {
                 {factories.map(f => (
                     <div key={f.name} className="bg-surface-highlight/30 hover:bg-surface-highlight p-5 rounded-lg border border-slate-700/50 hover:border-slate-500 transition-all duration-300 flex justify-between items-center hover:scale-[1.02]">
                         <div>
-                            <p className={`${f.color} text-xs font-bold uppercase mb-1`}>{f.name}</p>
-                            <p className="text-2xl font-bold text-white">{f.data.flow.toFixed(1)} <span className="text-sm font-normal text-slate-400">t/h</span></p>
+                            <p className={`${f.color} text-sm font-bold uppercase mb-1`}>{f.name}</p>
+                            <p className="text-3xl font-black text-white">{f.data.flow.toFixed(1)} <span className="text-base font-normal text-slate-400">t/h</span></p>
                         </div>
-                        <div className="text-right">
-                            <p className="text-xs text-text-secondary">Totaliser</p>
-                            <p className="text-base font-medium text-slate-300">{f.data.totaliser} ton</p>
+                        <div className={`flex items-center justify-center p-2 bg-surface-dark/50 rounded-lg border border-slate-700/30`}>
+                            <span className={`material-symbols-outlined ${f.color}`}>air</span>
                         </div>
                     </div>
                 ))}

@@ -22,17 +22,37 @@ interface CustomDropdownProps {
 
 function CustomDropdown({ value, onChange }: CustomDropdownProps) {
     const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
     const ref = useRef<HTMLDivElement>(null);
+    const searchRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                setOpen(false);
+                setSearch('');
+            }
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
+    useEffect(() => {
+        if (open) setTimeout(() => searchRef.current?.focus(), 50);
+        else setSearch('');
+    }, [open]);
+
     const selectedParam = value ? PARAMETERS.find(p => p.id === value) : null;
+    const searchLower = search.toLowerCase();
+
+    // Filter parameters by search query
+    const filteredGroups = Object.entries(groupedParameters).reduce((acc, [groupName, params]) => {
+        const filtered = search
+            ? params.filter(p => p.label.toLowerCase().includes(searchLower) || groupName.toLowerCase().includes(searchLower))
+            : params;
+        if (filtered.length > 0) acc[groupName] = filtered;
+        return acc;
+    }, {} as Record<string, typeof PARAMETERS>);
 
     return (
         <div ref={ref} className="relative w-full">
@@ -50,15 +70,36 @@ function CustomDropdown({ value, onChange }: CustomDropdownProps) {
             {/* Dropdown panel */}
             {open && (
                 <div className="absolute top-full left-0 mt-1 w-[320px] bg-white border-2 border-slate-400 rounded-lg shadow-xl z-50 overflow-hidden">
-                    <div className="max-h-[400px] overflow-y-auto custom-dropdown-scroll">
-                        {/* Pilih placeholder */}
-                        <button
-                            onClick={() => { onChange(''); setOpen(false); }}
-                            className="w-full text-left px-4 py-2.5 text-base font-bold text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"
-                        >
-                            Pilih . . .
-                        </button>
-                        {Object.entries(groupedParameters).map(([groupName, params]) => (
+                    {/* Search box */}
+                    <div className="p-2 border-b-2 border-slate-200 bg-slate-50">
+                        <div className="flex items-center gap-2 bg-white border-2 border-slate-300 rounded px-2 focus-within:border-blue-500 transition-colors">
+                            <span className="material-symbols-outlined text-slate-400 text-base">search</span>
+                            <input
+                                ref={searchRef}
+                                type="text"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Cari parameter..."
+                                className="flex-1 py-1.5 text-sm font-bold text-black outline-none bg-transparent placeholder:text-slate-400"
+                            />
+                            {search && (
+                                <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                                    <span className="material-symbols-outlined text-sm">close</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="max-h-[360px] overflow-y-auto custom-dropdown-scroll">
+                        {/* Pilih placeholder — only show when not searching */}
+                        {!search && (
+                            <button
+                                onClick={() => { onChange(''); setOpen(false); }}
+                                className="w-full text-left px-4 py-2.5 text-base font-bold text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"
+                            >
+                                Pilih . . .
+                            </button>
+                        )}
+                        {Object.entries(filteredGroups).map(([groupName, params]) => (
                             <div key={groupName}>
                                 {/* Group header */}
                                 <div className="px-4 py-2 bg-slate-100 border-y border-slate-200">
@@ -80,6 +121,11 @@ function CustomDropdown({ value, onChange }: CustomDropdownProps) {
                                 ))}
                             </div>
                         ))}
+                        {Object.keys(filteredGroups).length === 0 && (
+                            <div className="px-4 py-6 text-center text-slate-400 font-bold text-sm italic">
+                                Tidak ada parameter ditemukan
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -274,7 +320,12 @@ export default function HistoryPage() {
                                 <thead className="bg-[#f8f9fa] sticky top-0 z-20 shadow-sm border-b-4 border-slate-400">
                                     <tr>
                                         {/* Tanggal & Jam (Sticky Left) - diperkecil */}
-                                        <th className="px-3 py-3 font-black text-black text-sm uppercase tracking-wider sticky left-0 bg-[#f8f9fa] border-r-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] min-w-[100px] text-center" rowSpan={2}>Tanggal</th>
+                                        <th className="px-3 py-3 font-black text-black text-sm uppercase tracking-wider sticky left-0 bg-[#f8f9fa] border-r-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] min-w-[100px] text-center" rowSpan={2}>
+                                            <div className="flex items-center justify-center gap-1">
+                                                Tanggal
+                                                <span className="material-symbols-outlined text-base font-black text-slate-500">arrow_downward</span>
+                                            </div>
+                                        </th>
                                         <th className="px-2 py-3 font-black text-black text-sm uppercase tracking-wider sticky left-[100px] bg-[#f8f9fa] border-r-2 border-slate-300 z-30 shadow-[2px_0_0_#cbd5e1] w-16 text-center" rowSpan={2}>Jam</th>
 
                                         {/* Parameter Header - baris 1: Label judul */}

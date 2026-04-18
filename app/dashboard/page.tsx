@@ -58,17 +58,14 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
             {/* Header */}
             <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-surface-highlight/50 to-transparent">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-500/10 rounded-lg">
-                        <span className="material-symbols-outlined text-emerald-500">water_heater</span>
-                    </div>
                     <div>
-                        <h3 className="text-white font-bold text-lg">BOILER {name}</h3>
-                        <div className="flex items-center gap-1.5">
-                            <span className="relative flex h-2.5 w-2.5">
+                        <h3 className="text-white font-black text-2xl tracking-tight drop-shadow-sm">BOILER {name}</h3>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                             </span>
-                            <span className="text-emerald-500 text-xs font-bold uppercase tracking-wide">Running Normal</span>
+                            <span className="text-emerald-500 text-[10px] font-bold uppercase tracking-widest">Running</span>
                         </div>
                     </div>
                 </div>
@@ -83,23 +80,23 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
             <div className="p-5 flex-1 flex flex-col justify-between gap-5">
                 {/* Row 1: Furnace Temp + Vakum Boiler */}
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
+                    <div className="flex flex-col items-center justify-center space-y-1 text-center">
+                        <p className="text-sm text-white uppercase font-bold tracking-wider flex items-center justify-center gap-1.5">
                             <span className="material-symbols-outlined text-sm text-orange-400">thermometer</span>
                             Furnace Temp
                         </p>
-                        <div className="flex items-baseline gap-1">
+                        <div className="flex items-baseline justify-center gap-1">
                             <span className="text-3xl font-black text-white drop-shadow-sm">{data.tempFurnace}</span>
                             <span className="text-sm text-slate-400">°C</span>
                         </div>
                     </div>
 
-                    <div className="space-y-1">
-                        <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
+                    <div className="flex flex-col items-center justify-center space-y-1 text-center">
+                        <p className="text-sm text-white uppercase font-bold tracking-wider flex items-center justify-center gap-1.5">
                             <span className="material-symbols-outlined text-sm text-cyan-400">compress</span>
                             Vacuum
                         </p>
-                        <div className="flex items-baseline gap-1">
+                        <div className="flex items-baseline justify-center gap-1">
                             <span className="text-3xl font-black text-white drop-shadow-sm">{data.vakumBoiler}</span>
                             <span className="text-sm text-slate-400">KPa</span>
                         </div>
@@ -108,23 +105,23 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
 
                 {/* Row 2: Hot Air + O2 */}
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
+                    <div className="flex flex-col items-center justify-center space-y-1 text-center">
+                        <p className="text-sm text-white uppercase font-bold tracking-wider flex items-center justify-center gap-1.5">
                             <span className="material-symbols-outlined text-sm text-red-400">local_fire_department</span>
                             Hot Air
                         </p>
-                        <div className="flex items-baseline gap-1">
+                        <div className="flex items-baseline justify-center gap-1">
                             <span className="text-3xl font-black text-white drop-shadow-sm">{data.hotAir}</span>
                             <span className="text-sm text-slate-400">°C</span>
                         </div>
                     </div>
 
-                    <div className="space-y-1">
-                        <p className="text-xs text-text-secondary uppercase font-semibold tracking-wider flex items-center gap-1">
+                    <div className="flex flex-col items-center justify-center space-y-1 text-center">
+                        <p className="text-sm text-white uppercase font-bold tracking-wider flex items-center justify-center gap-1.5">
                             <span className="material-symbols-outlined text-sm text-green-400">science</span>
                             O2
                         </p>
-                        <div className="flex items-baseline gap-1">
+                        <div className="flex items-baseline justify-center gap-1">
                             <span className="text-3xl font-black text-white drop-shadow-sm">{data.o2}</span>
                             <span className="text-sm text-slate-400">%</span>
                         </div>

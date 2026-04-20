@@ -1,3 +1,8 @@
+/** Supabase may return one-to-one relations as a single object or as an array[0]. */
+function one(val: any): any {
+    return Array.isArray(val) ? val[0] : val;
+}
+
 export interface ParameterDef {
     id: string;
     label: string;
@@ -21,7 +26,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_steam?.[0]?.prod_boiler_a_00 ?? null
+            ? one(r.daily_report_steam)?.prod_boiler_a_00 ?? null
             : r.shift_boiler?.find((b: any) => b.boiler === 'A')?.flow_steam ?? null
     },
     {
@@ -71,7 +76,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: '°C',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_turbine_misc?.[0]?.temp_furnace_a ?? null
+            ? one(r.daily_report_turbine_misc)?.temp_furnace_a ?? null
             : r.shift_boiler?.find((b: any) => b.boiler === 'A')?.temp_furnace ?? null
     },
     {
@@ -139,7 +144,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_steam?.[0]?.prod_boiler_b_00 ?? null
+            ? one(r.daily_report_steam)?.prod_boiler_b_00 ?? null
             : r.shift_boiler?.find((b: any) => b.boiler === 'B')?.flow_steam ?? null
     },
     {
@@ -189,7 +194,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: '°C',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_turbine_misc?.[0]?.temp_furnace_b ?? null
+            ? one(r.daily_report_turbine_misc)?.temp_furnace_b ?? null
             : r.shift_boiler?.find((b: any) => b.boiler === 'B')?.temp_furnace ?? null
     },
     {
@@ -265,7 +270,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Kg/cm²',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_turbine_misc?.[0]?.steam_inlet_press ?? null
+            ? one(r.daily_report_turbine_misc)?.steam_inlet_press ?? null
             : r.shift_turbin?.[0]?.press_steam ?? null
     },
     {
@@ -275,7 +280,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: '°C',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_turbine_misc?.[0]?.steam_inlet_temp ?? null
+            ? one(r.daily_report_turbine_misc)?.steam_inlet_temp ?? null
             : r.shift_turbin?.[0]?.temp_steam ?? null
     },
     {
@@ -309,7 +314,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_steam?.[0]?.fully_condens_00 ?? null
+            ? one(r.daily_report_steam)?.fully_condens_00 ?? null
             : r.shift_turbin?.[0]?.flow_cond ?? null
     },
     {
@@ -327,7 +332,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: '°C',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_turbine_misc?.[0]?.thrust_bearing_temp ?? null
+            ? one(r.daily_report_turbine_misc)?.thrust_bearing_temp ?? null
             : r.shift_turbin?.[0]?.thrust_bearing ?? null
     },
     {
@@ -353,7 +358,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'mm',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_turbine_misc?.[0]?.axial_displacement ?? null
+            ? one(r.daily_report_turbine_misc)?.axial_displacement ?? null
             : r.shift_turbin?.[0]?.axial_displacement ?? null
     },
     {
@@ -413,7 +418,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'MW',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_power?.[0]?.gen_00 ?? null
+            ? one(r.daily_report_power)?.gen_00 ?? null
             : r.shift_generator_gi?.[0]?.gen_load ?? null
     },
     {
@@ -463,7 +468,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'MW',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_turbine_misc?.[0]?.gi_sum_p ?? null
+            ? one(r.daily_report_turbine_misc)?.gi_sum_p ?? null
             : r.shift_generator_gi?.[0]?.gi_sum_p ?? null
     },
     {
@@ -491,7 +496,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_steam?.[0]?.mps_i_00 ?? null
+            ? one(r.daily_report_steam)?.mps_i_00 ?? null
             : r.shift_steam_dist?.[0]?.pabrik1_flow ?? null
     },
     {
@@ -509,7 +514,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_steam?.[0]?.lps_ii_00 ?? null
+            ? one(r.daily_report_steam)?.lps_ii_00 ?? null
             : r.shift_steam_dist?.[0]?.pabrik2_flow ?? null
     },
     {
@@ -527,7 +532,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_steam?.[0]?.mps_3a_00 ?? null
+            ? one(r.daily_report_steam)?.mps_3a_00 ?? null
             : r.shift_steam_dist?.[0]?.pabrik3a_flow ?? null
     },
     {
@@ -545,7 +550,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_steam?.[0]?.lps_3a_00 ?? null
+            ? one(r.daily_report_steam)?.lps_3a_00 ?? null
             : r.shift_steam_dist?.[0]?.pabrik3b_flow ?? null
     },
 
@@ -557,7 +562,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'MW',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_power?.[0]?.power_ubb ?? null
+            ? one(r.daily_report_power)?.power_ubb ?? null
             : r.shift_power_dist?.[0]?.power_ubb ?? null
     },
     {
@@ -567,7 +572,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'MW',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_power?.[0]?.power_pabrik2 ?? null
+            ? one(r.daily_report_power)?.power_pabrik2 ?? null
             : r.shift_power_dist?.[0]?.power_pabrik2 ?? null
     },
     {
@@ -577,7 +582,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'MW',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_power?.[0]?.power_pabrik3a ?? null
+            ? one(r.daily_report_power)?.power_pabrik3a ?? null
             : r.shift_power_dist?.[0]?.power_pabrik3a ?? null
     },
     {
@@ -587,7 +592,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'MW',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_power?.[0]?.power_revamping ?? null
+            ? one(r.daily_report_power)?.power_revamping ?? null
             : r.shift_power_dist?.[0]?.power_revamping ?? null
     },
     {
@@ -597,7 +602,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'MW',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_power?.[0]?.power_pie ?? null
+            ? one(r.daily_report_power)?.power_pie ?? null
             : r.shift_power_dist?.[0]?.power_pie ?? null
     },
     {
@@ -731,7 +736,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_coal?.[0]?.coal_a_00 ?? null
+            ? one(r.daily_report_coal)?.coal_a_00 ?? null
             : r.shift_coal_bunker?.[0]?.feeder_a ?? null
     },
     {
@@ -741,7 +746,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_coal?.[0]?.coal_b_00 ?? null
+            ? one(r.daily_report_coal)?.coal_b_00 ?? null
             : r.shift_coal_bunker?.[0]?.feeder_b ?? null
     },
     {
@@ -751,7 +756,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_coal?.[0]?.coal_c_00 ?? null
+            ? one(r.daily_report_coal)?.coal_c_00 ?? null
             : r.shift_coal_bunker?.[0]?.feeder_c ?? null
     },
     {
@@ -761,7 +766,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_coal?.[0]?.coal_d_00 ?? null
+            ? one(r.daily_report_coal)?.coal_d_00 ?? null
             : r.shift_coal_bunker?.[0]?.feeder_d ?? null
     },
     {
@@ -771,7 +776,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_coal?.[0]?.coal_e_00 ?? null
+            ? one(r.daily_report_coal)?.coal_e_00 ?? null
             : r.shift_coal_bunker?.[0]?.feeder_e ?? null
     },
     {
@@ -781,7 +786,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton/h',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_coal?.[0]?.coal_f_00 ?? null
+            ? one(r.daily_report_coal)?.coal_f_00 ?? null
             : r.shift_coal_bunker?.[0]?.feeder_f ?? null
     },
 
@@ -955,7 +960,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'm³',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_stock_tank?.[0]?.demin_level_00 ?? null
+            ? one(r.daily_report_stock_tank)?.demin_level_00 ?? null
             : r.shift_tankyard?.[0]?.tk_demin ?? null
     },
     {
@@ -965,7 +970,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'm³',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? r.daily_report_stock_tank?.[0]?.rcw_level_00 ?? null
+            ? one(r.daily_report_stock_tank)?.rcw_level_00 ?? null
             : r.shift_tankyard?.[0]?.tk_rcw ?? null
     },
     {
@@ -975,7 +980,7 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'm³',
         source: 'both',
         extract: (r) => r._source === 'daily'
-            ? (r.daily_report_stock_tank?.[0]?.solar_tank_a ?? null)
+            ? (one(r.daily_report_stock_tank)?.solar_tank_a ?? null)
             : r.shift_tankyard?.[0]?.tk_solar_ab ?? null
     },
 
@@ -990,7 +995,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.prod_boiler_a_24 ?? null
+        extract: (r) => one(r.daily_report_steam)?.prod_boiler_a_24 ?? null
     },
     {
         id: 'daily_steam_prod_b_24',
@@ -998,7 +1003,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.prod_boiler_b_24 ?? null
+        extract: (r) => one(r.daily_report_steam)?.prod_boiler_b_24 ?? null
     },
     {
         id: 'daily_steam_prod_total_24',
@@ -1006,7 +1011,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.prod_total_24 ?? null
+        extract: (r) => one(r.daily_report_steam)?.prod_total_24 ?? null
     },
     {
         id: 'daily_steam_inlet_turbin_24',
@@ -1014,7 +1019,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.inlet_turbine_24 ?? null
+        extract: (r) => one(r.daily_report_steam)?.inlet_turbine_24 ?? null
     },
     {
         id: 'daily_steam_prod_a_00',
@@ -1022,7 +1027,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'T/H',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.prod_boiler_a_00 ?? null
+        extract: (r) => one(r.daily_report_steam)?.prod_boiler_a_00 ?? null
     },
     {
         id: 'daily_steam_prod_b_00',
@@ -1030,7 +1035,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'T/H',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.prod_boiler_b_00 ?? null
+        extract: (r) => one(r.daily_report_steam)?.prod_boiler_b_00 ?? null
     },
     {
         id: 'daily_steam_prod_total_00',
@@ -1038,7 +1043,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'T/H',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.prod_total_00 ?? null
+        extract: (r) => one(r.daily_report_steam)?.prod_total_00 ?? null
     },
     {
         id: 'daily_steam_mps_i_24',
@@ -1046,7 +1051,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.mps_i_24 ?? null
+        extract: (r) => one(r.daily_report_steam)?.mps_i_24 ?? null
     },
     {
         id: 'daily_steam_mps_3a_24',
@@ -1054,7 +1059,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.mps_3a_24 ?? null
+        extract: (r) => one(r.daily_report_steam)?.mps_3a_24 ?? null
     },
     {
         id: 'daily_steam_lps_ii_24',
@@ -1062,7 +1067,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.lps_ii_24 ?? null
+        extract: (r) => one(r.daily_report_steam)?.lps_ii_24 ?? null
     },
     {
         id: 'daily_steam_lps_3a_24',
@@ -1070,7 +1075,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Steam',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_steam?.[0]?.lps_3a_24 ?? null
+        extract: (r) => one(r.daily_report_steam)?.lps_3a_24 ?? null
     },
 
     // ─── HARIAN: POWER ───
@@ -1080,7 +1085,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Power',
         unit: 'MWh',
         source: 'daily',
-        extract: (r) => r.daily_report_power?.[0]?.gen_24 ?? null
+        extract: (r) => one(r.daily_report_power)?.gen_24 ?? null
     },
     {
         id: 'daily_power_gen_00',
@@ -1088,7 +1093,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Power',
         unit: 'MW',
         source: 'daily',
-        extract: (r) => r.daily_report_power?.[0]?.gen_00 ?? null
+        extract: (r) => one(r.daily_report_power)?.gen_00 ?? null
     },
     {
         id: 'daily_power_dist_ib_24',
@@ -1096,7 +1101,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Power',
         unit: 'MWh',
         source: 'daily',
-        extract: (r) => r.daily_report_power?.[0]?.dist_ib_24 ?? null
+        extract: (r) => one(r.daily_report_power)?.dist_ib_24 ?? null
     },
     {
         id: 'daily_power_dist_ii_24',
@@ -1104,7 +1109,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Power',
         unit: 'MWh',
         source: 'daily',
-        extract: (r) => r.daily_report_power?.[0]?.dist_ii_24 ?? null
+        extract: (r) => one(r.daily_report_power)?.dist_ii_24 ?? null
     },
     {
         id: 'daily_power_dist_3a_24',
@@ -1112,7 +1117,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Power',
         unit: 'MWh',
         source: 'daily',
-        extract: (r) => r.daily_report_power?.[0]?.dist_3a_24 ?? null
+        extract: (r) => one(r.daily_report_power)?.dist_3a_24 ?? null
     },
     {
         id: 'daily_power_dist_3b_24',
@@ -1120,7 +1125,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Power',
         unit: 'MWh',
         source: 'daily',
-        extract: (r) => r.daily_report_power?.[0]?.dist_3b_24 ?? null
+        extract: (r) => one(r.daily_report_power)?.dist_3b_24 ?? null
     },
     {
         id: 'daily_power_exsport_24',
@@ -1128,7 +1133,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Power',
         unit: 'MWh',
         source: 'daily',
-        extract: (r) => r.daily_report_power?.[0]?.exsport_24 ?? null
+        extract: (r) => one(r.daily_report_power)?.exsport_24 ?? null
     },
     {
         id: 'daily_power_pie_pln_24',
@@ -1136,7 +1141,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Power',
         unit: 'MWh',
         source: 'daily',
-        extract: (r) => r.daily_report_power?.[0]?.pie_pln_24 ?? null
+        extract: (r) => one(r.daily_report_power)?.pie_pln_24 ?? null
     },
 
     // ─── HARIAN: COAL ───
@@ -1146,7 +1151,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Coal',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_coal?.[0]?.total_boiler_a_24 ?? null
+        extract: (r) => one(r.daily_report_coal)?.total_boiler_a_24 ?? null
     },
     {
         id: 'daily_coal_total_b_24',
@@ -1154,7 +1159,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Coal',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_coal?.[0]?.total_boiler_b_24 ?? null
+        extract: (r) => one(r.daily_report_coal)?.total_boiler_b_24 ?? null
     },
     {
         id: 'daily_coal_grand_total_24',
@@ -1162,7 +1167,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Coal',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_coal?.[0]?.grand_total_24 ?? null
+        extract: (r) => one(r.daily_report_coal)?.grand_total_24 ?? null
     },
     {
         id: 'daily_coal_grand_total_00',
@@ -1170,7 +1175,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Coal',
         unit: 'Ton/Jam',
         source: 'daily',
-        extract: (r) => r.daily_report_coal?.[0]?.grand_total_00 ?? null
+        extract: (r) => one(r.daily_report_coal)?.grand_total_00 ?? null
     },
 
     // ─── HARIAN: TURBINE MISC ───
@@ -1180,7 +1185,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Turbine & Misc',
         unit: 'Ton/Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_turbine_misc?.[0]?.consumption_rate_a ?? null
+        extract: (r) => one(r.daily_report_turbine_misc)?.consumption_rate_a ?? null
     },
     {
         id: 'daily_consumption_rate_b',
@@ -1188,7 +1193,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Turbine & Misc',
         unit: 'Ton/Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_turbine_misc?.[0]?.consumption_rate_b ?? null
+        extract: (r) => one(r.daily_report_turbine_misc)?.consumption_rate_b ?? null
     },
     {
         id: 'daily_consumption_rate_avg',
@@ -1196,7 +1201,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Turbine & Misc',
         unit: 'Ton/Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_turbine_misc?.[0]?.consumption_rate_avg ?? null
+        extract: (r) => one(r.daily_report_turbine_misc)?.consumption_rate_avg ?? null
     },
 
     // ─── HARIAN: STOCK & TANK ───
@@ -1206,7 +1211,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Stock & Tank',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_stock_tank?.[0]?.stock_batubara ?? null
+        extract: (r) => one(r.daily_report_stock_tank)?.stock_batubara ?? null
     },
     {
         id: 'daily_solar_tank_total',
@@ -1214,7 +1219,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Stock & Tank',
         unit: 'Liter',
         source: 'daily',
-        extract: (r) => r.daily_report_stock_tank?.[0]?.solar_tank_total ?? null
+        extract: (r) => one(r.daily_report_stock_tank)?.solar_tank_total ?? null
     },
     {
         id: 'daily_bfw_total',
@@ -1222,7 +1227,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Stock & Tank',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_stock_tank?.[0]?.bfw_total ?? null
+        extract: (r) => one(r.daily_report_stock_tank)?.bfw_total ?? null
     },
     {
         id: 'daily_chemical_phosphat',
@@ -1230,7 +1235,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Stock & Tank',
         unit: 'Kg',
         source: 'daily',
-        extract: (r) => r.daily_report_stock_tank?.[0]?.chemical_phosphat ?? null
+        extract: (r) => one(r.daily_report_stock_tank)?.chemical_phosphat ?? null
     },
     {
         id: 'daily_chemical_amin',
@@ -1238,7 +1243,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Stock & Tank',
         unit: 'Kg',
         source: 'daily',
-        extract: (r) => r.daily_report_stock_tank?.[0]?.chemical_amin ?? null
+        extract: (r) => one(r.daily_report_stock_tank)?.chemical_amin ?? null
     },
     {
         id: 'daily_chemical_hydrasin',
@@ -1246,7 +1251,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Stock & Tank',
         unit: 'Kg',
         source: 'daily',
-        extract: (r) => r.daily_report_stock_tank?.[0]?.chemical_hydrasin ?? null
+        extract: (r) => one(r.daily_report_stock_tank)?.chemical_hydrasin ?? null
     },
 
     // ─── HARIAN: COAL TRANSFER ───
@@ -1256,7 +1261,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Coal Transfer',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_coal_transfer?.[0]?.darat_24_ton ?? null
+        extract: (r) => one(r.daily_report_coal_transfer)?.darat_24_ton ?? null
     },
     {
         id: 'daily_darat_total_ton',
@@ -1264,7 +1269,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Coal Transfer',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_coal_transfer?.[0]?.darat_total_ton ?? null
+        extract: (r) => one(r.daily_report_coal_transfer)?.darat_total_ton ?? null
     },
     {
         id: 'daily_laut_24_ton',
@@ -1272,7 +1277,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Coal Transfer',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_coal_transfer?.[0]?.laut_24_ton ?? null
+        extract: (r) => one(r.daily_report_coal_transfer)?.laut_24_ton ?? null
     },
     {
         id: 'daily_laut_total_ton',
@@ -1280,7 +1285,7 @@ export const PARAMETERS: ParameterDef[] = [
         group: 'Harian: Coal Transfer',
         unit: 'Ton',
         source: 'daily',
-        extract: (r) => r.daily_report_coal_transfer?.[0]?.laut_total_ton ?? null
+        extract: (r) => one(r.daily_report_coal_transfer)?.laut_total_ton ?? null
     },
 ];
 

@@ -297,9 +297,10 @@ async function saveShiftRow(f: string[], shift: 'pagi' | 'sore' | 'malam', date:
         || (isPagi ? parseStr(f[SC.boiler_kasi_pagi]) : parseStr(f[SC.boiler_kasi_ms]))
         || '';
 
+    const logsheetTime = shift === 'pagi' ? '14:00' : shift === 'sore' ? '22:00' : '06:00';
     const { data: report, error: reportErr } = await supabase
         .from('shift_reports')
-        .upsert({ date, shift, group_name: groupName, supervisor, status: 'submitted' },
+        .upsert({ date, shift, group_name: groupName, supervisor, status: 'submitted', logsheet_time: logsheetTime },
             { onConflict: 'date,shift,group_name' })
         .select('id').single();
 

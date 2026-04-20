@@ -211,6 +211,7 @@ export default function HistoryPage() {
 
             // Tag rows with _source for rendering
             const shiftRows = (shiftRes.data || []).map((r: any) => ({ ...r, _source: 'shift' as const }));
+
             const dailyRows = (dailyRes.data || []).map((r: any) => ({ ...r, _source: 'daily' as const, shift: null }));
 
             // Merge and sort: by date desc, then within date: 24 → 22 → 14 → 06

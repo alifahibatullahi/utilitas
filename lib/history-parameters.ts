@@ -58,8 +58,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow BFW Boiler A',
         group: 'Boiler A',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'A')?.flow_bfw ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_stock_tank)?.flow_bfw_a ?? null
+            : r.shift_boiler?.find((b: any) => b.boiler === 'A')?.flow_bfw ?? null
     },
     {
         id: 'boiler_a_press_bfw',
@@ -176,8 +178,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow BFW Boiler B',
         group: 'Boiler B',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'B')?.flow_bfw ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_stock_tank)?.flow_bfw_b ?? null
+            : r.shift_boiler?.find((b: any) => b.boiler === 'B')?.flow_bfw ?? null
     },
     {
         id: 'boiler_b_press_bfw',
@@ -426,40 +430,50 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Gen Ampere',
         group: 'Generator',
         unit: 'A',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gen_ampere ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_turbine_misc)?.gen_ampere ?? null
+            : r.shift_generator_gi?.[0]?.gen_ampere ?? null
     },
     {
         id: 'gen_amp_react',
         label: 'Gen Amp Reaktif',
         group: 'Generator',
         unit: 'A',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gen_amp_react ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_turbine_misc)?.gen_amp_react ?? null
+            : r.shift_generator_gi?.[0]?.gen_amp_react ?? null
     },
     {
         id: 'gen_tegangan',
         label: 'Gen Tegangan',
         group: 'Generator',
         unit: 'kV',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gen_tegangan ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_turbine_misc)?.gen_tegangan ?? null
+            : r.shift_generator_gi?.[0]?.gen_tegangan ?? null
     },
     {
         id: 'gen_cos_phi',
         label: 'Gen Cos Phi',
         group: 'Generator',
         unit: '-',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gen_cos_phi ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_turbine_misc)?.gen_cos_phi ?? null
+            : r.shift_generator_gi?.[0]?.gen_cos_phi ?? null
     },
     {
         id: 'gen_frequensi',
         label: 'Gen Frekuensi',
         group: 'Generator',
         unit: 'Hz',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gen_frequensi ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_turbine_misc)?.gen_frequensi ?? null
+            : r.shift_generator_gi?.[0]?.gen_frequensi ?? null
     },
     {
         id: 'gi_sum_p',
@@ -476,16 +490,20 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'GI Sum Q',
         group: 'Generator',
         unit: 'MVAR',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gi_sum_q ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_turbine_misc)?.gi_sum_q ?? null
+            : r.shift_generator_gi?.[0]?.gi_sum_q ?? null
     },
     {
         id: 'gi_cos_phi',
         label: 'GI Cos Phi',
         group: 'Generator',
         unit: '-',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gi_cos_phi ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_turbine_misc)?.gi_cos_phi ?? null
+            : r.shift_generator_gi?.[0]?.gi_cos_phi ?? null
     },
 
     // ─── DISTRIBUSI STEAM ───
@@ -668,16 +686,20 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Silo A',
         group: 'ESP & Handling',
         unit: '%',
-        source: 'shift',
-        extract: (r) => r.shift_esp_handling?.[0]?.silo_a ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_stock_tank)?.silo_a_pct ?? null
+            : r.shift_esp_handling?.[0]?.silo_a ?? null
     },
     {
         id: 'silo_b',
         label: 'Silo B',
         group: 'ESP & Handling',
         unit: '%',
-        source: 'shift',
-        extract: (r) => r.shift_esp_handling?.[0]?.silo_b ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? one(r.daily_report_stock_tank)?.silo_b_pct ?? null
+            : r.shift_esp_handling?.[0]?.silo_b ?? null
     },
 
     // ─── COAL BUNKER (SHIFT) ───

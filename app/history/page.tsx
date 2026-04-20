@@ -69,7 +69,7 @@ function CustomDropdown({ value, onChange }: CustomDropdownProps) {
 
             {/* Dropdown panel */}
             {open && (
-                <div className="absolute top-full left-0 mt-1 w-[520px] bg-white border-2 border-slate-400 rounded-lg shadow-xl z-50 overflow-hidden">
+                <div className="absolute top-full left-0 mt-1 w-[900px] bg-white border-2 border-slate-400 rounded-lg shadow-xl z-50 overflow-hidden">
                     {/* Search box */}
                     <div className="p-2 border-b-2 border-slate-200 bg-slate-50">
                         <div className="flex items-center gap-2 bg-white border-2 border-slate-300 rounded px-2 focus-within:border-blue-500 transition-colors">
@@ -106,7 +106,7 @@ function CustomDropdown({ value, onChange }: CustomDropdownProps) {
                                     <span className="font-black text-slate-700 text-sm uppercase tracking-wider">{groupName}</span>
                                 </div>
                                 {/* Grid 2 kolom */}
-                                <div className="grid grid-cols-2">
+                                <div className="grid grid-cols-4">
                                 {params.map(p => (
                                     <button
                                         key={p.id}

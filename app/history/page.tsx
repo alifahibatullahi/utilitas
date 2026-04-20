@@ -192,7 +192,8 @@ export default function HistoryPage() {
                     daily_report_coal (*),
                     daily_report_turbine_misc (*),
                     daily_report_stock_tank (*),
-                    daily_report_coal_transfer (*)
+                    daily_report_coal_transfer (*),
+                    daily_report_totalizer (*)
                 `)
                 .order('date', { ascending: false })
                 .limit(500);

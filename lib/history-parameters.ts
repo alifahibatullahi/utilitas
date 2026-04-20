@@ -19,8 +19,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow Steam Boiler A',
         group: 'Boiler A',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'A')?.flow_steam ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_steam?.[0]?.prod_boiler_a_00 ?? null
+            : r.shift_boiler?.find((b: any) => b.boiler === 'A')?.flow_steam ?? null
     },
     {
         id: 'boiler_a_press_steam',
@@ -67,8 +69,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Temp Furnace Boiler A',
         group: 'Boiler A',
         unit: '°C',
-        source: 'shift',
-        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'A')?.temp_furnace ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_turbine_misc?.[0]?.temp_furnace_a ?? null
+            : r.shift_boiler?.find((b: any) => b.boiler === 'A')?.temp_furnace ?? null
     },
     {
         id: 'boiler_a_temp_flue_gas',
@@ -133,8 +137,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow Steam Boiler B',
         group: 'Boiler B',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'B')?.flow_steam ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_steam?.[0]?.prod_boiler_b_00 ?? null
+            : r.shift_boiler?.find((b: any) => b.boiler === 'B')?.flow_steam ?? null
     },
     {
         id: 'boiler_b_press_steam',
@@ -181,8 +187,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Temp Furnace Boiler B',
         group: 'Boiler B',
         unit: '°C',
-        source: 'shift',
-        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'B')?.temp_furnace ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_turbine_misc?.[0]?.temp_furnace_b ?? null
+            : r.shift_boiler?.find((b: any) => b.boiler === 'B')?.temp_furnace ?? null
     },
     {
         id: 'boiler_b_temp_flue_gas',
@@ -255,16 +263,20 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Pressure Steam Inlet Turbin',
         group: 'Turbin',
         unit: 'Kg/cm²',
-        source: 'shift',
-        extract: (r) => r.shift_turbin?.[0]?.press_steam ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_turbine_misc?.[0]?.steam_inlet_press ?? null
+            : r.shift_turbin?.[0]?.press_steam ?? null
     },
     {
         id: 'turbin_temp_steam',
         label: 'Temp Steam Inlet Turbin',
         group: 'Turbin',
         unit: '°C',
-        source: 'shift',
-        extract: (r) => r.shift_turbin?.[0]?.temp_steam ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_turbine_misc?.[0]?.steam_inlet_temp ?? null
+            : r.shift_turbin?.[0]?.temp_steam ?? null
     },
     {
         id: 'turbin_vacuum',
@@ -295,8 +307,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow Condensate',
         group: 'Turbin',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_turbin?.[0]?.flow_cond ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_steam?.[0]?.fully_condens_00 ?? null
+            : r.shift_turbin?.[0]?.flow_cond ?? null
     },
     {
         id: 'turbin_vibrasi',
@@ -311,8 +325,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Thrust Bearing',
         group: 'Turbin',
         unit: '°C',
-        source: 'shift',
-        extract: (r) => r.shift_turbin?.[0]?.thrust_bearing ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_turbine_misc?.[0]?.thrust_bearing_temp ?? null
+            : r.shift_turbin?.[0]?.thrust_bearing ?? null
     },
     {
         id: 'turbin_metal_bearing',
@@ -335,8 +351,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Axial Displacement',
         group: 'Turbin',
         unit: 'mm',
-        source: 'shift',
-        extract: (r) => r.shift_turbin?.[0]?.axial_displacement ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_turbine_misc?.[0]?.axial_displacement ?? null
+            : r.shift_turbin?.[0]?.axial_displacement ?? null
     },
     {
         id: 'turbin_press_deaerator',
@@ -390,11 +408,13 @@ export const PARAMETERS: ParameterDef[] = [
     // ─── GENERATOR ───
     {
         id: 'gen_load',
-        label: 'Gen Load',
+        label: 'STG UBB Load',
         group: 'Generator',
         unit: 'MW',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gen_load ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_power?.[0]?.gen_00 ?? null
+            : r.shift_generator_gi?.[0]?.gen_load ?? null
     },
     {
         id: 'gen_ampere',
@@ -441,8 +461,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'GI Sum P',
         group: 'Generator',
         unit: 'MW',
-        source: 'shift',
-        extract: (r) => r.shift_generator_gi?.[0]?.gi_sum_p ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_turbine_misc?.[0]?.gi_sum_p ?? null
+            : r.shift_generator_gi?.[0]?.gi_sum_p ?? null
     },
     {
         id: 'gi_sum_q',
@@ -467,8 +489,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow Steam Pabrik 1B',
         group: 'Distribusi Steam',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_steam_dist?.[0]?.pabrik1_flow ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_steam?.[0]?.mps_i_00 ?? null
+            : r.shift_steam_dist?.[0]?.pabrik1_flow ?? null
     },
     {
         id: 'dist_pabrik1_temp',
@@ -483,8 +507,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow Steam Pabrik 2',
         group: 'Distribusi Steam',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_steam_dist?.[0]?.pabrik2_flow ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_steam?.[0]?.lps_ii_00 ?? null
+            : r.shift_steam_dist?.[0]?.pabrik2_flow ?? null
     },
     {
         id: 'dist_pabrik2_temp',
@@ -499,8 +525,10 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow Steam Pabrik 3A',
         group: 'Distribusi Steam',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_steam_dist?.[0]?.pabrik3a_flow ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_steam?.[0]?.mps_3a_00 ?? null
+            : r.shift_steam_dist?.[0]?.pabrik3a_flow ?? null
     },
     {
         id: 'dist_pabrik3a_temp',
@@ -515,54 +543,66 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Flow Steam Pabrik 3B',
         group: 'Distribusi Steam',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_steam_dist?.[0]?.pabrik3b_flow ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_steam?.[0]?.lps_3a_00 ?? null
+            : r.shift_steam_dist?.[0]?.pabrik3b_flow ?? null
     },
 
-    // ─── DISTRIBUSI POWER (SHIFT) ───
+    // ─── DISTRIBUSI POWER ───
     {
         id: 'power_ubb',
-        label: 'Power UBB',
+        label: 'Power Internal UBB',
         group: 'Distribusi Power',
         unit: 'MW',
-        source: 'shift',
-        extract: (r) => r.shift_power_dist?.[0]?.power_ubb ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_power?.[0]?.power_ubb ?? null
+            : r.shift_power_dist?.[0]?.power_ubb ?? null
     },
     {
         id: 'power_pabrik2',
         label: 'Power Pabrik 2',
         group: 'Distribusi Power',
         unit: 'MW',
-        source: 'shift',
-        extract: (r) => r.shift_power_dist?.[0]?.power_pabrik2 ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_power?.[0]?.power_pabrik2 ?? null
+            : r.shift_power_dist?.[0]?.power_pabrik2 ?? null
     },
     {
         id: 'power_pabrik3a',
         label: 'Power Pabrik 3A',
         group: 'Distribusi Power',
         unit: 'MW',
-        source: 'shift',
-        extract: (r) => r.shift_power_dist?.[0]?.power_pabrik3a ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_power?.[0]?.power_pabrik3a ?? null
+            : r.shift_power_dist?.[0]?.power_pabrik3a ?? null
     },
     {
         id: 'power_revamping',
-        label: 'Power Revamping',
+        label: 'Power Pabrik 3B',
         group: 'Distribusi Power',
         unit: 'MW',
-        source: 'shift',
-        extract: (r) => r.shift_power_dist?.[0]?.power_revamping ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_power?.[0]?.power_revamping ?? null
+            : r.shift_power_dist?.[0]?.power_revamping ?? null
     },
     {
         id: 'power_pie',
-        label: 'Power PIE',
+        label: 'Power PIU',
         group: 'Distribusi Power',
         unit: 'MW',
-        source: 'shift',
-        extract: (r) => r.shift_power_dist?.[0]?.power_pie ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_power?.[0]?.power_pie ?? null
+            : r.shift_power_dist?.[0]?.power_pie ?? null
     },
     {
         id: 'power_pabrik3b',
-        label: 'Power Pabrik 3B',
+        label: 'Power Pabrik 3B (Shift)',
         group: 'Distribusi Power',
         unit: 'MW',
         source: 'shift',
@@ -686,51 +726,63 @@ export const PARAMETERS: ParameterDef[] = [
     },
     {
         id: 'feeder_a',
-        label: 'Feeder A',
+        label: 'Flow Coal Feeder A',
         group: 'Coal Bunker',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_coal_bunker?.[0]?.feeder_a ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_coal?.[0]?.coal_a_00 ?? null
+            : r.shift_coal_bunker?.[0]?.feeder_a ?? null
     },
     {
         id: 'feeder_b',
-        label: 'Feeder B',
+        label: 'Flow Coal Feeder B',
         group: 'Coal Bunker',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_coal_bunker?.[0]?.feeder_b ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_coal?.[0]?.coal_b_00 ?? null
+            : r.shift_coal_bunker?.[0]?.feeder_b ?? null
     },
     {
         id: 'feeder_c',
-        label: 'Feeder C',
+        label: 'Flow Coal Feeder C',
         group: 'Coal Bunker',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_coal_bunker?.[0]?.feeder_c ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_coal?.[0]?.coal_c_00 ?? null
+            : r.shift_coal_bunker?.[0]?.feeder_c ?? null
     },
     {
         id: 'feeder_d',
-        label: 'Feeder D',
+        label: 'Flow Coal Feeder D',
         group: 'Coal Bunker',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_coal_bunker?.[0]?.feeder_d ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_coal?.[0]?.coal_d_00 ?? null
+            : r.shift_coal_bunker?.[0]?.feeder_d ?? null
     },
     {
         id: 'feeder_e',
-        label: 'Feeder E',
+        label: 'Flow Coal Feeder E',
         group: 'Coal Bunker',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_coal_bunker?.[0]?.feeder_e ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_coal?.[0]?.coal_e_00 ?? null
+            : r.shift_coal_bunker?.[0]?.feeder_e ?? null
     },
     {
         id: 'feeder_f',
-        label: 'Feeder F',
+        label: 'Flow Coal Feeder F',
         group: 'Coal Bunker',
         unit: 'Ton/h',
-        source: 'shift',
-        extract: (r) => r.shift_coal_bunker?.[0]?.feeder_f ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_coal?.[0]?.coal_f_00 ?? null
+            : r.shift_coal_bunker?.[0]?.feeder_f ?? null
     },
 
     // ─── WATER QUALITY ───
@@ -901,24 +953,30 @@ export const PARAMETERS: ParameterDef[] = [
         label: 'Tank Demin Level',
         group: 'Tank Level',
         unit: 'm³',
-        source: 'shift',
-        extract: (r) => r.shift_tankyard?.[0]?.tk_demin ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_stock_tank?.[0]?.demin_level_00 ?? null
+            : r.shift_tankyard?.[0]?.tk_demin ?? null
     },
     {
         id: 'tk_rcw_level',
         label: 'Tank RCW Level',
         group: 'Tank Level',
         unit: 'm³',
-        source: 'shift',
-        extract: (r) => r.shift_tankyard?.[0]?.tk_rcw ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? r.daily_report_stock_tank?.[0]?.rcw_level_00 ?? null
+            : r.shift_tankyard?.[0]?.tk_rcw ?? null
     },
     {
         id: 'tk_solar_level',
         label: 'Tank Solar Level',
         group: 'Tank Level',
         unit: 'm³',
-        source: 'shift',
-        extract: (r) => r.shift_tankyard?.[0]?.tk_solar_ab ?? null
+        source: 'both',
+        extract: (r) => r._source === 'daily'
+            ? (r.daily_report_stock_tank?.[0]?.solar_tank_a ?? null)
+            : r.shift_tankyard?.[0]?.tk_solar_ab ?? null
     },
 
     // ═══════════════════════════════════════════
@@ -1117,22 +1175,6 @@ export const PARAMETERS: ParameterDef[] = [
 
     // ─── HARIAN: TURBINE MISC ───
     {
-        id: 'daily_temp_furnace_a',
-        label: 'Temp Furnace A (Harian)',
-        group: 'Harian: Turbine & Misc',
-        unit: '°C',
-        source: 'daily',
-        extract: (r) => r.daily_report_turbine_misc?.[0]?.temp_furnace_a ?? null
-    },
-    {
-        id: 'daily_temp_furnace_b',
-        label: 'Temp Furnace B (Harian)',
-        group: 'Harian: Turbine & Misc',
-        unit: '°C',
-        source: 'daily',
-        extract: (r) => r.daily_report_turbine_misc?.[0]?.temp_furnace_b ?? null
-    },
-    {
         id: 'daily_consumption_rate_a',
         label: 'Consumption Rate A',
         group: 'Harian: Turbine & Misc',
@@ -1165,22 +1207,6 @@ export const PARAMETERS: ParameterDef[] = [
         unit: 'Ton',
         source: 'daily',
         extract: (r) => r.daily_report_stock_tank?.[0]?.stock_batubara ?? null
-    },
-    {
-        id: 'daily_rcw_level_00',
-        label: 'RCW Level (00:00)',
-        group: 'Harian: Stock & Tank',
-        unit: 'm³',
-        source: 'daily',
-        extract: (r) => r.daily_report_stock_tank?.[0]?.rcw_level_00 ?? null
-    },
-    {
-        id: 'daily_demin_level_00',
-        label: 'Demin Level (00:00)',
-        group: 'Harian: Stock & Tank',
-        unit: 'm³',
-        source: 'daily',
-        extract: (r) => r.daily_report_stock_tank?.[0]?.demin_level_00 ?? null
     },
     {
         id: 'daily_solar_tank_total',

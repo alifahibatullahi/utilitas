@@ -213,13 +213,13 @@ export default function HistoryPage() {
             const shiftRows = (shiftRes.data || []).map((r: any) => ({ ...r, _source: 'shift' as const }));
             const dailyRows = (dailyRes.data || []).map((r: any) => ({ ...r, _source: 'daily' as const, shift: null }));
 
-            // Merge and sort: by date desc, then shift order (malam=06, pagi=14, sore=22, daily=24)
-            const SHIFT_ORDER: Record<string, number> = { malam: 1, pagi: 2, sore: 3 };
+            // Merge and sort: by date desc, then within date: 24 → 22 → 14 → 06
+            const SHIFT_ORDER: Record<string, number> = { sore: 2, pagi: 3, malam: 4 };
             const merged = [...shiftRows, ...dailyRows].sort((a, b) => {
                 const dateCmp = b.date.localeCompare(a.date);
                 if (dateCmp !== 0) return dateCmp;
-                const orderA = a._source === 'daily' ? 4 : (SHIFT_ORDER[a.shift] || 0);
-                const orderB = b._source === 'daily' ? 4 : (SHIFT_ORDER[b.shift] || 0);
+                const orderA = a._source === 'daily' ? 1 : (SHIFT_ORDER[a.shift] || 5);
+                const orderB = b._source === 'daily' ? 1 : (SHIFT_ORDER[b.shift] || 5);
                 return orderA - orderB;
             });
 

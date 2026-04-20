@@ -69,7 +69,7 @@ function CustomDropdown({ value, onChange }: CustomDropdownProps) {
 
             {/* Dropdown panel */}
             {open && (
-                <div className="absolute top-full left-0 mt-1 w-[320px] bg-white border-2 border-slate-400 rounded-lg shadow-xl z-50 overflow-hidden">
+                <div className="absolute top-full left-0 mt-1 w-[520px] bg-white border-2 border-slate-400 rounded-lg shadow-xl z-50 overflow-hidden">
                     {/* Search box */}
                     <div className="p-2 border-b-2 border-slate-200 bg-slate-50">
                         <div className="flex items-center gap-2 bg-white border-2 border-slate-300 rounded px-2 focus-within:border-blue-500 transition-colors">
@@ -89,7 +89,7 @@ function CustomDropdown({ value, onChange }: CustomDropdownProps) {
                             )}
                         </div>
                     </div>
-                    <div className="max-h-[360px] overflow-y-auto custom-dropdown-scroll">
+                    <div className="max-h-[480px] overflow-y-auto custom-dropdown-scroll">
                         {/* Pilih placeholder — only show when not searching */}
                         {!search && (
                             <button
@@ -105,20 +105,23 @@ function CustomDropdown({ value, onChange }: CustomDropdownProps) {
                                 <div className="px-4 py-2 bg-slate-100 border-y border-slate-200">
                                     <span className="font-black text-slate-700 text-sm uppercase tracking-wider">{groupName}</span>
                                 </div>
+                                {/* Grid 2 kolom */}
+                                <div className="grid grid-cols-2">
                                 {params.map(p => (
                                     <button
                                         key={p.id}
                                         onClick={() => { onChange(p.id); setOpen(false); }}
-                                        className={`w-full text-left px-5 py-2.5 text-base font-bold transition-colors cursor-pointer flex items-center justify-between ${
+                                        className={`text-left px-4 py-2 text-sm font-bold transition-colors cursor-pointer flex items-center justify-between gap-1 border-b border-slate-100 ${
                                             value === p.id
                                                 ? 'bg-blue-50 text-blue-700'
                                                 : 'text-black hover:bg-slate-50'
                                         }`}
                                     >
-                                        <span>{p.label}</span>
-                                        {p.unit && <span className="text-xs font-bold text-slate-400 ml-2">{p.unit}</span>}
+                                        <span className="truncate">{p.label}</span>
+                                        {p.unit && <span className="text-[10px] font-bold text-slate-400 shrink-0">{p.unit}</span>}
                                     </button>
                                 ))}
+                                </div>
                             </div>
                         ))}
                         {Object.keys(filteredGroups).length === 0 && (

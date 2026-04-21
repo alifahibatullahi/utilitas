@@ -198,9 +198,9 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         </button>
                     ) : (
                         <button onClick={() => setIsTrendModalOpen(true)}
-                            className={`bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-500 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>
+                            className={`${tankId === 'DEMIN' ? 'bg-sky-500/10 hover:bg-sky-500 text-sky-500 border-sky-500/30 hover:border-sky-500' : 'bg-teal-500/10 hover:bg-teal-500 text-teal-500 border-teal-500/30 hover:border-teal-500'} hover:text-white border px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>
                             <span>Trend</span>
-                            <span className={`material-symbols-outlined text-[14px] ${tc.textClass}`}>timeline</span>
+                            <span className="material-symbols-outlined text-[14px] transition-transform group-hover:rotate-12 group-hover:scale-125">timeline</span>
                         </button>
                     )}
                     {/* Status badge */}

@@ -53,10 +53,16 @@ const STG_DATA = {
 
 // ─── Boiler Card ───
 function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }) {
+    const isA = name === 'A';
+    const headerBg = isA ? 'from-orange-500/20' : 'from-blue-500/20';
+    const bodyBg = isA ? 'bg-orange-500/5' : 'bg-blue-500/5';
+    const borderHover = isA ? 'hover:border-orange-500/30' : 'hover:border-blue-500/30';
+    const shadowHover = isA ? 'hover:shadow-orange-500/5' : 'hover:shadow-blue-500/5';
+
     return (
-        <div className="bg-surface-dark border border-slate-800 hover:border-emerald-500/30 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default">
+        <div className={`bg-surface-dark ${bodyBg} border border-slate-800 ${borderHover} rounded-xl overflow-hidden shadow-sm hover:shadow-xl ${shadowHover} hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default relative`}>
             {/* Header */}
-            <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-surface-highlight/50 to-transparent">
+            <div className={`p-5 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r ${headerBg} to-transparent relative z-10`}>
                 <div className="flex items-center gap-3">
                     <div>
                         <h3 className="text-white font-black text-4xl tracking-tight drop-shadow-md">BOILER {name}</h3>
@@ -77,7 +83,7 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                 </div>
             </div>
 
-            <div className="p-5 flex-1 flex flex-col justify-between gap-5">
+            <div className="p-5 flex-1 flex flex-col justify-between gap-5 relative z-10">
                 {/* Row 1: Furnace Temp + Vakum Boiler */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col items-center justify-center space-y-1 text-center">
@@ -279,7 +285,7 @@ function SteamDistribution() {
 
     return (
         <div className="bg-surface-dark border border-slate-800 hover:border-purple-500/30 rounded-xl overflow-hidden shadow-md hover:shadow-xl hover:shadow-purple-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default">
-            <div className="p-5 border-b border-slate-800 bg-gradient-to-r from-surface-highlight/50 to-transparent">
+            <div className="p-5 border-b border-slate-800 bg-gradient-to-r from-purple-500/20 to-transparent">
                 <div className="flex items-center gap-2">
                     <span className="p-1.5 bg-purple-500/20 rounded-md">
                         <span className="material-symbols-outlined text-purple-400 text-sm">factory</span>

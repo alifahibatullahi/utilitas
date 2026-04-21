@@ -54,10 +54,10 @@ const STG_DATA = {
 // ─── Boiler Card ───
 function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }) {
     const isA = name === 'A';
-    const headerBg = isA ? 'bg-orange-400/20' : 'bg-blue-500/20';
-    const bodyBg = isA ? 'bg-orange-400/5' : 'bg-blue-500/5';
-    const borderHover = isA ? 'hover:border-orange-400/30' : 'hover:border-blue-500/30';
-    const shadowHover = isA ? 'hover:shadow-orange-400/5' : 'hover:shadow-blue-500/5';
+    const headerBg = isA ? 'bg-orange-500/40' : 'bg-blue-500/20';
+    const bodyBg = isA ? 'bg-orange-500/10' : 'bg-blue-500/5';
+    const borderHover = isA ? 'hover:border-orange-500/40' : 'hover:border-blue-500/30';
+    const shadowHover = isA ? 'hover:shadow-orange-500/10' : 'hover:shadow-blue-500/5';
 
     return (
         <div className={`bg-surface-dark ${bodyBg} border border-slate-800 ${borderHover} rounded-xl overflow-hidden shadow-sm hover:shadow-xl ${shadowHover} hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default relative`}>
@@ -322,13 +322,13 @@ export default function DashboardPage() {
             router.push('/');
             return;
         }
-        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, [operator, router]);
 
     if (!operator) return null;
 
-    const timeStr = currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+    const timeStr = currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' });
     const dateStr = currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const shiftLabel = currentShift === 1 ? 'Pagi' : currentShift === 2 ? 'Sore' : 'Malam';
     const totalSteam = BOILER_DATA.A.steam.flow + BOILER_DATA.B.steam.flow;
@@ -337,7 +337,7 @@ export default function DashboardPage() {
     return (
         <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto space-y-8">
             {/* Header */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div>
                     <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white mb-2">Dashboard Operasional UBB</h2>
                     <div className="flex items-center gap-3 text-text-secondary flex-wrap">
@@ -346,17 +346,23 @@ export default function DashboardPage() {
                         </span>
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
                         <span className="text-sm font-medium">{dateStr}</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-                        <div className="flex items-center gap-1.5 text-sm font-medium">
-                            <span className="text-slate-400">Last Update:</span>
-                            <span className="font-mono text-emerald-400">{timeStr} WIB</span>
-                        </div>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 cursor-pointer">
+                <div className="flex items-center gap-4">
+                    {/* Live Update Box (Tank Level Style) */}
+                    <div className="bg-primary/10 border border-primary/50 rounded-2xl px-5 py-2.5 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(43,124,238,0.2)] relative overflow-hidden group min-w-[170px]">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute -inset-1 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-700 animate-pulse pointer-events-none" />
+                        <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em] relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">Last Data Update</span>
+                        <div className="flex items-center gap-2 mt-1 relative z-10">
+                            <span className="material-symbols-outlined text-primary text-2xl drop-shadow-[0_0_15px_rgba(43,124,238,0.8)]">schedule</span>
+                            <span className="text-3xl font-black font-mono text-white tracking-widest leading-none drop-shadow-[0_0_30px_rgba(43,124,238,0.5)]">{timeStr}</span>
+                        </div>
+                    </div>
+                    
+                    <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 cursor-pointer h-full">
                         <span className="material-symbols-outlined text-base">refresh</span>
-                        Refresh Data
+                        Refresh
                     </button>
                 </div>
             </header>

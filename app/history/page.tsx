@@ -262,9 +262,9 @@ export default function HistoryPage() {
             <div className="w-full bg-slate-50 border-b-2 border-slate-300 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 relative">
                 {/* Back Button & Logos - Top Left */}
                 <div className="flex gap-4 items-center z-10 relative">
-                    <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 px-3 py-1.5 bg-white text-black font-extrabold text-sm rounded shadow hover:bg-slate-100 transition-colors cursor-pointer border-b-2 border-slate-300">
-                        <span className="material-symbols-outlined text-black font-bold">arrow_back</span>
-                        Kembali
+                    <button onClick={() => window.close()} className="flex items-center gap-2 px-3 py-1.5 bg-white text-black font-extrabold text-sm rounded shadow hover:bg-slate-100 transition-colors cursor-pointer border-b-2 border-slate-300">
+                        <span className="material-symbols-outlined text-black font-bold">close</span>
+                        Tutup Tab
                     </button>
                     <Image src="/logo/Danantara_Indonesia_(no_SW).png" alt="Danantara" width={140} height={40} className="object-contain" />
                     <Image src="/logo/Logo_Pupuk_Indonesia__Persero_-removebg-preview.png" alt="Pupuk Indonesia" width={120} height={40} className="object-contain" />
@@ -274,7 +274,7 @@ export default function HistoryPage() {
                 {/* Clean Beautiful Title Centered Absolutely */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <h1 className="text-4xl font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-800 drop-shadow-sm pb-1 pointer-events-auto">
-                        Pusat Data UBB
+                        History Data UBB
                     </h1>
                 </div>
             </div>
@@ -387,22 +387,57 @@ export default function HistoryPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {reports.map((row, rowIdx) => (
-                                        <tr key={row.id} className="hover:bg-[#dbeafe] transition-colors border-b border-slate-300 group">
+                                    {reports.map((row) => {
+                                        // Penentuan warna baris berdasarkan Jam/Shift
+                                        const mappedTime = row._source === 'daily' ? '24:00' : (SHIFT_TIME_MAP[row.shift ?? ''] || row.shift);
+                                        let baseRowBg = 'bg-white';
+                                        let stickyLeftBg = 'bg-white';
+                                        let stickyLeft2Bg = 'bg-slate-50';
+                                        let evenColBg = 'bg-slate-100/40';
+
+                                        if (mappedTime === '06:00' || mappedTime === '06') {
+                                            // Pagi Hari (Jam 6) - Biru Sangat Muda
+                                            baseRowBg = 'bg-[#f0f9ff]';
+                                            stickyLeftBg = 'bg-[#f0f9ff]';
+                                            stickyLeft2Bg = 'bg-[#e0f2fe]';
+                                            evenColBg = 'bg-[#bae6fd]/30';
+                                        } else if (mappedTime === '14:00' || mappedTime === '14') {
+                                            // Siang/Sore (Jam 14) - Kuning/Amber Sangat Muda
+                                            baseRowBg = 'bg-[#fffbeb]';
+                                            stickyLeftBg = 'bg-[#fffbeb]';
+                                            stickyLeft2Bg = 'bg-[#fef3c7]';
+                                            evenColBg = 'bg-[#fde68a]/30';
+                                        } else if (mappedTime === '22:00' || mappedTime === '22') {
+                                            // Malam (Jam 22) - Ungu/Indigo Sangat Muda
+                                            baseRowBg = 'bg-[#faf5ff]';
+                                            stickyLeftBg = 'bg-[#faf5ff]';
+                                            stickyLeft2Bg = 'bg-[#f3e8ff]';
+                                            evenColBg = 'bg-[#e9d5ff]/30';
+                                        } else if (mappedTime.includes('24') || mappedTime === '00:00' || mappedTime === '00') {
+                                            // Tengah Malam / Harian (Jam 24) - Hijau Sangat Muda
+                                            baseRowBg = 'bg-[#ecfdf5]';
+                                            stickyLeftBg = 'bg-[#ecfdf5]';
+                                            stickyLeft2Bg = 'bg-[#d1fae5]';
+                                            evenColBg = 'bg-[#a7f3d0]/30';
+                                        }
+
+                                        return (
+                                        <tr key={row.id} className={`${baseRowBg} hover:bg-[#dbeafe] transition-colors border-b border-slate-300 group`}>
                                             {/* Date */}
-                                            <td className="px-3 py-3 font-black text-black text-sm sticky left-0 bg-white border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center whitespace-nowrap z-10 group-hover:bg-[#dbeafe]">
+                                            <td className={`px-6 py-4 font-black text-black text-xl sticky left-0 ${stickyLeftBg} border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center whitespace-nowrap z-10 group-hover:bg-[#dbeafe]`}>
                                                 {new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </td>
                                             {/* Time */}
-                                            <td className="px-2 py-3 font-black text-black text-sm sticky left-[100px] bg-slate-50 border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center z-10 group-hover:bg-[#dbeafe]">
-                                                {row._source === 'daily' ? '24:00' : (SHIFT_TIME_MAP[row.shift ?? ''] || row.shift)}
+                                            <td className={`px-6 py-4 font-black text-black text-xl sticky left-[100px] ${stickyLeft2Bg} border-r-2 border-slate-300 shadow-[2px_0_0_#cbd5e1] text-center z-10 group-hover:bg-[#dbeafe]`}>
+                                                {mappedTime}
                                             </td>
-
+                                            
                                             {/* Dynamic Data Cells */}
                                             {columns.map((colId, index) => {
                                                 const paramDef = colId ? PARAMETERS.find(p => p.id === colId) : null;
                                                 const val = paramDef ? paramDef.extract(row) : null;
-                                                const CellBg = index % 2 === 0 ? 'bg-transparent' : 'bg-slate-100/50';
+                                                // Alternate column background slightly based on row base
+                                                const CellBg = index % 2 === 0 ? 'bg-transparent' : evenColBg;
 
                                                 return (
                                                     <td key={`data-${row.id}-${index}`} className={`px-6 py-4 text-center font-black text-black text-2xl border-x border-slate-200 ${CellBg} group-hover:bg-[#dbeafe] transition-colors`}>
@@ -418,9 +453,9 @@ export default function HistoryPage() {
                                                 );
                                             })}
                                             {/* Empty cell under Add Button */}
-                                            <td className="border-l-2 border-slate-300 bg-slate-50/30 group-hover:bg-[#dbeafe]"></td>
+                                            <td className={`border-l-2 border-slate-300 ${stickyLeft2Bg} group-hover:bg-[#dbeafe]`}></td>
                                         </tr>
-                                    ))}
+                                    )})}
                                     {reports.length === 0 && !loading && (
                                         <tr>
                                             <td colSpan={columns.length + 3} className="px-6 py-12 text-center text-black font-black text-2xl">

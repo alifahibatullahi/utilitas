@@ -54,10 +54,10 @@ const STG_DATA = {
 // ─── Boiler Card ───
 function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }) {
     const isA = name === 'A';
-    const headerBg = isA ? 'bg-orange-500/20' : 'bg-blue-500/20';
-    const bodyBg = isA ? 'bg-orange-500/5' : 'bg-blue-500/5';
-    const borderHover = isA ? 'hover:border-orange-500/30' : 'hover:border-blue-500/30';
-    const shadowHover = isA ? 'hover:shadow-orange-500/5' : 'hover:shadow-blue-500/5';
+    const headerBg = isA ? 'bg-orange-400/20' : 'bg-blue-500/20';
+    const bodyBg = isA ? 'bg-orange-400/5' : 'bg-blue-500/5';
+    const borderHover = isA ? 'hover:border-orange-400/30' : 'hover:border-blue-500/30';
+    const shadowHover = isA ? 'hover:shadow-orange-400/5' : 'hover:shadow-blue-500/5';
 
     return (
         <div className={`bg-surface-dark ${bodyBg} border border-slate-800 ${borderHover} rounded-xl overflow-hidden shadow-sm hover:shadow-xl ${shadowHover} hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default relative`}>
@@ -328,9 +328,9 @@ export default function DashboardPage() {
 
     if (!operator) return null;
 
-    const greeting = currentTime.getHours() < 12 ? 'Good Morning' : currentTime.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
     const timeStr = currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
-    const dateStr = currentTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const dateStr = currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const shiftLabel = currentShift === 1 ? 'Pagi' : currentShift === 2 ? 'Sore' : 'Malam';
     const totalSteam = BOILER_DATA.A.steam.flow + BOILER_DATA.B.steam.flow;
     const totalCoal = BOILER_DATA.A.coalFeeders.reduce((s, f) => s + f.flow, 0) + BOILER_DATA.B.coalFeeders.reduce((s, f) => s + f.flow, 0);
 
@@ -339,26 +339,21 @@ export default function DashboardPage() {
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white mb-2">{greeting}, {operator.name.split(' ')[0]}</h2>
-                    <div className="flex items-center gap-2 text-text-secondary">
-                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-primary/20 text-primary border border-primary/20">SHIFT {currentShift}</span>
-                        {operator.group && (
-                            <>
-                                <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-surface-highlight text-text-secondary border border-slate-700">Group {operator.group}</span>
-                            </>
-                        )}
-                        <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                        <span className="text-sm">{dateStr}</span>
-                        <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                        <span className="text-sm font-mono text-slate-300">{timeStr} WIB</span>
+                    <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white mb-2">Dashboard Operasional UBB</h2>
+                    <div className="flex items-center gap-3 text-text-secondary flex-wrap">
+                        <span className="px-2 py-0.5 rounded text-sm font-bold bg-primary/20 text-primary border border-primary/20 uppercase tracking-widest">
+                            Grup {shiftLabel} {operator.group || ''}
+                        </span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                        <span className="text-sm font-medium">{dateStr}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                        <div className="flex items-center gap-1.5 text-sm font-medium">
+                            <span className="text-slate-400">Last Update:</span>
+                            <span className="font-mono text-emerald-400">{timeStr} WIB</span>
+                        </div>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button className="flex items-center gap-2 bg-surface-dark hover:bg-surface-highlight border border-slate-700 hover:border-slate-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer">
-                        <span className="material-symbols-outlined text-base group-hover:scale-110">notifications</span>
-                        Alerts <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-inner">3</span>
-                    </button>
                     <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 cursor-pointer">
                         <span className="material-symbols-outlined text-base">refresh</span>
                         Refresh Data

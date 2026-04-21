@@ -54,10 +54,10 @@ const STG_DATA = {
 // ─── Boiler Card ───
 function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }) {
     const isA = name === 'A';
-    const headerBg = isA ? 'bg-orange-400/40' : 'bg-blue-500/20';
-    const bodyBg = isA ? 'bg-orange-400/10' : 'bg-blue-500/5';
-    const borderHover = isA ? 'hover:border-orange-400/40' : 'hover:border-blue-500/30';
-    const shadowHover = isA ? 'hover:shadow-orange-400/10' : 'hover:shadow-blue-500/5';
+    const headerBg = isA ? 'bg-amber-500/40' : 'bg-blue-500/20';
+    const bodyBg = isA ? 'bg-amber-500/10' : 'bg-blue-500/5';
+    const borderHover = isA ? 'hover:border-amber-500/40' : 'hover:border-blue-500/30';
+    const shadowHover = isA ? 'hover:shadow-amber-500/10' : 'hover:shadow-blue-500/5';
 
     return (
         <div className={`bg-surface-dark ${bodyBg} border border-slate-800 ${borderHover} rounded-xl overflow-hidden shadow-sm hover:shadow-xl ${shadowHover} hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default relative`}>
@@ -66,20 +66,20 @@ function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }
                 <div className="flex items-center gap-3">
                     <div>
                         <h3 className="text-white font-black text-4xl tracking-tight drop-shadow-md">BOILER {name}</h3>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="relative flex h-2 w-2">
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="relative flex h-3 w-3">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                             </span>
-                            <span className="text-emerald-500 text-[10px] font-bold uppercase tracking-widest">Running</span>
+                            <span className="text-emerald-500 text-sm font-black uppercase tracking-widest drop-shadow-sm">Running</span>
                         </div>
                     </div>
                 </div>
-                <div className="text-right bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.15)]">
-                    <p className="text-4xl font-black text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]">
-                        {data.steam.flow.toFixed(0)} <span className="text-base font-normal text-emerald-400/70">t/h</span>
+                <div className="text-right bg-emerald-600 px-4 py-2 rounded-xl border border-emerald-500 shadow-[0_4px_15px_rgba(5,150,105,0.4)]">
+                    <p className="text-4xl font-black text-white drop-shadow-md">
+                        {data.steam.flow.toFixed(0)} <span className="text-base font-bold text-white/90">t/h</span>
                     </p>
-                    <p className="text-[11px] font-bold text-emerald-500/80 uppercase tracking-widest mt-0.5">Steam Flow</p>
+                    <p className="text-[11px] font-black text-emerald-50 uppercase tracking-widest mt-0.5">Steam Flow</p>
                 </div>
             </div>
 

@@ -395,25 +395,7 @@ export default function HistoryPage() {
                                         let stickyLeft2Bg = 'bg-slate-50';
                                         let evenColBg = 'bg-slate-100/40';
 
-                                        if (mappedTime === '06:00' || mappedTime === '06') {
-                                            // Pagi Hari (Jam 6) - Biru Sangat Muda
-                                            baseRowBg = 'bg-[#f0f9ff]';
-                                            stickyLeftBg = 'bg-[#f0f9ff]';
-                                            stickyLeft2Bg = 'bg-[#e0f2fe]';
-                                            evenColBg = 'bg-[#bae6fd]/30';
-                                        } else if (mappedTime === '14:00' || mappedTime === '14') {
-                                            // Siang/Sore (Jam 14) - Kuning/Amber Sangat Muda
-                                            baseRowBg = 'bg-[#fffbeb]';
-                                            stickyLeftBg = 'bg-[#fffbeb]';
-                                            stickyLeft2Bg = 'bg-[#fef3c7]';
-                                            evenColBg = 'bg-[#fde68a]/30';
-                                        } else if (mappedTime === '22:00' || mappedTime === '22') {
-                                            // Malam (Jam 22) - Ungu/Indigo Sangat Muda
-                                            baseRowBg = 'bg-[#faf5ff]';
-                                            stickyLeftBg = 'bg-[#faf5ff]';
-                                            stickyLeft2Bg = 'bg-[#f3e8ff]';
-                                            evenColBg = 'bg-[#e9d5ff]/30';
-                                        } else if (mappedTime.includes('24') || mappedTime === '00:00' || mappedTime === '00') {
+                                        if (mappedTime.includes('24') || mappedTime === '00:00' || mappedTime === '00') {
                                             // Tengah Malam / Harian (Jam 24) - Hijau Sangat Muda
                                             baseRowBg = 'bg-[#ecfdf5]';
                                             stickyLeftBg = 'bg-[#ecfdf5]';

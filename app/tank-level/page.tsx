@@ -2,6 +2,7 @@
 
 import { useOperator } from '@/hooks/useOperator';
 import { useTankData } from '@/hooks/useTankData';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { TANK_IDS, TANKS, TankId, TANK_THRESHOLDS, DEFAULT_THRESHOLDS } from '@/lib/constants';
 import { getAlertStatus } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -19,7 +20,7 @@ const TANK_COLORS: Record<string, {
 };
 
 function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boolean }) {
-    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, solarUsages, pumpActiveSince, deleteSolarUnloading, updateSolarUnloading, deleteSolarUsage, updateSolarUsage } = useTankData();
+    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, solarUsages, pumpActiveSince, trendData, deleteSolarUnloading, updateSolarUnloading, deleteSolarUsage, updateSolarUsage } = useTankData();
     // Edit unloading state
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editDate, setEditDate] = useState('');
@@ -31,6 +32,13 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
     const [editUsageDate, setEditUsageDate] = useState('');
     const [editUsageLiters, setEditUsageLiters] = useState('');
     const [editUsageTujuan, setEditUsageTujuan] = useState('');
+
+    // Modal state
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [isTrendModalOpen, setIsTrendModalOpen] = useState(false);
+    const [historyTab, setHistoryTab] = useState<'unloading' | 'pemakaian'>('unloading');
+    const [unloadingPage, setUnloadingPage] = useState(1);
+    const [usagePage, setUsagePage] = useState(1);
     
     const tank = TANKS[tankId];
     const data = currentLevels[tankId];
@@ -55,8 +63,116 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
 
     const m3 = Math.round(level / 100 * (tankId === 'SOLAR' ? 200 : tank.capacityM3));
 
+    const renderUnloadingItem = (entry: any, idx: number) => {
+        const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        const isEditing = editingId === entry.id;
+        if (isEditing) {
+            return (
+                <div key={entry.id ?? idx} className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/40">
+                    <div className="flex gap-2">
+                        <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                            className="flex-1 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-amber-500/50" />
+                        <input type="number" inputMode="decimal" value={editLiters} onChange={e => setEditLiters(e.target.value)}
+                            placeholder="Liter" className="w-24 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white text-center outline-none focus:border-amber-500/50 appearance-none" />
+                    </div>
+                    <input type="text" value={editSupplier} onChange={e => setEditSupplier(e.target.value)}
+                        placeholder="Perusahaan" className="w-full px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-amber-500/50" />
+                    <div className="flex gap-2 justify-end">
+                        <button onClick={() => setEditingId(null)}
+                            className="px-3 py-1 rounded-lg bg-slate-700 text-xs text-slate-300 font-bold cursor-pointer hover:bg-slate-600 transition-colors">Batal</button>
+                        <button onClick={async () => {
+                            if (entry.id) await updateSolarUnloading(entry.id, { date: editDate, liters: parseFloat(editLiters) || 0, supplier: editSupplier });
+                            setEditingId(null);
+                        }} className="px-3 py-1 rounded-lg bg-amber-500 text-xs text-white font-bold cursor-pointer hover:bg-amber-400 transition-colors">Simpan</button>
+                    </div>
+                </div>
+            );
+        }
+        return (
+            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden">
+                <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
+                    <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
+                    <span className="text-slate-500 shrink-0 font-bold">-</span>
+                    <span className="text-base xl:text-lg font-black text-white truncate drop-shadow-md" title={entry.supplier}>{entry.supplier}</span>
+                </div>
+                <div className={`flex items-baseline gap-1.5 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'group-hover:-translate-x-[76px]' : ''}`}>
+                    <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none ${tc.textClass}`}>
+                        {entry.liters.toLocaleString('id-ID')}
+                    </span>
+                    <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
+                </div>
+                {entry.id && (
+                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
+                        <button onClick={() => { setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toString()); setEditSupplier(entry.supplier); }}
+                            className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                        </button>
+                        <button onClick={() => { if (entry.id && confirm('Hapus data unloading ini?')) deleteSolarUnloading(entry.id); }}
+                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderUsageItem = (entry: any, idx: number) => {
+        const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        const isEditing = editingUsageId === entry.id;
+        if (isEditing) {
+            return (
+                <div key={entry.id ?? idx} className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/40">
+                    <div className="flex gap-2">
+                        <input type="date" value={editUsageDate} onChange={e => setEditUsageDate(e.target.value)}
+                            className="flex-1 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-rose-500/50" />
+                        <input type="number" inputMode="decimal" value={editUsageLiters} onChange={e => setEditUsageLiters(e.target.value)}
+                            placeholder="Liter" className="w-24 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white text-center outline-none focus:border-rose-500/50 appearance-none" />
+                    </div>
+                    <input type="text" value={editUsageTujuan} onChange={e => setEditUsageTujuan(e.target.value)}
+                        placeholder="Tujuan (e.g., Boiler)" className="w-full px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-rose-500/50" />
+                    <div className="flex gap-2 justify-end">
+                        <button onClick={() => setEditingUsageId(null)}
+                            className="px-3 py-1 rounded-lg bg-slate-700 text-xs text-slate-300 font-bold cursor-pointer hover:bg-slate-600 transition-colors">Batal</button>
+                        <button onClick={async () => {
+                            if (entry.id) await updateSolarUsage(entry.id, { date: editUsageDate, liters: parseFloat(editUsageLiters) || 0, tujuan: editUsageTujuan });
+                            setEditingUsageId(null);
+                        }} className="px-3 py-1 rounded-lg bg-rose-500 text-xs text-white font-bold cursor-pointer hover:bg-rose-400 transition-colors">Simpan</button>
+                    </div>
+                </div>
+            );
+        }
+        return (
+            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden">
+                <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
+                    <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
+                    <span className="text-slate-500 shrink-0 font-bold">-</span>
+                    <span className="text-base xl:text-lg font-black text-white truncate drop-shadow-md" title={entry.tujuan}>{entry.tujuan}</span>
+                </div>
+                <div className={`flex items-baseline gap-1.5 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'group-hover:-translate-x-[76px]' : ''}`}>
+                    <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none text-rose-400`}>
+                        {entry.liters.toLocaleString('id-ID')}
+                    </span>
+                    <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
+                </div>
+                {entry.id && (
+                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
+                        <button onClick={() => { setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toString()); setEditUsageTujuan(entry.tujuan); }}
+                            className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                        </button>
+                        <button onClick={() => { if (entry.id && confirm('Hapus data pemakaian ini?')) deleteSolarUsage(entry.id); }}
+                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
-        <div className={`bg-surface-dark border ${tc.borderClass} rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 lg:h-full`}
+        <div className={`bg-surface-dark border ${tc.borderClass} rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 lg:h-full relative`}
             style={{ boxShadow: `0 0 40px ${tc.base}15` }}>
 
             {/* ── Card Header ── */}
@@ -72,16 +188,32 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         <p className="text-slate-400 text-xs lg:text-sm font-semibold mt-0.5">{tank.capacity}</p>
                     </div>
                 </div>
-                {/* Status badge */}
-                <div className={`flex items-center gap-2 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full border ${
-                    status === 'normal' ? 'bg-emerald-500/10 border-emerald-500/30' :
-                    status === 'warning' ? 'bg-amber-500/10 border-amber-500/30' :
-                    'bg-red-500/10 border-red-500/30'}`}>
-                    <span className="relative flex h-2.5 w-2.5 lg:h-3 lg:w-3">
-                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusObj.color} opacity-60`}></span>
-                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 lg:h-3 lg:w-3 ${statusObj.color}`}></span>
-                    </span>
-                    <span className={`${statusObj.text} text-xs lg:text-sm font-black uppercase tracking-widest`}>{statusObj.label}</span>
+                <div className="flex items-center gap-2 lg:gap-3">
+                    {/* Additional action button */}
+                    {tankId === 'SOLAR' ? (
+                        <button onClick={() => setIsHistoryModalOpen(true)}
+                            className="bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white border border-amber-500/30 hover:border-amber-500 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group">
+                            <span className="material-symbols-outlined text-[14px]">history</span>
+                            <span>History</span>
+                        </button>
+                    ) : (
+                        <button onClick={() => setIsTrendModalOpen(true)}
+                            className={`bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-500 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>
+                            <span>Trend</span>
+                            <span className={`material-symbols-outlined text-[14px] ${tc.textClass}`}>timeline</span>
+                        </button>
+                    )}
+                    {/* Status badge */}
+                    <div className={`flex items-center gap-2 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full border ${
+                        status === 'normal' ? 'bg-emerald-500/10 border-emerald-500/30' :
+                        status === 'warning' ? 'bg-amber-500/10 border-amber-500/30' :
+                        'bg-red-500/10 border-red-500/30'}`}>
+                        <span className="relative flex h-2.5 w-2.5 lg:h-3 lg:w-3">
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusObj.color} opacity-60`}></span>
+                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 lg:h-3 lg:w-3 ${statusObj.color}`}></span>
+                        </span>
+                        <span className={`${statusObj.text} text-xs lg:text-sm font-black uppercase tracking-widest`}>{statusObj.label}</span>
+                    </div>
                 </div>
             </div>
 
@@ -180,59 +312,8 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[14px] xl:text-base">local_shipping</span> Input - Unloading Solar
                                 </p>
-                                <div className={`${solarUnloadings.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3' : ''}`}>
-                                    {solarUnloadings.slice(0, 3).map((entry, idx) => {
-                                        const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                                        const isEditing = editingId === entry.id;
-                                        if (isEditing) {
-                                            return (
-                                                <div key={entry.id ?? idx} className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/40">
-                                                    <div className="flex gap-2">
-                                                        <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                                                            className="flex-1 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-amber-500/50" />
-                                                        <input type="number" inputMode="decimal" value={editLiters} onChange={e => setEditLiters(e.target.value)}
-                                                            placeholder="Liter" className="w-24 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white text-center outline-none focus:border-amber-500/50 appearance-none" />
-                                                    </div>
-                                                    <input type="text" value={editSupplier} onChange={e => setEditSupplier(e.target.value)}
-                                                        placeholder="Perusahaan" className="w-full px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-amber-500/50" />
-                                                    <div className="flex gap-2 justify-end">
-                                                        <button onClick={() => setEditingId(null)}
-                                                            className="px-3 py-1 rounded-lg bg-slate-700 text-xs text-slate-300 font-bold cursor-pointer hover:bg-slate-600 transition-colors">Batal</button>
-                                                        <button onClick={async () => {
-                                                            if (entry.id) await updateSolarUnloading(entry.id, { date: editDate, liters: parseFloat(editLiters) || 0, supplier: editSupplier });
-                                                            setEditingId(null);
-                                                        }} className="px-3 py-1 rounded-lg bg-amber-500 text-xs text-white font-bold cursor-pointer hover:bg-amber-400 transition-colors">Simpan</button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        }
-                                        return (
-                                            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative">
-                                                <div className="w-full pr-12 relative flex flex-col justify-center">
-                                                    <span className="text-sm xl:text-base font-bold text-white block truncate">{lbl}</span>
-                                                    <span className="text-[11px] xl:text-xs text-slate-400 truncate block mt-0.5 group-hover:text-slate-300 transition-colors" title={entry.supplier}>{entry.supplier}</span>
-                                                </div>
-                                                <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                                                    <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none ${tc.textClass}`}>
-                                                        {entry.liters.toLocaleString('id-ID')}
-                                                    </span>
-                                                    <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
-                                                </div>
-                                                {entry.id && (
-                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/90 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50">
-                                                        <button onClick={() => { setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toString()); setEditSupplier(entry.supplier); }}
-                                                            className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
-                                                            <span className="material-symbols-outlined text-[16px]">edit</span>
-                                                        </button>
-                                                        <button onClick={() => { if (entry.id && confirm('Hapus data unloading ini?')) deleteSolarUnloading(entry.id); }}
-                                                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
-                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                <div className={`${solarUnloadings.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3 mt-1.5' : 'mt-1.5'}`}>
+                                    {solarUnloadings.slice(0, 3).map((entry, idx) => renderUnloadingItem(entry, idx))}
                                 </div>
                                 {solarUnloadings.length === 0 && (
                                     <p className="text-sm text-slate-600 italic py-2">Belum ada riwayat unloading</p>
@@ -241,59 +322,8 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2 mt-4 xl:mt-5 pt-4 border-t border-slate-800/60">
                                     <span className="material-symbols-outlined text-[14px] xl:text-base">upload</span> Output - Permintaan Solar
                                 </p>
-                                <div className={`${solarUsages.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3 mt-2' : 'mt-2'}`}>
-                                    {solarUsages.slice(0, 2).map((entry, idx) => {
-                                        const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                                        const isEditing = editingUsageId === entry.id;
-                                        if (isEditing) {
-                                            return (
-                                                <div key={entry.id ?? idx} className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/40">
-                                                    <div className="flex gap-2">
-                                                        <input type="date" value={editUsageDate} onChange={e => setEditUsageDate(e.target.value)}
-                                                            className="flex-1 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-rose-500/50" />
-                                                        <input type="number" inputMode="decimal" value={editUsageLiters} onChange={e => setEditUsageLiters(e.target.value)}
-                                                            placeholder="Liter" className="w-24 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white text-center outline-none focus:border-rose-500/50 appearance-none" />
-                                                    </div>
-                                                    <input type="text" value={editUsageTujuan} onChange={e => setEditUsageTujuan(e.target.value)}
-                                                        placeholder="Tujuan (e.g., Boiler)" className="w-full px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-rose-500/50" />
-                                                    <div className="flex gap-2 justify-end">
-                                                        <button onClick={() => setEditingUsageId(null)}
-                                                            className="px-3 py-1 rounded-lg bg-slate-700 text-xs text-slate-300 font-bold cursor-pointer hover:bg-slate-600 transition-colors">Batal</button>
-                                                        <button onClick={async () => {
-                                                            if (entry.id) await updateSolarUsage(entry.id, { date: editUsageDate, liters: parseFloat(editUsageLiters) || 0, tujuan: editUsageTujuan });
-                                                            setEditingUsageId(null);
-                                                        }} className="px-3 py-1 rounded-lg bg-rose-500 text-xs text-white font-bold cursor-pointer hover:bg-rose-400 transition-colors">Simpan</button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        }
-                                        return (
-                                            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative">
-                                                <div className="w-full pr-12 relative flex flex-col justify-center">
-                                                    <span className="text-sm xl:text-base font-bold text-white block truncate">{lbl}</span>
-                                                    <span className="text-[11px] xl:text-xs text-slate-400 truncate block mt-0.5 group-hover:text-slate-300 transition-colors" title={entry.tujuan}>{entry.tujuan}</span>
-                                                </div>
-                                                <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                                                    <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none text-rose-400`}>
-                                                        {entry.liters.toLocaleString('id-ID')}
-                                                    </span>
-                                                    <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
-                                                </div>
-                                                {entry.id && (
-                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/90 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50">
-                                                        <button onClick={() => { setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toString()); setEditUsageTujuan(entry.tujuan); }}
-                                                            className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
-                                                            <span className="material-symbols-outlined text-[16px]">edit</span>
-                                                        </button>
-                                                        <button onClick={() => { if (entry.id && confirm('Hapus data pemakaian ini?')) deleteSolarUsage(entry.id); }}
-                                                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
-                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                <div className={`${solarUsages.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3 mt-1.5' : 'mt-1.5'}`}>
+                                    {solarUsages.slice(0, 2).map((entry, idx) => renderUsageItem(entry, idx))}
                                 </div>
                                 {solarUsages.length === 0 && (
                                     <p className="text-sm text-slate-600 italic py-2">Belum ada riwayat pemakaian</p>
@@ -389,6 +419,133 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     </div>
                 </div>
             </div>
+
+            {/* Modal History Solar */}
+            {isHistoryModalOpen && tankId === 'SOLAR' && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8 bg-slate-950/80 backdrop-blur-md"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                    <div className="bg-surface-dark border border-slate-700/60 rounded-[28px] shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden"
+                         style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(245, 158, 11, 0.1)' }}>
+                        {/* Header Modal */}
+                        <div className="flex items-center justify-between px-6 py-5 2xl:px-8 2xl:py-6 border-b border-slate-800"
+                            style={{ background: `linear-gradient(to right, ${tc.base}22, transparent 70%)` }}>
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-2xl bg-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.2)] flex items-center justify-center">
+                                    <span className="text-amber-500 material-symbols-outlined text-2xl 2xl:text-3xl">history</span>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl 2xl:text-2xl font-black text-white leading-tight">History Data Solar</h3>
+                                    <p className="text-[11px] 2xl:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">HFO & LFO Tracking</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsHistoryModalOpen(false)} 
+                                className="text-slate-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 transition-all cursor-pointer bg-slate-800/80 border border-slate-700 w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl flex items-center justify-center">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        
+                        {/* Tab Switcher */}
+                        <div className="flex gap-3 px-6 py-4 2xl:px-8 2xl:py-5 border-b border-slate-800/60 bg-slate-900/30 relative">
+                            <button onClick={() => setHistoryTab('unloading')} 
+                                className={`flex-1 py-3 2xl:py-3.5 text-xs 2xl:text-sm font-black rounded-xl 2xl:rounded-2xl transition-all uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer ${historyTab === 'unloading' ? 'bg-amber-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)]' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700'}`}>
+                                <span className="material-symbols-outlined text-[18px]">local_shipping</span> Unloading In
+                            </button>
+                            <button onClick={() => setHistoryTab('pemakaian')} 
+                                className={`flex-1 py-3 2xl:py-3.5 text-xs 2xl:text-sm font-black rounded-xl 2xl:rounded-2xl transition-all uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer ${historyTab === 'pemakaian' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700'}`}>
+                                <span className="material-symbols-outlined text-[18px]">upload</span> Permintaan Out
+                            </button>
+                        </div>
+                        
+                        {/* List Content */}
+                        <div className="p-6 2xl:p-8 overflow-y-auto flex-1 flex flex-col justify-between gap-4 custom-scrollbar bg-slate-900/50" style={{ background: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.02\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'3\'/%3E%3C/g%3E%3C/svg%3E")' }}>
+                            <div className="flex flex-col gap-3">
+                                {historyTab === 'unloading' && (
+                                    solarUnloadings.length > 0 
+                                        ? solarUnloadings.slice((unloadingPage - 1) * 5, unloadingPage * 5).map((entry, idx) => renderUnloadingItem(entry, idx)) 
+                                        : <div className="py-12 flex flex-col items-center justify-center text-slate-500"><span className="material-symbols-outlined text-4xl mb-3 opacity-30">inbox</span><p className="font-bold tracking-wide">Belum ada riwayat unloading</p></div>
+                                )}
+                                {historyTab === 'pemakaian' && (
+                                    solarUsages.length > 0 
+                                        ? solarUsages.slice((usagePage - 1) * 5, usagePage * 5).map((entry, idx) => renderUsageItem(entry, idx)) 
+                                        : <div className="py-12 flex flex-col items-center justify-center text-slate-500"><span className="material-symbols-outlined text-4xl mb-3 opacity-30">inbox</span><p className="font-bold tracking-wide">Belum ada riwayat pemakaian</p></div>
+                                )}
+                            </div>
+                            
+                            {/* Pagination Controls */}
+                            {historyTab === 'unloading' && solarUnloadings.length > 5 && (
+                                <div className="flex items-center justify-between mt-2 pt-4 border-t border-slate-800/60 font-mono">
+                                    <button onClick={() => setUnloadingPage(p => Math.max(1, p - 1))} disabled={unloadingPage === 1}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-slate-800/80 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold text-white rounded-xl transition-colors cursor-pointer border border-slate-700">
+                                        <span className="material-symbols-outlined text-[16px]">chevron_left</span> Back
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-400">Page {unloadingPage} / {Math.ceil(solarUnloadings.length / 5)}</span>
+                                    <button onClick={() => setUnloadingPage(p => Math.min(Math.ceil(solarUnloadings.length / 5), p + 1))} disabled={unloadingPage === Math.ceil(solarUnloadings.length / 5)}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-500/10 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold text-amber-500 hover:text-white border border-amber-500/30 hover:border-amber-500 rounded-xl transition-colors cursor-pointer">
+                                        Next <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                                    </button>
+                                </div>
+                            )}
+                            {historyTab === 'pemakaian' && solarUsages.length > 5 && (
+                                <div className="flex items-center justify-between mt-2 pt-4 border-t border-slate-800/60 font-mono">
+                                    <button onClick={() => setUsagePage(p => Math.max(1, p - 1))} disabled={usagePage === 1}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-slate-800/80 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold text-white rounded-xl transition-colors cursor-pointer border border-slate-700">
+                                        <span className="material-symbols-outlined text-[16px]">chevron_left</span> Back
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-400">Page {usagePage} / {Math.ceil(solarUsages.length / 5)}</span>
+                                    <button onClick={() => setUsagePage(p => Math.min(Math.ceil(solarUsages.length / 5), p + 1))} disabled={usagePage === Math.ceil(solarUsages.length / 5)}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-rose-500/10 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold text-rose-500 hover:text-white border border-rose-500/30 hover:border-rose-500 rounded-xl transition-colors cursor-pointer">
+                                        Next <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Trend Level */}
+            {isTrendModalOpen && tankId !== 'SOLAR' && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8 bg-slate-950/80 backdrop-blur-md"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                    <div className="bg-surface-dark border border-slate-700/60 rounded-[28px] shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden"
+                         style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(43, 124, 238, 0.1)' }}>
+                        <div className="flex items-center justify-between px-6 py-5 2xl:px-8 2xl:py-6 border-b border-slate-800"
+                            style={{ background: `linear-gradient(to right, ${tc.base}22, transparent 70%)` }}>
+                            <div className="flex items-center gap-4">
+                                <div className={`p-3 rounded-2xl ${tc.bgClass}/20 shadow-[0_0_20px_${tc.base}33] flex items-center justify-center`}>
+                                    <span className={`${tc.textClass} material-symbols-outlined text-2xl 2xl:text-3xl`}>timeline</span>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl 2xl:text-2xl font-black text-white leading-tight">Trend Level {tankId}</h3>
+                                    <p className="text-[11px] 2xl:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Logsheet Jam Ganjil Monitoring</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsTrendModalOpen(false)} 
+                                className="text-slate-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 transition-all cursor-pointer bg-slate-800/80 border border-slate-700 w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl flex items-center justify-center">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 2xl:p-8 overflow-y-auto flex-1 flex flex-col gap-3 bg-slate-900/50 relative">
+                            <div className="h-[400px] 2xl:h-[500px] w-full mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={trendData[tankId]} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                        <XAxis dataKey="time" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={{ stroke: '#334155' }} dy={10} />
+                                        <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={{ stroke: '#334155' }} dx={-10} domain={[0, 100]} />
+                                        <RechartsTooltip 
+                                            contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(51, 65, 85, 0.8)', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                                            itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                                            labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '4px' }}
+                                        />
+                                        <Line type="monotone" dataKey="level" stroke={tc.base} strokeWidth={4} dot={{ r: 5, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 }} activeDot={{ r: 8, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

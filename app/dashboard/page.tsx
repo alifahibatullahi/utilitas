@@ -54,10 +54,10 @@ const STG_DATA = {
 // ─── Boiler Card ───
 function BoilerCard({ name, data }: { name: string; data: typeof BOILER_DATA.A }) {
     const isA = name === 'A';
-    const headerBg = isA ? 'bg-orange-400/40' : 'bg-blue-500/20';
-    const bodyBg = isA ? 'bg-orange-400/10' : 'bg-blue-500/5';
-    const borderHover = isA ? 'hover:border-orange-400/40' : 'hover:border-blue-500/30';
-    const shadowHover = isA ? 'hover:shadow-orange-400/10' : 'hover:shadow-blue-500/5';
+    const headerBg = isA ? 'bg-teal-500/20' : 'bg-blue-500/20';
+    const bodyBg = isA ? 'bg-teal-500/5' : 'bg-blue-500/5';
+    const borderHover = isA ? 'hover:border-teal-500/30' : 'hover:border-blue-500/30';
+    const shadowHover = isA ? 'hover:shadow-teal-500/5' : 'hover:shadow-blue-500/5';
 
     return (
         <div className={`bg-surface-dark ${bodyBg} border border-slate-800 ${borderHover} rounded-xl overflow-hidden shadow-sm hover:shadow-xl ${shadowHover} hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-default relative`}>

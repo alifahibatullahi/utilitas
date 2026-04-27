@@ -12,6 +12,7 @@ export interface DailyTabProps {
     prevSteam?: Record<string, number | null>;
     prevPower?: Record<string, number | null>;
     prevCoal?: Record<string, number | null>;
+    prevTurbineMisc?: Record<string, number | null>;
     prevTotalizer?: Record<string, number | string | null>;
     prevStockTank?: Record<string, number | null>;
     prevCoalTransfer?: Record<string, number | null>;

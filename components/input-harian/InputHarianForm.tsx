@@ -6,18 +6,20 @@ import type { Operator } from '@/lib/constants';
 import TabBoiler from './TabBoiler';
 import TabTurbin from './TabTurbin';
 import TabPower from './TabPower';
+import TabPIU from './TabPIU';
 import TabHandling from './TabHandling';
 import TabChemical from './TabChemical';
 import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
 import type { DailyTabProps } from './types';
 
-type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'Handling' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
+type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
 
 const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; colorClass: string }[] = [
     { id: 'Boiler', label: 'Boiler', icon: 'factory', colorClass: 'rose' },
     { id: 'Turbin', label: 'Turbin & Distribusi Steam', icon: 'mode_fan', colorClass: 'cyan' },
     { id: 'Power', label: 'Generator', icon: 'bolt', colorClass: 'amber' },
+    { id: 'PIU', label: 'PIU', icon: 'electric_meter', colorClass: 'blue' },
     { id: 'Handling', label: 'Handling', icon: 'local_shipping', colorClass: 'orange' },
     { id: 'Chemical', label: 'Chemical', icon: 'science', colorClass: 'purple' },
     { id: 'Stock BB', label: 'In/Out Batubara', icon: 'local_shipping', colorClass: 'indigo' },
@@ -28,6 +30,7 @@ const TAB_STYLES: Record<string, { active: string; inactive: string; icon: strin
     'rose': { active: 'font-bold bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-inner shadow-rose-500/10', inactive: 'font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border-transparent', icon: 'text-rose-400' },
     'cyan': { active: 'font-bold bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-inner shadow-cyan-500/10', inactive: 'font-medium text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border-transparent', icon: 'text-cyan-400' },
     'amber': { active: 'font-bold bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-inner shadow-amber-500/10', inactive: 'font-medium text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 border-transparent', icon: 'text-amber-400' },
+    'blue': { active: 'font-bold bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-inner shadow-blue-500/10', inactive: 'font-medium text-slate-400 hover:text-blue-300 hover:bg-blue-500/10 border-transparent', icon: 'text-blue-400' },
     'orange': { active: 'font-bold bg-orange-500/20 text-orange-400 border-orange-500/30 shadow-inner shadow-orange-500/10', inactive: 'font-medium text-slate-400 hover:text-orange-300 hover:bg-orange-500/10 border-transparent', icon: 'text-orange-400' },
     'purple': { active: 'font-bold bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-inner shadow-purple-500/10', inactive: 'font-medium text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 border-transparent', icon: 'text-purple-400' },
     'indigo': { active: 'font-bold bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-inner shadow-indigo-500/10', inactive: 'font-medium text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 border-transparent', icon: 'text-indigo-400' },
@@ -277,6 +280,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const prevCoal = prevReport?.daily_report_coal?.[0]
         ? extractFields(prevReport.daily_report_coal[0] as unknown as Record<string, unknown>) as Record<string, number | null>
         : undefined;
+    const prevTurbineMisc = prevReport?.daily_report_turbine_misc?.[0]
+        ? extractFields(prevReport.daily_report_turbine_misc[0] as unknown as Record<string, unknown>) as Record<string, number | null>
+        : undefined;
     const prevTotalizerData = prevReport?.daily_report_totalizer?.[0]
         ? extractFields(prevReport.daily_report_totalizer[0] as unknown as Record<string, unknown>) as Record<string, number | string | null>
         : undefined;
@@ -421,6 +427,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 return hasVal(steam, ['inlet_turbine_24', 'fully_condens_24']);
             case 'Power':
                 return hasVal(power, ['gen_00']) || hasVal(turbineMisc, ['gen_ampere']);
+            case 'PIU':
+                return hasVal(turbineMisc, ['totalizer_export', 'totalizer_import']);
             case 'Handling':
                 return hasVal(stockTank, ['rcw_level_00', 'demin_level_00', 'solar_tank_a', 'solar_boiler']);
             case 'Chemical':
@@ -574,7 +582,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         {(() => {
                             const tabProps: DailyTabProps = {
                                 steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,
-                                prevSteam, prevPower, prevCoal, prevTotalizer: prevTotalizerData, prevStockTank, prevCoalTransfer,
+                                prevSteam, prevPower, prevCoal, prevTurbineMisc, prevTotalizer: prevTotalizerData, prevStockTank, prevCoalTransfer,
                                 onSteamChange: makeNumberHandler(setSteam),
                                 onPowerChange: makeNumberHandler(setPower),
                                 onCoalChange: makeNumberHandler(setCoal),
@@ -598,6 +606,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     {activeTab === 'Boiler' && <TabBoiler {...tabProps} />}
                                     {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
                                     {activeTab === 'Power' && <TabPower {...tabProps} />}
+                                    {activeTab === 'PIU' && <TabPIU {...tabProps} />}
                                     {activeTab === 'Handling' && <TabHandling {...tabProps} />}
                                     {activeTab === 'Chemical' && <TabChemical date={date} />}
                                     {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}

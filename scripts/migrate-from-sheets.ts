@@ -301,7 +301,7 @@ async function saveShiftRow(f: string[], shift: 'pagi' | 'sore' | 'malam', date:
     const { data: report, error: reportErr } = await supabase
         .from('shift_reports')
         .upsert({ date, shift, group_name: groupName, supervisor, status: 'submitted', logsheet_time: logsheetTime },
-            { onConflict: 'date,shift,group_name' })
+            { onConflict: 'date,shift' })
         .select('id').single();
 
     if (reportErr || !report) {

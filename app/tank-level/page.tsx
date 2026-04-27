@@ -33,6 +33,9 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
     const [editUsageLiters, setEditUsageLiters] = useState('');
     const [editUsageTujuan, setEditUsageTujuan] = useState('');
 
+    // Action sheet for mobile
+    const [actionSheetData, setActionSheetData] = useState<{ type: 'unloading' | 'usage', entry: any } | null>(null);
+
     // Modal state
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [isTrendModalOpen, setIsTrendModalOpen] = useState(false);
@@ -65,49 +68,28 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
 
     const renderUnloadingItem = (entry: any, idx: number) => {
         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-        const isEditing = editingId === entry.id;
-        if (isEditing) {
-            return (
-                <div key={entry.id ?? idx} className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/40">
-                    <div className="flex gap-2">
-                        <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                            className="flex-1 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-amber-500/50" />
-                        <input type="number" inputMode="decimal" value={editLiters} onChange={e => setEditLiters(e.target.value)}
-                            placeholder="Liter" className="w-24 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white text-center outline-none focus:border-amber-500/50 appearance-none" />
-                    </div>
-                    <input type="text" value={editSupplier} onChange={e => setEditSupplier(e.target.value)}
-                        placeholder="Perusahaan" className="w-full px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-amber-500/50" />
-                    <div className="flex gap-2 justify-end">
-                        <button onClick={() => setEditingId(null)}
-                            className="px-3 py-1 rounded-lg bg-slate-700 text-xs text-slate-300 font-bold cursor-pointer hover:bg-slate-600 transition-colors">Batal</button>
-                        <button onClick={async () => {
-                            if (entry.id) await updateSolarUnloading(entry.id, { date: editDate, liters: parseFloat(editLiters) || 0, supplier: editSupplier });
-                            setEditingId(null);
-                        }} className="px-3 py-1 rounded-lg bg-amber-500 text-xs text-white font-bold cursor-pointer hover:bg-amber-400 transition-colors">Simpan</button>
-                    </div>
-                </div>
-            );
-        }
         return (
-            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-amber-500/30 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden">
+            <div key={entry.id ?? idx} 
+                onClick={() => { if(entry.id) setActionSheetData({ type: 'unloading', entry }) }}
+                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-amber-500/30 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden cursor-pointer lg:cursor-default">
                 <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
                     <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
                     <span className="text-slate-500 shrink-0 font-bold">-</span>
                     <span className="text-base xl:text-lg font-black text-white truncate drop-shadow-md" title={entry.supplier}>{entry.supplier}</span>
                 </div>
-                <div className={`flex items-baseline gap-1.5 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'group-hover:-translate-x-[76px]' : ''}`}>
+                <div className={`flex items-baseline gap-1.5 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
                     <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none ${tc.textClass}`}>
                         {entry.liters.toLocaleString('id-ID')}
                     </span>
                     <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
                 </div>
                 {entry.id && (
-                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
-                        <button onClick={() => { setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toString()); setEditSupplier(entry.supplier); }}
+                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
+                        <button onClick={(e) => { e.stopPropagation(); setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toString()); setEditSupplier(entry.supplier); }}
                             className="text-slate-400 hover:text-amber-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
-                        <button onClick={() => { if (entry.id && confirm('Hapus data unloading ini?')) deleteSolarUnloading(entry.id); }}
+                        <button onClick={(e) => { e.stopPropagation(); if (confirm('Hapus data unloading ini?')) deleteSolarUnloading(entry.id!); }}
                             className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
                             <span className="material-symbols-outlined text-[16px]">delete</span>
                         </button>
@@ -119,49 +101,28 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
 
     const renderUsageItem = (entry: any, idx: number) => {
         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-        const isEditing = editingUsageId === entry.id;
-        if (isEditing) {
-            return (
-                <div key={entry.id ?? idx} className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/40">
-                    <div className="flex gap-2">
-                        <input type="date" value={editUsageDate} onChange={e => setEditUsageDate(e.target.value)}
-                            className="flex-1 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-rose-500/50" />
-                        <input type="number" inputMode="decimal" value={editUsageLiters} onChange={e => setEditUsageLiters(e.target.value)}
-                            placeholder="Liter" className="w-24 px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white text-center outline-none focus:border-rose-500/50 appearance-none" />
-                    </div>
-                    <input type="text" value={editUsageTujuan} onChange={e => setEditUsageTujuan(e.target.value)}
-                        placeholder="Tujuan (e.g., Boiler)" className="w-full px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white outline-none focus:border-rose-500/50" />
-                    <div className="flex gap-2 justify-end">
-                        <button onClick={() => setEditingUsageId(null)}
-                            className="px-3 py-1 rounded-lg bg-slate-700 text-xs text-slate-300 font-bold cursor-pointer hover:bg-slate-600 transition-colors">Batal</button>
-                        <button onClick={async () => {
-                            if (entry.id) await updateSolarUsage(entry.id, { date: editUsageDate, liters: parseFloat(editUsageLiters) || 0, tujuan: editUsageTujuan });
-                            setEditingUsageId(null);
-                        }} className="px-3 py-1 rounded-lg bg-rose-500 text-xs text-white font-bold cursor-pointer hover:bg-rose-400 transition-colors">Simpan</button>
-                    </div>
-                </div>
-            );
-        }
         return (
-            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-rose-500/30 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden">
+            <div key={entry.id ?? idx} 
+                onClick={() => { if(entry.id) setActionSheetData({ type: 'usage', entry }) }}
+                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-rose-500/30 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden cursor-pointer lg:cursor-default">
                 <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
                     <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
                     <span className="text-slate-500 shrink-0 font-bold">-</span>
                     <span className="text-base xl:text-lg font-black text-white truncate drop-shadow-md" title={entry.tujuan}>{entry.tujuan}</span>
                 </div>
-                <div className={`flex items-baseline gap-1.5 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'group-hover:-translate-x-[76px]' : ''}`}>
+                <div className={`flex items-baseline gap-1.5 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
                     <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none text-rose-400`}>
                         {entry.liters.toLocaleString('id-ID')}
                     </span>
                     <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
                 </div>
                 {entry.id && (
-                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
-                        <button onClick={() => { setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toString()); setEditUsageTujuan(entry.tujuan); }}
+                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
+                        <button onClick={(e) => { e.stopPropagation(); setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toString()); setEditUsageTujuan(entry.tujuan); }}
                             className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
-                        <button onClick={() => { if (entry.id && confirm('Hapus data pemakaian ini?')) deleteSolarUsage(entry.id); }}
+                        <button onClick={(e) => { e.stopPropagation(); if (confirm('Hapus data pemakaian ini?')) deleteSolarUsage(entry.id!); }}
                             className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
                             <span className="material-symbols-outlined text-[16px]">delete</span>
                         </button>
@@ -542,6 +503,123 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Action Sheet Modal */}
+            {actionSheetData && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                    onClick={() => setActionSheetData(null)}>
+                    <div className="bg-[#16202e] border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-4 animate-in fade-in zoom-in-95"
+                        onClick={e => e.stopPropagation()}>
+                        <h3 className="text-white font-bold text-lg mb-4 text-center border-b border-slate-800 pb-3">Pilih Aksi</h3>
+                        <div className="flex flex-col gap-2">
+                            <button onClick={() => {
+                                if (actionSheetData.type === 'unloading') {
+                                    setEditingId(actionSheetData.entry.id!);
+                                    setEditDate(actionSheetData.entry.date);
+                                    setEditLiters(actionSheetData.entry.liters.toString());
+                                    setEditSupplier(actionSheetData.entry.supplier);
+                                } else {
+                                    setEditingUsageId(actionSheetData.entry.id!);
+                                    setEditUsageDate(actionSheetData.entry.date);
+                                    setEditUsageLiters(actionSheetData.entry.liters.toString());
+                                    setEditUsageTujuan(actionSheetData.entry.tujuan);
+                                }
+                                setActionSheetData(null);
+                            }} className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition-colors">
+                                Edit Data
+                            </button>
+                            <button onClick={() => {
+                                if (confirm('Hapus data ini?')) {
+                                    if (actionSheetData.type === 'unloading') deleteSolarUnloading(actionSheetData.entry.id!);
+                                    else deleteSolarUsage(actionSheetData.entry.id!);
+                                }
+                                setActionSheetData(null);
+                            }} className="w-full py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/30 font-bold transition-colors">
+                                Hapus Data
+                            </button>
+                            <button onClick={() => setActionSheetData(null)} className="w-full py-3 rounded-xl bg-transparent text-slate-400 font-bold hover:text-white transition-colors mt-2">
+                                Batal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Unloading Modal */}
+            {editingId && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                    onClick={() => setEditingId(null)}>
+                    <div className="bg-[#16202e] border border-amber-500/30 rounded-2xl w-full max-w-sm shadow-[0_0_40px_rgba(245,158,11,0.15)] p-5 animate-in fade-in zoom-in-95"
+                        onClick={e => e.stopPropagation()}>
+                        <h3 className="text-white font-black text-lg mb-4 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-amber-500">edit</span> Edit Kedatangan Solar
+                        </h3>
+                        <div className="flex flex-col gap-3">
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
+                                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50 [color-scheme:dark]" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
+                                <input type="number" inputMode="decimal" value={editLiters} onChange={e => setEditLiters(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Perusahaan</label>
+                                <input type="text" value={editSupplier} onChange={e => setEditSupplier(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50" />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setEditingId(null)}
+                                className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Batal</button>
+                            <button onClick={async () => {
+                                await updateSolarUnloading(editingId, { date: editDate, liters: parseFloat(editLiters) || 0, supplier: editSupplier });
+                                setEditingId(null);
+                            }} className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-colors">Simpan</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Usage Modal */}
+            {editingUsageId && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                    onClick={() => setEditingUsageId(null)}>
+                    <div className="bg-[#16202e] border border-rose-500/30 rounded-2xl w-full max-w-sm shadow-[0_0_40px_rgba(244,63,94,0.15)] p-5 animate-in fade-in zoom-in-95"
+                        onClick={e => e.stopPropagation()}>
+                        <h3 className="text-white font-black text-lg mb-4 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-rose-500">edit</span> Edit Pemakaian Solar
+                        </h3>
+                        <div className="flex flex-col gap-3">
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
+                                <input type="date" value={editUsageDate} onChange={e => setEditUsageDate(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50 [color-scheme:dark]" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
+                                <input type="number" inputMode="decimal" value={editUsageLiters} onChange={e => setEditUsageLiters(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tujuan</label>
+                                <input type="text" value={editUsageTujuan} onChange={e => setEditUsageTujuan(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50" />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setEditingUsageId(null)}
+                                className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Batal</button>
+                            <button onClick={async () => {
+                                await updateSolarUsage(editingUsageId, { date: editUsageDate, liters: parseFloat(editUsageLiters) || 0, tujuan: editUsageTujuan });
+                                setEditingUsageId(null);
+                            }} className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-colors">Simpan</button>
                         </div>
                     </div>
                 </div>

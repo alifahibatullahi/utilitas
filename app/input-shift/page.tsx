@@ -664,11 +664,25 @@ export default function InputShiftPage() {
                                     }`}>
                                         {group ? `Group ${group}` : 'Off'}
                                     </span>
+                                    {inputMode === 'shift' && (
+                                        <>
+                                            <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
+                                            <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
+                                                <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
+                                                    <option value="" className="bg-[#101822]">Pilih...</option>
+                                                    {supervisorOptions.map(op => (
+                                                        <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
+                                                    ))}
+                                                </select>
+                                                <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                            </div>
+                                        </>
+                                    )}
                                 </>
                             );
                         })()}
                     </div>
-                    {/* Row 2: Tanggal, Waktu, Supervisor, Foreman Boiler, Foreman Turbin */}
+                    {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin (Shift) / Supervisor (Harian) */}
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
                         {(() => {
                             const today = mounted ? `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}` : '';
@@ -684,8 +698,9 @@ export default function InputShiftPage() {
                                             onChange={e => setSelectedDate(e.target.value)}
                                             className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
                                         />
+                                        {isToday && inputMode === 'shift' && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider ml-1">Hari ini</span>}
                                     </div>
-                                    {formattedDate && (
+                                    {inputMode === 'harian' && formattedDate && (
                                         <span className="text-sm font-bold text-slate-300 bg-[#0f1721] px-3 py-1.5 rounded-lg border border-slate-700/50 capitalize hidden sm:inline-block shadow-sm">
                                             {formattedDate}
                                         </span>
@@ -695,22 +710,26 @@ export default function InputShiftPage() {
                         })()}
                         <span className="text-slate-600 hidden sm:inline">|</span>
 
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
-                        <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                            <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
-                                <option value="" className="bg-[#101822]">Pilih...</option>
-                                {supervisorOptions.map(op => (
-                                    <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
-                                ))}
-                            </select>
-                            <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
-                        </div>
+                        {inputMode === 'harian' && (
+                            <>
+                                <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
+                                <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
+                                    <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
+                                        <option value="" className="bg-[#101822]">Pilih...</option>
+                                        {supervisorOptions.map(op => (
+                                            <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
+                                        ))}
+                                    </select>
+                                    <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                </div>
+                            </>
+                        )}
 
                         {inputMode === 'shift' && (
                             <>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Foreman Boiler</span>
                                 <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                    <select value={foremanBoiler} onChange={e => setForemanBoiler(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
+                                    <select value={foremanBoiler} onChange={e => setForemanBoiler(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none">
                                         <option value="" className="bg-[#101822]">Pilih...</option>
                                         {foremanBoilerOptions.map(op => (
                                             <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
@@ -720,7 +739,7 @@ export default function InputShiftPage() {
                                 </div>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Foreman Turbin</span>
                                 <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                    <select value={foremanTurbin} onChange={e => setForemanTurbin(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
+                                    <select value={foremanTurbin} onChange={e => setForemanTurbin(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-indigo-100 focus:ring-0 cursor-pointer appearance-none outline-none">
                                         <option value="" className="bg-[#101822]">Pilih...</option>
                                         {foremanTurbinOptions.map(op => (
                                             <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>

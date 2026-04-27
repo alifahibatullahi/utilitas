@@ -89,7 +89,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
             );
         }
         return (
-            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-amber-500/5 border border-amber-500/30 hover:bg-amber-500/10 transition-colors group relative overflow-hidden">
+            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-amber-500/30 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden">
                 <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
                     <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
                     <span className="text-slate-500 shrink-0 font-bold">-</span>
@@ -143,7 +143,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
             );
         }
         return (
-            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-rose-500/5 border border-rose-500/30 hover:bg-rose-500/10 transition-colors group relative overflow-hidden">
+            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-rose-500/30 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden">
                 <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
                     <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
                     <span className="text-slate-500 shrink-0 font-bold">-</span>

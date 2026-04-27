@@ -513,7 +513,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                             contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(51, 65, 85, 0.8)', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
                                             itemStyle={{ color: '#fff', fontWeight: 'bold' }}
                                             labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '4px' }}
-                                            formatter={(value: number) => [`${value.toLocaleString('id-ID')} m³`, 'Level']}
+                                            formatter={(value) => [`${Number(value ?? 0).toLocaleString('id-ID')} m³`, 'Level']}
                                         />
                                         <Line type="monotone" dataKey="m3" stroke={tc.base} strokeWidth={4} dot={{ r: 5, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 }} activeDot={{ r: 8, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} />
                                     </LineChart>

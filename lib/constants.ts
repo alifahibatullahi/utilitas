@@ -36,8 +36,8 @@ export const TANKS: Record<string, {
     RCW: {
         id: 'rcw',
         name: 'RCW',
-        capacity: '4.600 m³',
-        capacityM3: 4600,
+        capacity: '5.000 m³',
+        capacityM3: 5000,
         liquidColor: '#2dd4bf',       // teal-400
         liquidColorLight: '#5eead4',  // teal-300
         gradientFrom: '#0d9488',      // teal-600
@@ -75,11 +75,11 @@ export const DEFAULT_THRESHOLDS = {
 };
 
 // Per-tank thresholds (in %)
-// DEMIN: normal 900–1120 m³ dari 1200 = 75%–93.3%
-// RCW  : normal 3800–4600 m³ dari 4600 = 82.6%–100%
+// DEMIN: normal 900–1120 m³ dari 1250 = 72%–89.6%
+// RCW  : normal 3800–4600 m³ dari 5000 = 76%–92%
 export const TANK_THRESHOLDS: Record<string, typeof DEFAULT_THRESHOLDS> = {
     DEMIN:  { critical_low: 0, warning_low: 75,   warning_high: 93.3, critical_high: 101 },
-    RCW:    { critical_low: 0, warning_low: 82.6,  warning_high: 100,  critical_high: 101 },
+    RCW:    { critical_low: 0, warning_low: 76,    warning_high: 92,   critical_high: 101 },
     SOLAR:  DEFAULT_THRESHOLDS,
 };
 

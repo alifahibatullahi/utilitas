@@ -703,7 +703,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
             const ty = reportData.tankyard;
             const tankMappings: { tank_id: string; value: number | null; capacity_m3: number }[] = [
                 { tank_id: 'DEMIN', value: ty.tk_demin ?? null, capacity_m3: 1250 },
-                { tank_id: 'RCW', value: ty.tk_rcw ?? null, capacity_m3: 4600 },
+                { tank_id: 'RCW', value: ty.tk_rcw ?? null, capacity_m3: 5000 },
                 { tank_id: 'SOLAR', value: ty.tk_solar_ab ?? null, capacity_m3: 200 },
             ];
             for (const { tank_id, value, capacity_m3 } of tankMappings) {

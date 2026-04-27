@@ -490,16 +490,32 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         <div className="p-6 2xl:p-8 overflow-y-auto flex-1 flex flex-col gap-3 bg-slate-900/50 relative">
                             <div className="h-[400px] 2xl:h-[500px] w-full mt-4">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={trendData[tankId]} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                    <LineChart
+                                        data={(trendData[tankId] || []).map(d => ({
+                                            time: d.time,
+                                            m3: Math.round(d.level / 100 * tank.capacityM3),
+                                        }))}
+                                        margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                                    >
                                         <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                                         <XAxis dataKey="time" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={{ stroke: '#334155' }} dy={10} />
-                                        <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={{ stroke: '#334155' }} dx={-10} domain={[0, 100]} />
-                                        <RechartsTooltip 
+                                        <YAxis
+                                            stroke="#94a3b8"
+                                            tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }}
+                                            tickLine={false}
+                                            axisLine={{ stroke: '#334155' }}
+                                            dx={-10}
+                                            domain={[0, tank.capacityM3]}
+                                            tickFormatter={(v) => `${v.toLocaleString('id-ID')}`}
+                                            label={{ value: 'm³', angle: -90, position: 'insideLeft', fill: '#94a3b8', fontWeight: 'bold', fontSize: 12, dx: 18 }}
+                                        />
+                                        <RechartsTooltip
                                             contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(51, 65, 85, 0.8)', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
                                             itemStyle={{ color: '#fff', fontWeight: 'bold' }}
                                             labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '4px' }}
+                                            formatter={(value: number) => [`${value.toLocaleString('id-ID')} m³`, 'Level']}
                                         />
-                                        <Line type="monotone" dataKey="level" stroke={tc.base} strokeWidth={4} dot={{ r: 5, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 }} activeDot={{ r: 8, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} />
+                                        <Line type="monotone" dataKey="m3" stroke={tc.base} strokeWidth={4} dot={{ r: 5, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 }} activeDot={{ r: 8, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>

@@ -563,6 +563,18 @@ export default function InputShiftPage() {
 
     return (
         <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 flex flex-col gap-4 h-full overflow-hidden">
+            {/* Loading Overlay */}
+            {submitting && (
+                <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
+                    <div className="relative flex flex-col items-center justify-center bg-[#16202e] border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95">
+                        <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-2xl pointer-events-none"></div>
+                        <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mb-6 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
+                        <h3 className="text-white font-black text-xl tracking-wide mb-2 relative z-10">Menyimpan data</h3>
+                        <p className="text-slate-400 text-sm font-medium animate-pulse relative z-10">Mohon tunggu sebentar...</p>
+                    </div>
+                </div>
+            )}
+
             {/* Navigation Warning Modal */}
             {showNavWarning && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -652,45 +664,53 @@ export default function InputShiftPage() {
                                     }`}>
                                         {group ? `Group ${group}` : 'Off'}
                                     </span>
-                                    <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
-                                    <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                        <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
-                                            <option value="" className="bg-[#101822]">Pilih...</option>
-                                            {supervisorOptions.map(op => (
-                                                <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
-                                            ))}
-                                        </select>
-                                        <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
-                                    </div>
                                 </>
                             );
                         })()}
                     </div>
-                    {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin */}
+                    {/* Row 2: Tanggal, Waktu, Supervisor, Foreman Boiler, Foreman Turbin */}
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
                         {(() => {
                             const today = mounted ? `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}` : '';
                             const isToday = selectedDate === today;
+                            const formattedDate = mounted && selectedDate ? new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
                             return (
-                                <div className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border ${isToday ? 'bg-blue-500/15 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-[#0f1721] border-slate-700/50'}`}>
-                                    <span className={`material-symbols-outlined text-[16px] ${isToday ? 'text-blue-400' : 'text-blue-400'}`}>calendar_month</span>
-                                    <input
-                                        type="date"
-                                        value={selectedDate}
-                                        onChange={e => setSelectedDate(e.target.value)}
-                                        className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
-                                    />
-                                    {isToday && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider ml-1">Hari ini</span>}
-                                </div>
+                                <>
+                                    <div className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border ${isToday ? 'bg-blue-500/15 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-[#0f1721] border-slate-700/50'}`}>
+                                        <span className={`material-symbols-outlined text-[16px] ${isToday ? 'text-blue-400' : 'text-blue-400'}`}>calendar_month</span>
+                                        <input
+                                            type="date"
+                                            value={selectedDate}
+                                            onChange={e => setSelectedDate(e.target.value)}
+                                            className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
+                                        />
+                                    </div>
+                                    {formattedDate && (
+                                        <span className="text-sm font-bold text-slate-300 bg-[#0f1721] px-3 py-1.5 rounded-lg border border-slate-700/50 capitalize hidden sm:inline-block shadow-sm">
+                                            {formattedDate}
+                                        </span>
+                                    )}
+                                </>
                             );
                         })()}
                         <span className="text-slate-600 hidden sm:inline">|</span>
+
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
+                        <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
+                            <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
+                                <option value="" className="bg-[#101822]">Pilih...</option>
+                                {supervisorOptions.map(op => (
+                                    <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
+                                ))}
+                            </select>
+                            <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                        </div>
 
                         {inputMode === 'shift' && (
                             <>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Foreman Boiler</span>
                                 <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                    <select value={foremanBoiler} onChange={e => setForemanBoiler(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none">
+                                    <select value={foremanBoiler} onChange={e => setForemanBoiler(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
                                         <option value="" className="bg-[#101822]">Pilih...</option>
                                         {foremanBoilerOptions.map(op => (
                                             <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
@@ -700,7 +720,7 @@ export default function InputShiftPage() {
                                 </div>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Foreman Turbin</span>
                                 <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                    <select value={foremanTurbin} onChange={e => setForemanTurbin(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-indigo-100 focus:ring-0 cursor-pointer appearance-none outline-none">
+                                    <select value={foremanTurbin} onChange={e => setForemanTurbin(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
                                         <option value="" className="bg-[#101822]">Pilih...</option>
                                         {foremanTurbinOptions.map(op => (
                                             <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>

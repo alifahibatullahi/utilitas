@@ -58,10 +58,10 @@ function ChemRow({ label, shifts, total, unit, color }: {
                     </div>
                 ))}
             </div>
-            <div className={`flex items-center justify-between pt-2 border-t ${c.border}`}>
-                <span className="text-xs text-slate-400 font-semibold">Total Hari Ini</span>
-                <span className={`text-base font-black font-mono ${c.total}`}>
-                    {fmt(total)} <span className="text-xs font-normal text-slate-400">{unit}</span>
+            <div className={`flex items-center justify-between mt-3 p-3 rounded-lg ${c.bg} border ${c.border}`}>
+                <span className={`text-sm font-bold uppercase tracking-wider ${c.total}`}>Total Hari Ini</span>
+                <span className={`text-xl font-black font-mono ${c.total}`}>
+                    {fmt(total)} <span className="text-sm font-normal opacity-70">{unit}</span>
                 </span>
             </div>
         </div>
@@ -129,7 +129,7 @@ export default function TabChemical({ date }: TabChemicalProps) {
     };
 
     return (
-        <div className="flex-1 flex flex-col gap-6 w-full overflow-y-auto pr-1 scrollbar-hide">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full overflow-y-auto pr-1 scrollbar-hide">
             {/* Konsumsi Chemical 24 Jam */}
             <div className="rounded-xl ring-1 ring-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.15)]">
                 <Card title="Konsumsi Chemical 24 Jam" icon="science" color="purple">
@@ -166,18 +166,18 @@ export default function TabChemical({ date }: TabChemicalProps) {
             {/* Stock Chemical */}
             <div className="rounded-xl ring-1 ring-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
                 <Card title="Stock Chemical" icon="inventory_2" color="emerald">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex flex-col gap-4 h-full">
                         {[
-                            { label: 'Phosphate', value: stock.phosphate, color: 'text-purple-300' },
-                            { label: 'Amine', value: stock.amine, color: 'text-indigo-300' },
-                            { label: 'Hydrazine', value: stock.hydrazine, color: 'text-orange-300' },
-                        ].map(({ label, value, color }) => (
-                            <div key={label} className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 flex flex-col gap-1">
-                                <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">{label}</span>
-                                <span className={`text-2xl font-black font-mono ${value != null ? color : 'text-slate-600'}`}>
+                            { label: 'Phosphate', value: stock.phosphate, color: 'text-purple-300', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+                            { label: 'Amine', value: stock.amine, color: 'text-indigo-300', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
+                            { label: 'Hydrazine', value: stock.hydrazine, color: 'text-orange-300', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+                        ].map(({ label, value, color, bg, border }) => (
+                            <div key={label} className={`rounded-xl ${bg} border ${border} p-5 flex flex-col items-center justify-center gap-2 flex-1`}>
+                                <span className="text-sm text-slate-300 uppercase tracking-wider font-bold">{label}</span>
+                                <span className={`text-4xl font-black font-mono ${value != null ? color : 'text-slate-600'}`}>
                                     {value != null ? value : '—'}
                                 </span>
-                                <span className="text-[11px] text-slate-500">pcs (terakhir tercatat)</span>
+                                <span className="text-xs text-slate-400">pcs (terakhir tercatat)</span>
                             </div>
                         ))}
                     </div>

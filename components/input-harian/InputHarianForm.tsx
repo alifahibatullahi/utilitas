@@ -453,6 +453,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 </div>
             )}
 
+            {/* Loading Overlay */}
+            {submitting && (
+                <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
+                    <div className="relative flex flex-col items-center justify-center bg-[#16202e] border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95">
+                        <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-2xl pointer-events-none"></div>
+                        <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mb-6 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
+                        <h3 className="text-white font-black text-xl tracking-wide mb-2 relative z-10">Menyimpan data</h3>
+                        <p className="text-slate-400 text-sm font-medium animate-pulse relative z-10">Mohon tunggu sebentar...</p>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col lg:flex-row gap-6 w-full max-w-full">
                 {/* Left Sidebar */}
                 <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4">

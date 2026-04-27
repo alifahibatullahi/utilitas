@@ -89,7 +89,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
             );
         }
         return (
-            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden">
+            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-amber-500/5 border border-amber-500/30 hover:bg-amber-500/10 transition-colors group relative overflow-hidden">
                 <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
                     <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
                     <span className="text-slate-500 shrink-0 font-bold">-</span>
@@ -102,9 +102,9 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
                 </div>
                 {entry.id && (
-                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
+                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
                         <button onClick={() => { setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toString()); setEditSupplier(entry.supplier); }}
-                            className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
+                            className="text-slate-400 hover:text-amber-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
                         <button onClick={() => { if (entry.id && confirm('Hapus data unloading ini?')) deleteSolarUnloading(entry.id); }}
@@ -143,7 +143,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
             );
         }
         return (
-            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-slate-700/60 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden">
+            <div key={entry.id ?? idx} className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-rose-500/5 border border-rose-500/30 hover:bg-rose-500/10 transition-colors group relative overflow-hidden">
                 <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
                     <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
                     <span className="text-slate-500 shrink-0 font-bold">-</span>
@@ -156,9 +156,9 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
                 </div>
                 {entry.id && (
-                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
+                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
                         <button onClick={() => { setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toString()); setEditUsageTujuan(entry.tujuan); }}
-                            className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
+                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
                         <button onClick={() => { if (entry.id && confirm('Hapus data pemakaian ini?')) deleteSolarUsage(entry.id); }}

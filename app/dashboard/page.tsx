@@ -213,27 +213,25 @@ function STGCard() {
                     </div>
                 </div>
 
-                {/* Steam Inlet & Condensate */}
+                {/* Internal Power & Export Power */}
                 <div className="grid grid-cols-1 gap-4">
                     <div className="bg-surface-dark p-5 rounded-xl border border-slate-800 flex items-center justify-between hover:border-primary/40 hover:bg-surface-highlight transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg cursor-default">
                         <div>
                             <div className="flex items-center gap-2 mb-1 text-primary">
-                                <span className="material-symbols-outlined text-lg">air</span>
-                                <span className="text-xs font-bold uppercase tracking-wide">Steam Inlet</span>
+                                <span className="material-symbols-outlined text-lg">factory</span>
+                                <span className="text-xs font-bold uppercase tracking-wide">Power Internal UBB</span>
                             </div>
-                            <p className="text-3xl font-bold text-white">{STG_DATA.steamInlet.flow.toFixed(1)} <span className="text-sm font-normal text-slate-400">t/h</span></p>
+                            <p className="text-3xl font-bold text-white">{STG_DATA.steamInlet.flow.toFixed(1)} <span className="text-sm font-normal text-slate-400">MW</span></p>
                         </div>
-                        <span className="text-xs text-text-secondary">T: {STG_DATA.steamInlet.totaliser.toLocaleString()} ton</span>
                     </div>
                     <div className="bg-surface-dark p-5 rounded-xl border border-slate-800 flex items-center justify-between hover:border-blue-400/40 hover:bg-surface-highlight transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg cursor-default">
                         <div>
                             <div className="flex items-center gap-2 mb-1 text-blue-400">
-                                <span className="material-symbols-outlined text-lg">water_drop</span>
-                                <span className="text-xs font-bold uppercase tracking-wide">Condensate</span>
+                                <span className="material-symbols-outlined text-lg">electric_bolt</span>
+                                <span className="text-xs font-bold uppercase tracking-wide">Export UBB</span>
                             </div>
-                            <p className="text-3xl font-bold text-white">{STG_DATA.condensate.flow.toFixed(1)} <span className="text-sm font-normal text-slate-400">t/h</span></p>
+                            <p className="text-3xl font-bold text-white">{STG_DATA.condensate.flow.toFixed(1)} <span className="text-sm font-normal text-slate-400">MW</span></p>
                         </div>
-                        <span className="text-xs text-text-secondary">T: {STG_DATA.condensate.totaliser.toLocaleString()} ton</span>
                     </div>
                 </div>
             </div>

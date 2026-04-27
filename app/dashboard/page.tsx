@@ -382,7 +382,7 @@ export default function DashboardPage() {
             {/* Quick Stats + Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="bg-surface-dark border border-slate-800 hover:border-emerald-500/30 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/5 cursor-default">
-                    <p className="text-sm font-medium text-text-secondary">Total Steam</p>
+                    <p className="text-sm font-medium text-text-secondary">Total Produksi Steam 2026</p>
                     <div className="flex items-end justify-between mt-2">
                         <span className="text-2xl font-bold text-white">{totalSteam.toFixed(1)} t/h</span>
                         <div className="flex items-center text-emerald-500 text-sm font-medium">
@@ -392,9 +392,9 @@ export default function DashboardPage() {
                     </div>
                 </div>
                 <div className="bg-surface-dark border border-slate-800 hover:border-rose-500/30 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-500/5 cursor-default">
-                    <p className="text-sm font-medium text-text-secondary">Total Coal</p>
+                    <p className="text-sm font-medium text-text-secondary">Consumption Rate</p>
                     <div className="flex items-end justify-between mt-2">
-                        <span className="text-2xl font-bold text-white">{totalCoal.toFixed(1)} t/h</span>
+                        <span className="text-2xl font-bold text-white">{totalCoal.toFixed(1)}</span>
                         <div className="flex items-center text-rose-500 text-sm font-medium">
                             <span className="material-symbols-outlined text-base">trending_down</span>
                             <span>-1.1%</span>

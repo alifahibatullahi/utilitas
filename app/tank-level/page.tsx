@@ -160,7 +160,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         </button>
                     ) : (
                         <button onClick={() => setIsTrendModalOpen(true)}
-                            className={`${tankId === 'DEMIN' ? 'bg-sky-500/10 hover:bg-sky-500 text-sky-500 border-sky-500/30 hover:border-sky-500' : 'bg-teal-500/10 hover:bg-teal-500 text-teal-500 border-teal-500/30 hover:border-teal-500'} hover:text-white border px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>
+                            className={`${tankId === 'DEMIN' ? 'bg-sky-500 text-white shadow-[0_0_15px_rgba(14,165,233,0.4)] hover:bg-sky-400' : 'bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.4)] hover:bg-teal-400'} px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer group`}>
                             <span>Trend</span>
                             <span className="material-symbols-outlined text-[14px] transition-transform group-hover:rotate-12 group-hover:scale-125">timeline</span>
                         </button>

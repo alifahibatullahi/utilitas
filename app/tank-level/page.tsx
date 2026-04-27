@@ -42,6 +42,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
     const [historyTab, setHistoryTab] = useState<'unloading' | 'pemakaian'>('unloading');
     const [unloadingPage, setUnloadingPage] = useState(1);
     const [usagePage, setUsagePage] = useState(1);
+    const [trendRange, setTrendRange] = useState<'24h' | '7d' | '30d' | 'all'>('24h');
     
     const tank = TANKS[tankId];
     const data = currentLevels[tankId];
@@ -488,36 +489,103 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         </div>
                         
                         <div className="p-6 2xl:p-8 overflow-y-auto flex-1 flex flex-col gap-3 bg-slate-900/50 relative">
-                            <div className="h-[400px] 2xl:h-[500px] w-full mt-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart
-                                        data={(trendData[tankId] || []).map(d => ({
-                                            time: d.time,
-                                            m3: Math.round(d.level / 100 * tank.capacityM3),
-                                        }))}
-                                        margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                            {/* Range filter chips */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {([
+                                    { key: '24h', label: '24 Jam' },
+                                    { key: '7d',  label: '7 Hari' },
+                                    { key: '30d', label: '30 Hari' },
+                                    { key: 'all', label: 'Semua' },
+                                ] as const).map(opt => (
+                                    <button
+                                        key={opt.key}
+                                        onClick={() => setTrendRange(opt.key)}
+                                        style={trendRange === opt.key ? { backgroundColor: tc.base, boxShadow: `0 0 15px ${tc.base}66` } : undefined}
+                                        className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all cursor-pointer border ${
+                                            trendRange === opt.key
+                                                ? 'text-white border-transparent'
+                                                : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
+                                        }`}
                                     >
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                                        <XAxis dataKey="time" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={{ stroke: '#334155' }} dy={10} />
-                                        <YAxis
-                                            stroke="#94a3b8"
-                                            tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }}
-                                            tickLine={false}
-                                            axisLine={{ stroke: '#334155' }}
-                                            dx={-10}
-                                            domain={[0, tank.capacityM3]}
-                                            tickFormatter={(v) => `${v.toLocaleString('id-ID')}`}
-                                        />
-                                        <RechartsTooltip
-                                            contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(51, 65, 85, 0.8)', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
-                                            itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                                            labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '4px' }}
-                                            formatter={(value) => [Number(value ?? 0).toLocaleString('id-ID'), 'Level']}
-                                        />
-                                        <Line type="monotone" dataKey="m3" stroke={tc.base} strokeWidth={4} dot={{ r: 5, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 }} activeDot={{ r: 8, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} />
-                                    </LineChart>
-                                </ResponsiveContainer>
+                                        {opt.label}
+                                    </button>
+                                ))}
                             </div>
+                            {(() => {
+                                const all = trendData[tankId] || [];
+                                const now = Date.now();
+                                const rangeMs: Record<typeof trendRange, number | null> = {
+                                    '24h': 24 * 60 * 60 * 1000,
+                                    '7d': 7 * 24 * 60 * 60 * 1000,
+                                    '30d': 30 * 24 * 60 * 60 * 1000,
+                                    'all': null,
+                                };
+                                const cutoff = rangeMs[trendRange];
+                                const filtered = (cutoff == null ? all : all.filter(d => now - new Date(d.timestamp).getTime() <= cutoff))
+                                    .map(d => ({ ts: new Date(d.timestamp).getTime(), m3: Math.round(d.level / 100 * tank.capacityM3) }));
+
+                                const fmtTick = (ts: number) => {
+                                    const d = new Date(ts);
+                                    if (trendRange === '24h') {
+                                        return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                    }
+                                    if (trendRange === '7d') {
+                                        return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) + ' ' +
+                                               d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                    }
+                                    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: trendRange === 'all' ? '2-digit' : undefined });
+                                };
+
+                                return (
+                                    <>
+                                        <div className="text-xs text-slate-500 font-bold mt-1">
+                                            {filtered.length} titik data{filtered.length === 0 ? ' — tidak ada data pada rentang ini' : ''}
+                                        </div>
+                                        <div className="h-[400px] 2xl:h-[500px] w-full mt-2">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={filtered} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="ts"
+                                                        type="number"
+                                                        scale="time"
+                                                        domain={['dataMin', 'dataMax']}
+                                                        stroke="#94a3b8"
+                                                        tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 'bold' }}
+                                                        tickLine={false}
+                                                        axisLine={{ stroke: '#334155' }}
+                                                        dy={10}
+                                                        tickFormatter={fmtTick}
+                                                        interval="preserveStartEnd"
+                                                        minTickGap={50}
+                                                    />
+                                                    <YAxis
+                                                        stroke="#94a3b8"
+                                                        tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }}
+                                                        tickLine={false}
+                                                        axisLine={{ stroke: '#334155' }}
+                                                        dx={-10}
+                                                        domain={[0, tank.capacityM3]}
+                                                        tickFormatter={(v) => `${v.toLocaleString('id-ID')}`}
+                                                    />
+                                                    <RechartsTooltip
+                                                        contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(51, 65, 85, 0.8)', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                                                        itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                                                        labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '4px' }}
+                                                        labelFormatter={(label) => {
+                                                            const d = new Date(Number(label));
+                                                            return d.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) + ' ' +
+                                                                   d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                                        }}
+                                                        formatter={(value) => [Number(value ?? 0).toLocaleString('id-ID'), 'Level']}
+                                                    />
+                                                    <Line type="monotone" dataKey="m3" stroke={tc.base} strokeWidth={3} dot={filtered.length <= 60 ? { r: 4, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 } : false} activeDot={{ r: 7, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>

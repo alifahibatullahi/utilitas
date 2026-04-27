@@ -52,7 +52,7 @@ export interface TankLevelHistory {
 interface TankDataContextType {
     currentLevels: Record<TankId, TankLevel>;
     history: TankLevelHistory[];
-    trendData: Record<TankId, { time: string; level: number }[]>;
+    trendData: Record<TankId, { time: string; timestamp: string; level: number }[]>;
     flowRates: Record<TankId, FlowRate[]>;
     outputFlowRates: Record<TankId, OutputFlowRate[]>;
     solarUnloadings: SolarUnloading[];
@@ -112,20 +112,20 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
     const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloading[]>([]);
     const [solarUsages, setSolarUsages] = useState<SolarUsage[]>([]);
     const [pumpActiveSince, setPumpActiveSince] = useState<string | null>(null);
-    const [trendData, setTrendData] = useState<Record<TankId, { time: string; level: number }[]>>({
+    const [trendData, setTrendData] = useState<Record<TankId, { time: string; timestamp: string; level: number }[]>>({
         DEMIN: [], RCW: [], SOLAR: [],
     });
 
-    // Build trend data from history
+    // Build trend data from history (full history; chart-side filters by range)
     const buildTrendData = useCallback((historyItems: TankLevelHistory[]) => {
-        const result: Record<TankId, { time: string; level: number }[]> = { DEMIN: [], RCW: [], SOLAR: [] };
+        const result: Record<TankId, { time: string; timestamp: string; level: number }[]> = { DEMIN: [], RCW: [], SOLAR: [] };
         TANK_IDS.forEach(tankId => {
             const tankHistory = historyItems
                 .filter(h => h.tankId === tankId)
-                .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                .slice(-24); // Last 24 data points
+                .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
             result[tankId] = tankHistory.map(h => ({
                 time: new Date(h.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                timestamp: h.timestamp,
                 level: h.level,
             }));
         });
@@ -173,7 +173,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                 .from('tank_levels')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(100);
+                .limit(500);
 
             if (data && data.length > 0) {
                 const rows = data as unknown as TankLevelRow[];

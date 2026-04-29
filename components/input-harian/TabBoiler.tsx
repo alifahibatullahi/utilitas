@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, TotalizerInput } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 
@@ -70,6 +70,47 @@ export default function TabBoiler({
     // CR Total Calculation
     const crTotal = prodTotal24 > 0 ? grandTotal24 / prodTotal24 : 0;
 
+    const isShutdownA = turbineMisc.status_boiler_a === 'shutdown';
+    const isShutdownB = turbineMisc.status_boiler_b === 'shutdown';
+
+    // Auto-fill totalizer A & clear non-totalizer saat shutdown A
+    useEffect(() => {
+        if (!isShutdownA) return;
+        // Auto-fill totalizer hanya jika kosong (tetap bisa diedit)
+        if (prevA24 > 0 && steam.prod_boiler_a_24 == null) onSteamChange('prod_boiler_a_24', prevA24);
+        ['coal_a_24', 'coal_b_24', 'coal_c_24'].forEach(k => {
+            const prev = pnCoal(k);
+            if (prev > 0 && coal[k] == null) onCoalChange(k, prev);
+        });
+        if (prevBfwA > 0 && stockTank.bfw_boiler_a == null) onStockTankChange('bfw_boiler_a', prevBfwA);
+        // Clear semua field non-totalizer
+        if (steam.prod_boiler_a_00 != null) onSteamChange('prod_boiler_a_00', null);
+        ['coal_a_00', 'coal_b_00', 'coal_c_00'].forEach(k => {
+            if (coal[k] != null) onCoalChange(k, null);
+        });
+        if (stockTank.flow_bfw_a != null) onStockTankChange('flow_bfw_a', null);
+        if (turbineMisc.temp_furnace_a != null) onTurbineMiscChange('temp_furnace_a', null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isShutdownA]);
+
+    // Auto-fill totalizer B & clear non-totalizer saat shutdown B
+    useEffect(() => {
+        if (!isShutdownB) return;
+        if (prevB24 > 0 && steam.prod_boiler_b_24 == null) onSteamChange('prod_boiler_b_24', prevB24);
+        ['coal_d_24', 'coal_e_24', 'coal_f_24'].forEach(k => {
+            const prev = pnCoal(k);
+            if (prev > 0 && coal[k] == null) onCoalChange(k, prev);
+        });
+        if (prevBfwB > 0 && stockTank.bfw_boiler_b == null) onStockTankChange('bfw_boiler_b', prevBfwB);
+        if (steam.prod_boiler_b_00 != null) onSteamChange('prod_boiler_b_00', null);
+        ['coal_d_00', 'coal_e_00', 'coal_f_00'].forEach(k => {
+            if (coal[k] != null) onCoalChange(k, null);
+        });
+        if (stockTank.flow_bfw_b != null) onStockTankChange('flow_bfw_b', null);
+        if (turbineMisc.temp_furnace_b != null) onTurbineMiscChange('temp_furnace_b', null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isShutdownB]);
+
     return (
         <div className="flex flex-col gap-6 w-full">
             <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6 w-full">
@@ -77,10 +118,16 @@ export default function TabBoiler({
                 <Card title="Input Boiler A" icon="factory" color="rose"
                     headerRight={<BoilerStatusChip name="status_boiler_a" value={(turbineMisc.status_boiler_a as string) ?? ''} onChange={onTurbineMiscChange} />}
                 >
+                    {isShutdownA && (
+                        <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                            <span className="material-symbols-outlined text-[16px] text-rose-400">power_off</span>
+                            <span>Boiler A <span className="font-bold">shutdown</span> — hanya totalizer yang bisa diedit, parameter lain dikunci.</span>
+                        </div>
+                    )}
                     <SectionLabel label="Produksi Steam A" />
                     <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-700/50 mb-4">
                         <TotalizerInput label="Steam A" name="prod_boiler_a_24" value={steam.prod_boiler_a_24} prev={prevA24} onChange={onSteamChange} unit="Ton" color="rose" />
-                        <InputField label="Flow Steam A" name="prod_boiler_a_00" value={steam.prod_boiler_a_00} onChange={onSteamChange} unit="T/H" color="rose" />
+                        <InputField label="Flow Steam A" name="prod_boiler_a_00" value={steam.prod_boiler_a_00} onChange={onSteamChange} unit="T/H" color="rose" readOnly={isShutdownA} />
                     </div>
 
                     <SectionLabel label="Konsumsi Batubara A" badge="Mill A,B,C" />
@@ -90,20 +137,20 @@ export default function TabBoiler({
                         <TotalizerInput label="Mill C" name="coal_c_24" value={coal.coal_c_24} prev={pnCoal('coal_c_24')} onChange={onCoalChange} unit="Ton" color="rose" />
                     </div>
                     <div className="grid grid-cols-3 gap-3 pb-4 border-b border-slate-700/50 mb-4">
-                        <InputField label="Flow Mill A" name="coal_a_00" value={coal.coal_a_00} onChange={onCoalChange} unit="T/Jam" color="amber" />
-                        <InputField label="Flow Mill B" name="coal_b_00" value={coal.coal_b_00} onChange={onCoalChange} unit="T/Jam" color="amber" />
-                        <InputField label="Flow Mill C" name="coal_c_00" value={coal.coal_c_00} onChange={onCoalChange} unit="T/Jam" color="amber" />
+                        <InputField label="Flow Mill A" name="coal_a_00" value={coal.coal_a_00} onChange={onCoalChange} unit="T/Jam" color="amber" readOnly={isShutdownA} />
+                        <InputField label="Flow Mill B" name="coal_b_00" value={coal.coal_b_00} onChange={onCoalChange} unit="T/Jam" color="amber" readOnly={isShutdownA} />
+                        <InputField label="Flow Mill C" name="coal_c_00" value={coal.coal_c_00} onChange={onCoalChange} unit="T/Jam" color="amber" readOnly={isShutdownA} />
                     </div>
 
                     <SectionLabel label="Boiler Feed Water A" />
                     <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-700/50 mb-4">
                         <TotalizerInput label="BFW A" name="bfw_boiler_a" value={stockTank.bfw_boiler_a} prev={prevBfwA} onChange={onStockTankChange} unit="Ton" color="cyan" />
-                        <InputField label="Flow BFW A" name="flow_bfw_a" value={stockTank.flow_bfw_a} onChange={onStockTankChange} unit="T/H" color="cyan" />
+                        <InputField label="Flow BFW A" name="flow_bfw_a" value={stockTank.flow_bfw_a} onChange={onStockTankChange} unit="T/H" color="cyan" readOnly={isShutdownA} />
                     </div>
 
                     <SectionLabel label="Temperatur Furnace A" />
                     <div className="grid grid-cols-1 gap-4">
-                        <InputField label="Furnace A" name="temp_furnace_a" value={turbineMisc.temp_furnace_a} onChange={onTurbineMiscChange} unit="°C" color="orange" />
+                        <InputField label="Furnace A" name="temp_furnace_a" value={turbineMisc.temp_furnace_a as number | null} onChange={onTurbineMiscChange} unit="°C" color="orange" readOnly={isShutdownA} />
                     </div>
                 </Card>
 
@@ -111,10 +158,16 @@ export default function TabBoiler({
                 <Card title="Input Boiler B" icon="factory" color="purple"
                     headerRight={<BoilerStatusChip name="status_boiler_b" value={(turbineMisc.status_boiler_b as string) ?? ''} onChange={onTurbineMiscChange} />}
                 >
-                     <SectionLabel label="Produksi Steam B" />
+                    {isShutdownB && (
+                        <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                            <span className="material-symbols-outlined text-[16px] text-rose-400">power_off</span>
+                            <span>Boiler B <span className="font-bold">shutdown</span> — hanya totalizer yang bisa diedit, parameter lain dikunci.</span>
+                        </div>
+                    )}
+                    <SectionLabel label="Produksi Steam B" />
                     <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-700/50 mb-4">
                         <TotalizerInput label="Steam B" name="prod_boiler_b_24" value={steam.prod_boiler_b_24} prev={prevB24} onChange={onSteamChange} unit="Ton" color="purple" />
-                        <InputField label="Flow Steam B" name="prod_boiler_b_00" value={steam.prod_boiler_b_00} onChange={onSteamChange} unit="T/H" color="purple" />
+                        <InputField label="Flow Steam B" name="prod_boiler_b_00" value={steam.prod_boiler_b_00} onChange={onSteamChange} unit="T/H" color="purple" readOnly={isShutdownB} />
                     </div>
 
                     <SectionLabel label="Konsumsi Batubara B" badge="Mill D,E,F" />
@@ -124,20 +177,20 @@ export default function TabBoiler({
                         <TotalizerInput label="Mill F" name="coal_f_24" value={coal.coal_f_24} prev={pnCoal('coal_f_24')} onChange={onCoalChange} unit="Ton" color="purple" />
                     </div>
                     <div className="grid grid-cols-3 gap-3 pb-4 border-b border-slate-700/50 mb-4">
-                        <InputField label="Flow Mill D" name="coal_d_00" value={coal.coal_d_00} onChange={onCoalChange} unit="T/Jam" color="orange" />
-                        <InputField label="Flow Mill E" name="coal_e_00" value={coal.coal_e_00} onChange={onCoalChange} unit="T/Jam" color="orange" />
-                        <InputField label="Flow Mill F" name="coal_f_00" value={coal.coal_f_00} onChange={onCoalChange} unit="T/Jam" color="orange" />
+                        <InputField label="Flow Mill D" name="coal_d_00" value={coal.coal_d_00} onChange={onCoalChange} unit="T/Jam" color="orange" readOnly={isShutdownB} />
+                        <InputField label="Flow Mill E" name="coal_e_00" value={coal.coal_e_00} onChange={onCoalChange} unit="T/Jam" color="orange" readOnly={isShutdownB} />
+                        <InputField label="Flow Mill F" name="coal_f_00" value={coal.coal_f_00} onChange={onCoalChange} unit="T/Jam" color="orange" readOnly={isShutdownB} />
                     </div>
 
                     <SectionLabel label="Boiler Feed Water B" />
                     <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-700/50 mb-4">
                         <TotalizerInput label="BFW B" name="bfw_boiler_b" value={stockTank.bfw_boiler_b} prev={prevBfwB} onChange={onStockTankChange} unit="Ton" color="cyan" />
-                        <InputField label="Flow BFW B" name="flow_bfw_b" value={stockTank.flow_bfw_b} onChange={onStockTankChange} unit="T/H" color="cyan" />
+                        <InputField label="Flow BFW B" name="flow_bfw_b" value={stockTank.flow_bfw_b} onChange={onStockTankChange} unit="T/H" color="cyan" readOnly={isShutdownB} />
                     </div>
 
                     <SectionLabel label="Temperatur Furnace B" />
                     <div className="grid grid-cols-1 gap-4">
-                        <InputField label="Furnace B" name="temp_furnace_b" value={turbineMisc.temp_furnace_b} onChange={onTurbineMiscChange} unit="°C" color="orange" />
+                        <InputField label="Furnace B" name="temp_furnace_b" value={turbineMisc.temp_furnace_b as number | null} onChange={onTurbineMiscChange} unit="°C" color="orange" readOnly={isShutdownB} />
                     </div>
                 </Card>
             </div>

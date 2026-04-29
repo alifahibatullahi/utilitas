@@ -35,15 +35,15 @@ function FeederStatusChip({ feeder, sk, value, onChange }: {
 }) {
     const dot = FEEDER_STATUS_DOT[value] ?? 'bg-slate-500';
     return (
-        <div className="relative inline-flex items-center gap-1.5 bg-[#101822]/60 border border-slate-700/60 rounded-md pl-2 pr-1 py-1 hover:border-emerald-500/50 transition">
-            <span className={`w-2 h-2 rounded-full ${dot} shrink-0`} />
-            <span className="text-[10px] font-bold uppercase text-slate-300 shrink-0">{feeder}</span>
+        <div className="inline-flex items-center gap-2 bg-[#101822]/60 border border-slate-700/60 rounded-lg pl-3 pr-2 py-1.5 hover:border-emerald-500/50 transition">
+            <span className={`w-3 h-3 rounded-full ${dot} shrink-0`} />
+            {feeder && <span className="text-xs font-bold uppercase text-slate-300 shrink-0">{feeder}</span>}
             <select
-                className="bg-transparent appearance-none text-[10px] text-white font-medium uppercase pr-3 cursor-pointer outline-none"
+                className="bg-transparent appearance-none text-sm text-white font-semibold pr-4 cursor-pointer outline-none"
                 value={value}
                 onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
             >
-                <option value="" className="bg-[#101822] text-slate-500">—</option>
+                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
                 {FEEDER_STATUS_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
                 ))}
@@ -183,7 +183,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                             return (
                                 <div key={feeder} className="space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Feeder {feeder}</p>
+                                        <p className="text-xs font-bold text-white uppercase tracking-wider">Feeder {feeder}</p>
                                         <FeederStatusChip
                                             feeder=""
                                             sk={sk}

@@ -870,7 +870,7 @@ export default function InputShiftPage() {
                     {/* Tab Content Area */}
                     <div className="flex-1 min-w-0 flex flex-col gap-4">
                         {/* Active Tab Header */}
-                        <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-5 py-4 flex items-center gap-4 shadow-lg">
+                        <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                             {(() => {
                                 const tab = TABS.find(t => t.id === activeTab);
                                 const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
@@ -881,16 +881,15 @@ export default function InputShiftPage() {
                                 const boilerDot = boilerStatus === 'running' ? 'bg-emerald-500' : boilerStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                                 return (
                                     <>
-                                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
-                                            <span className={`material-symbols-outlined text-[30px] ${styles.icon}`}>{tab?.icon}</span>
+                                        <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
+                                            <span className={`material-symbols-outlined text-[22px] sm:text-[30px] ${styles.icon}`}>{tab?.icon}</span>
                                         </div>
-                                        <h2 className="text-white font-bold text-3xl tracking-wide shrink-0">{tab?.label}</h2>
+                                        <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide shrink-0">{tab?.label}</h2>
                                         {isBoilerTab && (
-                                            <div className="inline-flex items-center gap-2 bg-[#101822]/60 border border-slate-700/60 rounded-lg pl-3 pr-2 py-1.5 hover:border-rose-500/50 transition">
-                                                <span className={`w-2.5 h-2.5 rounded-full ${boilerDot} shrink-0`} />
-                                                <span className="text-[10px] font-bold uppercase text-slate-400 shrink-0">Status</span>
+                                            <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border border-slate-700/60 rounded-lg sm:rounded-xl pl-3 pr-2 py-2 sm:pl-4 sm:pr-3 sm:py-2.5 hover:border-rose-500/50 transition shrink-0">
+                                                <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${boilerDot} shrink-0 shadow-lg`} />
                                                 <select
-                                                    className="bg-transparent appearance-none text-xs text-white font-bold uppercase pr-4 cursor-pointer outline-none"
+                                                    className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
                                                     value={boilerStatus}
                                                     onChange={e => {
                                                         const v = e.target.value === '' ? null : e.target.value;
@@ -898,9 +897,9 @@ export default function InputShiftPage() {
                                                         setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
                                                     }}
                                                 >
-                                                    <option value="" className="bg-[#101822] text-slate-500">—</option>
-                                                    <option value="running" className="bg-[#101822] text-white">Running</option>
-                                                    <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                    <option value="" className="bg-[#101822] text-slate-500 text-base">—</option>
+                                                    <option value="running" className="bg-[#101822] text-white text-base">Running</option>
+                                                    <option value="shutdown" className="bg-[#101822] text-white text-base">Shutdown</option>
                                                 </select>
                                             </div>
                                         )}

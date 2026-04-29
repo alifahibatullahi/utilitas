@@ -211,7 +211,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                 </div>
 
                 {/* Stats column */}
-                <div className="flex-1 flex flex-col justify-between p-4 lg:p-6 gap-3 lg:gap-4 lg:overflow-hidden">
+                <div className="flex-1 flex flex-col justify-between p-4 lg:p-6 gap-3 lg:gap-4 lg:overflow-hidden min-w-0">
 
                     {/* Current Level — hero number */}
                     <div>
@@ -219,23 +219,23 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                             <span className="material-symbols-outlined text-sm">water</span>
                             Total Volume Available
                         </p>
-                        <div className="flex items-baseline gap-2 xl:gap-3">
+                        <div className="flex items-baseline gap-2 xl:gap-3 flex-wrap min-w-0">
                             <span className="font-black text-white leading-none tracking-tighter"
-                                style={{ fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
+                                style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)',
                                     textShadow: `0 0 40px ${tc.base}80, 0 0 80px ${tc.base}30` }}>
                                 {m3.toLocaleString('id-ID')}
                             </span>
-                            <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1.2rem, 2vw, 2rem)' }}>m³</span>
+                            <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
                             {/* % on mobile (no glass tank) */}
-                            <span className="lg:hidden ml-auto text-xl font-black font-mono shrink-0" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
+                            <span className="lg:hidden ml-auto text-lg font-black font-mono shrink-0" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
                         </div>
                         {tankId === 'SOLAR' && (
-                            <div className="mt-3 bg-slate-800/50 border border-slate-700/60 px-4 py-2 rounded-xl w-full">
-                                <p className="text-sm xl:text-base text-slate-400 font-bold flex items-center gap-2 flex-wrap">
+                            <div className="mt-3 bg-slate-800/50 border border-slate-700/60 px-3 py-2 rounded-xl w-full overflow-hidden">
+                                <div className="text-xs xl:text-base text-slate-400 font-bold flex items-center gap-1.5 flex-wrap">
                                     <span className="material-symbols-outlined text-sm shrink-0">layers</span>
                                     <span className="shrink-0">Total 2 tanki:</span>
-                                    <span className="text-white font-black text-lg xl:text-xl">{(m3 * 2).toLocaleString('id-ID')} m³</span>
-                                </p>
+                                    <span className="text-white font-black text-base xl:text-xl break-all">{(m3 * 2).toLocaleString('id-ID')} m³</span>
+                                </div>
                             </div>
                         )}
                         {/* Progress bar */}
@@ -669,10 +669,10 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         <div className="flex flex-col gap-3">
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
-                                <div className="overflow-hidden w-full">
+                                <div className="w-full overflow-hidden" style={{ minWidth: 0 }}>
                                     <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50 [color-scheme:dark]"
-                                        style={{boxSizing:'border-box',maxWidth:'100%'}} />
+                                        className="px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50 [color-scheme:dark]"
+                                        style={{ boxSizing: 'border-box', width: '100%', maxWidth: '100%', minWidth: 0, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', display: 'block' }} />
                                 </div>
                             </div>
                             <div>
@@ -714,10 +714,10 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         <div className="flex flex-col gap-3">
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
-                                <div className="overflow-hidden w-full">
+                                <div className="w-full overflow-hidden" style={{ minWidth: 0 }}>
                                     <input type="date" value={editUsageDate} onChange={e => setEditUsageDate(e.target.value)}
-                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50 [color-scheme:dark]"
-                                        style={{boxSizing:'border-box',maxWidth:'100%'}} />
+                                        className="px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50 [color-scheme:dark]"
+                                        style={{ boxSizing: 'border-box', width: '100%', maxWidth: '100%', minWidth: 0, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', display: 'block' }} />
                                 </div>
                             </div>
                             <div>

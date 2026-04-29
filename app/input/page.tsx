@@ -640,10 +640,10 @@ export default function InputPage() {
                         <div className="flex flex-col gap-3">
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
-                                <div className="overflow-hidden w-full">
+                                <div className="w-full overflow-hidden" style={{ minWidth: 0 }}>
                                     <input type="date" value={solarForm.date} onChange={e => setSolarForm(f => ({ ...f, date: e.target.value }))}
-                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none [color-scheme:dark]"
-                                        style={{ boxSizing: 'border-box', maxWidth: '100%' }} />
+                                        className="px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none [color-scheme:dark]"
+                                        style={{ boxSizing: 'border-box', width: '100%', maxWidth: '100%', minWidth: 0, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', display: 'block' }} />
                                 </div>
                             </div>
                             <div>

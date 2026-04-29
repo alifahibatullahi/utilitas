@@ -54,7 +54,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     };
 
     const labelEl = label && (
-        <label className={`font-medium text-white uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+        <label className="font-bold text-white uppercase tracking-wider block text-left text-xs">
             {label}
         </label>
     );

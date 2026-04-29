@@ -20,6 +20,38 @@ const FEEDER_STATUS_OPTIONS = [
     { value: 'not standby', label: 'Not Standby' },
 ];
 
+const FEEDER_STATUS_DOT: Record<string, string> = {
+    'running': 'bg-emerald-500',
+    'standby': 'bg-amber-500',
+    'emergency standby': 'bg-orange-500',
+    'not standby': 'bg-red-500',
+};
+
+function FeederStatusChip({ feeder, sk, value, onChange }: {
+    feeder: string;
+    sk: string;
+    value: string;
+    onChange?: (name: string, v: number | string | null) => void;
+}) {
+    const dot = FEEDER_STATUS_DOT[value] ?? 'bg-slate-500';
+    return (
+        <div className="relative inline-flex items-center gap-1.5 bg-[#101822]/60 border border-slate-700/60 rounded-md pl-2 pr-1 py-1 hover:border-emerald-500/50 transition">
+            <span className={`w-2 h-2 rounded-full ${dot} shrink-0`} />
+            <span className="text-[10px] font-bold uppercase text-slate-300 shrink-0">{feeder}</span>
+            <select
+                className="bg-transparent appearance-none text-[10px] text-white font-medium uppercase pr-3 cursor-pointer outline-none"
+                value={value}
+                onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
+            >
+                <option value="" className="bg-[#101822] text-slate-500">—</option>
+                {FEEDER_STATUS_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
 const NON_TOTALIZER_BOILER_FIELDS = [
     'press_steam', 'temp_steam', 'flow_steam',
     'bfw_press', 'temp_bfw', 'flow_bfw',
@@ -141,32 +173,36 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                             <InputField label="O2" unit="%" color="orange" name="o2" value={values.o2} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                             <InputField label="Pressure Drum" unit="MPa" color="orange" name="steam_drum_press" value={values.steam_drum_press} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         </div>
-                        <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Solar Usage</p>
-                            <InputField placeholder="0.00" unit="m³" color="orange" size="small" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        </div>
                     </Card>
 
-                    <Card title={`Coal Feeder ${feeders.join('-')}`} icon="precision_manufacturing" color="emerald">
+                    <Card
+                        title={`Coal Feeder ${feeders[0]}-${feeders[feeders.length - 1]}`}
+                        icon="precision_manufacturing"
+                        color="emerald"
+                        headerRight={
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {feeders.map((feeder, idx) => {
+                                    const fk = feederKeys[idx];
+                                    const sk = feederStatusKey(fk);
+                                    return (
+                                        <FeederStatusChip
+                                            key={feeder}
+                                            feeder={feeder}
+                                            sk={sk}
+                                            value={(coalBunkerValues[sk] as string) ?? ''}
+                                            onChange={onCoalBunkerChange}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        }
+                    >
                         {feeders.map((feeder, idx) => {
                             const fk = feederKeys[idx];
-                            const sk = feederStatusKey(fk);
                             const locked = isBoilerShutdown || isFeederLocked(fk);
                             return (
                                 <div key={feeder} className="space-y-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Feeder {feeder}</p>
-                                        <select
-                                            className="bg-[#101822]/50 border border-slate-700/80 rounded-md py-1 px-2 text-[10px] text-white font-medium uppercase tracking-wide focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer appearance-none"
-                                            value={(coalBunkerValues[sk] as string) ?? ''}
-                                            onChange={e => onCoalBunkerChange?.(sk, e.target.value === '' ? null : e.target.value)}
-                                        >
-                                            <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                                            {FEEDER_STATUS_OPTIONS.map(opt => (
-                                                <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Feeder {feeder}</p>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <InputField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" size="small" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} readOnly={locked} />
@@ -177,6 +213,10 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                                 </div>
                             );
                         })}
+                        <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Solar Usage</p>
+                            <InputField placeholder="0.00" unit="m³" color="emerald" size="small" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                        </div>
                     </Card>
 
                 </div>

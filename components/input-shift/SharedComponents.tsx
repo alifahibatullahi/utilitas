@@ -181,13 +181,14 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
     </div>
 );
 
-export const Card = ({ title, icon, color = "blue", children, isSidebar = false, className = '' }: {
+export const Card = ({ title, icon, color = "blue", children, isSidebar = false, className = '', headerRight }: {
     title: string;
     icon: string;
     color?: 'blue' | 'cyan' | 'orange' | 'emerald' | 'purple' | 'indigo' | 'slate' | 'amber' | 'rose' | 'teal' | 'sky';
     children: React.ReactNode;
     isSidebar?: boolean;
     className?: string;
+    headerRight?: React.ReactNode;
 }) => {
     const colorMap: Record<string, { icon: string; iconBg: string; headerGradient: string; border: string; glow: string }> = {
         blue:    { icon: 'text-blue-400',    iconBg: 'bg-blue-500/20',    headerGradient: 'from-blue-500/10',    border: 'border-blue-500/20 hover:border-blue-400/40',    glow: 'shadow-blue-500/5 hover:shadow-blue-500/15' },
@@ -212,6 +213,7 @@ export const Card = ({ title, icon, color = "blue", children, isSidebar = false,
                     <span className={`material-symbols-outlined ${c.icon}`}>{icon}</span>
                 </div>
                 <h3 className="text-white font-bold text-lg tracking-wide">{title}</h3>
+                {headerRight}
             </div>
             <div className={`${isSidebar ? 'p-4 space-y-2' : 'p-5 space-y-4'} flex flex-col justify-start`}>
                 {children}

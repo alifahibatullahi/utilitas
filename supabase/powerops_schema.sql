@@ -234,6 +234,8 @@ CREATE TABLE shift_boiler (
     primary_air NUMERIC, secondary_air NUMERIC, o2 NUMERIC,
     feeder_a_flow NUMERIC, feeder_b_flow NUMERIC, feeder_c_flow NUMERIC,
     feeder_d_flow NUMERIC, feeder_e_flow NUMERIC, feeder_f_flow NUMERIC,
+    -- Status boiler (running / shutdown)
+    status_boiler TEXT DEFAULT 'running',
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id, boiler)
 );
@@ -253,6 +255,13 @@ CREATE TABLE shift_coal_bunker (
     status_bunker_d TEXT DEFAULT 'Normal',
     status_bunker_e TEXT DEFAULT 'Normal',
     status_bunker_f TEXT DEFAULT 'Normal',
+    -- Status feeder (running / standby / emergency standby / not standby)
+    status_feeder_a TEXT DEFAULT 'running',
+    status_feeder_b TEXT DEFAULT 'running',
+    status_feeder_c TEXT DEFAULT 'running',
+    status_feeder_d TEXT DEFAULT 'running',
+    status_feeder_e TEXT DEFAULT 'running',
+    status_feeder_f TEXT DEFAULT 'running',
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)
 );

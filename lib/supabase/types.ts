@@ -172,6 +172,7 @@ export interface ShiftBoilerRow {
     stream_days: number | null;
     steam_drum_press: number | null;
     bfw_press: number | null;
+    status_boiler: string | null;
     created_at: string;
 }
 
@@ -196,6 +197,12 @@ export interface ShiftCoalBunkerRow {
     status_bunker_d: string | null;
     status_bunker_e: string | null;
     status_bunker_f: string | null;
+    status_feeder_a: string | null;
+    status_feeder_b: string | null;
+    status_feeder_c: string | null;
+    status_feeder_d: string | null;
+    status_feeder_e: string | null;
+    status_feeder_f: string | null;
     created_at: string;
 }
 

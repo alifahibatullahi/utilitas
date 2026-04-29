@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
+import { SelectField } from '@/components/input-shift/SharedComponents';
 import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
 
 function getGroupMalamOnDate(dateStr: string): string {
@@ -111,8 +112,8 @@ export default function InputShiftPage() {
     // Data yang tampil di form selalu diambil dari Supabase melalui useShiftReport.
 
     // Form state
-    const [boilerA, setBoilerA] = useState<Record<string, number | null>>({});
-    const [boilerB, setBoilerB] = useState<Record<string, number | null>>({});
+    const [boilerA, setBoilerA] = useState<Record<string, number | string | null>>({});
+    const [boilerB, setBoilerB] = useState<Record<string, number | string | null>>({});
     const [turbin, setTurbin] = useState<Record<string, number | null>>({});
     const [steamDist, setSteamDist] = useState<Record<string, number | null>>({});
     const [generatorGi, setGeneratorGi] = useState<Record<string, number | null>>({});
@@ -340,8 +341,8 @@ export default function InputShiftPage() {
         const tankyardData = report.shift_tankyard?.[0];
         const coalData = report.shift_coal_bunker?.[0];
 
-        if (boilerAData) setBoilerA(extractFields(boilerAData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | null>);
-        if (boilerBData) setBoilerB(extractFields(boilerBData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | null>);
+        if (boilerAData) setBoilerA(extractFields(boilerAData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>);
+        if (boilerBData) setBoilerB(extractFields(boilerBData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>);
         if (turbinData) setTurbin(extractFields(turbinData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (steamDistData) setSteamDist(extractFields(steamDistData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (genData) setGeneratorGi(extractFields(genData as unknown as Record<string, unknown>) as Record<string, number | null>);
@@ -874,15 +875,37 @@ export default function InputShiftPage() {
                             {(() => {
                                 const tab = TABS.find(t => t.id === activeTab);
                                 const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
+                                const isBoilerTab = activeTab === 'Boiler A' || activeTab === 'Boiler B';
+                                const currentBoilerState = activeTab === 'Boiler A' ? boilerA : boilerB;
+                                const setCurrentBoiler = activeTab === 'Boiler A' ? setBoilerA : setBoilerB;
                                 return (
                                     <>
                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner`}>
                                             <span className={`material-symbols-outlined text-[26px] ${styles.icon}`}>{tab?.icon}</span>
                                         </div>
-                                        <div>
+                                        <div className="flex-1 min-w-0">
                                             <h2 className="text-white font-bold text-xl leading-tight">{tab?.label}</h2>
                                             <p className="text-slate-400 text-xs mt-0.5">Input data operasional shift {tab?.label}</p>
                                         </div>
+                                        {isBoilerTab && (
+                                            <div className="w-48 shrink-0">
+                                                <SelectField
+                                                    label="Status Boiler"
+                                                    color="rose"
+                                                    name="status_boiler"
+                                                    value={(currentBoilerState.status_boiler as string) ?? ''}
+                                                    onChange={(_n, v) => {
+                                                        setUserModified(true);
+                                                        setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
+                                                    }}
+                                                    options={[
+                                                        { value: 'running', label: 'Running' },
+                                                        { value: 'shutdown', label: 'Shutdown' },
+                                                    ]}
+                                                    placeholder="running / shutdown..."
+                                                />
+                                            </div>
+                                        )}
                                     </>
                                 );
                             })()}
@@ -898,8 +921,8 @@ export default function InputShiftPage() {
 
                         {/* Shift Tab Content */}
                         <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
-                            {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeNumberHandler(setBoilerA)} coalBunkerValues={coalBunker as Record<string, number | null>} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevTotalizerBfw={prevBoilerA.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
-                            {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeNumberHandler(setBoilerB)} coalBunkerValues={coalBunker as Record<string, number | null>} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevTotalizerBfw={prevBoilerB.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
+                            {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevTotalizerBfw={prevBoilerA.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
+                            {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevTotalizerBfw={prevBoilerB.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
                             {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} />}
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}

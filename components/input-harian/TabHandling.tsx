@@ -1,13 +1,13 @@
 'use client';
 import React, { useState } from 'react';
-import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo } from '@/components/input-shift/SharedComponents';
+import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, Modal } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 
 const n = (v: number | string | null | undefined) => Number(v) || 0;
 const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
 
-type EditUnloading = { open: boolean; liters: number; supplier: string };
-type EditUsage = { open: boolean; liters: number; tujuan: string; shift: string; tujuanMode: 'Bengkel' | 'SA/SU 3B' | 'Lainnya' };
+type EditUn = { id: string; liters: number; supplier: string };
+type EditUs = { id: string; liters: number; tujuan: string; shift: string; tujuanMode: 'Bengkel' | 'SA/SU 3B' | 'Lainnya' };
 
 export default function TabHandling({
     stockTank, totalizer,
@@ -20,8 +20,8 @@ export default function TabHandling({
     onEditSolarUnloading,
     onEditSolarUsage,
 }: DailyTabProps) {
-    const [editUn, setEditUn] = useState<Record<string, EditUnloading>>({});
-    const [editUs, setEditUs] = useState<Record<string, EditUsage>>({});
+    const [editUn, setEditUn] = useState<EditUn | null>(null);
+    const [editUs, setEditUs] = useState<EditUs | null>(null);
 
     const konsumsiRows = [
         { label: 'RCW 1A', name: 'tot_rcw_1a' },
@@ -45,14 +45,23 @@ export default function TabHandling({
     const konsHarianRCW = (konsHydrant ?? 0) + (konsBasin ?? 0) + (konsService ?? 0);
     const hasRCWKons = konsHydrant !== null || konsBasin !== null || konsService !== null;
 
-    // Solar summary
     const totalKedatangan = solarUnloadings.reduce((s, e) => s + e.liters, 0);
     const totalPermintaan = solarUsages.reduce((s, e) => s + e.liters, 0);
     const bengkelTotal = solarUsages.filter(e => e.tujuan === 'Bengkel').reduce((s, e) => s + e.liters, 0);
     const sasuTotal = solarUsages.filter(e => e.tujuan === 'SA/SU 3B').reduce((s, e) => s + e.liters, 0);
     const boilerUsage = n(stockTank.solar_boiler);
-
     const shiftLabel: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
+
+    const saveEditUn = async () => {
+        if (!editUn) return;
+        await onEditSolarUnloading?.(editUn.id, { liters: editUn.liters, supplier: editUn.supplier });
+        setEditUn(null);
+    };
+    const saveEditUs = async () => {
+        if (!editUs) return;
+        await onEditSolarUsage?.(editUs.id, { liters: editUs.liters, tujuan: editUs.tujuan, shift: editUs.shift });
+        setEditUs(null);
+    };
 
     return (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
@@ -70,7 +79,6 @@ export default function TabHandling({
             {/* ═══ Konsumsi & Penerimaan ═══ */}
             <Card title="Konsumsi & Penerimaan" icon="swap_vert" color="emerald">
                 <p className="text-[10px] text-slate-500 -mt-1 mb-2">Input totalizer — konsumsi dihitung otomatis (selisih hari ini − kemarin)</p>
-
                 <div className="grid grid-cols-2 gap-4">
                     {konsumsiRows.slice(0, 6).map(({ label, name }) => (
                         <div key={name}>
@@ -129,63 +137,33 @@ export default function TabHandling({
 
                     {/* Kedatangan & Permintaan Solar */}
                     <div className="space-y-4">
+
                         {/* ─ Kedatangan ─ */}
                         <div>
                             <SectionLabel label="Kedatangan Solar" badge={`${solarUnloadings.length} entri · ${totalKedatangan.toLocaleString('id-ID')} L`} />
                             {solarUnloadings.length > 0 ? (
                                 <div className="space-y-2">
-                                    {solarUnloadings.map((item) => {
-                                        const id = item.id ?? (item.supplier + item.liters);
-                                        const es = editUn[id];
-                                        const isEditing = es?.open ?? false;
-                                        return (
-                                            <div key={id} className="bg-[#101822]/50 border border-amber-500/30 rounded-lg px-3 py-2">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="material-symbols-outlined text-amber-400 text-[15px]">local_shipping</span>
-                                                        <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-amber-400 text-xs">L</span></span>
-                                                        <span className="text-[10px] text-slate-400 truncate">{item.supplier}</span>
-                                                    </div>
-                                                    {item.id && !isEditing && (
-                                                        <div className="flex items-center gap-1 shrink-0">
-                                                            <button type="button" onClick={() => setEditUn(p => ({ ...p, [id]: { open: true, liters: item.liters, supplier: item.supplier } }))}
-                                                                className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors">
-                                                                <span className="material-symbols-outlined text-[13px]">edit</span>
-                                                            </button>
-                                                            <button type="button" onClick={() => onDeleteSolarUnloading?.(item.id!)}
-                                                                className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
-                                                                <span className="material-symbols-outlined text-[13px]">delete</span>
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {isEditing && (
-                                                    <div className="mt-2 space-y-2">
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label className="text-[10px] text-slate-400 block mb-1">Jumlah (Liter)</label>
-                                                                <input type="number" className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
-                                                                    value={es.liters} onChange={e => setEditUn(p => ({ ...p, [id]: { ...p[id], liters: Number(e.target.value) || 0 } }))} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-[10px] text-slate-400 block mb-1">Supplier</label>
-                                                                <input type="text" className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400"
-                                                                    value={es.supplier} onChange={e => setEditUn(p => ({ ...p, [id]: { ...p[id], supplier: e.target.value } }))} />
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2 justify-end">
-                                                            <button type="button" onClick={() => setEditUn(p => ({ ...p, [id]: { ...p[id], open: false } }))}
-                                                                className="px-3 py-1 rounded bg-slate-500/20 text-slate-400 hover:bg-slate-500/40 text-xs transition-colors">Batal</button>
-                                                            <button type="button" onClick={async () => {
-                                                                await onEditSolarUnloading?.(item.id!, { liters: es.liters, supplier: es.supplier });
-                                                                setEditUn(p => ({ ...p, [id]: { ...p[id], open: false } }));
-                                                            }} className="px-3 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 text-xs font-bold transition-colors">Simpan</button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                    {solarUnloadings.map((item) => (
+                                        <div key={item.id ?? item.supplier} className="flex items-center justify-between gap-2 bg-[#101822]/50 border border-amber-500/30 rounded-lg px-3 py-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span className="material-symbols-outlined text-amber-400 text-[15px]">local_shipping</span>
+                                                <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-amber-400 text-xs">L</span></span>
+                                                <span className="text-[10px] text-slate-400 truncate">{item.supplier}</span>
                                             </div>
-                                        );
-                                    })}
+                                            {item.id && (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button type="button" onClick={() => setEditUn({ id: item.id!, liters: item.liters, supplier: item.supplier })}
+                                                        className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors">
+                                                        <span className="material-symbols-outlined text-[13px]">edit</span>
+                                                    </button>
+                                                    <button type="button" onClick={() => onDeleteSolarUnloading?.(item.id!)}
+                                                        className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                                        <span className="material-symbols-outlined text-[13px]">delete</span>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             ) : (
                                 <p className="text-[11px] text-slate-500 italic">Belum ada data kedatangan solar hari ini</p>
@@ -197,78 +175,30 @@ export default function TabHandling({
                             <SectionLabel label="Permintaan Solar" badge={`${solarUsages.length} entri · ${totalPermintaan.toLocaleString('id-ID')} L`} />
                             {solarUsages.length > 0 ? (
                                 <div className="space-y-2">
-                                    {solarUsages.map((item) => {
-                                        const id = item.id ?? (item.tujuan + item.liters);
-                                        const es = editUs[id];
-                                        const isEditing = es?.open ?? false;
-                                        return (
-                                            <div key={id} className="bg-[#101822]/50 border border-rose-500/30 rounded-lg px-3 py-2">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="material-symbols-outlined text-rose-400 text-[15px]">upload</span>
-                                                        <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-rose-400 text-xs">L</span></span>
-                                                        <span className="text-[10px] text-slate-400 truncate">{item.tujuan} · {shiftLabel[item.shift] ?? item.shift}</span>
-                                                    </div>
-                                                    {item.id && !isEditing && (
-                                                        <div className="flex items-center gap-1 shrink-0">
-                                                            <button type="button" onClick={() => setEditUs(p => ({ ...p, [id]: { open: true, liters: item.liters, tujuan: item.tujuan, shift: item.shift, tujuanMode: (['Bengkel','SA/SU 3B'].includes(item.tujuan) ? item.tujuan : 'Lainnya') as 'Bengkel'|'SA/SU 3B'|'Lainnya' } }))}
-                                                                className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors">
-                                                                <span className="material-symbols-outlined text-[13px]">edit</span>
-                                                            </button>
-                                                            <button type="button" onClick={() => onDeleteSolarUsage?.(item.id!)}
-                                                                className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
-                                                                <span className="material-symbols-outlined text-[13px]">delete</span>
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {isEditing && (
-                                                    <div className="mt-2 space-y-2">
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label className="text-[10px] text-slate-400 block mb-1">Jumlah (Liter)</label>
-                                                                <input type="number" className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
-                                                                    value={es.liters} onChange={e => setEditUs(p => ({ ...p, [id]: { ...p[id], liters: Number(e.target.value) || 0 } }))} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-[10px] text-slate-400 block mb-1">Shift</label>
-                                                                <select className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400"
-                                                                    value={es.shift} onChange={e => setEditUs(p => ({ ...p, [id]: { ...p[id], shift: e.target.value } }))}>
-                                                                    <option value="pagi">Pagi</option>
-                                                                    <option value="siang">Siang</option>
-                                                                    <option value="malam">Malam</option>
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-[10px] text-slate-400 block mb-1">Tujuan</label>
-                                                            <select className="w-full bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400"
-                                                                value={es.tujuanMode} onChange={e => {
-                                                                    const mode = e.target.value as typeof es.tujuanMode;
-                                                                    setEditUs(p => ({ ...p, [id]: { ...p[id], tujuanMode: mode, tujuan: mode !== 'Lainnya' ? mode : '' } }));
-                                                                }}>
-                                                                <option value="Bengkel">Bengkel</option>
-                                                                <option value="SA/SU 3B">SA/SU 3B</option>
-                                                                <option value="Lainnya">Lainnya…</option>
-                                                            </select>
-                                                            {es.tujuanMode === 'Lainnya' && (
-                                                                <input type="text" placeholder="Tulis tujuan..." className="w-full mt-1 bg-[#101822] border border-blue-500/50 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400"
-                                                                    value={es.tujuan} onChange={e => setEditUs(p => ({ ...p, [id]: { ...p[id], tujuan: e.target.value } }))} />
-                                                            )}
-                                                        </div>
-                                                        <div className="flex gap-2 justify-end">
-                                                            <button type="button" onClick={() => setEditUs(p => ({ ...p, [id]: { ...p[id], open: false } }))}
-                                                                className="px-3 py-1 rounded bg-slate-500/20 text-slate-400 hover:bg-slate-500/40 text-xs transition-colors">Batal</button>
-                                                            <button type="button" onClick={async () => {
-                                                                await onEditSolarUsage?.(item.id!, { liters: es.liters, tujuan: es.tujuan, shift: es.shift });
-                                                                setEditUs(p => ({ ...p, [id]: { ...p[id], open: false } }));
-                                                            }} className="px-3 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 text-xs font-bold transition-colors">Simpan</button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                    {solarUsages.map((item) => (
+                                        <div key={item.id ?? item.tujuan} className="flex items-center justify-between gap-2 bg-[#101822]/50 border border-rose-500/30 rounded-lg px-3 py-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span className="material-symbols-outlined text-rose-400 text-[15px]">upload</span>
+                                                <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-rose-400 text-xs">L</span></span>
+                                                <span className="text-[10px] text-slate-400 truncate">{item.tujuan} · {shiftLabel[item.shift] ?? item.shift}</span>
                                             </div>
-                                        );
-                                    })}
+                                            {item.id && (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button type="button" onClick={() => setEditUs({
+                                                        id: item.id!, liters: item.liters, tujuan: item.tujuan, shift: item.shift,
+                                                        tujuanMode: (['Bengkel', 'SA/SU 3B'].includes(item.tujuan) ? item.tujuan : 'Lainnya') as EditUs['tujuanMode'],
+                                                    })}
+                                                        className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors">
+                                                        <span className="material-symbols-outlined text-[13px]">edit</span>
+                                                    </button>
+                                                    <button type="button" onClick={() => onDeleteSolarUsage?.(item.id!)}
+                                                        className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
+                                                        <span className="material-symbols-outlined text-[13px]">delete</span>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             ) : (
                                 <p className="text-[11px] text-slate-500 italic">Belum ada data permintaan solar hari ini</p>
@@ -289,6 +219,69 @@ export default function TabHandling({
                 </div>
             </Card>
 
+            {/* Modal Edit Kedatangan Solar */}
+            <Modal open={!!editUn} onClose={() => setEditUn(null)} title="Edit Kedatangan Solar" color="amber">
+                {editUn && (
+                    <>
+                        <div className="space-y-1.5">
+                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Jumlah (Liter)</label>
+                            <input type="number" className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                                value={editUn.liters} onChange={e => setEditUn({ ...editUn, liters: Number(e.target.value) || 0 })} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Supplier</label>
+                            <input type="text" className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                                value={editUn.supplier} onChange={e => setEditUn({ ...editUn, supplier: e.target.value })} />
+                        </div>
+                        <button type="button" onClick={saveEditUn}
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors mt-1">
+                            <span className="material-symbols-outlined text-[18px]">save</span>Simpan
+                        </button>
+                    </>
+                )}
+            </Modal>
+
+            {/* Modal Edit Permintaan Solar */}
+            <Modal open={!!editUs} onClose={() => setEditUs(null)} title="Edit Permintaan Solar" color="rose">
+                {editUs && (
+                    <>
+                        <div className="space-y-1.5">
+                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Jumlah (Liter)</label>
+                            <input type="number" className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
+                                value={editUs.liters} onChange={e => setEditUs({ ...editUs, liters: Number(e.target.value) || 0 })} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Shift</label>
+                            <select className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
+                                value={editUs.shift} onChange={e => setEditUs({ ...editUs, shift: e.target.value })}>
+                                <option value="pagi">Pagi</option>
+                                <option value="siang">Siang</option>
+                                <option value="malam">Malam</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Tujuan</label>
+                            <select className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
+                                value={editUs.tujuanMode} onChange={e => {
+                                    const mode = e.target.value as EditUs['tujuanMode'];
+                                    setEditUs({ ...editUs, tujuanMode: mode, tujuan: mode !== 'Lainnya' ? mode : '' });
+                                }}>
+                                <option value="Bengkel">Bengkel</option>
+                                <option value="SA/SU 3B">SA/SU 3B</option>
+                                <option value="Lainnya">Lainnya…</option>
+                            </select>
+                            {editUs.tujuanMode === 'Lainnya' && (
+                                <input type="text" placeholder="Tulis tujuan..." className="mt-2 w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
+                                    value={editUs.tujuan} onChange={e => setEditUs({ ...editUs, tujuan: e.target.value })} />
+                            )}
+                        </div>
+                        <button type="button" onClick={saveEditUs}
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-sm transition-colors mt-1">
+                            <span className="material-symbols-outlined text-[18px]">save</span>Simpan
+                        </button>
+                    </>
+                )}
+            </Modal>
         </div>
     );
 }

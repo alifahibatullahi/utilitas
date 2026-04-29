@@ -597,7 +597,31 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     onClick={() => setActionSheetData(null)}>
                     <div className="bg-[#16202e] border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-4 animate-in fade-in zoom-in-95"
                         onClick={e => e.stopPropagation()}>
-                        <h3 className="text-white font-bold text-lg mb-4 text-center border-b border-slate-800 pb-3">Pilih Aksi</h3>
+                        <h3 className="text-white font-bold text-lg mb-3 text-center border-b border-slate-800 pb-3">Pilih Aksi</h3>
+                        {/* Detail item yang diklik */}
+                        <div className={`mb-4 px-4 py-3 rounded-xl border ${actionSheetData.type === 'unloading' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-rose-500/10 border-rose-500/30'}`}>
+                            <p className="text-xs font-bold uppercase tracking-widest mb-2 ${actionSheetData.type === 'unloading' ? 'text-amber-400' : 'text-rose-400'}">
+                                <span className={actionSheetData.type === 'unloading' ? 'text-amber-400' : 'text-rose-400'}>
+                                    {actionSheetData.type === 'unloading' ? 'Unloading Solar' : 'Pemakaian Solar'}
+                                </span>
+                            </p>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-white font-black text-base">
+                                        {new Date(actionSheetData.entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </p>
+                                    <p className="text-slate-400 text-sm font-semibold mt-0.5">
+                                        {actionSheetData.type === 'unloading' ? actionSheetData.entry.supplier : actionSheetData.entry.tujuan}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-xl font-black font-mono ${actionSheetData.type === 'unloading' ? 'text-amber-400' : 'text-rose-400'}`}>
+                                        {actionSheetData.entry.liters.toLocaleString('id-ID')}
+                                    </p>
+                                    <p className="text-xs text-slate-500 font-bold">Liter</p>
+                                </div>
+                            </div>
+                        </div>
                         <div className="flex flex-col gap-2">
                             <button onClick={() => {
                                 if (actionSheetData.type === 'unloading') {

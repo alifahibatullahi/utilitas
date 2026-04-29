@@ -86,7 +86,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                 </div>
                 {entry.id && (
                     <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
-                        <button onClick={(e) => { e.stopPropagation(); setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toString()); setEditSupplier(entry.supplier); }}
+                        <button onClick={(e) => { e.stopPropagation(); setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toLocaleString('id-ID')); setEditSupplier(entry.supplier); }}
                             className="text-slate-400 hover:text-amber-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
@@ -119,7 +119,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                 </div>
                 {entry.id && (
                     <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
-                        <button onClick={(e) => { e.stopPropagation(); setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toString()); setEditUsageTujuan(entry.tujuan); }}
+                        <button onClick={(e) => { e.stopPropagation(); setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toLocaleString('id-ID')); setEditUsageTujuan(entry.tujuan); }}
                             className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
@@ -628,12 +628,12 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 if (actionSheetData.type === 'unloading') {
                                     setEditingId(actionSheetData.entry.id!);
                                     setEditDate(actionSheetData.entry.date);
-                                    setEditLiters(actionSheetData.entry.liters.toString());
+                                    setEditLiters(actionSheetData.entry.liters.toLocaleString('id-ID'));
                                     setEditSupplier(actionSheetData.entry.supplier);
                                 } else {
                                     setEditingUsageId(actionSheetData.entry.id!);
                                     setEditUsageDate(actionSheetData.entry.date);
-                                    setEditUsageLiters(actionSheetData.entry.liters.toString());
+                                    setEditUsageLiters(actionSheetData.entry.liters.toLocaleString('id-ID'));
                                     setEditUsageTujuan(actionSheetData.entry.tujuan);
                                 }
                                 setActionSheetData(null);
@@ -677,11 +677,12 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
-                                <input type="number" inputMode="decimal" value={editLiters} onChange={e => setEditLiters(e.target.value)}
+                                <input type="text" inputMode="numeric" value={editLiters}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        setEditLiters(digits ? parseInt(digits).toLocaleString('id-ID') : '');
+                                    }}
                                     className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50" />
-                                {editLiters && parseFloat(editLiters) > 0 && (
-                                    <p className="text-xs text-amber-400/70 font-bold mt-1 ml-1">{parseFloat(editLiters).toLocaleString('id-ID')} liter</p>
-                                )}
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Perusahaan</label>
@@ -693,7 +694,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                             <button onClick={() => setEditingId(null)}
                                 className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Batal</button>
                             <button onClick={async () => {
-                                await updateSolarUnloading(editingId, { date: editDate, liters: parseFloat(editLiters) || 0, supplier: editSupplier });
+                                await updateSolarUnloading(editingId, { date: editDate, liters: parseFloat(editLiters.replace(/\./g, '')) || 0, supplier: editSupplier });
                                 setEditingId(null);
                             }} className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-colors">Simpan</button>
                         </div>
@@ -721,11 +722,12 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
-                                <input type="number" inputMode="decimal" value={editUsageLiters} onChange={e => setEditUsageLiters(e.target.value)}
+                                <input type="text" inputMode="numeric" value={editUsageLiters}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        setEditUsageLiters(digits ? parseInt(digits).toLocaleString('id-ID') : '');
+                                    }}
                                     className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50" />
-                                {editUsageLiters && parseFloat(editUsageLiters) > 0 && (
-                                    <p className="text-xs text-rose-400/70 font-bold mt-1 ml-1">{parseFloat(editUsageLiters).toLocaleString('id-ID')} liter</p>
-                                )}
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tujuan</label>
@@ -737,7 +739,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                             <button onClick={() => setEditingUsageId(null)}
                                 className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors">Batal</button>
                             <button onClick={async () => {
-                                await updateSolarUsage(editingUsageId, { date: editUsageDate, liters: parseFloat(editUsageLiters) || 0, tujuan: editUsageTujuan });
+                                await updateSolarUsage(editingUsageId, { date: editUsageDate, liters: parseFloat(editUsageLiters.replace(/\./g, '')) || 0, tujuan: editUsageTujuan });
                                 setEditingUsageId(null);
                             }} className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-colors">Simpan</button>
                         </div>

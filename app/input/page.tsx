@@ -256,7 +256,7 @@ export default function InputPage() {
     };
 
     const saveSolarPopup = () => {
-        const liters = parseFloat(solarForm.liters);
+        const liters = parseFloat(solarForm.liters.replace(/\./g, ''));
         if (!liters || liters <= 0) return;
         if (solarPopup!.type === 'kedatangan') {
             if (!solarForm.supplier.trim()) return;
@@ -648,14 +648,13 @@ export default function InputPage() {
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
-                                <input type="number" inputMode="decimal" value={solarForm.liters} onChange={e => setSolarForm(f => ({ ...f, liters: e.target.value }))}
-                                    placeholder="0" min="0"
-                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none appearance-none" />
-                                {solarForm.liters && parseFloat(solarForm.liters) > 0 && (
-                                    <p className={`text-xs font-bold mt-1 ml-1 ${solarPopup.type === 'kedatangan' ? 'text-amber-400/70' : 'text-rose-400/70'}`}>
-                                        {parseFloat(solarForm.liters).toLocaleString('id-ID')} liter
-                                    </p>
-                                )}
+                                <input type="text" inputMode="numeric" value={solarForm.liters}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        setSolarForm(f => ({ ...f, liters: digits ? parseInt(digits).toLocaleString('id-ID') : '' }));
+                                    }}
+                                    placeholder="0"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none" />
                             </div>
                             {solarPopup.type === 'kedatangan' ? (
                                 <div>

@@ -227,13 +227,14 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                             </span>
                             <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1.2rem, 2vw, 2rem)' }}>m³</span>
                             {/* % on mobile (no glass tank) */}
-                            <span className="lg:hidden ml-auto text-2xl font-black font-mono" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
+                            <span className="lg:hidden ml-auto text-xl font-black font-mono shrink-0" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
                         </div>
                         {tankId === 'SOLAR' && (
-                            <div className="inline-block mt-3 bg-slate-800/50 border border-slate-700/60 px-4 py-2 rounded-xl">
-                                <p className="text-sm xl:text-base text-slate-400 font-bold flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-sm">layers</span>
-                                    Total 2 tanki: <span className="text-white font-black text-lg xl:text-xl">{(m3 * 2).toLocaleString('id-ID')} m³</span>
+                            <div className="mt-3 bg-slate-800/50 border border-slate-700/60 px-4 py-2 rounded-xl w-full">
+                                <p className="text-sm xl:text-base text-slate-400 font-bold flex items-center gap-2 flex-wrap">
+                                    <span className="material-symbols-outlined text-sm shrink-0">layers</span>
+                                    <span className="shrink-0">Total 2 tanki:</span>
+                                    <span className="text-white font-black text-lg xl:text-xl">{(m3 * 2).toLocaleString('id-ID')} m³</span>
                                 </p>
                             </div>
                         )}
@@ -668,13 +669,19 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         <div className="flex flex-col gap-3">
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
-                                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50 [color-scheme:dark] box-border" />
+                                <div className="overflow-hidden w-full">
+                                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50 [color-scheme:dark]"
+                                        style={{boxSizing:'border-box',maxWidth:'100%'}} />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
                                 <input type="number" inputMode="decimal" value={editLiters} onChange={e => setEditLiters(e.target.value)}
                                     className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50" />
+                                {editLiters && parseFloat(editLiters) > 0 && (
+                                    <p className="text-xs text-amber-400/70 font-bold mt-1 ml-1">{parseFloat(editLiters).toLocaleString('id-ID')} liter</p>
+                                )}
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Perusahaan</label>
@@ -706,13 +713,19 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         <div className="flex flex-col gap-3">
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
-                                <input type="date" value={editUsageDate} onChange={e => setEditUsageDate(e.target.value)}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50 [color-scheme:dark]" />
+                                <div className="overflow-hidden w-full">
+                                    <input type="date" value={editUsageDate} onChange={e => setEditUsageDate(e.target.value)}
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50 [color-scheme:dark]"
+                                        style={{boxSizing:'border-box',maxWidth:'100%'}} />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
                                 <input type="number" inputMode="decimal" value={editUsageLiters} onChange={e => setEditUsageLiters(e.target.value)}
                                     className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-rose-500/50" />
+                                {editUsageLiters && parseFloat(editUsageLiters) > 0 && (
+                                    <p className="text-xs text-rose-400/70 font-bold mt-1 ml-1">{parseFloat(editUsageLiters).toLocaleString('id-ID')} liter</p>
+                                )}
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tujuan</label>

@@ -640,14 +640,22 @@ export default function InputPage() {
                         <div className="flex flex-col gap-3">
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
-                                <input type="date" value={solarForm.date} onChange={e => setSolarForm(f => ({ ...f, date: e.target.value }))}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none [color-scheme:dark] box-border" />
+                                <div className="overflow-hidden w-full">
+                                    <input type="date" value={solarForm.date} onChange={e => setSolarForm(f => ({ ...f, date: e.target.value }))}
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none [color-scheme:dark]"
+                                        style={{ boxSizing: 'border-box', maxWidth: '100%' }} />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
                                 <input type="number" inputMode="decimal" value={solarForm.liters} onChange={e => setSolarForm(f => ({ ...f, liters: e.target.value }))}
                                     placeholder="0" min="0"
                                     className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none appearance-none" />
+                                {solarForm.liters && parseFloat(solarForm.liters) > 0 && (
+                                    <p className={`text-xs font-bold mt-1 ml-1 ${solarPopup.type === 'kedatangan' ? 'text-amber-400/70' : 'text-rose-400/70'}`}>
+                                        {parseFloat(solarForm.liters).toLocaleString('id-ID')} liter
+                                    </p>
+                                )}
                             </div>
                             {solarPopup.type === 'kedatangan' ? (
                                 <div>

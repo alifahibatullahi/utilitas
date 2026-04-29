@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name, negative, readOnly, textMode, thousands }: {
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands }: {
     label?: string;
     placeholder?: string;
     unit?: string;
@@ -313,5 +314,41 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
                 <span className={`${s.unit}`}>{unit}</span>
             </div>
         </div>
+    );
+};
+
+export const Modal = ({ open, onClose, title, color = 'blue', children }: {
+    open: boolean;
+    onClose: () => void;
+    title: string;
+    color?: string;
+    children: React.ReactNode;
+}) => {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    if (!open || !mounted) return null;
+
+    const colorBorder: Record<string, string> = {
+        amber: 'border-amber-500/40', rose: 'border-rose-500/40', orange: 'border-orange-500/40',
+        blue: 'border-blue-500/40', emerald: 'border-emerald-500/40', cyan: 'border-cyan-500/40',
+    };
+    const border = colorBorder[color] ?? 'border-slate-700/80';
+
+    return createPortal(
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+            <div className={`relative bg-[#16202e] border ${border} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl max-h-[90dvh] flex flex-col`}>
+                <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-800/60 shrink-0">
+                    <h3 className="text-white font-bold text-base tracking-wide">{title}</h3>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-700/50 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                </div>
+                <div className="overflow-y-auto px-5 py-4 flex flex-col gap-4">
+                    {children}
+                </div>
+            </div>
+        </div>,
+        document.body
     );
 };

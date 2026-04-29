@@ -193,17 +193,17 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <InputField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" size="small" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} readOnly={locked} />
+                                            <InputField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} readOnly={locked} />
                                             <SelisihInfo prev={Number(prevCoalBunkerValues[fk]) || 0} current={Number(coalBunkerValues[fk]) || 0} />
                                         </div>
-                                        <InputField placeholder="Flow" unit="t/h" color="emerald" size="small" name={`${fk}_flow`} value={values[`${fk}_flow`]} onChange={onFieldChange} readOnly={locked} />
+                                        <InputField placeholder="Flow" unit="t/h" color="emerald" name={`${fk}_flow`} value={values[`${fk}_flow`]} onChange={onFieldChange} readOnly={locked} />
                                     </div>
                                 </div>
                             );
                         })}
                         <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Solar Usage</p>
-                            <InputField placeholder="0.00" unit="m³" color="emerald" size="small" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                            <p className="text-xs font-bold text-white uppercase tracking-wider text-left">Solar Usage</p>
+                            <InputField placeholder="0.00" unit="m³" color="emerald" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         </div>
                     </Card>
 
@@ -216,7 +216,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                     <CalculatedField label="PRODUKSI BFW" value={produksiBfw.toFixed(2)} unit="ton" variant="secondary" size="medium" />
 
                     {feeders.map((feeder, idx) => (
-                        <CalculatedField key={feeder} label={`Konsumsi Feeder ${feeder}`} value={feederKonsumsi[idx].toFixed(2)} unit="ton" variant="small" size="small" />
+                        <CalculatedField key={feeder} label={`Konsumsi Feeder ${feeder}`} value={feederKonsumsi[idx].toFixed(2)} unit="ton" variant="small" />
                     ))}
 
                     <div className="h-px bg-slate-700/80 w-full my-1"></div>

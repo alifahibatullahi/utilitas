@@ -1,11 +1,11 @@
 'use client';
-import React from 'react';
-import { Card, InputField, CalculatedField } from './SharedComponents';
+import React, { useState } from 'react';
+import { Card, InputField, Modal } from './SharedComponents';
 
 export interface SolarEntry {
     id?: string;
-    tanggal: string;  // kept for backward compat (date YYYY-MM-DD)
-    jam?: string;     // HH:MM 24h
+    tanggal: string;
+    jam?: string;
     jumlah: number | null;
     perusahaan: string;
 }
@@ -33,51 +33,110 @@ interface TabHandlingProps {
     onDeleteSavedOutSolar?: (id: string) => void;
 }
 
+const EMPTY_SOLAR: SolarEntry = { tanggal: '', jam: '', jumlah: null, perusahaan: '' };
+const EMPTY_OUT: OutSolarEntry = { tanggal: '', jam: '', jumlah: null, tujuan: 'Bengkel' };
+
+function EntryList({ entries, savedEntries, accentColor, labelKey, valueKey, unitLabel, onRemove, onDeleteSaved }: {
+    entries: (SolarEntry | OutSolarEntry)[];
+    savedEntries: (SolarEntry | OutSolarEntry)[];
+    accentColor: string;
+    labelKey: 'perusahaan' | 'tujuan';
+    valueKey: 'jumlah';
+    unitLabel: string;
+    onRemove: (idx: number) => void;
+    onDeleteSaved?: (id: string) => void;
+}) {
+    const borderSaved = `border-${accentColor}-500/30`;
+    const borderPending = `border-${accentColor}-500/20`;
+    const textAccent = `text-${accentColor}-300`;
+    const textAccentSm = `text-${accentColor}-400`;
+
+    return (
+        <div className="flex flex-col gap-2">
+            {savedEntries.map((e) => (
+                <div key={`saved-${e.id}`} className={`relative flex justify-between items-center px-3 py-2 bg-[#101822] border ${borderSaved} rounded-lg pr-10`}>
+                    <div className="flex flex-col min-w-0">
+                        <span className={`text-xs font-mono font-bold ${textAccent}`}>{(e.jumlah || 0).toLocaleString('id-ID')} <span className={`text-[10px] ${textAccentSm}`}>{unitLabel}</span></span>
+                        <span className="text-[10px] text-slate-400 truncate">{(e as any)[labelKey]}{e.jam ? ` · ${e.jam}` : ''}</span>
+                    </div>
+                    {e.id && onDeleteSaved && (
+                        <button type="button" onClick={() => onDeleteSaved(e.id!)}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors">
+                            <span className="material-symbols-outlined text-[15px]">delete</span>
+                        </button>
+                    )}
+                </div>
+            ))}
+            {entries.map((e, idx) => (
+                <div key={`pending-${idx}`} className={`relative flex justify-between items-center px-3 py-2 bg-[#101822]/60 border ${borderPending} rounded-lg pr-10`}>
+                    <div className="flex flex-col min-w-0">
+                        <span className={`text-xs font-mono font-bold ${textAccent}`}>{(e.jumlah || 0).toLocaleString('id-ID')} <span className={`text-[10px] ${textAccentSm}`}>{unitLabel}</span></span>
+                        <span className="text-[10px] text-slate-400 truncate">{(e as any)[labelKey]}{e.jam ? ` · ${e.jam}` : ''} <span className={`text-[9px] ${textAccentSm}`}>(baru)</span></span>
+                    </div>
+                    <button type="button" onClick={() => onRemove(idx)}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors">
+                        <span className="material-symbols-outlined text-[15px]">delete</span>
+                    </button>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function timeInput(value: string, prev: string, onChange: (v: string) => void) {
+    return (
+        <div className="space-y-1.5 w-full">
+            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Jam</label>
+            <input
+                type="text" inputMode="numeric" placeholder="00:00" maxLength={5}
+                value={value}
+                onChange={e => {
+                    let v = e.target.value.replace(/[^0-9:]/g, '');
+                    if (v.length === 2 && !v.includes(':') && prev.length < 2) v = v + ':';
+                    onChange(v);
+                }}
+                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 text-sm font-mono transition-all"
+            />
+        </div>
+    );
+}
+
 export default function TabHandling({
     espValues = {}, tankyardValues = {},
     onEspChange, onTankyardChange,
     solarEntries = [], onSolarEntriesChange,
     outSolarEntries = [], onOutSolarEntriesChange,
     savedSolarEntries = [], savedOutSolarEntries = [],
-    onDeleteSavedSolar, onDeleteSavedOutSolar
+    onDeleteSavedSolar, onDeleteSavedOutSolar,
 }: TabHandlingProps) {
-    const [currentEntry, setCurrentEntry] = React.useState<SolarEntry>({ tanggal: '', jam: '', jumlah: null, perusahaan: '' });
-    const [currentOutEntry, setCurrentOutEntry] = React.useState<OutSolarEntry>({ tanggal: '', jam: '', jumlah: null, tujuan: 'Bengkel' });
-    const [tujuanMode, setTujuanMode] = React.useState<'Bengkel' | 'SA/SU 3B' | 'Lainnya'>('Bengkel');
+    const [showSolarModal, setShowSolarModal] = useState(false);
+    const [showOutModal, setShowOutModal] = useState(false);
+    const [solarForm, setSolarForm] = useState<SolarEntry>(EMPTY_SOLAR);
+    const [outForm, setOutForm] = useState<OutSolarEntry>(EMPTY_OUT);
+    const [tujuanMode, setTujuanMode] = useState<'Bengkel' | 'SA/SU 3B' | 'Lainnya'>('Bengkel');
 
-    const addEntry = () => {
-        if (!currentEntry.jam || !currentEntry.jumlah || !currentEntry.perusahaan) {
-            alert('Lengkapi semua data kedatangan solar sebelum menambah.');
-            return;
-        }
-        onSolarEntriesChange?.([...solarEntries, { ...currentEntry, tanggal: currentEntry.jam }]);
-        setCurrentEntry({ tanggal: '', jam: '', jumlah: null, perusahaan: '' });
+    const saveSolar = () => {
+        if (!solarForm.jam || !solarForm.jumlah || !solarForm.perusahaan) return;
+        onSolarEntriesChange?.([...solarEntries, { ...solarForm, tanggal: solarForm.jam }]);
+        setSolarForm(EMPTY_SOLAR);
+        setShowSolarModal(false);
     };
 
-    const removeEntry = (idx: number) => {
-        const next = solarEntries.filter((_, i) => i !== idx);
-        onSolarEntriesChange?.(next);
-    };
-
-    const addOutEntry = () => {
-        if (!currentOutEntry.jam || !currentOutEntry.jumlah || !currentOutEntry.tujuan) {
-            alert('Lengkapi semua data permintaan solar sebelum menambah.');
-            return;
-        }
-        onOutSolarEntriesChange?.([...outSolarEntries, { ...currentOutEntry, tanggal: currentOutEntry.jam }]);
-        setCurrentOutEntry({ tanggal: '', jam: '', jumlah: null, tujuan: 'Bengkel' });
+    const saveOut = () => {
+        if (!outForm.jam || !outForm.jumlah || !outForm.tujuan) return;
+        onOutSolarEntriesChange?.([...outSolarEntries, { ...outForm, tanggal: outForm.jam }]);
+        setOutForm(EMPTY_OUT);
         setTujuanMode('Bengkel');
+        setShowOutModal(false);
     };
 
-    const removeOutEntry = (idx: number) => {
-        const next = outSolarEntries.filter((_, i) => i !== idx);
-        onOutSolarEntriesChange?.(next);
-    };
+    const removeEntry = (idx: number) => onSolarEntriesChange?.(solarEntries.filter((_, i) => i !== idx));
+    const removeOutEntry = (idx: number) => onOutSolarEntriesChange?.(outSolarEntries.filter((_, i) => i !== idx));
 
     const allInSolar = [...savedSolarEntries, ...solarEntries];
     const allOutSolar = [...savedOutSolarEntries, ...outSolarEntries];
-    const totalInSolar = allInSolar.reduce((sum, e) => sum + (e.jumlah || 0), 0);
-    const totalOutSolar = allOutSolar.reduce((sum, e) => sum + (e.jumlah || 0), 0);
+    const totalInSolar = allInSolar.reduce((s, e) => s + (e.jumlah || 0), 0);
+    const totalOutSolar = allOutSolar.reduce((s, e) => s + (e.jumlah || 0), 0);
 
     return (
         <>
@@ -86,31 +145,19 @@ export default function TabHandling({
 
                     <Card title="Loading Batubara" icon="local_shipping" color="orange">
                         <InputField label="Total Loading" unit="shovel" color="orange" name="loading" value={espValues.loading} onChange={onEspChange} />
-
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">
-                                Hopper Aktif
-                            </label>
-                            <select
-                                className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono transition-all ${!espValues.hopper ? 'text-slate-400' : 'text-white'}`}
-                                value={(espValues.hopper as string) || ''}
-                                onChange={e => onEspChange?.('hopper', e.target.value || null)}
-                            >
+                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Hopper Aktif</label>
+                            <select className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 text-sm font-mono transition-all ${!espValues.hopper ? 'text-slate-400' : 'text-white'}`}
+                                value={(espValues.hopper as string) || ''} onChange={e => onEspChange?.('hopper', e.target.value || null)}>
                                 <option value="" className="text-slate-400">Pilih...</option>
                                 <option value="A">Hopper A</option>
                                 <option value="B">Hopper B</option>
                             </select>
                         </div>
-
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">
-                                Conveyor Status
-                            </label>
-                            <select
-                                className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono transition-all ${!espValues.conveyor ? 'text-slate-400' : 'text-white'}`}
-                                value={(espValues.conveyor as string) || ''}
-                                onChange={e => onEspChange?.('conveyor', e.target.value || null)}
-                            >
+                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Conveyor Status</label>
+                            <select className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 text-sm font-mono transition-all ${!espValues.conveyor ? 'text-slate-400' : 'text-white'}`}
+                                value={(espValues.conveyor as string) || ''} onChange={e => onEspChange?.('conveyor', e.target.value || null)}>
                                 <option value="" className="text-slate-400">Pilih...</option>
                                 <option value="AB">Conveyor AB (1&amp;2)</option>
                                 <option value="A">Conveyor A (1)</option>
@@ -125,184 +172,101 @@ export default function TabHandling({
                         <InputField label="Level Tanki Solar" unit="m" color="blue" name="tk_solar_ab" value={tankyardValues.tk_solar_ab} onChange={onTankyardChange} />
                     </Card>
 
+                    {/* Kedatangan Solar */}
                     <Card title="Kedatangan Solar" icon="download" color="amber">
-                        <div className="space-y-3 p-3 bg-[#101822]/30 border border-slate-700/50 rounded-lg">
-                            <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Jam Kedatangan</label>
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    placeholder="00:00"
-                                    maxLength={5}
-                                    value={currentEntry.jam ?? ''}
-                                    onChange={e => {
-                                        let v = e.target.value.replace(/[^0-9:]/g, '');
-                                        if (v.length === 2 && !v.includes(':') && (currentEntry.jam ?? '').length < 2) v = v + ':';
-                                        setCurrentEntry({ ...currentEntry, jam: v });
-                                    }}
-                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 text-sm font-mono transition-all"
+                        {allInSolar.length > 0 && (
+                            <div className="mb-1">
+                                <EntryList
+                                    entries={solarEntries} savedEntries={savedSolarEntries}
+                                    accentColor="amber" labelKey="perusahaan" valueKey="jumlah" unitLabel="L"
+                                    onRemove={removeEntry} onDeleteSaved={onDeleteSavedSolar}
                                 />
-                            </div>
-                            <InputField label="Jumlah" unit="Liter" color="amber" name="solar_jumlah" value={currentEntry.jumlah} thousands
-                                onChange={(_, v) => setCurrentEntry({...currentEntry, jumlah: typeof v === 'string' ? (v === '' ? null : parseFloat(v) ?? null) : v as number | null})} />
-                            <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Perusahaan</label>
-                                <input type="text" value={currentEntry.perusahaan} onChange={e => setCurrentEntry({...currentEntry, perusahaan: e.target.value})}
-                                    placeholder="Nama perusahaan..."
-                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 text-sm transition-all" />
-                            </div>
-                            <button type="button" onClick={addEntry}
-                                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs font-bold transition-colors mt-2">
-                                <span className="material-symbols-outlined text-[16px]">add_circle</span>
-                                TAMBAH KEDATANGAN
-                            </button>
-                        </div>
-                        {solarEntries.length > 0 && (
-                            <div className="space-y-2 mt-3">
-                                {solarEntries.map((entry, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-2 bg-[#101822] border border-amber-500/30 rounded-lg shadow-inner">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-mono text-white font-bold">{entry.jumlah?.toLocaleString('id-ID')} <span className="text-xs text-amber-400 font-medium">L</span></span>
-                                            <span className="text-xs text-slate-400 mt-0.5">{entry.perusahaan}</span>
-                                        </div>
-                                        <button type="button" onClick={() => removeEntry(idx)} className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition-colors">
-                                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                                        </button>
-                                    </div>
-                                ))}
+                                <div className="flex justify-between items-center px-1 mt-2 mb-1">
+                                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total</span>
+                                    <span className="text-sm font-mono font-bold text-amber-300">{totalInSolar.toLocaleString('id-ID')} L</span>
+                                </div>
+                                <div className="h-px bg-slate-700/40 mb-3" />
                             </div>
                         )}
+                        <button type="button" onClick={() => setShowSolarModal(true)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm font-bold transition-colors">
+                            <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                            Tambah Kedatangan
+                        </button>
                     </Card>
 
+                    {/* Permintaan Solar */}
                     <Card title="Permintaan Solar" icon="upload" color="rose">
-                        <div className="space-y-3 p-3 bg-[#101822]/30 border border-slate-700/50 rounded-lg">
-                            <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Jam Permintaan</label>
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    placeholder="00:00"
-                                    maxLength={5}
-                                    value={currentOutEntry.jam ?? ''}
-                                    onChange={e => {
-                                        let v = e.target.value.replace(/[^0-9:]/g, '');
-                                        if (v.length === 2 && !v.includes(':') && (currentOutEntry.jam ?? '').length < 2) v = v + ':';
-                                        setCurrentOutEntry({ ...currentOutEntry, jam: v });
-                                    }}
-                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm font-mono transition-all"
+                        {allOutSolar.length > 0 && (
+                            <div className="mb-1">
+                                <EntryList
+                                    entries={outSolarEntries} savedEntries={savedOutSolarEntries}
+                                    accentColor="rose" labelKey="tujuan" valueKey="jumlah" unitLabel="L"
+                                    onRemove={removeOutEntry} onDeleteSaved={onDeleteSavedOutSolar}
                                 />
-                            </div>
-                            <InputField label="Jumlah" unit="Liter" color="rose" name="out_solar_jumlah" value={currentOutEntry.jumlah} thousands
-                                onChange={(_, v) => setCurrentOutEntry({...currentOutEntry, jumlah: typeof v === 'string' ? (v === '' ? null : parseFloat(v) ?? null) : v as number | null})} />
-                            <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-white uppercase tracking-wider block text-left text-xs">Tujuan Permintaan</label>
-                                <select
-                                    value={tujuanMode}
-                                    onChange={e => {
-                                        const mode = e.target.value as typeof tujuanMode;
-                                        setTujuanMode(mode);
-                                        if (mode !== 'Lainnya') setCurrentOutEntry({ ...currentOutEntry, tujuan: mode });
-                                        else setCurrentOutEntry({ ...currentOutEntry, tujuan: '' });
-                                    }}
-                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm transition-all"
-                                >
-                                    <option value="Bengkel">Bengkel</option>
-                                    <option value="SA/SU 3B">SA/SU 3B</option>
-                                    <option value="Lainnya">Lainnya…</option>
-                                </select>
-                                {tujuanMode === 'Lainnya' && (
-                                    <input type="text" value={currentOutEntry.tujuan} onChange={e => setCurrentOutEntry({ ...currentOutEntry, tujuan: e.target.value })}
-                                        placeholder="Tulis tujuan permintaan..."
-                                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-sm transition-all mt-2" />
-                                )}
-                            </div>
-                            <button type="button" onClick={addOutEntry}
-                                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-rose-500/50 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-bold transition-colors mt-2">
-                                <span className="material-symbols-outlined text-[16px]">add_circle</span>
-                                TAMBAH PERMINTAAN
-                            </button>
-                        </div>
-                        {outSolarEntries.length > 0 && (
-                            <div className="space-y-2 mt-3">
-                                {outSolarEntries.map((entry, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-2 bg-[#101822] border border-rose-500/30 rounded-lg shadow-inner">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-mono text-white font-bold">{entry.jumlah?.toLocaleString('id-ID')} <span className="text-xs text-rose-400 font-medium">L</span></span>
-                                            <span className="text-xs text-slate-400 mt-0.5">{entry.tujuan}</span>
-                                        </div>
-                                        <button type="button" onClick={() => removeOutEntry(idx)} className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition-colors">
-                                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                                        </button>
-                                    </div>
-                                ))}
+                                <div className="flex justify-between items-center px-1 mt-2 mb-1">
+                                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total</span>
+                                    <span className="text-sm font-mono font-bold text-rose-300">{totalOutSolar.toLocaleString('id-ID')} L</span>
+                                </div>
+                                <div className="h-px bg-slate-700/40 mb-3" />
                             </div>
                         )}
+                        <button type="button" onClick={() => setShowOutModal(true)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-sm font-bold transition-colors">
+                            <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                            Tambah Permintaan
+                        </button>
                     </Card>
 
                 </div>
             </div>
-            
-            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
-                <Card title="Summary Solar" icon="assessment" color="amber" isSidebar={true}>
-                    <CalculatedField label="TOTAL KEDATANGAN" value={totalInSolar.toLocaleString('id-ID')} unit="Liter" variant="amber" />
-                    {allInSolar.length > 0 && (
-                        <div className="flex flex-col gap-1 mt-2">
-                            {savedSolarEntries.map((e) => (
-                                <div key={`saved-${e.id}`} className="relative flex justify-between items-center px-2 py-1.5 bg-amber-900/10 border border-amber-500/30 rounded-lg pr-8">
-                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.perusahaan || '—'}</span>
-                                    <span className="text-[11px] font-mono font-bold text-amber-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
-                                    {e.id && onDeleteSavedSolar && (
-                                        <button type="button" onClick={() => onDeleteSavedSolar(e.id!)}
-                                            className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
-                                            <span className="material-symbols-outlined text-[14px]">delete</span>
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            {solarEntries.map((e, idx) => (
-                                <div key={`pending-${idx}`} className="relative flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-amber-500/20 rounded-lg pr-8">
-                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.perusahaan || '—'}{e.jam ? ` · ${e.jam}` : ''} <span className="text-[9px] text-amber-500">(new)</span></span>
-                                    <span className="text-[11px] font-mono font-bold text-amber-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
-                                    <button type="button" onClick={() => removeEntry(idx)}
-                                        className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
-                                        <span className="material-symbols-outlined text-[14px]">delete</span>
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
 
-                    <div className="h-px bg-slate-700/80 w-full my-3"></div>
+            {/* Modal Kedatangan Solar */}
+            <Modal open={showSolarModal} onClose={() => { setShowSolarModal(false); setSolarForm(EMPTY_SOLAR); }} title="Kedatangan Solar" color="amber">
+                {timeInput(solarForm.jam ?? '', solarForm.jam ?? '', v => setSolarForm({ ...solarForm, jam: v }))}
+                <InputField label="Jumlah" unit="Liter" color="amber" name="solar_jumlah" value={solarForm.jumlah} thousands
+                    onChange={(_, v) => setSolarForm({ ...solarForm, jumlah: typeof v === 'string' ? parseFloat(v) || null : v as number | null })} />
+                <div className="space-y-1.5 w-full">
+                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Perusahaan</label>
+                    <input type="text" value={solarForm.perusahaan} onChange={e => setSolarForm({ ...solarForm, perusahaan: e.target.value })}
+                        placeholder="Nama perusahaan..."
+                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 text-sm transition-all" />
+                </div>
+                <button type="button" onClick={saveSolar} disabled={!solarForm.jam || !solarForm.jumlah || !solarForm.perusahaan}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm transition-colors mt-1">
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    Simpan
+                </button>
+            </Modal>
 
-                    <CalculatedField label="TOTAL PERMINTAAN" value={totalOutSolar.toLocaleString('id-ID')} unit="Liter" variant="rose" />
-                    {allOutSolar.length > 0 && (
-                        <div className="flex flex-col gap-1 mt-2">
-                            {savedOutSolarEntries.map((e) => (
-                                <div key={`saved-${e.id}`} className="relative flex justify-between items-center px-2 py-1.5 bg-rose-900/10 border border-rose-500/30 rounded-lg pr-8">
-                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.tujuan || '—'}</span>
-                                    <span className="text-[11px] font-mono font-bold text-rose-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
-                                    {e.id && onDeleteSavedOutSolar && (
-                                        <button type="button" onClick={() => onDeleteSavedOutSolar(e.id!)}
-                                            className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
-                                            <span className="material-symbols-outlined text-[14px]">delete</span>
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            {outSolarEntries.map((e, idx) => (
-                                <div key={`pending-${idx}`} className="relative flex justify-between items-center px-2 py-1.5 bg-[#101822]/50 border border-rose-500/20 rounded-lg pr-8">
-                                    <span className="text-[11px] text-slate-400 truncate max-w-[110px]">{e.tujuan || '—'}{e.jam ? ` · ${e.jam}` : ''} <span className="text-[9px] text-rose-500">(new)</span></span>
-                                    <span className="text-[11px] font-mono font-bold text-rose-300 whitespace-nowrap ml-1">{(e.jumlah || 0).toLocaleString('id-ID')} L</span>
-                                    <button type="button" onClick={() => removeOutEntry(idx)}
-                                        className="absolute top-1/2 -translate-y-1/2 right-1 w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors">
-                                        <span className="material-symbols-outlined text-[14px]">delete</span>
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
+            {/* Modal Permintaan Solar */}
+            <Modal open={showOutModal} onClose={() => { setShowOutModal(false); setOutForm(EMPTY_OUT); setTujuanMode('Bengkel'); }} title="Permintaan Solar" color="rose">
+                {timeInput(outForm.jam ?? '', outForm.jam ?? '', v => setOutForm({ ...outForm, jam: v }))}
+                <InputField label="Jumlah" unit="Liter" color="rose" name="out_solar_jumlah" value={outForm.jumlah} thousands
+                    onChange={(_, v) => setOutForm({ ...outForm, jumlah: typeof v === 'string' ? parseFloat(v) || null : v as number | null })} />
+                <div className="space-y-1.5 w-full">
+                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Tujuan Permintaan</label>
+                    <select value={tujuanMode} onChange={e => {
+                        const mode = e.target.value as typeof tujuanMode;
+                        setTujuanMode(mode);
+                        if (mode !== 'Lainnya') setOutForm({ ...outForm, tujuan: mode });
+                        else setOutForm({ ...outForm, tujuan: '' });
+                    }} className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-rose-500 text-sm transition-all">
+                        <option value="Bengkel">Bengkel</option>
+                        <option value="SA/SU 3B">SA/SU 3B</option>
+                        <option value="Lainnya">Lainnya…</option>
+                    </select>
+                    {tujuanMode === 'Lainnya' && (
+                        <input type="text" value={outForm.tujuan} onChange={e => setOutForm({ ...outForm, tujuan: e.target.value })}
+                            placeholder="Tulis tujuan..." className="mt-2 w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 text-sm transition-all" />
                     )}
-                </Card>
-            </div>
+                </div>
+                <button type="button" onClick={saveOut} disabled={!outForm.jam || !outForm.jumlah || !outForm.tujuan}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors mt-1">
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    Simpan
+                </button>
+            </Modal>
         </>
     );
 }

@@ -56,7 +56,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [steam, setSteam] = useState<Record<string, number | null>>({});
     const [power, setPower] = useState<Record<string, number | null>>({});
     const [coal, setCoal] = useState<Record<string, number | null>>({});
-    const [turbineMisc, setTurbineMisc] = useState<Record<string, number | null>>({});
+    const [turbineMisc, setTurbineMisc] = useState<Record<string, number | string | null>>({});
     const [stockTank, setStockTank] = useState<Record<string, number | null>>({});
     const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
@@ -586,7 +586,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 onSteamChange: makeNumberHandler(setSteam),
                                 onPowerChange: makeNumberHandler(setPower),
                                 onCoalChange: makeNumberHandler(setCoal),
-                                onTurbineMiscChange: makeNumberHandler(setTurbineMisc),
+                                onTurbineMiscChange: makeMixedHandler(setTurbineMisc),
                                 onStockTankChange: makeNumberHandler(setStockTank),
                                 onCoalTransferChange: makeNumberHandler(setCoalTransfer),
                                 onTotalizerChange: makeMixedHandler(setTotalizer),

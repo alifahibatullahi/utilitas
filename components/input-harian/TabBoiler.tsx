@@ -3,6 +3,38 @@ import React from 'react';
 import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, TotalizerInput } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 
+const BOILER_STATUS_OPTIONS = [
+    { value: 'running', label: 'Running' },
+    { value: 'shutdown', label: 'Shutdown' },
+];
+const BOILER_STATUS_DOT: Record<string, string> = {
+    running: 'bg-emerald-500',
+    shutdown: 'bg-red-500',
+};
+
+function BoilerStatusChip({ name, value, onChange }: {
+    name: string;
+    value: string;
+    onChange: (name: string, v: string | null) => void;
+}) {
+    const dot = BOILER_STATUS_DOT[value] ?? 'bg-slate-500';
+    return (
+        <div className="inline-flex items-center gap-2 bg-[#101822]/60 border border-slate-700/60 rounded-lg pl-3 pr-2 py-1.5 hover:border-rose-500/50 transition">
+            <span className={`w-3 h-3 rounded-full ${dot} shrink-0`} />
+            <select
+                className="bg-transparent appearance-none text-sm text-white font-semibold pr-4 cursor-pointer outline-none"
+                value={value}
+                onChange={e => onChange(name, e.target.value === '' ? null : e.target.value)}
+            >
+                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                {BOILER_STATUS_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
 export default function TabBoiler({
     steam, coal, stockTank, turbineMisc,
     prevSteam, prevCoal, prevStockTank,
@@ -42,7 +74,9 @@ export default function TabBoiler({
         <div className="flex flex-col gap-6 w-full">
             <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6 w-full">
                 {/* ═══ BOILER A INPUTS ═══ */}
-                <Card title="Input Boiler A" icon="factory" color="rose">
+                <Card title="Input Boiler A" icon="factory" color="rose"
+                    headerRight={<BoilerStatusChip name="status_boiler_a" value={(turbineMisc.status_boiler_a as string) ?? ''} onChange={onTurbineMiscChange} />}
+                >
                     <SectionLabel label="Produksi Steam A" />
                     <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-700/50 mb-4">
                         <TotalizerInput label="Steam A" name="prod_boiler_a_24" value={steam.prod_boiler_a_24} prev={prevA24} onChange={onSteamChange} unit="Ton" color="rose" />
@@ -74,7 +108,9 @@ export default function TabBoiler({
                 </Card>
 
                 {/* ═══ BOILER B INPUTS ═══ */}
-                <Card title="Input Boiler B" icon="factory" color="purple">
+                <Card title="Input Boiler B" icon="factory" color="purple"
+                    headerRight={<BoilerStatusChip name="status_boiler_b" value={(turbineMisc.status_boiler_b as string) ?? ''} onChange={onTurbineMiscChange} />}
+                >
                      <SectionLabel label="Produksi Steam B" />
                     <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-700/50 mb-4">
                         <TotalizerInput label="Steam B" name="prod_boiler_b_24" value={steam.prod_boiler_b_24} prev={prevB24} onChange={onSteamChange} unit="Ton" color="purple" />

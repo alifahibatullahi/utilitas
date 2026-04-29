@@ -75,6 +75,7 @@ const VALID_COLS: Record<string, string[]> = {
         'totalizer_gi', 'totalizer_export', 'totalizer_import',
         'gen_ampere', 'gen_amp_react', 'gen_cos_phi', 'gen_tegangan', 'gen_frequensi',
         'gi_sum_p', 'gi_sum_q', 'gi_cos_phi',
+        'status_boiler_a', 'status_boiler_b',
     ],
     daily_report_stock_tank: [
         'stock_batubara', 'rcw_level_00', 'demin_level_00',
@@ -222,7 +223,7 @@ export function useDailyReport(date: string) {
         steam?: Record<string, number | null>;
         power?: Record<string, number | null>;
         coal?: Record<string, number | null>;
-        turbineMisc?: Record<string, number | null>;
+        turbineMisc?: Record<string, number | string | null>;
         stockTank?: Record<string, number | null>;
         coalTransfer?: Record<string, number | null>;
         totalizer?: Record<string, number | string | null>;

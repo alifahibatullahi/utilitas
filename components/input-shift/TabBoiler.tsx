@@ -72,35 +72,33 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
         return typeof s === 'string' && s !== '' && s !== 'running';
     };
 
-    // Auto-fill & lock saat boiler shutdown
+    // Auto-fill totalizer saat boiler shutdown (hanya jika masih kosong, tetap bisa diedit)
     useEffect(() => {
         if (!isBoilerShutdown || !onFieldChange) return;
-        if (prevTotalizerSteam != null && values.totalizer_steam !== prevTotalizerSteam) {
+        if (prevTotalizerSteam != null && values.totalizer_steam == null)
             onFieldChange('totalizer_steam', prevTotalizerSteam);
-        }
-        if (prevTotalizerBfw != null && values.totalizer_bfw !== prevTotalizerBfw) {
+        if (prevTotalizerBfw != null && values.totalizer_bfw == null)
             onFieldChange('totalizer_bfw', prevTotalizerBfw);
-        }
         NON_TOTALIZER_BOILER_FIELDS.forEach(k => {
             if (values[k] != null) onFieldChange(k, null);
         });
         if (onCoalBunkerChange) {
             feederKeys.forEach(fk => {
                 const prev = prevCoalBunkerValues[fk];
-                if (prev != null && coalBunkerValues[fk] !== prev) onCoalBunkerChange(fk, prev);
+                if (prev != null && coalBunkerValues[fk] == null) onCoalBunkerChange(fk, prev);
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isBoilerShutdown]);
 
-    // Auto-fill & lock saat feeder non-running
+    // Auto-fill totalizer feeder saat non-running (hanya jika kosong, tetap bisa diedit)
     const feederStatusSig = feederKeys.map(fk => coalBunkerValues[feederStatusKey(fk)] ?? '').join('|');
     useEffect(() => {
         if (!onCoalBunkerChange || !onFieldChange) return;
         feederKeys.forEach(fk => {
             if (!isFeederLocked(fk)) return;
             const prev = prevCoalBunkerValues[fk];
-            if (prev != null && coalBunkerValues[fk] !== prev) onCoalBunkerChange(fk, prev);
+            if (prev != null && coalBunkerValues[fk] == null) onCoalBunkerChange(fk, prev);
             if (values[`${fk}_flow`] != null) onFieldChange(`${fk}_flow`, null);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -141,7 +139,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         <div>
-                            <InputField label="Totalizer Steam" unit="ton" color="blue" name="totalizer_steam" value={values.totalizer_steam} onChange={onFieldChange} placeholder={prevSteam > 0 ? String(prevSteam) : '0.0'} readOnly={isBoilerShutdown} />
+                            <InputField label="Totalizer Steam" unit="ton" color="blue" name="totalizer_steam" value={values.totalizer_steam} onChange={onFieldChange} placeholder={prevSteam > 0 ? String(prevSteam) : '0.0'} />
                             <SelisihInfo prev={prevSteam} current={currentSteam} />
                         </div>
                     </Card>
@@ -151,7 +149,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         <InputField label="Temp BFW" unit="°C" color="cyan" name="temp_bfw" value={values.temp_bfw} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         <InputField label="Flow BFW" unit="t/h" color="cyan" name="flow_bfw" value={values.flow_bfw} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         <div>
-                            <InputField label="Totalizer BFW" unit="ton" color="cyan" name="totalizer_bfw" value={values.totalizer_bfw} onChange={onFieldChange} placeholder={Number(prevTotalizerBfw) > 0 ? String(Number(prevTotalizerBfw)) : '0.0'} readOnly={isBoilerShutdown} />
+                            <InputField label="Totalizer BFW" unit="ton" color="cyan" name="totalizer_bfw" value={values.totalizer_bfw} onChange={onFieldChange} placeholder={Number(prevTotalizerBfw) > 0 ? String(Number(prevTotalizerBfw)) : '0.0'} />
                             <SelisihInfo prev={Number(prevTotalizerBfw) || 0} current={Number(values.totalizer_bfw) || 0} />
                         </div>
                     </Card>
@@ -179,7 +177,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         {feeders.map((feeder, idx) => {
                             const fk = feederKeys[idx];
                             const sk = feederStatusKey(fk);
-                            const locked = isBoilerShutdown || isFeederLocked(fk);
+                            const flowLocked = isBoilerShutdown || isFeederLocked(fk);
                             return (
                                 <div key={feeder} className="space-y-2">
                                     <div className="flex items-center gap-2">
@@ -193,10 +191,10 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <InputField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} readOnly={locked} />
+                                            <InputField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} />
                                             <SelisihInfo prev={Number(prevCoalBunkerValues[fk]) || 0} current={Number(coalBunkerValues[fk]) || 0} />
                                         </div>
-                                        <InputField placeholder="Flow" unit="t/h" color="emerald" name={`${fk}_flow`} value={values[`${fk}_flow`]} onChange={onFieldChange} readOnly={locked} />
+                                        <InputField placeholder="Flow" unit="t/h" color="emerald" name={`${fk}_flow`} value={values[`${fk}_flow`]} onChange={onFieldChange} readOnly={flowLocked} />
                                     </div>
                                 </div>
                             );

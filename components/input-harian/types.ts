@@ -3,7 +3,7 @@ export interface DailyTabProps {
     steam: Record<string, number | null>;
     power: Record<string, number | null>;
     coal: Record<string, number | null>;
-    turbineMisc: Record<string, number | null>;
+    turbineMisc: Record<string, number | string | null>;
     stockTank: Record<string, number | null>;
     coalTransfer: Record<string, number | null>;
     totalizer: Record<string, number | string | null>;

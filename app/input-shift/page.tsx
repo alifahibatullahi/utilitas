@@ -880,32 +880,34 @@ export default function InputShiftPage() {
                                 const setCurrentBoiler = activeTab === 'Boiler A' ? setBoilerA : setBoilerB;
                                 return (
                                     <>
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner`}>
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
                                             <span className={`material-symbols-outlined text-[26px] ${styles.icon}`}>{tab?.icon}</span>
                                         </div>
-                                        <div className="flex-1 min-w-0">
+                                        <div className="shrink-0">
                                             <h2 className="text-white font-bold text-xl leading-tight">{tab?.label}</h2>
                                             <p className="text-slate-400 text-xs mt-0.5">Input data operasional shift {tab?.label}</p>
                                         </div>
-                                        {isBoilerTab && (
-                                            <div className="w-48 shrink-0">
-                                                <SelectField
-                                                    label="Status Boiler"
-                                                    color="rose"
-                                                    name="status_boiler"
-                                                    value={(currentBoilerState.status_boiler as string) ?? ''}
-                                                    onChange={(_n, v) => {
-                                                        setUserModified(true);
-                                                        setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
-                                                    }}
-                                                    options={[
-                                                        { value: 'running', label: 'Running' },
-                                                        { value: 'shutdown', label: 'Shutdown' },
-                                                    ]}
-                                                    placeholder="running / shutdown..."
-                                                />
-                                            </div>
-                                        )}
+                                        <div className="flex-1 flex justify-center">
+                                            {isBoilerTab && (
+                                                <div className="w-56">
+                                                    <SelectField
+                                                        label="Status Boiler"
+                                                        color="rose"
+                                                        name="status_boiler"
+                                                        value={(currentBoilerState.status_boiler as string) ?? ''}
+                                                        onChange={(_n, v) => {
+                                                            setUserModified(true);
+                                                            setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
+                                                        }}
+                                                        options={[
+                                                            { value: 'running', label: 'Running' },
+                                                            { value: 'shutdown', label: 'Shutdown' },
+                                                        ]}
+                                                        placeholder="running / shutdown..."
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </>
                                 );
                             })()}

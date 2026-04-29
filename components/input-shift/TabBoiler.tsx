@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { Card, InputField, SelectField, CalculatedField, SelisihInfo } from './SharedComponents';
+import { Card, InputField, CalculatedField, SelisihInfo } from './SharedComponents';
 
 interface TabBoilerProps {
     boilerId: 'A' | 'B';
@@ -154,16 +154,19 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                             const locked = isBoilerShutdown || isFeederLocked(fk);
                             return (
                                 <div key={feeder} className="space-y-2">
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Feeder {feeder}</p>
-                                    <SelectField
-                                        color="emerald"
-                                        size="small"
-                                        name={sk}
-                                        value={(coalBunkerValues[sk] as string) ?? ''}
-                                        onChange={onCoalBunkerChange}
-                                        options={FEEDER_STATUS_OPTIONS}
-                                        placeholder="Status feeder..."
-                                    />
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Feeder {feeder}</p>
+                                        <select
+                                            className="bg-[#101822]/50 border border-slate-700/80 rounded-md py-1 px-2 text-[10px] text-white font-medium uppercase tracking-wide focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer appearance-none"
+                                            value={(coalBunkerValues[sk] as string) ?? ''}
+                                            onChange={e => onCoalBunkerChange?.(sk, e.target.value === '' ? null : e.target.value)}
+                                        >
+                                            <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                                            {FEEDER_STATUS_OPTIONS.map(opt => (
+                                                <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <InputField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" size="small" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} readOnly={locked} />

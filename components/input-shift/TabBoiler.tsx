@@ -175,34 +175,22 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         </div>
                     </Card>
 
-                    <Card
-                        title={`Coal Feeder ${feeders[0]}-${feeders[feeders.length - 1]}`}
-                        icon="precision_manufacturing"
-                        color="emerald"
-                        headerRight={
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                {feeders.map((feeder, idx) => {
-                                    const fk = feederKeys[idx];
-                                    const sk = feederStatusKey(fk);
-                                    return (
+                    <Card title={`Coal Feeder ${feeders[0]}-${feeders[feeders.length - 1]}`} icon="precision_manufacturing" color="emerald">
+                        {feeders.map((feeder, idx) => {
+                            const fk = feederKeys[idx];
+                            const sk = feederStatusKey(fk);
+                            const locked = isBoilerShutdown || isFeederLocked(fk);
+                            return (
+                                <div key={feeder} className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Feeder {feeder}</p>
                                         <FeederStatusChip
-                                            key={feeder}
-                                            feeder={feeder}
+                                            feeder=""
                                             sk={sk}
                                             value={(coalBunkerValues[sk] as string) ?? ''}
                                             onChange={onCoalBunkerChange}
                                         />
-                                    );
-                                })}
-                            </div>
-                        }
-                    >
-                        {feeders.map((feeder, idx) => {
-                            const fk = feederKeys[idx];
-                            const locked = isBoilerShutdown || isFeederLocked(fk);
-                            return (
-                                <div key={feeder} className="space-y-2">
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Feeder {feeder}</p>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <InputField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" size="small" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} readOnly={locked} />

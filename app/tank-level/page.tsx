@@ -669,7 +669,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
                                 <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50 [color-scheme:dark]" />
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-amber-500/50 [color-scheme:dark] box-border" />
                             </div>
                             <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>

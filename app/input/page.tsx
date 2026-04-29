@@ -15,18 +15,23 @@ interface TankDraft {
     flowInputs: Record<string, string>;
     outputFlowInputs: Record<string, string>;
     selectedPump: string;
-    solarDate: string;
-    solarLiters: string;
-    solarSupplier: string;
 }
 
-function emptyDraft(solarDate: string): TankDraft {
-    return { levelM3: '', note: '', flowInputs: {}, outputFlowInputs: {}, selectedPump: '', solarDate, solarLiters: '', solarSupplier: '' };
+interface SolarPendingItem {
+    id: string;
+    date: string;
+    liters: number;
+    supplier?: string;
+    tujuan?: string;
+}
+
+function emptyDraft(): TankDraft {
+    return { levelM3: '', note: '', flowInputs: {}, outputFlowInputs: {}, selectedPump: '' };
 }
 
 export default function InputPage() {
     const { operator, isHandling } = useOperator();
-    const { submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading, currentLevels, flowRates, outputFlowRates: currentOutputFlowRates } = useTankData();
+    const { submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading, submitSolarUsage, currentLevels, flowRates, outputFlowRates: currentOutputFlowRates } = useTankData();
     const router = useRouter();
 
     const today = (() => {
@@ -36,13 +41,19 @@ export default function InputPage() {
 
     const [selectedTank, setSelectedTank] = useState<TankId | null>(null);
     const [drafts, setDrafts] = useState<Partial<Record<TankId, TankDraft>>>({});
-    const [current, setCurrent] = useState<TankDraft>(emptyDraft(today));
+    const [current, setCurrent] = useState<TankDraft>(emptyDraft());
     const [showToast, setShowToast] = useState(false);
     const [toastMsg, setToastMsg] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Track which tanks have been saved in this session
     const [savedTanks, setSavedTanks] = useState<Set<TankId>>(new Set());
+
+    // Solar pending lists (draft sebelum SIMPAN utama)
+    const [pendingKedatangan, setPendingKedatangan] = useState<SolarPendingItem[]>([]);
+    const [pendingPermintaan, setPendingPermintaan] = useState<SolarPendingItem[]>([]);
+    const [solarPopup, setSolarPopup] = useState<{ type: 'kedatangan' | 'permintaan'; editId?: string } | null>(null);
+    const [solarForm, setSolarForm] = useState({ date: today, liters: '', supplier: '', tujuan: '' });
 
     // Logsheet note: nilai RCW dari Google Sheets untuk jam sekarang
     const [rcwSheetNote, setRcwSheetNote] = useState<string | null>(null);
@@ -129,7 +140,7 @@ export default function InputPage() {
                 if (f.pump) selectedPump = f.pump;
             });
 
-            setCurrent({ levelM3, note: '', flowInputs, outputFlowInputs, selectedPump, solarDate: today, solarLiters: '', solarSupplier: '' });
+            setCurrent({ levelM3, note: '', flowInputs, outputFlowInputs, selectedPump });
         }
 
         setSelectedTank(tankId);
@@ -166,10 +177,6 @@ export default function InputPage() {
             if (allOutRates.length > 0) submitOutputFlowRates(tankId, allOutRates, operator.name);
         }
 
-        if (tankId === 'SOLAR' && draft.solarLiters && draft.solarSupplier) {
-            submitSolarUnloading({ date: draft.solarDate, liters: parseFloat(draft.solarLiters) || 0, supplier: draft.solarSupplier });
-        }
-
         // Upsert ke tank_logsheet (jam ganjil WIB)
         const { jam, isoDate } = getCurrentJamWIB();
         const supabase = createClient();
@@ -199,6 +206,14 @@ export default function InputPage() {
         });
 
         if (saved.length === 0) return;
+
+        // Submit pending solar items
+        if (saved.includes('SOLAR')) {
+            pendingKedatangan.forEach(item => submitSolarUnloading({ date: item.date, liters: item.liters, supplier: item.supplier! }));
+            pendingPermintaan.forEach(item => submitSolarUsage({ date: item.date, liters: item.liters, tujuan: item.tujuan! }));
+            setPendingKedatangan([]);
+            setPendingPermintaan([]);
+        }
 
         // Fire-and-forget: sync Level RCW ke Google Sheets
         if (saved.includes('RCW')) {
@@ -238,6 +253,31 @@ export default function InputPage() {
             setShowToast(true);
             setIsSubmitting(false);
         }, 500);
+    };
+
+    const saveSolarPopup = () => {
+        const liters = parseFloat(solarForm.liters);
+        if (!liters || liters <= 0) return;
+        if (solarPopup!.type === 'kedatangan') {
+            if (!solarForm.supplier.trim()) return;
+            if (solarPopup!.editId) {
+                setPendingKedatangan(prev => prev.map(x => x.id === solarPopup!.editId
+                    ? { ...x, date: solarForm.date, liters, supplier: solarForm.supplier }
+                    : x));
+            } else {
+                setPendingKedatangan(prev => [...prev, { id: Date.now().toString(), date: solarForm.date, liters, supplier: solarForm.supplier }]);
+            }
+        } else {
+            if (!solarForm.tujuan.trim()) return;
+            if (solarPopup!.editId) {
+                setPendingPermintaan(prev => prev.map(x => x.id === solarPopup!.editId
+                    ? { ...x, date: solarForm.date, liters, tujuan: solarForm.tujuan }
+                    : x));
+            } else {
+                setPendingPermintaan(prev => [...prev, { id: Date.now().toString(), date: solarForm.date, liters, tujuan: solarForm.tujuan }]);
+            }
+        }
+        setSolarPopup(null);
     };
 
     if (!operator || !isHandling) return null;
@@ -332,10 +372,10 @@ export default function InputPage() {
                             )}
                             
                             {selectedTank && current.levelM3 && !isNaN(parseFloat(current.levelM3)) && parseFloat(current.levelM3) >= 0 && parseFloat(current.levelM3) <= capM3 && (
-                                <div className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-slate-900/50 rounded-lg border border-slate-700/50 w-max mx-auto shadow-sm">
-                                    <span className="material-symbols-outlined text-sm text-slate-400">percent</span>
-                                    <p className="text-sm text-slate-300">
-                                        Persentase: <span className="text-white font-black text-base" style={{ color: TANKS[selectedTank].liquidColor }}>{(parseFloat(current.levelM3) / capM3 * 100).toFixed(1)}%</span>
+                                <div className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-slate-900/50 rounded-lg border border-slate-700/50 w-full shadow-sm">
+                                    <span className="material-symbols-outlined text-sm text-slate-400 shrink-0">percent</span>
+                                    <p className="text-sm text-slate-300 truncate">
+                                        Persentase: <span className="font-black text-base" style={{ color: TANKS[selectedTank].liquidColor }}>{(parseFloat(current.levelM3) / capM3 * 100).toFixed(1)}%</span>
                                     </p>
                                 </div>
                             )}
@@ -449,45 +489,87 @@ export default function InputPage() {
                             </div>
                         )}
 
-                        {/* Solar unloading */}
+                        {/* Kedatangan & Permintaan Solar */}
                         {selectedTank === 'SOLAR' && (
-                            <div className="bg-gradient-to-br from-amber-900/20 to-slate-900/80 backdrop-blur-sm border border-amber-500/30 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-[40px] rounded-full pointer-events-none" />
-                                
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="material-symbols-outlined text-amber-500">local_shipping</span>
-                                    <label className="block text-base font-bold text-white">Data Unloading Solar</label>
+                            <div className="flex flex-col gap-4">
+                                {/* Kedatangan Solar */}
+                                <div className="bg-gradient-to-br from-amber-900/20 to-slate-900/80 border border-amber-500/30 rounded-2xl p-4 shadow-xl">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-amber-500">local_shipping</span>
+                                            <span className="text-base font-bold text-white">Kedatangan Solar</span>
+                                        </div>
+                                        <button
+                                            onClick={() => { setSolarForm({ date: today, liters: '', supplier: '', tujuan: '' }); setSolarPopup({ type: 'kedatangan' }); }}
+                                            className="flex items-center gap-1 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-white border border-amber-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                                            <span className="material-symbols-outlined text-[16px]">add</span> Tambah
+                                        </button>
+                                    </div>
+                                    {pendingKedatangan.length === 0 ? (
+                                        <p className="text-xs text-slate-500 italic py-2 text-center">Belum ada data kedatangan</p>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            {pendingKedatangan.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2.5">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-white font-bold text-sm">{new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                        <p className="text-slate-400 text-xs truncate">{item.supplier}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                                                        <span className="text-amber-400 font-black text-sm">{item.liters.toLocaleString('id-ID')} L</span>
+                                                        <button onClick={() => { setSolarForm({ date: item.date, liters: item.liters.toString(), supplier: item.supplier!, tujuan: '' }); setSolarPopup({ type: 'kedatangan', editId: item.id }); }}
+                                                            className="text-slate-400 hover:text-amber-400 transition-colors cursor-pointer p-1">
+                                                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        </button>
+                                                        <button onClick={() => setPendingKedatangan(prev => prev.filter(x => x.id !== item.id))}
+                                                            className="text-slate-400 hover:text-rose-400 transition-colors cursor-pointer p-1">
+                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                
-                                <div className="space-y-4">
-                                    <div className="bg-slate-900/60 p-1 border border-slate-700/50 rounded-xl">
-                                        <div className="px-3 py-1.5 border-b border-slate-800">
-                                            <label className="text-xs font-bold text-slate-400 drop-shadow-sm">Tanggal Unloading</label>
+
+                                {/* Permintaan Solar */}
+                                <div className="bg-gradient-to-br from-rose-900/20 to-slate-900/80 border border-rose-500/30 rounded-2xl p-4 shadow-xl">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-rose-400">upload</span>
+                                            <span className="text-base font-bold text-white">Permintaan Solar</span>
                                         </div>
-                                        <input type="date" value={current.solarDate} onChange={e => setField('solarDate', e.target.value)}
-                                            className="w-full px-3 py-2.5 bg-transparent border-none text-sm text-white font-medium focus:outline-none focus:ring-0 [&::-webkit-calendar-picker-indicator]:filter-[invert(1)]" />
+                                        <button
+                                            onClick={() => { setSolarForm({ date: today, liters: '', supplier: '', tujuan: '' }); setSolarPopup({ type: 'permintaan' }); }}
+                                            className="flex items-center gap-1 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                                            <span className="material-symbols-outlined text-[16px]">add</span> Tambah
+                                        </button>
                                     </div>
-                                    
-                                    <div className="bg-slate-900/60 p-1 border border-slate-700/50 rounded-xl focus-within:border-amber-500/50 transition-colors">
-                                        <div className="px-3 py-1.5 border-b border-slate-800">
-                                            <label className="text-xs font-bold text-slate-400">Jumlah Diterima</label>
+                                    {pendingPermintaan.length === 0 ? (
+                                        <p className="text-xs text-slate-500 italic py-2 text-center">Belum ada data permintaan</p>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            {pendingPermintaan.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2.5">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-white font-bold text-sm">{new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                        <p className="text-slate-400 text-xs truncate">{item.tujuan}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                                                        <span className="text-rose-400 font-black text-sm">{item.liters.toLocaleString('id-ID')} L</span>
+                                                        <button onClick={() => { setSolarForm({ date: item.date, liters: item.liters.toString(), supplier: '', tujuan: item.tujuan! }); setSolarPopup({ type: 'permintaan', editId: item.id }); }}
+                                                            className="text-slate-400 hover:text-rose-400 transition-colors cursor-pointer p-1">
+                                                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        </button>
+                                                        <button onClick={() => setPendingPermintaan(prev => prev.filter(x => x.id !== item.id))}
+                                                            className="text-slate-400 hover:text-rose-400 transition-colors cursor-pointer p-1">
+                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div className="relative">
-                                            <input type="number" inputMode="decimal" value={current.solarLiters} onChange={e => setField('solarLiters', e.target.value)}
-                                                placeholder="5000" min="0"
-                                                className="w-full px-3 py-2.5 bg-transparent border-none text-lg font-bold text-white focus:outline-none focus:ring-0 placeholder:text-slate-600 appearance-none" />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-amber-500/80">liter</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="bg-slate-900/60 p-1 border border-slate-700/50 rounded-xl focus-within:border-amber-500/50 transition-colors">
-                                        <div className="px-3 py-1.5 border-b border-slate-800">
-                                            <label className="text-xs font-bold text-slate-400">Perusahaan Pengirim</label>
-                                        </div>
-                                        <input type="text" value={current.solarSupplier} onChange={e => setField('solarSupplier', e.target.value)}
-                                            placeholder="Cth: PT Pertamina"
-                                            className="w-full px-3 py-2.5 bg-transparent border-none text-sm font-medium text-white focus:outline-none focus:ring-0 placeholder:text-slate-600" />
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -540,6 +622,58 @@ export default function InputPage() {
             {showToast && (
                 <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top fade-in duration-300">
                     <Toast message={toastMsg} type="success" onClose={() => setShowToast(false)} duration={3000} />
+                </div>
+            )}
+
+            {/* Solar Popup Modal */}
+            {solarPopup && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                    onClick={() => setSolarPopup(null)}>
+                    <div className={`bg-[#16202e] border rounded-2xl w-full max-w-sm shadow-2xl p-5 animate-in fade-in zoom-in-95 ${solarPopup.type === 'kedatangan' ? 'border-amber-500/30' : 'border-rose-500/30'}`}
+                        onClick={e => e.stopPropagation()}>
+                        <h3 className="text-white font-black text-lg mb-4 flex items-center gap-2">
+                            <span className={`material-symbols-outlined ${solarPopup.type === 'kedatangan' ? 'text-amber-500' : 'text-rose-400'}`}>
+                                {solarPopup.type === 'kedatangan' ? 'local_shipping' : 'upload'}
+                            </span>
+                            {solarPopup.editId ? 'Edit' : 'Tambah'} {solarPopup.type === 'kedatangan' ? 'Kedatangan' : 'Permintaan'} Solar
+                        </h3>
+                        <div className="flex flex-col gap-3">
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
+                                <input type="date" value={solarForm.date} onChange={e => setSolarForm(f => ({ ...f, date: e.target.value }))}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none [color-scheme:dark] box-border" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
+                                <input type="number" inputMode="decimal" value={solarForm.liters} onChange={e => setSolarForm(f => ({ ...f, liters: e.target.value }))}
+                                    placeholder="0" min="0"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none appearance-none" />
+                            </div>
+                            {solarPopup.type === 'kedatangan' ? (
+                                <div>
+                                    <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Perusahaan Pengirim</label>
+                                    <input type="text" value={solarForm.supplier} onChange={e => setSolarForm(f => ({ ...f, supplier: e.target.value }))}
+                                        placeholder="Cth: PT Pertamina"
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none" />
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tujuan / Keterangan</label>
+                                    <input type="text" value={solarForm.tujuan} onChange={e => setSolarForm(f => ({ ...f, tujuan: e.target.value }))}
+                                        placeholder="Cth: Operasional Alat Berat"
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-3 mt-5">
+                            <button onClick={() => setSolarPopup(null)}
+                                className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors cursor-pointer">Batal</button>
+                            <button onClick={saveSolarPopup}
+                                className={`flex-1 py-2.5 rounded-xl text-white font-bold transition-colors cursor-pointer ${solarPopup.type === 'kedatangan' ? 'bg-amber-500 hover:bg-amber-400' : 'bg-rose-500 hover:bg-rose-400'}`}>
+                                {solarPopup.editId ? 'Update' : 'Tambah'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

@@ -167,6 +167,7 @@ export async function POST(req: NextRequest) {
             );
 
             const result = await upsertDailyRow(date, row);
+            console.log(`[sheets/write] daily_report ${date} →`, result);
             return NextResponse.json(result);
         } catch (err) {
             console.error('[sheets/write] daily_report error:', err);

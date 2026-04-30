@@ -148,7 +148,9 @@ async function appendSheetRow(tab: string, values: (string | number | null)[]): 
  */
 async function updateSheetRow(tab: string, rowIndex: number, values: (string | number | null)[]): Promise<void> {
     const sheets = getSheetsClient();
-    await sheets.spreadsheets.values.update({
+    const nonNullCount = values.filter(v => v !== null && v !== '').length;
+    console.log(`[updateSheetRow] spreadsheet=${SPREADSHEET_ID.slice(0,8)}... tab=${tab} row=${rowIndex} cells=${nonNullCount}/${values.length}`);
+    const res = await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
         range: `${tab}!A${rowIndex}`,
         valueInputOption: 'USER_ENTERED',
@@ -156,6 +158,7 @@ async function updateSheetRow(tab: string, rowIndex: number, values: (string | n
             values: [values],
         },
     });
+    console.log(`[updateSheetRow] response: updatedCells=${res.data.updatedCells} updatedRange=${res.data.updatedRange}`);
 }
 
 /**

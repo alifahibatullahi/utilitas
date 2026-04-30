@@ -11,6 +11,18 @@ interface TabBoilerProps {
     prevTotalizerSteam?: number | null;
     prevTotalizerBfw?: number | null;
     prevCoalBunkerValues?: Record<string, number | null>;
+    shutdownSince?: { date: string; shift: string } | null;
+    currentDate?: string;
+}
+
+function formatShutdownSince(sinceDate: string, currentDate: string): string {
+    const d1 = new Date(sinceDate + 'T00:00:00');
+    const d2 = new Date(currentDate + 'T00:00:00');
+    const days = Math.round((d2.getTime() - d1.getTime()) / 86400000);
+    const hari = d1.toLocaleDateString('id-ID', { weekday: 'long' });
+    const tgl = d1.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+    const durasi = days === 0 ? 'hari ini' : `${days} hari`;
+    return `sejak ${hari}, ${tgl} (${durasi})`;
 }
 
 const FEEDER_STATUS_OPTIONS = [
@@ -61,7 +73,7 @@ const NON_TOTALIZER_BOILER_FIELDS = [
     'feeder_d_flow', 'feeder_e_flow', 'feeder_f_flow',
 ];
 
-export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBunkerValues = {}, onCoalBunkerChange, prevTotalizerSteam, prevTotalizerBfw, prevCoalBunkerValues = {} }: TabBoilerProps) {
+export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBunkerValues = {}, onCoalBunkerChange, prevTotalizerSteam, prevTotalizerBfw, prevCoalBunkerValues = {}, shutdownSince, currentDate = '' }: TabBoilerProps) {
     const feeders = boilerId === 'A' ? ['A', 'B', 'C'] : ['D', 'E', 'F'];
     const feederKeys = boilerId === 'A' ? ['feeder_a', 'feeder_b', 'feeder_c'] : ['feeder_d', 'feeder_e', 'feeder_f'];
 
@@ -127,9 +139,16 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
         <>
             <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 scrollbar-hide w-full">
                 {isBoilerShutdown && (
-                    <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
-                        <span className="material-symbols-outlined text-[16px] text-rose-400">power_off</span>
-                        <span>Boiler {boilerId} <span className="font-bold">shutdown</span> — semua parameter dikunci, totalizer mengikuti shift sebelumnya.</span>
+                    <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                        <span className="material-symbols-outlined text-[16px] text-rose-400 shrink-0 mt-0.5">power_off</span>
+                        <span>
+                            Boiler {boilerId} <span className="font-bold">shutdown</span>
+                            {shutdownSince && currentDate
+                                ? ` ${formatShutdownSince(shutdownSince.date, currentDate)}`
+                                : ''
+                            }
+                            {' '}— totalizer tetap bisa diedit, parameter lain dikunci.
+                        </span>
                     </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

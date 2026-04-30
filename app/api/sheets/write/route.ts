@@ -60,6 +60,7 @@ async function fetchDailyReport(isoDate: string) {
 }
 
 export async function POST(req: NextRequest) {
+    console.log('[sheets/write] POST received, SPREADSHEET_ID=', process.env.GOOGLE_SHEETS_ID);
     let body: unknown;
     try {
         body = await req.json();

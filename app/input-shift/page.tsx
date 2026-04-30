@@ -10,7 +10,7 @@ import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
-import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory } from '@/hooks/useShiftReport';
+import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory, useBoilerShutdownHistory } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
@@ -61,6 +61,7 @@ export default function InputShiftPage() {
         return 3;                                 // 22.00 Sore
     });
     const [submitting, setSubmitting] = useState(false);
+    const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     const [selectedDate, setSelectedDate] = useState(() => {
@@ -139,6 +140,7 @@ export default function InputShiftPage() {
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
     const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
+    const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift]);
     const { operator, operators } = useOperator();
 
     // Auto-kalkulasi grup dari pola jadwal shift
@@ -393,9 +395,21 @@ export default function InputShiftPage() {
     };
 
 
+    const NON_TOTALIZER_FIELDS = [
+        'press_steam','temp_steam','flow_steam','bfw_press','temp_bfw','flow_bfw',
+        'temp_furnace','air_heater_ti113','excess_air','temp_flue_gas','primary_air',
+        'secondary_air','o2','steam_drum_press','solar_m3',
+        'feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow',
+    ];
+
     const handleSubmit = async () => {
         if (submitting) return;
         setSubmitting(true);
+        setSaveProgress(5);
+        // Animate progress 5→85% while saving
+        const progressInterval = setInterval(() => {
+            setSaveProgress(p => (p !== null && p < 85) ? p + 8 : p);
+        }, 400);
         try {
             // Hitung selisih totalizer feeder (current - prev) sebagai konsumsi batubara shift ini
             const selisih = (key: string) => {
@@ -414,12 +428,21 @@ export default function InputShiftPage() {
             const totalRitA = allAsh.filter(e => e.silo === 'A').reduce((s, e) => s + (e.ritase ?? 0), 0);
             const totalRitB = allAsh.filter(e => e.silo === 'B').reduce((s, e) => s + (e.ritase ?? 0), 0);
 
+            // When boiler shutdown, force all non-totalizer fields to 0
+            const applyShutdownZeros = (data: Record<string, number | string | null>) => {
+                const result = { ...data };
+                NON_TOTALIZER_FIELDS.forEach(k => { result[k] = 0; });
+                return result;
+            };
+            const finalBoilerA = boilerA.status_boiler === 'shutdown' ? applyShutdownZeros(boilerA) : boilerA;
+            const finalBoilerB = boilerB.status_boiler === 'shutdown' ? applyShutdownZeros(boilerB) : boilerB;
+
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
                 supervisor: supervisor || operator?.name || 'Operator',
                 created_by: operator?.supabaseId || '',
-                boilerA: { ...boilerA, batubara_ton: batubaraA },
-                boilerB: { ...boilerB, batubara_ton: batubaraB },
+                boilerA: { ...finalBoilerA, batubara_ton: batubaraA },
+                boilerB: { ...finalBoilerB, batubara_ton: batubaraB },
                 turbin,
                 steamDist,
                 generatorGi,
@@ -485,6 +508,10 @@ export default function InputShiftPage() {
                 await supabase.from('ash_unloadings').insert(ashInserts as any[]);
             }
 
+            clearInterval(progressInterval);
+            setSaveProgress(100);
+            setTimeout(() => setSaveProgress(null), 800);
+
             if (result?.error) {
                 showToast('Error: ' + result.error, 'error');
             } else {
@@ -514,6 +541,8 @@ export default function InputShiftPage() {
                 setOutSolarEntries([]);
             }
         } catch (err) {
+            clearInterval(progressInterval);
+            setSaveProgress(null);
             showToast('Terjadi kesalahan saat menyimpan laporan.', 'error');
         } finally {
             setSubmitting(false);
@@ -566,11 +595,25 @@ export default function InputShiftPage() {
             {/* Loading Overlay */}
             {submitting && (
                 <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
-                    <div className="relative flex flex-col items-center justify-center bg-[#16202e] border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95">
+                    <div className="relative flex flex-col items-center justify-center bg-[#16202e] border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95 w-72">
                         <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-2xl pointer-events-none"></div>
                         <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mb-6 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
-                        <h3 className="text-white font-black text-xl tracking-wide mb-2 relative z-10">Menyimpan data</h3>
-                        <p className="text-slate-400 text-sm font-medium animate-pulse relative z-10">Mohon tunggu sebentar...</p>
+                        <h3 className="text-white font-black text-xl tracking-wide mb-1 relative z-10">Menyimpan data</h3>
+                        <p className="text-slate-400 text-sm font-medium mb-5 relative z-10">Mohon tunggu sebentar...</p>
+                        {saveProgress !== null && (
+                            <div className="w-full relative z-10">
+                                <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                                    <span>Progress</span>
+                                    <span className="font-bold text-emerald-400">{saveProgress}%</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                                        style={{ width: `${saveProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -690,15 +733,16 @@ export default function InputShiftPage() {
                             const formattedDate = mounted && selectedDate ? new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
                             return (
                                 <>
-                                    <div className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border ${isToday ? 'bg-blue-500/15 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-[#0f1721] border-slate-700/50'}`}>
-                                        <span className={`material-symbols-outlined text-[16px] ${isToday ? 'text-blue-400' : 'text-blue-400'}`}>calendar_month</span>
+                                    <div className={`relative flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border ${isToday ? 'bg-blue-500/15 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-[#0f1721] border-slate-700/50'}`}>
+                                        <span className="material-symbols-outlined text-[16px] text-blue-400">calendar_month</span>
                                         <input
                                             type="date"
                                             value={selectedDate}
                                             onChange={e => setSelectedDate(e.target.value)}
-                                            className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark]"
+                                            className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark] focus:text-base focus:sm:text-lg"
                                         />
-                                        {isToday && inputMode === 'shift' && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider ml-1">Hari ini</span>}
+                                        <span className="material-symbols-outlined text-[16px] text-blue-400 pointer-events-none">arrow_drop_down</span>
+                                        {isToday && inputMode === 'shift' && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider ml-1 hidden sm:inline">Hari ini</span>}
                                     </div>
                                     {inputMode === 'harian' && formattedDate && (
                                         <span className="text-sm font-bold text-slate-300 bg-[#0f1721] px-3 py-1.5 rounded-lg border border-slate-700/50 capitalize hidden sm:inline-block shadow-sm">
@@ -918,8 +962,8 @@ export default function InputShiftPage() {
 
                         {/* Shift Tab Content */}
                         <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
-                            {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevTotalizerBfw={prevBoilerA.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
-                            {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevTotalizerBfw={prevBoilerB.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} />}
+                            {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevTotalizerBfw={prevBoilerA.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
+                            {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevTotalizerBfw={prevBoilerB.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
                             {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} />}
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}

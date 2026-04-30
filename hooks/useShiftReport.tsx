@@ -212,6 +212,61 @@ export function useBunkerBerasapHistory(date: string, shift: ShiftType) {
     return berasapSince;
 }
 
+export interface BoilerShutdownInfo {
+    boiler_a: { date: string; shift: ShiftType } | null;
+    boiler_b: { date: string; shift: ShiftType } | null;
+}
+
+export function useBoilerShutdownHistory(date: string, shift: ShiftType): BoilerShutdownInfo {
+    const [info, setInfo] = useState<BoilerShutdownInfo>({ boiler_a: null, boiler_b: null });
+
+    useEffect(() => {
+        if (!isSupabaseConfigured() || !date) { setInfo({ boiler_a: null, boiler_b: null }); return; }
+        const supabase = createClient();
+        let stale = false;
+        const shiftOrder: Record<string, number> = { sore: 2, pagi: 1, malam: 0 };
+
+        async function fetchHistory() {
+            const { data } = await supabase
+                .from('shift_reports')
+                .select('date, shift, shift_boiler(boiler, status_boiler)')
+                .lte('date', date)
+                .order('date', { ascending: false })
+                .limit(90);
+
+            if (stale || !data) return;
+
+            const sorted = (data as { date: string; shift: ShiftType; shift_boiler: { boiler: string; status_boiler: string | null }[] }[])
+                .filter(r => !(r.date === date && shiftOrder[r.shift] >= shiftOrder[shift]))
+                .sort((a, b) => {
+                    if (a.date !== b.date) return b.date.localeCompare(a.date);
+                    return (shiftOrder[b.shift] || 0) - (shiftOrder[a.shift] || 0);
+                });
+
+            const findStart = (boilerId: 'A' | 'B') => {
+                let start: { date: string; shift: ShiftType } | null = null;
+                for (const report of sorted) {
+                    const boilerRow = report.shift_boiler?.find(b => b.boiler === boilerId);
+                    if (!boilerRow) break;
+                    if (boilerRow.status_boiler === 'shutdown') {
+                        start = { date: report.date, shift: report.shift };
+                    } else {
+                        break;
+                    }
+                }
+                return start;
+            };
+
+            if (!stale) setInfo({ boiler_a: findStart('A'), boiler_b: findStart('B') });
+        }
+
+        fetchHistory();
+        return () => { stale = true; };
+    }, [date, shift]);
+
+    return info;
+}
+
 export interface ShiftReportData {
     id: string;
     date: string;

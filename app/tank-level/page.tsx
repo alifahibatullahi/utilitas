@@ -479,8 +479,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     <span className={`${tc.textClass} material-symbols-outlined text-2xl 2xl:text-3xl`}>timeline</span>
                                 </div>
                                 <div>
-                                    <h3 className="text-xl 2xl:text-2xl font-black text-white leading-tight">Trend Level {tankId}</h3>
-                                    <p className="text-[11px] 2xl:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Logsheet Jam Ganjil Monitoring</p>
+                                    <h3 className="text-2xl 2xl:text-4xl font-black text-white leading-tight">Trend Level {tankId}</h3>
                                 </div>
                             </div>
                             <button onClick={() => setIsTrendModalOpen(false)} 

@@ -356,3 +356,142 @@ export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResul
 
     return { updated, appended, details };
 }
+
+// ─── Tank Levels — Logsheet Handling Spreadsheet (per shift) ─────────────────
+//
+// Spreadsheet: 11rkQbshn3CbZpKCnOX6sLVj6n6KtxlR-4t7u9PaXOcA
+// 4 baris merge per tanggal. Anchor:
+//   Shift malam / Shift Pagi / Shift sore  → row 1737 = 02 Mei 2026
+//   Laporan Harian Handling (Pkl 24.00 )   → row 1738 = 02 Mei 2026
+//
+// Kolom (per shift):
+//   Shift malam : AU Solar | AV RCW | AW Demin
+//   Shift Pagi  : AX Solar | AY RCW | AZ Demin
+//   Shift sore  : AV Solar | AW RCW | AX Demin
+// Laporan Harian Handling : D Solar | E RCW | F Demin
+//
+// Window jam (WIB) — saling lepas, semua pakai tanggal hari ini:
+//   00:00 – 06:30 → Shift malam
+//   06:30 – 14:30 → Shift Pagi
+//   14:30 – 22:30 → Shift sore
+//   22:30 – 24:00 → Laporan Harian Handling
+
+const TANK_SHIFT_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_TANK_SHIFT_ID || '11rkQbshn3CbZpKCnOX6sLVj6n6KtxlR-4t7u9PaXOcA';
+const TANK_SHIFT_ANCHOR_DATE = '2026-05-02';
+const TANK_SHIFT_ANCHOR_ROW = 1737;
+const LAPORAN_HARIAN_ANCHOR_ROW = 1738;
+const ROWS_PER_DAY = 4;
+
+const SHIFT_TAB_NAMES: Record<'pagi' | 'sore' | 'malam', string> = {
+    pagi:  'Shift Pagi',
+    sore:  'Shift sore',
+    malam: 'Shift malam',
+};
+const LAPORAN_HARIAN_TAB = 'Laporan Harian Handling (Pkl 24.00 )';
+
+const SHIFT_COLUMNS: Record<'pagi' | 'sore' | 'malam', { solar: string; rcw: string; demin: string }> = {
+    malam: { solar: 'AU', rcw: 'AV', demin: 'AW' },
+    pagi:  { solar: 'AX', rcw: 'AY', demin: 'AZ' },
+    sore:  { solar: 'AV', rcw: 'AW', demin: 'AX' },
+};
+const LAPORAN_HARIAN_COLUMNS = { solar: 'D', rcw: 'E', demin: 'F' } as const;
+
+function fmtDateUTC(d: Date): string {
+    const y = d.getUTCFullYear();
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dy = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${mo}-${dy}`;
+}
+
+/** Konversi ke jam WIB dari Date (UTC). Kembalikan {totalMin, dateUTC: Date in WIB}. */
+function toWibParts(now: Date): { totalMin: number; wib: Date } {
+    const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const totalMin = wib.getUTCHours() * 60 + wib.getUTCMinutes();
+    return { totalMin, wib };
+}
+
+export type TankWindow = 'malam' | 'pagi' | 'sore' | 'laporan_harian';
+
+/**
+ * Tentukan window aktif berdasar jam WIB sekarang. Tanggal selalu hari ini (WIB).
+ *   00:00–06:30 = malam, 06:30–14:30 = pagi, 14:30–22:30 = sore, 22:30–24:00 = laporan_harian
+ */
+export function detectTankShift(now?: Date): { window: TankWindow; isoDate: string } {
+    const { totalMin, wib } = toWibParts(now ?? new Date());
+    const isoDate = fmtDateUTC(wib);
+    // 06:30=390, 14:30=870, 22:30=1350
+    if (totalMin < 390)                     return { window: 'malam',          isoDate };
+    if (totalMin < 870)                     return { window: 'pagi',           isoDate };
+    if (totalMin < 1350)                    return { window: 'sore',           isoDate };
+    return                                         { window: 'laporan_harian', isoDate };
+}
+
+function tankShiftRow(isoDate: string, anchorRow: number): number {
+    const [ay, am, ad] = TANK_SHIFT_ANCHOR_DATE.split('-').map(Number);
+    const anchorMs = Date.UTC(ay, am - 1, ad);
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const targetMs = Date.UTC(y, m - 1, d);
+    const dayOffset = Math.round((targetMs - anchorMs) / 86_400_000);
+    return anchorRow + dayOffset * ROWS_PER_DAY;
+}
+
+export interface TankLevelsInput {
+    solar?: number | null;
+    rcw?: number | null;
+    demin?: number | null;
+}
+
+export interface TankShiftUpdateResult {
+    window: TankWindow;
+    isoDate: string;
+    tab: string;
+    row: number;
+    updates: { range: string; value: number }[];
+}
+
+/**
+ * Tulis level Solar/RCW/Demin ke spreadsheet handling.
+ * Tujuan tab/kolom/row ditentukan oleh window WIB saat ini (lihat detectTankShift).
+ * Hanya field non-null/undefined yang ditulis.
+ */
+export async function upsertTankLevelsShift(levels: TankLevelsInput, now?: Date): Promise<TankShiftUpdateResult> {
+    const _now = now ?? new Date();
+    const sheets = getSheetsClient();
+
+    const { window, isoDate } = detectTankShift(_now);
+
+    let tab: string;
+    let row: number;
+    let cols: { solar: string; rcw: string; demin: string };
+    if (window === 'laporan_harian') {
+        tab  = LAPORAN_HARIAN_TAB;
+        row  = tankShiftRow(isoDate, LAPORAN_HARIAN_ANCHOR_ROW);
+        cols = LAPORAN_HARIAN_COLUMNS;
+    } else {
+        tab  = SHIFT_TAB_NAMES[window];
+        row  = tankShiftRow(isoDate, TANK_SHIFT_ANCHOR_ROW);
+        cols = SHIFT_COLUMNS[window];
+    }
+
+    const queue: { range: string; value: number }[] = [];
+    const push = (col: string, value: number | null | undefined) => {
+        if (value == null) return;
+        queue.push({ range: `${tab}!${col}${row}`, value });
+    };
+    push(cols.solar, levels.solar);
+    push(cols.rcw,   levels.rcw);
+    push(cols.demin, levels.demin);
+
+    const updates: TankShiftUpdateResult['updates'] = [];
+    for (const u of queue) {
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: TANK_SHIFT_SPREADSHEET_ID,
+            range: u.range,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values: [[u.value]] },
+        });
+        updates.push(u);
+    }
+
+    return { window, isoDate, tab, row, updates };
+}

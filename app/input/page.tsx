@@ -215,6 +215,37 @@ export default function InputPage() {
             setPendingPermintaan([]);
         }
 
+        // Fire-and-forget: sync Level Solar/RCW/Demin ke spreadsheet handling (per-shift tab)
+        {
+            const payload: { solar?: number; rcw?: number; demin?: number } = {};
+            if (saved.includes('SOLAR')) {
+                const v = parseFloat(allDrafts['SOLAR']?.levelM3 ?? '');
+                if (!isNaN(v)) payload.solar = v;
+            }
+            if (saved.includes('RCW')) {
+                const v = parseFloat(allDrafts['RCW']?.levelM3 ?? '');
+                if (!isNaN(v)) payload.rcw = v;
+            }
+            if (saved.includes('DEMIN')) {
+                const v = parseFloat(allDrafts['DEMIN']?.levelM3 ?? '');
+                if (!isNaN(v)) payload.demin = v;
+            }
+            if (Object.keys(payload).length > 0) {
+                console.log('[input] Mengirim tank_levels_shift ke Sheets handling →', payload);
+                void fetch('/api/sheets/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'tank_levels_shift', data: payload }),
+                }).then(r => r.json()).then(result => {
+                    if (result.warning) {
+                        console.warn('[input/tank_levels_shift] Sheets gagal:', result.warning);
+                    } else {
+                        console.log(`[input/tank_levels_shift] OK window=${result.window} date=${result.isoDate} tab="${result.tab}" row=${result.row} updates=${result.updates?.length ?? 0}`);
+                    }
+                }).catch(err => console.warn('[input/tank_levels_shift] Sheets sync failed (non-fatal):', err));
+            }
+        }
+
         // Fire-and-forget: sync Level RCW ke Google Sheets
         if (saved.includes('RCW')) {
             const rcwDraft = allDrafts['RCW'];

@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry } from '@/lib/google-sheets';
+import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift } from '@/lib/google-sheets';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
 import { dailyReportToRow, type SolarSummary, type ChemicalSummary } from '@/lib/daily-sheets-mapper';
 import type { ShiftTab } from '@/lib/google-sheets';
@@ -194,6 +194,23 @@ export async function POST(req: NextRequest) {
             console.error('[sheets/write] rcw_level error:', err);
             return NextResponse.json({
                 warning: `RCW Sheets gagal: ${err instanceof Error ? err.message : String(err)}`,
+            });
+        }
+    }
+
+    // ─── Tank Levels Shift (Solar / RCW / Demin → spreadsheet handling) ───────
+    if (type === 'tank_levels_shift') {
+        const { solar, rcw, demin } = data as { solar?: number | null; rcw?: number | null; demin?: number | null };
+        if (solar == null && rcw == null && demin == null) {
+            return NextResponse.json({ error: 'No level provided' }, { status: 400 });
+        }
+        try {
+            const result = await upsertTankLevelsShift({ solar, rcw, demin });
+            return NextResponse.json(result);
+        } catch (err) {
+            console.error('[sheets/write] tank_levels_shift error:', err);
+            return NextResponse.json({
+                warning: `Tank levels Sheets gagal: ${err instanceof Error ? err.message : String(err)}`,
             });
         }
     }

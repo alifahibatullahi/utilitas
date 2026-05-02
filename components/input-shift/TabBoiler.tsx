@@ -32,11 +32,11 @@ const FEEDER_STATUS_OPTIONS = [
     { value: 'not standby', label: 'Not Standby' },
 ];
 
-const FEEDER_STATUS_BORDER: Record<string, string> = {
-    'running': 'border-emerald-500/50',
-    'standby': 'border-amber-500/50',
-    'emergency standby': 'border-orange-500/50',
-    'not standby': 'border-red-500/50',
+const FEEDER_STATUS_STYLE: Record<string, { border: string; dot: string }> = {
+    'running':          { border: 'border-emerald-500/50', dot: 'bg-emerald-500' },
+    'standby':          { border: 'border-amber-500/50',   dot: 'bg-amber-500' },
+    'emergency standby':{ border: 'border-orange-500/50',  dot: 'bg-orange-500' },
+    'not standby':      { border: 'border-red-500/50',     dot: 'bg-red-500' },
 };
 
 function FeederStatusChip({ feeder, sk, value, onChange }: {
@@ -45,18 +45,23 @@ function FeederStatusChip({ feeder, sk, value, onChange }: {
     value: string;
     onChange?: (name: string, v: number | string | null) => void;
 }) {
-    const border = FEEDER_STATUS_BORDER[value] ?? 'border-slate-700/60';
+    const style = FEEDER_STATUS_STYLE[value];
+    const border = style?.border ?? 'border-slate-700/60';
+    const dot = style?.dot ?? 'bg-slate-500';
     return (
-        <select
-            className={`bg-[#101822]/60 border ${border} rounded-lg px-2 py-1 text-sm text-white font-semibold cursor-pointer outline-none appearance-none transition-colors`}
-            value={value}
-            onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
-        >
-            <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-            {FEEDER_STATUS_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
-            ))}
-        </select>
+        <div className={`inline-flex items-center gap-1.5 bg-[#101822]/60 border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
+            <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
+            <select
+                className="bg-transparent appearance-none text-sm text-white font-semibold pr-3 cursor-pointer outline-none"
+                value={value}
+                onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
+            >
+                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                {FEEDER_STATUS_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
+                ))}
+            </select>
+        </div>
     );
 }
 

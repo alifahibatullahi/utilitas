@@ -959,20 +959,24 @@ export default function InputShiftPage() {
                                         <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide shrink-0">{tab?.label}</h2>
                                         {isBoilerTab && (() => {
                                             const boilerBorder = boilerStatus === 'running' ? 'border-emerald-500/50' : boilerStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
+                                            const boilerDot = boilerStatus === 'running' ? 'bg-emerald-500' : boilerStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                                             return (
-                                                <select
-                                                    className={`bg-[#101822]/60 border ${boilerBorder} rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-base sm:text-xl text-white font-bold uppercase cursor-pointer outline-none appearance-none transition-colors shrink-0`}
-                                                    value={boilerStatus}
-                                                    onChange={e => {
-                                                        const v = e.target.value === '' ? null : e.target.value;
-                                                        setUserModified(true);
-                                                        setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
-                                                    }}
-                                                >
-                                                    <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                                                    <option value="running" className="bg-[#101822] text-white">Running</option>
-                                                    <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
-                                                </select>
+                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${boilerBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                    <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${boilerDot} shrink-0`} />
+                                                    <select
+                                                        className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                        value={boilerStatus}
+                                                        onChange={e => {
+                                                            const v = e.target.value === '' ? null : e.target.value;
+                                                            setUserModified(true);
+                                                            setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
+                                                        }}
+                                                    >
+                                                        <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                                                        <option value="running" className="bg-[#101822] text-white">Running</option>
+                                                        <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                    </select>
+                                                </div>
                                             );
                                         })()}
                                     </>

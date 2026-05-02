@@ -18,8 +18,9 @@ function BoilerStatusChip({ name, value, onChange }: {
     onChange: (name: string, v: string | null) => void;
 }) {
     const dot = BOILER_STATUS_DOT[value] ?? 'bg-slate-500';
+    const border = value === 'running' ? 'border-emerald-500/50' : value === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
     return (
-        <div className="inline-flex items-center gap-2 bg-[#101822]/60 border border-slate-700/60 rounded-lg pl-3 pr-2 py-1.5 hover:border-rose-500/50 transition">
+        <div className={`inline-flex items-center gap-2 bg-[#101822]/60 border ${border} rounded-lg pl-3 pr-2 py-1.5 transition-colors`}>
             <span className={`w-3 h-3 rounded-full ${dot} shrink-0`} />
             <select
                 className="bg-transparent appearance-none text-sm text-white font-semibold pr-4 cursor-pointer outline-none"

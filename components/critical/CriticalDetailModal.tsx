@@ -147,7 +147,7 @@ export default function CriticalDetailModal({
                     
                     {/* Top Row: Meta info */}
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-1">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border-[1.5px] border-black col-span-1">
                             <span className="text-xs uppercase font-black text-black block mb-1.5">Tanggal</span>
                             <span className="text-base font-bold text-slate-800">{formatDate(critical.date)}</span>
                         </div>
@@ -155,7 +155,7 @@ export default function CriticalDetailModal({
                             <span className="text-sm uppercase font-black text-black block mb-1.5">Deskripsi Critical</span>
                             <span className="text-lg font-bold text-slate-800 leading-relaxed">{critical.deskripsi}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-1">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border-[1.5px] border-black col-span-1">
                             <span className="text-xs uppercase font-black text-black block mb-1.5">Notif/SAP</span>
                             <span className="text-base font-bold text-slate-800">{critical.notif || '-'}</span>
                         </div>
@@ -194,12 +194,12 @@ export default function CriticalDetailModal({
                                             onDragEnd={handleDragEnd}
                                             onDragOver={(e) => e.preventDefault()}
                                             className={`group relative bg-white p-4 rounded-2xl border-2 transition-all cursor-grab active:cursor-grabbing ${
-                                                draggedIdx === idx ? 'border-emerald-400 shadow-xl scale-[1.02] z-10 opacity-90' : 'border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md'
+                                                draggedIdx === idx ? 'border-emerald-400 shadow-xl scale-[1.02] z-10 opacity-90' : 'border-black shadow-sm hover:border-slate-800 hover:shadow-md'
                                             }`}
                                         >
                                             <div className="flex items-center gap-4">
                                                 <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 h-10 bg-slate-50 rounded-xl border border-slate-100">
-                                                    <span className="text-xl font-black text-slate-500">#{idx + 1}</span>
+                                                    <span className="text-xl font-black text-black">#{idx + 1}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0 pr-4">
                                                     <div className="flex flex-wrap items-center gap-3 mb-3 break-words">
@@ -270,7 +270,7 @@ export default function CriticalDetailModal({
                                                     </button>
                                                     <button onClick={() => {
                                                         if (confirm('Hapus log maintenance ini?')) onDeleteMaintenance?.(m.id);
-                                                    }} className="w-full py-2.5 rounded-lg text-slate-500 font-bold hover:text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 bg-slate-50 flex items-center justify-center gap-1.5 transition-colors text-sm shadow-sm">
+                                                    }} className="w-full py-2.5 rounded-lg text-rose-600 font-bold hover:text-white bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:border-transparent flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm">
                                                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
                                                         Hapus
                                                     </button>

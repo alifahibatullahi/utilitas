@@ -46,7 +46,7 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
         sipil: 'border-l-teal-500',
     };
 
-    const showControls = index !== undefined && (onMoveUp || onMoveDown);
+
 
     return (
         <div
@@ -58,70 +58,46 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
                 shadow-sm hover:shadow-md transition-shadow p-3 cursor-grab active:cursor-grabbing
                 ${overlay ? 'shadow-xl rotate-2 scale-105' : ''}`}
         >
-            {/* up/down controls */}
-            {showControls && (
-                <div className="flex items-center justify-end mb-2">
-                    <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                        <button
-                            onPointerDown={e => e.stopPropagation()}
-                            onClick={e => { e.stopPropagation(); onMoveUp?.(); }}
-                            disabled={isFirst}
-                            className="w-6 h-6 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                            title="Pindah ke atas"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>arrow_upward</span>
-                        </button>
-                        <button
-                            onPointerDown={e => e.stopPropagation()}
-                            onClick={e => { e.stopPropagation(); onMoveDown?.(); }}
-                            disabled={isLast}
-                            className="w-6 h-6 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                            title="Pindah ke bawah"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>arrow_downward</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Item name + critical deskripsi + status */}
+            {/* Header: Item name + critical deskripsi + status */}
             <div className="flex items-start justify-between gap-2 mb-1">
-                <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-bold text-black leading-tight">{item.item}</h4>
+                <div className="min-w-0 flex-1 mt-0.5">
+                    <h4 className="text-base font-black text-black leading-tight mb-1">Item: {item.item}</h4>
                     {item.critical_equipment?.deskripsi && (
-                        <p className="text-[10px] font-bold text-rose-600 leading-tight mt-0.5 line-clamp-1">
-                            Critical : {item.critical_equipment.deskripsi}
+                        <p className="text-xs font-bold text-rose-600 leading-tight line-clamp-2">
+                            Critical: {item.critical_equipment.deskripsi}
                         </p>
                     )}
                 </div>
-                <StatusBadge status={item.status} light />
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                    <StatusBadge status={item.status} light />
+                </div>
             </div>
 
             {/* Uraian */}
-            <p className="text-xs text-black font-medium mb-2 line-clamp-2">
+            <p className="text-sm text-black font-medium mb-3 mt-2 line-clamp-3">
                 <span className="font-bold text-black">Maintenance : </span>{item.uraian}
             </p>
 
             {/* Badges row */}
-            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+            <div className="flex items-center gap-1.5 flex-wrap mb-3">
                 <ScopeBadge scope={item.scope} light />
                 {item.tipe === 'preventif' ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-100 text-cyan-700">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-700">
                         Preventif
                     </span>
                 ) : null}
             </div>
 
             {/* Footer info */}
-            <div className="flex items-center justify-between text-[10px] text-black">
-                <span className="font-bold">{getForemanLabel(item.foreman)}</span>
+            <div className="flex items-center justify-between text-xs text-black">
+                <span className="font-bold bg-gray-100 px-2 py-1 rounded">{getForemanLabel(item.foreman)}</span>
                 <div className="flex items-center gap-2">
                     {item.notif && (
-                        <span className="bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded font-bold text-indigo-900">
+                        <span className="bg-indigo-100 border border-indigo-200 px-2 py-1 rounded font-bold text-indigo-900">
                             Notif: {item.notif}
                         </span>
                     )}
-                    <span className="font-bold">{item.date}</span>
+                    <span className="font-bold bg-slate-100 border border-slate-200 px-2 py-1 rounded text-slate-700">{item.date}</span>
                 </div>
             </div>
 

@@ -129,9 +129,10 @@ export default function CriticalDetailModal({
                             <ScopeBadge key={s} scope={s} solid className="px-4 py-1.5 text-base shadow-sm" />
                         ))}
                         {critical.reported_by && (
-                            <span className="px-4 py-1.5 bg-violet-100 text-violet-700 font-bold text-base rounded-full whitespace-nowrap shadow-sm">
-                                👤 {critical.reported_by}
-                            </span>
+                            <div className="px-4 py-1.5 bg-violet-100 text-violet-700 font-bold rounded-xl whitespace-nowrap shadow-sm flex flex-col justify-center leading-tight">
+                                <span className="text-[10px] font-black uppercase tracking-wider opacity-75">Yang melaporkan :</span>
+                                <span className="text-base flex items-center gap-1 mt-0.5">👤 {critical.reported_by}</span>
+                            </div>
                         )}
                     </div>
                     <button
@@ -147,7 +148,7 @@ export default function CriticalDetailModal({
                     
                     {/* Top Row: Meta info */}
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border-[1.5px] border-black col-span-1">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm col-span-1">
                             <span className="text-xs uppercase font-black text-black block mb-1.5">Tanggal</span>
                             <span className="text-base font-bold text-slate-800">{formatDate(critical.date)}</span>
                         </div>
@@ -155,7 +156,7 @@ export default function CriticalDetailModal({
                             <span className="text-sm uppercase font-black text-black block mb-1.5">Deskripsi Critical</span>
                             <span className="text-lg font-bold text-slate-800 leading-relaxed">{critical.deskripsi}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border-[1.5px] border-black col-span-1">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm col-span-1">
                             <span className="text-xs uppercase font-black text-black block mb-1.5">Notif/SAP</span>
                             <span className="text-base font-bold text-slate-800">{critical.notif || '-'}</span>
                         </div>

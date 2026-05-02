@@ -271,7 +271,7 @@ export function shiftReportToRow(
     row[COL.boiler_flow_steam_b] = n(bB.flow_steam);
     row[COL.boiler_totalizer_steam_b] = n(diffTotalizer(bB.totalizer_steam, prev?.boilerB?.totalizer_steam));
     row[COL.boiler_flow_bfw_b] = n(bB.flow_bfw);
-    row[COL.boiler_temp_bfw] = n(bB.temp_bfw ?? bA.temp_bfw); // shared col
+    row[COL.boiler_temp_bfw] = n(bB.temp_bfw || bA.temp_bfw); // shared col BV — prefer B, fallback A, skip 0
     row[COL.boiler_temp_furnace_b] = n(bB.temp_furnace);
     row[COL.boiler_temp_flue_gas_b] = n(bB.temp_flue_gas);
     row[COL.boiler_excess_air_b] = n(bB.excess_air);

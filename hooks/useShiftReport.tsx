@@ -21,9 +21,9 @@ function getPreviousShift(date: string, shift: ShiftType): { prevDate: string; p
 }
 
 export function usePreviousShiftData(date: string, shift: ShiftType) {
-    const [prevBoilerA, setPrevBoilerA] = useState<Record<string, number | null>>({});
-    const [prevBoilerB, setPrevBoilerB] = useState<Record<string, number | null>>({});
-    const [prevCoalBunker, setPrevCoalBunker] = useState<Record<string, number | null>>({});
+    const [prevBoilerA, setPrevBoilerA] = useState<Record<string, number | string | null>>({});
+    const [prevBoilerB, setPrevBoilerB] = useState<Record<string, number | string | null>>({});
+    const [prevCoalBunker, setPrevCoalBunker] = useState<Record<string, number | string | null>>({});
     const [prevTurbin, setPrevTurbin] = useState<Record<string, number | null>>({});
     const [prevSteamDist, setPrevSteamDist] = useState<Record<string, number | null>>({});
     const [prevPowerDist, setPrevPowerDist] = useState<Record<string, number | null>>({});
@@ -47,7 +47,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
         async function fetchPrev() {
             const { data } = await supabase
                 .from('shift_reports')
-                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f), shift_turbin(totalizer_steam_inlet, totalizer_condensate), shift_steam_dist(pabrik1_totalizer, pabrik2_totalizer, pabrik3a_totalizer), shift_power_dist(power_ubb_totalizer, power_pabrik2_totalizer, power_pabrik3a_totalizer, power_revamping_totalizer, power_pie_totalizer, power_stg_ubb_totalizer)')
+                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw, status_boiler), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f, status_feeder_a, status_feeder_b, status_feeder_c, status_feeder_d, status_feeder_e, status_feeder_f), shift_turbin(totalizer_steam_inlet, totalizer_condensate), shift_steam_dist(pabrik1_totalizer, pabrik2_totalizer, pabrik3a_totalizer), shift_power_dist(power_ubb_totalizer, power_pabrik2_totalizer, power_pabrik3a_totalizer, power_revamping_totalizer, power_pie_totalizer, power_stg_ubb_totalizer)')
                 .eq('date', prevDate)
                 .eq('shift', prevShift)
                 .maybeSingle();
@@ -69,8 +69,8 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
                     const a = boilers.find((b: any) => b.boiler === 'A');
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const b = boilers.find((b: any) => b.boiler === 'B');
-                    setPrevBoilerA(a ? { totalizer_steam: a.totalizer_steam, totalizer_bfw: a.totalizer_bfw } : {});
-                    setPrevBoilerB(b ? { totalizer_steam: b.totalizer_steam, totalizer_bfw: b.totalizer_bfw } : {});
+                    setPrevBoilerA(a ? { totalizer_steam: a.totalizer_steam, totalizer_bfw: a.totalizer_bfw, status_boiler: a.status_boiler } : {});
+                    setPrevBoilerB(b ? { totalizer_steam: b.totalizer_steam, totalizer_bfw: b.totalizer_bfw, status_boiler: b.status_boiler } : {});
                 } else {
                     setPrevBoilerA({});
                     setPrevBoilerB({});
@@ -81,6 +81,9 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
                     setPrevCoalBunker({
                         feeder_a: cb.feeder_a, feeder_b: cb.feeder_b, feeder_c: cb.feeder_c,
                         feeder_d: cb.feeder_d, feeder_e: cb.feeder_e, feeder_f: cb.feeder_f,
+                        status_feeder_a: cb.status_feeder_a, status_feeder_b: cb.status_feeder_b,
+                        status_feeder_c: cb.status_feeder_c, status_feeder_d: cb.status_feeder_d,
+                        status_feeder_e: cb.status_feeder_e, status_feeder_f: cb.status_feeder_f,
                     });
                 } else {
                     setPrevCoalBunker({});

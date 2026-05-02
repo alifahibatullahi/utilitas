@@ -264,11 +264,27 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (steamData) setSteam(extractFields(steamData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (powerData) setPower(extractFields(powerData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (coalData) setCoal(extractFields(coalData as unknown as Record<string, unknown>) as Record<string, number | null>);
-        if (turbData) setTurbineMisc(extractFields(turbData as unknown as Record<string, unknown>) as Record<string, number | null>);
+        if (turbData) setTurbineMisc(extractFields(turbData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
         if (tankData) setStockTank(extractFields(tankData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (transferData) setCoalTransfer(extractFields(transferData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report, prevReport]);
+
+    // Inherit status boiler dari laporan harian sebelumnya apabila laporan hari ini belum ada
+    useEffect(() => {
+        if (report) return;
+        const prevTurb = prevReport?.daily_report_turbine_misc?.[0] as Record<string, unknown> | undefined;
+        if (!prevTurb) return;
+        const statusA = prevTurb.status_boiler_a as string | null | undefined;
+        const statusB = prevTurb.status_boiler_b as string | null | undefined;
+        setTurbineMisc(prev => {
+            const next = { ...prev };
+            if (statusA && !prev.status_boiler_a) next.status_boiler_a = statusA;
+            if (statusB && !prev.status_boiler_b) next.status_boiler_b = statusB;
+            return next;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [prevReport, report]);
 
     // ─── Previous report data for selisih calculations ───
     const prevSteam = prevReport?.daily_report_steam?.[0]

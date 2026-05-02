@@ -371,6 +371,29 @@ export default function InputShiftPage() {
         }
     }, [report]);
 
+    // Inherit status dari shift sebelumnya untuk shift baru (belum ada laporan tersimpan)
+    useEffect(() => {
+        if (userModifiedRef.current || report) return;
+        if (prevBoilerA.status_boiler && !boilerA.status_boiler) {
+            setBoilerA(prev => ({ ...prev, status_boiler: prevBoilerA.status_boiler as string }));
+        }
+        if (prevBoilerB.status_boiler && !boilerB.status_boiler) {
+            setBoilerB(prev => ({ ...prev, status_boiler: prevBoilerB.status_boiler as string }));
+        }
+        const feederStatusKeys = ['status_feeder_a','status_feeder_b','status_feeder_c','status_feeder_d','status_feeder_e','status_feeder_f'] as const;
+        const inherited: Record<string, string> = {};
+        feederStatusKeys.forEach(k => {
+            if (prevCoalBunker[k] && !coalBunker[k]) inherited[k] = prevCoalBunker[k] as string;
+        });
+        if (Object.keys(inherited).length > 0) {
+            setCoalBunker(prev => ({ ...prev, ...inherited }));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [prevBoilerA.status_boiler, prevBoilerB.status_boiler,
+        prevCoalBunker.status_feeder_a, prevCoalBunker.status_feeder_b, prevCoalBunker.status_feeder_c,
+        prevCoalBunker.status_feeder_d, prevCoalBunker.status_feeder_e, prevCoalBunker.status_feeder_f,
+        report]);
+
     // Generic change handlers
     const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>
         (name: string, value: number | string | null) => {
@@ -459,8 +482,8 @@ export default function InputShiftPage() {
                 },
                 coalBunker,
                 waterQuality: { ...waterQuality, ...chemicalDosing },
-                prevBoilerA: { totalizer_steam: prevBoilerA.totalizer_steam ?? null },
-                prevBoilerB: { totalizer_steam: prevBoilerB.totalizer_steam ?? null },
+                prevBoilerA: { totalizer_steam: (prevBoilerA.totalizer_steam as number | null) ?? null },
+                prevBoilerB: { totalizer_steam: (prevBoilerB.totalizer_steam as number | null) ?? null },
             });
             // Save solar unloadings if filled
             const validSolarEntries = solarEntries.filter(e => e.tanggal && e.jumlah && e.perusahaan);
@@ -557,8 +580,14 @@ export default function InputShiftPage() {
         const hasVal = (obj: Record<string, any>, keys: string[]) => keys.every(k => obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
         
         switch (tabId) {
-            case 'Boiler A': return hasVal(boilerA, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam', 'bfw_press', 'temp_bfw', 'flow_bfw', 'totalizer_bfw', 'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas', 'primary_air', 'secondary_air', 'o2', 'steam_drum_press']) && hasVal(coalBunker, ['feeder_a', 'feeder_b', 'feeder_c']);
-            case 'Boiler B': return hasVal(boilerB, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam', 'bfw_press', 'temp_bfw', 'flow_bfw', 'totalizer_bfw', 'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas', 'primary_air', 'secondary_air', 'o2', 'steam_drum_press']) && hasVal(coalBunker, ['feeder_d', 'feeder_e', 'feeder_f']);
+            case 'Boiler A':
+                if (boilerA.status_boiler === 'shutdown')
+                    return hasVal(boilerA, ['totalizer_steam', 'totalizer_bfw']) && hasVal(coalBunker, ['feeder_a', 'feeder_b', 'feeder_c']);
+                return hasVal(boilerA, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam', 'bfw_press', 'temp_bfw', 'flow_bfw', 'totalizer_bfw', 'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas', 'primary_air', 'secondary_air', 'o2', 'steam_drum_press']) && hasVal(coalBunker, ['feeder_a', 'feeder_b', 'feeder_c']);
+            case 'Boiler B':
+                if (boilerB.status_boiler === 'shutdown')
+                    return hasVal(boilerB, ['totalizer_steam', 'totalizer_bfw']) && hasVal(coalBunker, ['feeder_d', 'feeder_e', 'feeder_f']);
+                return hasVal(boilerB, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam', 'bfw_press', 'temp_bfw', 'flow_bfw', 'totalizer_bfw', 'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas', 'primary_air', 'secondary_air', 'o2', 'steam_drum_press']) && hasVal(coalBunker, ['feeder_d', 'feeder_e', 'feeder_f']);
             case 'Turbin': return hasVal(turbin, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam_inlet', 'flow_cond', 'exh_steam', 'vacuum', 'level_condenser', 'hpo_durasi', 'totalizer_condensate', 'thrust_bearing', 'metal_bearing', 'vibrasi', 'winding', 'axial_displacement', 'press_deaerator', 'temp_deaerator', 'press_lps', 'temp_cw_in', 'temp_cw_out']);
             case 'Generator': return hasVal(generatorGi, ['gen_load', 'gen_ampere', 'gen_tegangan', 'gen_amp_react', 'gen_frequensi', 'gen_cos_phi', 'gi_sum_p', 'gi_sum_q', 'gi_cos_phi']) && hasVal(powerDist, ['power_ubb_totalizer', 'power_pabrik2_totalizer', 'power_pabrik3a_totalizer', 'power_revamping_totalizer', 'power_pie_totalizer']);
             case 'Distribusi Steam': return hasVal(steamDist, ['pabrik1_flow', 'pabrik1_temp', 'pabrik1_totalizer', 'pabrik2_flow', 'pabrik2_temp', 'pabrik2_totalizer', 'pabrik3a_flow', 'pabrik3a_temp', 'pabrik3a_totalizer']);
@@ -922,18 +951,17 @@ export default function InputShiftPage() {
                                 const currentBoilerState = activeTab === 'Boiler A' ? boilerA : boilerB;
                                 const setCurrentBoiler = activeTab === 'Boiler A' ? setBoilerA : setBoilerB;
                                 const boilerStatus = (currentBoilerState.status_boiler as string) ?? '';
-                                const boilerDot = boilerStatus === 'running' ? 'bg-emerald-500' : boilerStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                                 return (
                                     <>
                                         <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
                                             <span className={`material-symbols-outlined text-[22px] sm:text-[30px] ${styles.icon}`}>{tab?.icon}</span>
                                         </div>
                                         <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide shrink-0">{tab?.label}</h2>
-                                        {isBoilerTab && (
-                                            <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border border-slate-700/60 rounded-lg sm:rounded-xl pl-3 pr-2 py-2 sm:pl-4 sm:pr-3 sm:py-2.5 hover:border-rose-500/50 transition shrink-0">
-                                                <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${boilerDot} shrink-0 shadow-lg`} />
+                                        {isBoilerTab && (() => {
+                                            const boilerBorder = boilerStatus === 'running' ? 'border-emerald-500/50' : boilerStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
+                                            return (
                                                 <select
-                                                    className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                    className={`bg-[#101822]/60 border ${boilerBorder} rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-base sm:text-xl text-white font-bold uppercase cursor-pointer outline-none appearance-none transition-colors shrink-0`}
                                                     value={boilerStatus}
                                                     onChange={e => {
                                                         const v = e.target.value === '' ? null : e.target.value;
@@ -941,12 +969,12 @@ export default function InputShiftPage() {
                                                         setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
                                                     }}
                                                 >
-                                                    <option value="" className="bg-[#101822] text-slate-500 text-base">—</option>
-                                                    <option value="running" className="bg-[#101822] text-white text-base">Running</option>
-                                                    <option value="shutdown" className="bg-[#101822] text-white text-base">Shutdown</option>
+                                                    <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                                                    <option value="running" className="bg-[#101822] text-white">Running</option>
+                                                    <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
                                                 </select>
-                                            </div>
-                                        )}
+                                            );
+                                        })()}
                                     </>
                                 );
                             })()}
@@ -962,8 +990,8 @@ export default function InputShiftPage() {
 
                         {/* Shift Tab Content */}
                         <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
-                            {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam} prevTotalizerBfw={prevBoilerA.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
-                            {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam} prevTotalizerBfw={prevBoilerB.totalizer_bfw} prevCoalBunkerValues={prevCoalBunker} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
+                            {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
+                            {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
                             {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
                             {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} />}
                             {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}

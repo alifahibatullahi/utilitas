@@ -408,51 +408,53 @@ async function saveShiftRow(f: string[], shift: 'pagi' | 'sore' | 'malam', date:
             boiler_kasi: isPagi ? parseStr(f[SC.boiler_kasi_pagi]) : parseStr(f[SC.boiler_kasi_ms]),
         }, { onConflict: 'shift_report_id' }),
 
-        // Boiler A
+        // Boiler A — BR/BS (totalizer_steam) adalah selisih, bukan raw meter → skip
         supabase.from('shift_boiler').upsert({
             shift_report_id: rid, boiler: 'A',
-            press_steam:    parseNum(f[SC.boiler_press_steam_a]),
-            temp_steam:     parseNum(f[SC.boiler_temp_steam_a]),
-            flow_steam:     parseNum(f[SC.boiler_flow_steam_a]),
-            totalizer_steam:parseNum(f[SC.boiler_totalizer_steam_a]),   // selisih
-            flow_bfw:       parseNum(f[SC.boiler_flow_bfw_a]),
-            temp_bfw:       parseNum(f[SC.boiler_temp_bfw]),            // BV shared
-            temp_furnace:   parseNum(f[SC.boiler_temp_furnace_a]),
-            temp_flue_gas:  parseNum(f[SC.boiler_temp_flue_gas_a]),
-            excess_air:     parseNum(f[SC.boiler_excess_air_a]),
+            press_steam:     parseNum(f[SC.boiler_press_steam_a]),
+            temp_steam:      parseNum(f[SC.boiler_temp_steam_a]),
+            flow_steam:      parseNum(f[SC.boiler_flow_steam_a]),
+            flow_bfw:        parseNum(f[SC.boiler_flow_bfw_a]),
+            temp_bfw:        parseNum(f[SC.boiler_temp_bfw]),            // BV shared
+            temp_furnace:    parseNum(f[SC.boiler_temp_furnace_a]),
+            temp_flue_gas:   parseNum(f[SC.boiler_temp_flue_gas_a]),
+            excess_air:      parseNum(f[SC.boiler_excess_air_a]),
             air_heater_ti113:parseNum(f[SC.boiler_air_heater_a]),
-            batubara_ton:   parseNum(f[SC.boiler_batubara_a]),          // CE
-            solar_m3:       parseNum(f[SC.boiler_solar_a]),
-            stream_days:    parseNum(f[SC.boiler_stream_days_a]),
-            steam_drum_press: drumA,
+            batubara_ton:    parseNum(f[SC.boiler_batubara_a]),          // CE — total batubara
+            solar_m3:        parseNum(f[SC.boiler_solar_a]),
+            stream_days:     parseNum(f[SC.boiler_stream_days_a]),
+            steam_drum_press:drumA,
             bfw_press:       bfwPA,
+            feeder_a_flow:   parseNum(f[SC.feeder_a]),                  // CK — flow feeder A
+            feeder_b_flow:   parseNum(f[SC.feeder_b]),                  // CL — flow feeder B
+            feeder_c_flow:   parseNum(f[SC.feeder_c]),                  // CM — flow feeder C
         }, { onConflict: 'shift_report_id,boiler' }),
 
-        // Boiler B
+        // Boiler B — BR/BS (totalizer_steam) adalah selisih, bukan raw meter → skip
         supabase.from('shift_boiler').upsert({
             shift_report_id: rid, boiler: 'B',
-            press_steam:    parseNum(f[SC.boiler_press_steam_b]),
-            temp_steam:     parseNum(f[SC.boiler_temp_steam_b]),
-            flow_steam:     parseNum(f[SC.boiler_flow_steam_b]),
-            totalizer_steam:parseNum(f[SC.boiler_totalizer_steam_b]),   // selisih
-            flow_bfw:       parseNum(f[SC.boiler_flow_bfw_b]),
-            temp_bfw:       parseNum(f[SC.boiler_temp_bfw]),            // BV shared
-            temp_furnace:   parseNum(f[SC.boiler_temp_furnace_b]),
-            temp_flue_gas:  parseNum(f[SC.boiler_temp_flue_gas_b]),
-            excess_air:     parseNum(f[SC.boiler_excess_air_b]),
+            press_steam:     parseNum(f[SC.boiler_press_steam_b]),
+            temp_steam:      parseNum(f[SC.boiler_temp_steam_b]),
+            flow_steam:      parseNum(f[SC.boiler_flow_steam_b]),
+            flow_bfw:        parseNum(f[SC.boiler_flow_bfw_b]),
+            temp_bfw:        parseNum(f[SC.boiler_temp_bfw]),            // BV shared
+            temp_furnace:    parseNum(f[SC.boiler_temp_furnace_b]),
+            temp_flue_gas:   parseNum(f[SC.boiler_temp_flue_gas_b]),
+            excess_air:      parseNum(f[SC.boiler_excess_air_b]),
             air_heater_ti113:parseNum(f[SC.boiler_air_heater_b]),
-            batubara_ton:   parseNum(f[SC.boiler_batubara_b]),          // CF
-            solar_m3:       parseNum(f[SC.boiler_solar_b]),
-            stream_days:    parseNum(f[SC.boiler_stream_days_b]),
-            steam_drum_press: drumB,
+            batubara_ton:    parseNum(f[SC.boiler_batubara_b]),          // CF — total batubara
+            solar_m3:        parseNum(f[SC.boiler_solar_b]),
+            stream_days:     parseNum(f[SC.boiler_stream_days_b]),
+            steam_drum_press:drumB,
             bfw_press:       bfwPB,
+            feeder_d_flow:   parseNum(f[SC.feeder_d]),                  // CN — flow feeder D
+            feeder_e_flow:   parseNum(f[SC.feeder_e]),                  // CO — flow feeder E
+            feeder_f_flow:   parseNum(f[SC.feeder_f]),                  // CP — flow feeder F
         }, { onConflict: 'shift_report_id,boiler' }),
 
         supabase.from('shift_coal_bunker').upsert({
             shift_report_id: rid,
-            feeder_a: parseNum(f[SC.feeder_a]), feeder_b: parseNum(f[SC.feeder_b]),
-            feeder_c: parseNum(f[SC.feeder_c]), feeder_d: parseNum(f[SC.feeder_d]),
-            feeder_e: parseNum(f[SC.feeder_e]), feeder_f: parseNum(f[SC.feeder_f]),
+            // feeder_a..f = totalizer feeder (bukan CK-CP yg adalah flow)
             bunker_a: parseNum(f[SC.bunker_a]), bunker_b: parseNum(f[SC.bunker_b]),
             bunker_c: parseNum(f[SC.bunker_c]), bunker_d: parseNum(f[SC.bunker_d]),
             bunker_e: parseNum(f[SC.bunker_e]), bunker_f: parseNum(f[SC.bunker_f]),

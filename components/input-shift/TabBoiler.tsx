@@ -32,11 +32,11 @@ const FEEDER_STATUS_OPTIONS = [
     { value: 'not standby', label: 'Not Standby' },
 ];
 
-const FEEDER_STATUS_DOT: Record<string, string> = {
-    'running': 'bg-emerald-500',
-    'standby': 'bg-amber-500',
-    'emergency standby': 'bg-orange-500',
-    'not standby': 'bg-red-500',
+const FEEDER_STATUS_BORDER: Record<string, string> = {
+    'running': 'border-emerald-500/50',
+    'standby': 'border-amber-500/50',
+    'emergency standby': 'border-orange-500/50',
+    'not standby': 'border-red-500/50',
 };
 
 function FeederStatusChip({ feeder, sk, value, onChange }: {
@@ -45,22 +45,18 @@ function FeederStatusChip({ feeder, sk, value, onChange }: {
     value: string;
     onChange?: (name: string, v: number | string | null) => void;
 }) {
-    const dot = FEEDER_STATUS_DOT[value] ?? 'bg-slate-500';
+    const border = FEEDER_STATUS_BORDER[value] ?? 'border-slate-700/60';
     return (
-        <div className="inline-flex items-center gap-2 bg-[#101822]/60 border border-slate-700/60 rounded-lg pl-3 pr-2 py-1.5 hover:border-emerald-500/50 transition">
-            <span className={`w-3 h-3 rounded-full ${dot} shrink-0`} />
-            {feeder && <span className="text-xs font-bold uppercase text-slate-300 shrink-0">{feeder}</span>}
-            <select
-                className="bg-transparent appearance-none text-sm text-white font-semibold pr-4 cursor-pointer outline-none"
-                value={value}
-                onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
-            >
-                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                {FEEDER_STATUS_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
-                ))}
-            </select>
-        </div>
+        <select
+            className={`bg-[#101822]/60 border ${border} rounded-lg px-2 py-1 text-sm text-white font-semibold cursor-pointer outline-none appearance-none transition-colors`}
+            value={value}
+            onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
+        >
+            <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+            {FEEDER_STATUS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
+            ))}
+        </select>
     );
 }
 
@@ -85,6 +81,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
     };
 
     // Auto-fill totalizer saat boiler shutdown (hanya jika masih kosong, tetap bisa diedit)
+    // Auto-set semua feeder ke standby & flow ke 0 saat shutdown
     useEffect(() => {
         if (!isBoilerShutdown || !onFieldChange) return;
         if (prevTotalizerSteam != null && values.totalizer_steam == null)
@@ -92,18 +89,25 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
         if (prevTotalizerBfw != null && values.totalizer_bfw == null)
             onFieldChange('totalizer_bfw', prevTotalizerBfw);
         NON_TOTALIZER_BOILER_FIELDS.forEach(k => {
-            if (values[k] != null) onFieldChange(k, null);
+            if (values[k] != null && values[k] !== 0) onFieldChange(k, 0);
         });
         if (onCoalBunkerChange) {
             feederKeys.forEach(fk => {
                 const prev = prevCoalBunkerValues[fk];
                 if (prev != null && coalBunkerValues[fk] == null) onCoalBunkerChange(fk, prev);
+                // Auto-set feeder status ke standby jika belum standby/non-running
+                const sk = feederStatusKey(fk);
+                const curStatus = coalBunkerValues[sk];
+                if (curStatus === 'running' || curStatus == null || curStatus === '') {
+                    onCoalBunkerChange(sk, 'standby');
+                }
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isBoilerShutdown]);
 
     // Auto-fill totalizer feeder saat non-running (hanya jika kosong, tetap bisa diedit)
+    // Auto-set flow feeder ke 0 saat non-running
     const feederStatusSig = feederKeys.map(fk => coalBunkerValues[feederStatusKey(fk)] ?? '').join('|');
     useEffect(() => {
         if (!onCoalBunkerChange || !onFieldChange) return;
@@ -111,7 +115,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
             if (!isFeederLocked(fk)) return;
             const prev = prevCoalBunkerValues[fk];
             if (prev != null && coalBunkerValues[fk] == null) onCoalBunkerChange(fk, prev);
-            if (values[`${fk}_flow`] != null) onFieldChange(`${fk}_flow`, null);
+            if (values[`${fk}_flow`] !== 0) onFieldChange(`${fk}_flow`, 0);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [feederStatusSig]);

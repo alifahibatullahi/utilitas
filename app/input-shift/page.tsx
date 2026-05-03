@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
+import { nowWIB, todayWIB } from '@/lib/utils';
 import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
 
 function getGroupMalamOnDate(dateStr: string): string {
@@ -55,7 +56,7 @@ export default function InputShiftPage() {
     const [activeTab, setActiveTab] = useState<TabId>('Boiler A');
     const [inputMode, setInputMode] = useState<'shift' | 'harian'>('shift');
     const [selectedShift, setSelectedShift] = useState<1 | 2 | 3>(() => {
-        const hour = new Date().getHours();
+        const hour = nowWIB().getHours();
         if (hour >= 6 && hour < 14) return 1;   // 06.00 Malam
         if (hour >= 14 && hour < 22) return 2;   // 14.00 Pagi
         return 3;                                 // 22.00 Sore
@@ -64,10 +65,7 @@ export default function InputShiftPage() {
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    const [selectedDate, setSelectedDate] = useState(() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    });
+    const [selectedDate, setSelectedDate] = useState(todayWIB);
     const [mounted, setMounted] = useState(false);
     
     // Header specific states — persist to localStorage
@@ -757,9 +755,9 @@ export default function InputShiftPage() {
                     {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin (Shift) / Supervisor (Harian) */}
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
                         {(() => {
-                            const today = mounted ? `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}` : '';
+                            const today = mounted ? todayWIB() : '';
                             const isToday = selectedDate === today;
-                            const formattedDate = mounted && selectedDate ? new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+                            const formattedDate = mounted && selectedDate ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
                             return (
                                 <>
                                     <div className={`relative flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border ${isToday ? 'bg-blue-500/15 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-[#0f1721] border-slate-700/50'}`}>

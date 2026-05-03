@@ -16,11 +16,12 @@ interface TabBoilerProps {
 }
 
 function formatShutdownSince(sinceDate: string, currentDate: string): string {
-    const d1 = new Date(sinceDate + 'T00:00:00');
-    const d2 = new Date(currentDate + 'T00:00:00');
+    const d1 = new Date(sinceDate + 'T00:00:00+07:00');
+    const d2 = new Date(currentDate + 'T00:00:00+07:00');
     const days = Math.round((d2.getTime() - d1.getTime()) / 86400000);
-    const hari = d1.toLocaleDateString('id-ID', { weekday: 'long' });
-    const tgl = d1.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+    const opts = { timeZone: 'Asia/Jakarta' } as const;
+    const hari = d1.toLocaleDateString('id-ID', { ...opts, weekday: 'long' });
+    const tgl = d1.toLocaleDateString('id-ID', { ...opts, day: 'numeric', month: 'long' });
     const durasi = days === 0 ? 'hari ini' : `${days} hari`;
     return `sejak ${hari}, ${tgl} (${durasi})`;
 }

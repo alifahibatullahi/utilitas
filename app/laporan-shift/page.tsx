@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useShiftReport, ShiftReportData } from '@/hooks/useShiftReport';
+import { todayWIB } from '@/lib/utils';
 
 // ─── Data Interfaces ───
 interface BoilerData {
@@ -266,7 +267,7 @@ export default function LaporanShiftPage() {
     const { operator } = useOperator();
     const router = useRouter();
     const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
-    const [selectedDate, setSelectedDate] = useState(() => toLocalDateStr(new Date()));
+    const [selectedDate, setSelectedDate] = useState(todayWIB);
 
     const { report: supaReport, activeMaintenance, openCriticals, loading, error } = useShiftReport(selectedDate, activeShift);
 
@@ -297,7 +298,7 @@ export default function LaporanShiftPage() {
                     d.setDate(d.getDate() - 3 + i);
                     const iso = toLocalDateStr(d);
                     const isActive = iso === selectedDate;
-                    const isToday = iso === toLocalDateStr(new Date());
+                    const isToday = iso === todayWIB();
                     const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
                     const dayNum = d.getDate();
                     return (

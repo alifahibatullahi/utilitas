@@ -279,19 +279,8 @@ export function getGroupShiftOnDate(group: 'A' | 'B' | 'C' | 'D', dateStr: strin
 export function getGroupForShift(dateStr: string, shiftType: 'malam' | 'pagi' | 'sore'): string {
     const shiftLetter: Record<string, string> = { malam: 'M', pagi: 'P', sore: 'S' };
     const letter = shiftLetter[shiftType];
-    // Shift malam tanggal X dikerjakan oleh grup shift malam tanggal X-1
-    let lookupDate = dateStr;
-    if (shiftType === 'malam') {
-        const d = new Date(dateStr + 'T00:00:00');
-        d.setDate(d.getDate() - 1);
-        // Gunakan tanggal lokal, bukan UTC (toISOString() di UTC+7 akan mundur 1 hari lagi)
-        const y = d.getFullYear();
-        const mo = String(d.getMonth() + 1).padStart(2, '0');
-        const dy = String(d.getDate()).padStart(2, '0');
-        lookupDate = `${y}-${mo}-${dy}`;
-    }
     for (const group of ['A', 'B', 'C', 'D'] as const) {
-        if (getGroupShiftOnDate(group, lookupDate) === letter) return group;
+        if (getGroupShiftOnDate(group, dateStr) === letter) return group;
     }
     return '';
 }

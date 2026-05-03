@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { useAppSettings, useStreamDays } from '@/hooks/useAppSettings';
+import { todayWIB } from '@/lib/utils';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -305,7 +306,7 @@ export default function LaporanHarianPage() {
 
     const dateObj = new Date(selectedDate);
     const hariStr = HARI_ID[dateObj.getDay()];
-    const formatDate = (d: string) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    const formatDate = (d: string) => new Date(d + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'long', year: 'numeric' });
 
     const prevDate = new Date(dateObj);
     prevDate.setDate(prevDate.getDate() - 1);
@@ -327,7 +328,7 @@ export default function LaporanHarianPage() {
                         d.setDate(d.getDate() - 3 + i);
                         const iso = toISO(d);
                         const isActive = iso === selectedDate;
-                        const isToday = iso === toISO(new Date());
+                        const isToday = iso === todayWIB();
                         const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
                         const dayNum = d.getDate();
                         return (

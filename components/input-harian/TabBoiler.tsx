@@ -90,7 +90,6 @@ export default function TabBoiler({
             if (coal[k] != null) onCoalChange(k, null);
         });
         if (stockTank.flow_bfw_a != null) onStockTankChange('flow_bfw_a', null);
-        if (turbineMisc.temp_furnace_a != null) onTurbineMiscChange('temp_furnace_a', null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isShutdownA]);
 
@@ -108,7 +107,6 @@ export default function TabBoiler({
             if (coal[k] != null) onCoalChange(k, null);
         });
         if (stockTank.flow_bfw_b != null) onStockTankChange('flow_bfw_b', null);
-        if (turbineMisc.temp_furnace_b != null) onTurbineMiscChange('temp_furnace_b', null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isShutdownB]);
 
@@ -151,7 +149,7 @@ export default function TabBoiler({
 
                     <SectionLabel label="Temperatur Furnace A" />
                     <div className="grid grid-cols-1 gap-4">
-                        <InputField label="Furnace A" name="temp_furnace_a" value={turbineMisc.temp_furnace_a as number | null} onChange={onTurbineMiscChange} unit="°C" color="orange" readOnly={isShutdownA} />
+                        <InputField label="Furnace A" name="temp_furnace_a" value={turbineMisc.temp_furnace_a as number | null} onChange={onTurbineMiscChange} unit="°C" color="orange" />
                     </div>
                 </Card>
 
@@ -191,7 +189,7 @@ export default function TabBoiler({
 
                     <SectionLabel label="Temperatur Furnace B" />
                     <div className="grid grid-cols-1 gap-4">
-                        <InputField label="Furnace B" name="temp_furnace_b" value={turbineMisc.temp_furnace_b as number | null} onChange={onTurbineMiscChange} unit="°C" color="orange" readOnly={isShutdownB} />
+                        <InputField label="Furnace B" name="temp_furnace_b" value={turbineMisc.temp_furnace_b as number | null} onChange={onTurbineMiscChange} unit="°C" color="orange" />
                     </div>
                 </Card>
             </div>

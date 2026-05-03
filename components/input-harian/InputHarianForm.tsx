@@ -48,6 +48,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [activeTab, setActiveTab] = useState<HarianTabId>('Boiler');
     const [visitedTabs, setVisitedTabs] = useState<Set<HarianTabId>>(new Set());
     const [submitting, setSubmitting] = useState(false);
+    const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const lastSubmittedReportId = useRef<string | null>(null);
     const skipNextClear = useRef(false);
@@ -325,6 +326,10 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const handleSubmit = async () => {
         if (submitting) return;
         setSubmitting(true);
+        setSaveProgress(5);
+        const progressInterval = setInterval(() => {
+            setSaveProgress(p => (p !== null && p < 85) ? p + 8 : p);
+        }, 400);
         try {
             const N = (v: number | null | undefined) => Number(v) || 0;
 
@@ -394,6 +399,30 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 laut_total_ton: N(prevCT.laut_total_ton) + N(coalTransfer.laut_24_ton),
             };
 
+            // Boiler shutdown → semua flow/furnace = 0 sebelum disimpan
+            const isShutdownA = turbineMisc.status_boiler_a === 'shutdown';
+            const isShutdownB = turbineMisc.status_boiler_b === 'shutdown';
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sw = steamWithCalcs as any;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cw = coalWithCalcs as any;
+            if (isShutdownA) {
+                sw.prod_boiler_a_00 = 0;
+                cw.coal_a_00 = 0; cw.coal_b_00 = 0; cw.coal_c_00 = 0;
+                cw.total_boiler_a_00 = 0;
+                (tankWithCalcs as Record<string, unknown>).flow_bfw_a = 0;
+            }
+            if (isShutdownB) {
+                sw.prod_boiler_b_00 = 0;
+                cw.coal_d_00 = 0; cw.coal_e_00 = 0; cw.coal_f_00 = 0;
+                cw.total_boiler_b_00 = 0;
+                (tankWithCalcs as Record<string, unknown>).flow_bfw_b = 0;
+            }
+            if (isShutdownA || isShutdownB) {
+                sw.prod_total_00 = N(sw.prod_boiler_a_00) + N(sw.prod_boiler_b_00);
+                cw.grand_total_00 = N(cw.total_boiler_a_00) + N(cw.total_boiler_b_00);
+            }
+
             const result = await submitReport({
                 created_by: operator?.supabaseId ?? undefined,
                 notes: undefined,
@@ -425,7 +454,12 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
             }
+            clearInterval(progressInterval);
+            setSaveProgress(100);
+            setTimeout(() => setSaveProgress(null), 800);
         } catch {
+            clearInterval(progressInterval);
+            setSaveProgress(null);
             showToast('Terjadi kesalahan saat menyimpan laporan.', 'error');
         } finally {
             setSubmitting(false);
@@ -480,11 +514,25 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             {/* Loading Overlay */}
             {submitting && (
                 <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
-                    <div className="relative flex flex-col items-center justify-center bg-[#16202e] border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95">
+                    <div className="relative flex flex-col items-center justify-center bg-[#16202e] border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95 w-72">
                         <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-2xl pointer-events-none"></div>
                         <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mb-6 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
-                        <h3 className="text-white font-black text-xl tracking-wide mb-2 relative z-10">Menyimpan data</h3>
-                        <p className="text-slate-400 text-sm font-medium animate-pulse relative z-10">Mohon tunggu sebentar...</p>
+                        <h3 className="text-white font-black text-xl tracking-wide mb-1 relative z-10">Menyimpan data</h3>
+                        <p className="text-slate-400 text-sm font-medium mb-5 relative z-10">Mohon tunggu sebentar...</p>
+                        {saveProgress !== null && (
+                            <div className="w-full relative z-10">
+                                <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                                    <span>Progress</span>
+                                    <span className="font-bold text-emerald-400">{saveProgress}%</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                                        style={{ width: `${saveProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

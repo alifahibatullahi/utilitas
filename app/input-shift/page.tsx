@@ -418,7 +418,7 @@ export default function InputShiftPage() {
 
     const NON_TOTALIZER_FIELDS = [
         'press_steam','temp_steam','flow_steam','bfw_press','temp_bfw','flow_bfw',
-        'temp_furnace','air_heater_ti113','excess_air','temp_flue_gas','primary_air',
+        'air_heater_ti113','excess_air','temp_flue_gas','primary_air',
         'secondary_air','o2','steam_drum_press','solar_m3',
         'feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow',
     ];

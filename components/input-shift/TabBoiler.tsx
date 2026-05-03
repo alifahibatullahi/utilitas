@@ -69,7 +69,7 @@ function FeederStatusChip({ feeder, sk, value, onChange }: {
 const NON_TOTALIZER_BOILER_FIELDS = [
     'press_steam', 'temp_steam', 'flow_steam',
     'bfw_press', 'temp_bfw', 'flow_bfw',
-    'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas',
+    'air_heater_ti113', 'excess_air', 'temp_flue_gas',
     'primary_air', 'secondary_air', 'o2', 'steam_drum_press', 'solar_m3',
     'feeder_a_flow', 'feeder_b_flow', 'feeder_c_flow',
     'feeder_d_flow', 'feeder_e_flow', 'feeder_f_flow',
@@ -185,7 +185,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
 
                     <Card title="Furnace & Air" icon="local_fire_department" color="orange">
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Temp Furnace" unit="°C" color="orange" name="temp_furnace" value={values.temp_furnace} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                            <InputField label="Temp Furnace" unit="°C" color="orange" name="temp_furnace" value={values.temp_furnace} onChange={onFieldChange} />
                             <InputField label="Air Heater TI113" unit="°C" color="orange" name="air_heater_ti113" value={values.air_heater_ti113} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">

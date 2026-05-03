@@ -16,36 +16,36 @@ export default function TabPIU({
             <Card title="Totalizer Power PIU" icon="electric_meter" color="blue">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <InputField 
-                            label="Export" 
-                            unit="Kwh" 
-                            color="blue" 
-                            name="totalizer_export" 
-                            value={tm.totalizer_export} 
-                            onChange={onTurbineMiscChange} 
-                            thousands 
+                        <InputField
+                            label="Delivered (Import)"
+                            unit="Kwh"
+                            color="blue"
+                            name="totalizer_import"
+                            value={tm.totalizer_import}
+                            onChange={onTurbineMiscChange}
+                            thousands
                         />
                         {prevTurbineMisc && (
-                            <SelisihInfo 
-                                prev={Number(ptm?.totalizer_export) || 0} 
-                                current={Number(tm.totalizer_export) || 0} 
+                            <SelisihInfo
+                                prev={Number(ptm?.totalizer_import) || 0}
+                                current={Number(tm.totalizer_import) || 0}
                             />
                         )}
                     </div>
                     <div>
-                        <InputField 
-                            label="Import" 
-                            unit="Kwh" 
-                            color="blue" 
-                            name="totalizer_import" 
-                            value={tm.totalizer_import} 
-                            onChange={onTurbineMiscChange} 
-                            thousands 
+                        <InputField
+                            label="Received (Export)"
+                            unit="Kwh"
+                            color="blue"
+                            name="totalizer_export"
+                            value={tm.totalizer_export}
+                            onChange={onTurbineMiscChange}
+                            thousands
                         />
                         {prevTurbineMisc && (
-                            <SelisihInfo 
-                                prev={Number(ptm?.totalizer_import) || 0} 
-                                current={Number(tm.totalizer_import) || 0} 
+                            <SelisihInfo
+                                prev={Number(ptm?.totalizer_export) || 0}
+                                current={Number(tm.totalizer_export) || 0}
                             />
                         )}
                     </div>

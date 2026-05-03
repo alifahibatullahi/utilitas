@@ -380,10 +380,17 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             const bfwConsA = prevBfwA > 0 ? N(stockTank.bfw_boiler_a) - prevBfwA : N(stockTank.bfw_boiler_a);
             const bfwConsB = prevBfwB > 0 ? N(stockTank.bfw_boiler_b) - prevBfwB : N(stockTank.bfw_boiler_b);
 
+            const isSiloA = (s: string) => s === 'A' || s === 'Silo A';
+            const isSiloB = (s: string) => s === 'B' || s === 'Silo B';
+            const unloadingA = ashUnloadings.filter(e => isSiloA(e.silo)).reduce((s, e) => s + (e.ritase || 0), 0);
+            const unloadingB = ashUnloadings.filter(e => isSiloB(e.silo)).reduce((s, e) => s + (e.ritase || 0), 0);
+
             const tankWithCalcs = {
                 ...stockTank,
                 solar_tank_total: N(stockTank.solar_tank_a) + N(stockTank.solar_tank_b),
                 bfw_total: bfwConsA + bfwConsB,
+                unloading_fly_ash_a: unloadingA || null,
+                unloading_fly_ash_b: unloadingB || null,
             };
 
             const prevCT = prevCoalTransfer || {};

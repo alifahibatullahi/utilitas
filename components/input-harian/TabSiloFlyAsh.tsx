@@ -31,8 +31,11 @@ export default function TabSiloFlyAsh({
         setEditItem(null);
     };
 
-    const totalA = ashUnloadings.filter(e => e.silo === 'Silo A').reduce((s, e) => s + e.ritase, 0);
-    const totalB = ashUnloadings.filter(e => e.silo === 'Silo B').reduce((s, e) => s + e.ritase, 0);
+    const isSiloA = (s: string) => s === 'A' || s === 'Silo A';
+    const isSiloB = (s: string) => s === 'B' || s === 'Silo B';
+    const siloLabel = (s: string) => isSiloA(s) ? 'Silo A' : isSiloB(s) ? 'Silo B' : s;
+    const totalA = ashUnloadings.filter(e => isSiloA(e.silo)).reduce((s, e) => s + e.ritase, 0);
+    const totalB = ashUnloadings.filter(e => isSiloB(e.silo)).reduce((s, e) => s + e.ritase, 0);
 
     return (
         <div className="flex-1 w-full">
@@ -49,11 +52,11 @@ export default function TabSiloFlyAsh({
                 {/* Summary Unloading */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2 text-center">
-                        <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Total Silo A</p>
+                        <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Total Unloading Silo A</p>
                         <p className="text-emerald-300 font-bold text-xl">{totalA} <span className="text-xs font-normal">Rit</span></p>
                     </div>
                     <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg px-3 py-2 text-center">
-                        <p className="text-[10px] text-teal-400 uppercase tracking-wider font-bold">Total Silo B</p>
+                        <p className="text-[10px] text-teal-400 uppercase tracking-wider font-bold">Total Unloading Silo B</p>
                         <p className="text-teal-300 font-bold text-xl">{totalB} <span className="text-xs font-normal">Rit</span></p>
                     </div>
                 </div>
@@ -64,33 +67,47 @@ export default function TabSiloFlyAsh({
                         {ashUnloadings.map((item, i) => {
                             const id = item.id ?? String(i);
                             const shiftStyle = SHIFT_COLOR[item.shift] ?? { bg: 'bg-slate-500/15', text: 'text-slate-400' };
-                            const siloColor = item.silo === 'Silo A' ? 'text-emerald-400 bg-emerald-500/15' : 'text-teal-400 bg-teal-500/15';
+                            const siloColor = isSiloA(item.silo) ? 'text-emerald-400 bg-emerald-500/15' : 'text-teal-400 bg-teal-500/15';
                             return (
-                                <div key={id} className="flex items-center gap-3 bg-[#101822]/60 border border-slate-700/50 rounded-xl px-3 py-2.5 hover:border-teal-500/30 transition-colors">
+                                <div key={id} className="flex items-start gap-3 bg-[#101822]/60 border border-slate-700/50 rounded-xl px-3 py-3 hover:border-teal-500/30 transition-colors">
                                     {/* Shift badge */}
-                                    <div className={`shrink-0 flex flex-col items-center justify-center ${shiftStyle.bg} rounded-lg px-2 py-1.5 min-w-[52px]`}>
-                                        <span className="material-symbols-outlined text-[14px] text-slate-400 mb-0.5">
+                                    <div className={`shrink-0 flex flex-col items-center justify-center ${shiftStyle.bg} rounded-lg px-2.5 py-2 min-w-[58px]`}>
+                                        <span className="material-symbols-outlined text-[18px] text-slate-300 mb-0.5">
                                             {item.shift === 'pagi' ? 'wb_sunny' : item.shift === 'siang' ? 'light_mode' : 'bedtime'}
                                         </span>
-                                        <span className={`text-[10px] font-bold uppercase ${shiftStyle.text}`}>{SHIFT_LABELS[item.shift] ?? item.shift}</span>
+                                        <span className={`text-xs font-bold uppercase ${shiftStyle.text}`}>{SHIFT_LABELS[item.shift] ?? item.shift}</span>
                                     </div>
 
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${siloColor}`}>{item.silo}</span>
-                                            <span className="text-white font-bold text-sm">{item.ritase} <span className="text-teal-400 text-xs font-normal">Rit</span></span>
+                                        {/* Baris 1: Silo + Ritase */}
+                                        <div className="flex items-baseline gap-2">
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${siloColor}`}>{siloLabel(item.silo)}</span>
+                                            <span className="text-white font-black text-xl leading-tight">{item.ritase}</span>
+                                            <span className="text-teal-400 text-sm font-semibold">Rit</span>
                                         </div>
-                                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                                            {item.perusahaan}
-                                            {item.tujuan ? <span className="text-slate-600"> · </span> : null}
-                                            {item.tujuan && <span className="text-slate-500">{item.tujuan}</span>}
-                                        </p>
+                                        {/* Baris 2: Tujuan & Perusahaan */}
+                                        <div className="mt-1 space-y-0.5">
+                                            {item.tujuan && (
+                                                <p className="text-xs text-slate-300 truncate">
+                                                    <span className="text-slate-500 font-medium">Tujuan</span>
+                                                    <span className="text-slate-600"> · </span>
+                                                    {item.tujuan}
+                                                </p>
+                                            )}
+                                            {item.perusahaan && (
+                                                <p className="text-xs text-slate-400 truncate">
+                                                    <span className="text-slate-500 font-medium">Perusahaan</span>
+                                                    <span className="text-slate-600"> · </span>
+                                                    {item.perusahaan}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Actions */}
                                     {item.id && (
-                                        <div className="flex items-center gap-1 shrink-0">
+                                        <div className="flex flex-col gap-1 shrink-0">
                                             <button type="button"
                                                 onClick={() => setEditItem({ id: item.id!, silo: item.silo, shift: item.shift, perusahaan: item.perusahaan, tujuan: item.tujuan, ritase: item.ritase })}
                                                 className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/25 flex items-center justify-center transition-colors">

@@ -184,11 +184,11 @@ export const ROLE_DOT_COLORS: Record<OperatorRole, string> = {
 export const OPERATORS: Operator[] = [
     // ─── Group A ─── (7 Organik UBB)
     { id: 1, name: 'Ardhian Wisnu Perdana', role: 'group_a', group: 'A', nik: '2074878', jabatan: 'Supervisor', company: 'UBB' },
-    { id: 2, name: 'Jaka Riyantaka', role: 'group_a', group: 'A', nik: '2146101', jabatan: 'Foreman Turbin', company: 'UBB' },
+    { id: 38, name: 'Yudistira Alnur', role: 'group_a', group: 'A', nik: '2125525', jabatan: 'Foreman Turbin', company: 'UBB' },
     { id: 3, name: 'Aldilla Indra R', role: 'group_a', group: 'A', nik: '2180323', company: 'UBB' },
-    { id: 4, name: 'Ilham Mirza Nur R', role: 'group_a', group: 'A', nik: '2146074', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 6, name: 'Rizky Dharmaji', role: 'group_a', group: 'A', nik: '2156352', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 2, name: 'Jaka Riyantaka', role: 'group_a', group: 'A', nik: '2146101', company: 'UBB' },
     { id: 5, name: 'Bagus Indra Prasetya', role: 'group_a', group: 'A', nik: '2190502', company: 'UBB' },
-    { id: 6, name: 'Rizky Dharmaji', role: 'group_a', group: 'A', nik: '2156352', company: 'UBB' },
     { id: 7, name: 'Lutfi Abdul Aziz', role: 'group_a', group: 'A', nik: '2180237', company: 'UBB' },
     // Group A — Tenaga Alih Daya (3 PT FJM + 2 PT Shohib Jaya Putra)
     { id: 8, name: 'Andreansyah', role: 'handling', group: 'A', nik: '25-09677', company: 'PT FJM' },
@@ -199,12 +199,12 @@ export const OPERATORS: Operator[] = [
 
     // ─── Group B ─── (7 Organik UBB)
     { id: 13, name: 'Putra Aris Hidayat', role: 'group_b', group: 'B', nik: '2125518', jabatan: 'Supervisor', company: 'UBB' },
-    { id: 14, name: 'Bili Pratama Kurnia', role: 'group_b', group: 'B', nik: '2146080', jabatan: 'Foreman Turbin', company: 'UBB' },
-    { id: 15, name: 'Yusuf Efendi Saputra', role: 'group_b', group: 'B', nik: '2156361', company: 'UBB' },
-    { id: 16, name: 'Ferdian Maulana Fah', role: 'group_b', group: 'B', nik: '2125676', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 16, name: 'Ferdian Maulana Fah', role: 'group_b', group: 'B', nik: '2125676', jabatan: 'Foreman Turbin', company: 'UBB' },
+    { id: 19, name: 'Mohamad Rizky Arsyi', role: 'group_b', group: 'B', nik: '2180310', company: 'UBB' },
+    { id: 15, name: 'Yusuf Efendi Saputra', role: 'group_b', group: 'B', nik: '2156361', jabatan: 'Foreman Boiler', company: 'UBB' },
     { id: 17, name: 'Rachmat Nordiyansyah', role: 'group_b', group: 'B', nik: '2146117', company: 'UBB' },
     { id: 18, name: 'Nastainul Firdaus Z', role: 'group_b', group: 'B', nik: '2146089', company: 'UBB' },
-    { id: 19, name: 'Mohamad Rizky Arsyi', role: 'group_b', group: 'B', nik: '2180310', company: 'UBB' },
+    { id: 14, name: 'Bili Pratama Kurnia', role: 'group_b', group: 'B', nik: '2146080', company: 'UBB' },
     // Group B — Tenaga Alih Daya
     { id: 20, name: 'Muhammad Syahri', role: 'handling', group: 'B', nik: '25-09683', company: 'PT FJM' },
     { id: 21, name: 'Mulyono', role: 'group_b', group: 'B', nik: '25-10302', company: 'PT FJM' },
@@ -216,10 +216,10 @@ export const OPERATORS: Operator[] = [
     { id: 25, name: 'Zulkarnain Bayu', role: 'group_c', group: 'C', nik: '2125519', jabatan: 'Supervisor', company: 'UBB' },
     { id: 26, name: 'Ryo Risky Faizal', role: 'group_c', group: 'C', nik: '2125716', jabatan: 'Foreman Turbin', company: 'UBB' },
     { id: 27, name: 'Rofindra Alif Iskandar', role: 'group_c', group: 'C', nik: '2180327', company: 'UBB' },
-    { id: 28, name: 'Akhmad Agung Prabowo', role: 'group_c', group: 'C', nik: '2156285', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 30, name: 'Muhammad Indra Ali', role: 'group_c', group: 'C', nik: '2156337', jabatan: 'Foreman Boiler', company: 'UBB' },
     { id: 29, name: 'Dimas Cahyo Nugroho', role: 'group_c', group: 'C', nik: '2180302', company: 'UBB' },
-    { id: 30, name: 'Muhammad Indra Ali', role: 'group_c', group: 'C', nik: '2156337', company: 'UBB' },
     { id: 31, name: 'Rizqy Aulia Rahman', role: 'group_c', group: 'C', nik: '2156353', company: 'UBB' },
+    { id: 28, name: 'Akhmad Agung Prabowo', role: 'group_c', group: 'C', nik: '2156285', company: 'UBB' },
     // Group C — Tenaga Alih Daya
     { id: 32, name: 'Achmad Mirza Yusuf', role: 'handling', group: 'C', nik: '25-10304', company: 'PT FJM' },
     { id: 33, name: 'Moh. Muchlis', role: 'group_c', group: 'C', nik: '25-09675', company: 'PT FJM' },
@@ -227,13 +227,14 @@ export const OPERATORS: Operator[] = [
     { id: 35, name: 'Alif Amirul', role: 'group_c', group: 'C', nik: '24-25633', company: 'PT Shohib Jaya Putra' },
     { id: 36, name: 'Naufal Nasrulloh', role: 'group_c', group: 'C', nik: '24-05636', company: 'PT Shohib Jaya Putra' },
 
-    // ─── Group D ─── (7 Organik UBB)
-    { id: 37, name: 'Ade Rahmad Abrianto', role: 'group_d', group: 'D', nik: '2125719', jabatan: 'Supervisor', company: 'UBB' },
-    { id: 38, name: 'Yudistira Alnur', role: 'group_d', group: 'D', nik: '2125525', jabatan: 'Foreman Turbin', company: 'UBB' },
+    // ─── Group D ─── (8 Organik UBB — Sandhy Yudha P baru Mei 2026)
+    { id: 52, name: 'Sandhy Yudha P', role: 'group_d', group: 'D', nik: '2084983', jabatan: 'Supervisor', company: 'UBB' },
+    { id: 37, name: 'Ade Rahmad Abrianto', role: 'group_d', group: 'D', nik: '2125719', jabatan: 'Foreman Turbin', company: 'UBB' },
     { id: 39, name: 'Moh. Taufiqurrohman', role: 'group_d', group: 'D', nik: '2146088', company: 'UBB' },
-    { id: 40, name: 'Julio Purnanugraha', role: 'group_d', group: 'D', nik: '2146090', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 4, name: 'Ilham Mirza Nur R', role: 'group_d', group: 'D', nik: '2146074', company: 'UBB' },
+    { id: 42, name: 'Ahmad Shofi Hamim', role: 'group_d', group: 'D', nik: '2156283', jabatan: 'Foreman Boiler', company: 'UBB' },
     { id: 41, name: 'Alifahi Batullahi', role: 'group_d', group: 'D', nik: '2180331', company: 'UBB' },
-    { id: 42, name: 'Ahmad Shofi Hamim', role: 'group_d', group: 'D', nik: '2156283', company: 'UBB' },
+    { id: 40, name: 'Julio Purnanugraha', role: 'group_d', group: 'D', nik: '2146090', company: 'UBB' },
     { id: 43, name: 'Achmad Ali Chorudin', role: 'group_d', group: 'D', nik: '2125718', company: 'UBB' },
     // Group D — Tenaga Alih Daya
     { id: 44, name: 'Mohammad Agil', role: 'handling', group: 'D', nik: '25-09679', company: 'PT FJM' },

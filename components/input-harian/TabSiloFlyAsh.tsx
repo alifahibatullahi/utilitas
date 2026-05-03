@@ -8,10 +8,10 @@ type EditFields = { id: string; silo: string; shift: string; perusahaan: string;
 const SILO_OPTIONS = ['Silo A', 'Silo B'];
 const SHIFT_OPTIONS = ['pagi', 'siang', 'malam'];
 const SHIFT_LABELS: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
-const SHIFT_COLOR: Record<string, { bg: string; text: string }> = {
-    pagi:  { bg: 'bg-amber-500/15',   text: 'text-amber-400' },
-    siang: { bg: 'bg-orange-500/15',  text: 'text-orange-400' },
-    malam: { bg: 'bg-indigo-500/15',  text: 'text-indigo-400' },
+const SHIFT_COLOR: Record<string, { bg: string; text: string; border: string }> = {
+    pagi:  { bg: 'bg-amber-500/15',   text: 'text-amber-400',  border: 'border-amber-500/30' },
+    siang: { bg: 'bg-orange-500/15',  text: 'text-orange-400', border: 'border-orange-500/30' },
+    malam: { bg: 'bg-indigo-500/15',  text: 'text-indigo-400', border: 'border-indigo-500/30' },
 };
 
 export default function TabSiloFlyAsh({
@@ -66,56 +66,57 @@ export default function TabSiloFlyAsh({
                     <div className="flex flex-col gap-2 mt-1">
                         {ashUnloadings.map((item, i) => {
                             const id = item.id ?? String(i);
-                            const shiftStyle = SHIFT_COLOR[item.shift] ?? { bg: 'bg-slate-500/15', text: 'text-slate-400' };
-                            const siloColor = isSiloA(item.silo) ? 'text-emerald-400 bg-emerald-500/15' : 'text-teal-400 bg-teal-500/15';
+                            const shiftStyle = SHIFT_COLOR[item.shift] ?? { bg: 'bg-slate-500/15', text: 'text-slate-400', border: 'border-slate-500/30' };
+                            const siloColor = isSiloA(item.silo) ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' : 'text-teal-400 bg-teal-500/15 border-teal-500/30';
                             return (
-                                <div key={id} className="flex items-start gap-3 bg-[#101822]/60 border border-slate-700/50 rounded-xl px-3 py-3 hover:border-teal-500/30 transition-colors">
+                                <div key={id} className="flex flex-col sm:flex-row sm:items-center gap-4 bg-[#101822]/60 border border-slate-700/50 rounded-xl p-3 hover:border-teal-500/40 transition-all hover:bg-[#101822]/80 hover:shadow-lg">
                                     {/* Shift badge */}
-                                    <div className={`shrink-0 flex flex-col items-center justify-center ${shiftStyle.bg} rounded-lg px-2.5 py-2 min-w-[58px]`}>
-                                        <span className="material-symbols-outlined text-[18px] text-slate-300 mb-0.5">
+                                    <div className={`shrink-0 flex sm:flex-col items-center justify-center gap-2 sm:gap-0 ${shiftStyle.bg} border ${shiftStyle.border} rounded-xl px-3 py-2 min-w-[64px]`}>
+                                        <span className={`material-symbols-outlined text-[18px] ${shiftStyle.text} sm:mb-0.5`}>
                                             {item.shift === 'pagi' ? 'wb_sunny' : item.shift === 'siang' ? 'light_mode' : 'bedtime'}
                                         </span>
-                                        <span className={`text-xs font-bold uppercase ${shiftStyle.text}`}>{SHIFT_LABELS[item.shift] ?? item.shift}</span>
+                                        <span className={`text-xs font-bold uppercase tracking-wider ${shiftStyle.text}`}>{SHIFT_LABELS[item.shift] ?? item.shift}</span>
                                     </div>
 
                                     {/* Info */}
-                                    <div className="flex-1 min-w-0">
-                                        {/* Baris 1: Silo + Ritase */}
-                                        <div className="flex items-baseline gap-2">
-                                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${siloColor}`}>{siloLabel(item.silo)}</span>
-                                            <span className="text-white font-black text-xl leading-tight">{item.ritase}</span>
-                                            <span className="text-teal-400 text-sm font-semibold">Rit</span>
+                                    <div className="flex-1 min-w-0 flex items-center justify-between pr-2">
+                                        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                                            <span className={`text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-md border w-max ${siloColor}`}>
+                                                {siloLabel(item.silo)}
+                                            </span>
+                                            <div className="flex flex-col gap-0.5">
+                                                {item.perusahaan && (
+                                                    <p className="text-sm font-bold text-slate-200 truncate flex items-center gap-1.5">
+                                                        <span className="material-symbols-outlined text-[14px] text-slate-500">domain</span>
+                                                        {item.perusahaan}
+                                                    </p>
+                                                )}
+                                                {item.tujuan && (
+                                                    <p className="text-xs text-slate-400 truncate flex items-center gap-1.5">
+                                                        <span className="material-symbols-outlined text-[14px] text-slate-500">local_shipping</span>
+                                                        {item.tujuan}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
-                                        {/* Baris 2: Tujuan & Perusahaan */}
-                                        <div className="mt-1 space-y-0.5">
-                                            {item.tujuan && (
-                                                <p className="text-xs text-slate-300 truncate">
-                                                    <span className="text-slate-500 font-medium">Tujuan</span>
-                                                    <span className="text-slate-600"> · </span>
-                                                    {item.tujuan}
-                                                </p>
-                                            )}
-                                            {item.perusahaan && (
-                                                <p className="text-xs text-slate-400 truncate">
-                                                    <span className="text-slate-500 font-medium">Perusahaan</span>
-                                                    <span className="text-slate-600"> · </span>
-                                                    {item.perusahaan}
-                                                </p>
-                                            )}
+
+                                        <div className="flex flex-col items-end sm:flex-row sm:items-baseline gap-1 sm:gap-1.5 bg-[#0f1721] px-3 py-1.5 rounded-lg border border-slate-700/50 shadow-inner shrink-0">
+                                            <span className="text-white font-black text-2xl">{item.ritase}</span>
+                                            <span className="text-teal-400 text-[10px] font-bold uppercase tracking-wider">Rit</span>
                                         </div>
                                     </div>
 
                                     {/* Actions */}
                                     {item.id && (
-                                        <div className="flex flex-col gap-1 shrink-0">
+                                        <div className="flex sm:flex-col gap-1.5 shrink-0 sm:pl-3 sm:border-l border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-700/50 justify-end mt-1 sm:mt-0">
                                             <button type="button"
                                                 onClick={() => setEditItem({ id: item.id!, silo: item.silo, shift: item.shift, perusahaan: item.perusahaan, tujuan: item.tujuan, ritase: item.ritase })}
-                                                className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/25 flex items-center justify-center transition-colors">
-                                                <span className="material-symbols-outlined text-[15px]">edit</span>
+                                                className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/25 flex items-center justify-center transition-colors">
+                                                <span className="material-symbols-outlined text-[16px]">edit</span>
                                             </button>
                                             <button type="button" onClick={() => onDeleteAshUnloading?.(item.id!)}
-                                                className="w-7 h-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors">
-                                                <span className="material-symbols-outlined text-[15px]">delete</span>
+                                                className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors">
+                                                <span className="material-symbols-outlined text-[16px]">delete</span>
                                             </button>
                                         </div>
                                     )}

@@ -380,6 +380,29 @@ export default function InputShiftPage() {
         }
     }, [report]);
 
+    // Sync default-0 fields ke state (agar isTabLengkap bisa mendeteksi field sudah terisi)
+    useEffect(() => {
+        setSteamDist(prev => {
+            if (prev.pabrik2_flow != null && prev.pabrik2_totalizer != null) return prev;
+            return {
+                ...prev,
+                pabrik2_flow: prev.pabrik2_flow ?? 0,
+                pabrik2_totalizer: prev.pabrik2_totalizer ?? 0,
+            };
+        });
+    }, [steamDist.pabrik2_flow, steamDist.pabrik2_totalizer]);
+
+    useEffect(() => {
+        setPowerDist(prev => {
+            if (prev.power_revamping_totalizer != null && prev.power_pie_totalizer != null) return prev;
+            return {
+                ...prev,
+                power_revamping_totalizer: prev.power_revamping_totalizer ?? 0,
+                power_pie_totalizer: prev.power_pie_totalizer ?? 0,
+            };
+        });
+    }, [powerDist.power_revamping_totalizer, powerDist.power_pie_totalizer]);
+
     // Inherit status boiler & feeder dari shift sebelumnya (walkback hingga 15 shift)
     // Gunakan primitive values sebagai dep agar effect selalu fire saat data berubah
     const _sf = latestBoilerStatus.statusFeeders;

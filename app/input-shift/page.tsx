@@ -10,7 +10,7 @@ import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
-import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory, useBoilerShutdownHistory } from '@/hooks/useShiftReport';
+import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory, useBoilerShutdownHistory, useLatestBoilerStatus } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
@@ -149,6 +149,7 @@ export default function InputShiftPage() {
     const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift]);
+    const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift]);
     const { operator, operators } = useOperator();
 
     // Auto-kalkulasi grup dari pola jadwal shift
@@ -379,28 +380,23 @@ export default function InputShiftPage() {
         }
     }, [report]);
 
-    // Inherit status dari shift sebelumnya untuk shift baru (belum ada laporan tersimpan)
+    // Inherit status boiler & feeder dari shift sebelumnya (walkback hingga 10 shift)
     useEffect(() => {
         if (userModifiedRef.current || report) return;
-        if (prevBoilerA.status_boiler && !boilerA.status_boiler) {
-            setBoilerA(prev => ({ ...prev, status_boiler: prevBoilerA.status_boiler as string }));
-        }
-        if (prevBoilerB.status_boiler && !boilerB.status_boiler) {
-            setBoilerB(prev => ({ ...prev, status_boiler: prevBoilerB.status_boiler as string }));
-        }
-        const feederStatusKeys = ['status_feeder_a','status_feeder_b','status_feeder_c','status_feeder_d','status_feeder_e','status_feeder_f'] as const;
+        const { statusBoilerA, statusBoilerB, statusFeeders } = latestBoilerStatus;
+        if (statusBoilerA && !boilerA.status_boiler)
+            setBoilerA(prev => ({ ...prev, status_boiler: statusBoilerA }));
+        if (statusBoilerB && !boilerB.status_boiler)
+            setBoilerB(prev => ({ ...prev, status_boiler: statusBoilerB }));
         const inherited: Record<string, string> = {};
-        feederStatusKeys.forEach(k => {
-            if (prevCoalBunker[k] && !coalBunker[k]) inherited[k] = prevCoalBunker[k] as string;
+        Object.entries(statusFeeders).forEach(([k, v]) => {
+            if (v && !coalBunker[k]) inherited[k] = v;
         });
-        if (Object.keys(inherited).length > 0) {
+        if (Object.keys(inherited).length > 0)
             setCoalBunker(prev => ({ ...prev, ...inherited }));
-        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [prevBoilerA.status_boiler, prevBoilerB.status_boiler,
-        prevCoalBunker.status_feeder_a, prevCoalBunker.status_feeder_b, prevCoalBunker.status_feeder_c,
-        prevCoalBunker.status_feeder_d, prevCoalBunker.status_feeder_e, prevCoalBunker.status_feeder_f,
-        report]);
+    }, [latestBoilerStatus.statusBoilerA, latestBoilerStatus.statusBoilerB,
+        latestBoilerStatus.statusFeeders, report]);
 
     // Generic change handlers
     const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>

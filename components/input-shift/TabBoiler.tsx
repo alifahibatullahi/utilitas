@@ -200,6 +200,10 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                             <InputField label="O2" unit="%" color="orange" name="o2" value={values.o2} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                             <InputField label="Pressure Drum" unit="MPa" color="orange" name="steam_drum_press" value={values.steam_drum_press} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         </div>
+                        <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
+                            <p className="text-xs font-bold text-white uppercase tracking-wider text-left">Solar Usage</p>
+                            <InputField placeholder="0.00" unit="m³" color="orange" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                        </div>
                     </Card>
 
                     <Card title={`Coal Feeder ${feeders[0]}-${feeders[feeders.length - 1]}`} icon="precision_manufacturing" color="emerald">
@@ -228,10 +232,6 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                                 </div>
                             );
                         })}
-                        <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
-                            <p className="text-xs font-bold text-white uppercase tracking-wider text-left">Solar Usage</p>
-                            <InputField placeholder="0.00" unit="m³" color="emerald" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        </div>
                     </Card>
 
                 </div>

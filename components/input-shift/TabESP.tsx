@@ -70,38 +70,64 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                         {allAshEntries.length > 0 && (
                             <div className="mb-1 flex flex-col gap-2">
                                 {savedAshEntries.map((e) => (
-                                    <div key={`saved-${e.id}`} className="relative flex justify-between items-start px-3 py-2 bg-[#101822] border border-orange-500/30 rounded-lg pr-10">
-                                        <div className="flex flex-col min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-orange-300 bg-orange-500/15 px-1.5 py-0.5 rounded">Silo {e.silo}</span>
-                                                <span className="text-xs font-mono font-bold text-white">{e.ritase} <span className="text-[10px] text-orange-400">Rit</span></span>
+                                    <div key={`saved-${e.id}`} className="flex items-center justify-between px-3 py-2.5 bg-[#101822] border border-orange-500/30 rounded-lg group hover:border-orange-500/50 transition-colors">
+                                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                                            <span className="text-[10px] font-bold text-orange-300 bg-orange-500/15 border border-orange-500/30 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
+                                            <div className="flex flex-col gap-0.5 min-w-0">
+                                                <span className="text-xs font-bold text-slate-200 truncate flex items-center">
+                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Perusahaan</span>
+                                                    <span className="text-slate-600 mr-1.5">·</span>
+                                                    {e.perusahaan}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 truncate flex items-center">
+                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Tujuan</span>
+                                                    <span className="text-slate-600 mr-1.5">·</span>
+                                                    {e.tujuan}
+                                                </span>
                                             </div>
-                                            <span className="text-[10px] text-slate-400 truncate mt-0.5">{e.perusahaan}</span>
-                                            <span className="text-[10px] text-slate-500 truncate">{e.tujuan}</span>
                                         </div>
-                                        {e.id && onDeleteSavedAsh && (
-                                            <button type="button" onClick={() => onDeleteSavedAsh(e.id!)}
-                                                className="absolute right-1.5 top-2 w-7 h-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors">
-                                                <span className="material-symbols-outlined text-[15px]">delete</span>
-                                            </button>
-                                        )}
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <div className="flex items-baseline gap-1 bg-[#0f1721] px-2.5 py-1.5 rounded-lg border border-slate-700/50 shadow-inner">
+                                                <span className="text-white font-black text-lg leading-none">{e.ritase}</span>
+                                                <span className="text-orange-400 text-[9px] font-bold uppercase tracking-widest">Rit</span>
+                                            </div>
+                                            {e.id && onDeleteSavedAsh && (
+                                                <button type="button" onClick={() => onDeleteSavedAsh(e.id!)}
+                                                    className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors border border-transparent hover:border-red-500/20">
+                                                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                                 {ashEntries.filter(e => e.silo && e.perusahaan).map((e, idx) => (
-                                    <div key={`pending-${idx}`} className="relative flex justify-between items-start px-3 py-2 bg-[#101822]/60 border border-amber-500/25 rounded-lg pr-10">
-                                        <div className="flex flex-col min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">Silo {e.silo}</span>
-                                                <span className="text-xs font-mono font-bold text-white">{e.ritase} <span className="text-[10px] text-amber-400">Rit</span></span>
-                                                <span className="text-[9px] text-amber-500">(baru)</span>
+                                    <div key={`pending-${idx}`} className="flex items-center justify-between px-3 py-2.5 bg-[#101822]/60 border border-amber-500/30 rounded-lg border-dashed">
+                                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                                            <span className="text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
+                                            <div className="flex flex-col gap-0.5 min-w-0">
+                                                <span className="text-xs font-bold text-slate-200 truncate flex items-center">
+                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Perusahaan</span>
+                                                    <span className="text-slate-600 mr-1.5">·</span>
+                                                    {e.perusahaan}
+                                                    <span className="text-[9px] text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded ml-1.5">(baru)</span>
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 truncate flex items-center">
+                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Tujuan</span>
+                                                    <span className="text-slate-600 mr-1.5">·</span>
+                                                    {e.tujuan}
+                                                </span>
                                             </div>
-                                            <span className="text-[10px] text-slate-400 truncate mt-0.5">{e.perusahaan}</span>
-                                            <span className="text-[10px] text-slate-500 truncate">{e.tujuan}</span>
                                         </div>
-                                        <button type="button" onClick={() => removeEntry(idx)}
-                                            className="absolute right-1.5 top-2 w-7 h-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors">
-                                            <span className="material-symbols-outlined text-[15px]">delete</span>
-                                        </button>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <div className="flex items-baseline gap-1 bg-[#0f1721] px-2.5 py-1.5 rounded-lg border border-slate-700/50 shadow-inner">
+                                                <span className="text-white font-black text-lg leading-none">{e.ritase}</span>
+                                                <span className="text-amber-400 text-[9px] font-bold uppercase tracking-widest">Rit</span>
+                                            </div>
+                                            <button type="button" onClick={() => removeEntry(idx)}
+                                                className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors border border-transparent hover:border-red-500/20">
+                                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                                 <div className="h-px bg-slate-700/40 mt-1 mb-2" />

@@ -271,21 +271,38 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report, prevReport]);
 
-    // Inherit status boiler dari laporan harian sebelumnya apabila laporan hari ini belum ada
+    // Inherit status boiler dari laporan harian terbaru (walkback hingga 10 hari)
     useEffect(() => {
         if (report) return;
-        const prevTurb = prevReport?.daily_report_turbine_misc?.[0] as Record<string, unknown> | undefined;
-        if (!prevTurb) return;
-        const statusA = prevTurb.status_boiler_a as string | null | undefined;
-        const statusB = prevTurb.status_boiler_b as string | null | undefined;
-        setTurbineMisc(prev => {
-            const next = { ...prev };
-            if (statusA && !prev.status_boiler_a) next.status_boiler_a = statusA;
-            if (statusB && !prev.status_boiler_b) next.status_boiler_b = statusB;
-            return next;
-        });
+        const supabase = createClient();
+        let stale = false;
+        supabase
+            .from('daily_reports')
+            .select('date, daily_report_turbine_misc(status_boiler_a, status_boiler_b)')
+            .lt('date', date)
+            .order('date', { ascending: false })
+            .limit(10)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .then(({ data }) => {
+                if (stale || !data) return;
+                let foundA: string | null = null, foundB: string | null = null;
+                for (const r of data as any[]) {
+                    const tm = Array.isArray(r.daily_report_turbine_misc) ? r.daily_report_turbine_misc[0] : r.daily_report_turbine_misc;
+                    if (!tm) continue;
+                    if (!foundA && tm.status_boiler_a) foundA = tm.status_boiler_a;
+                    if (!foundB && tm.status_boiler_b) foundB = tm.status_boiler_b;
+                    if (foundA && foundB) break;
+                }
+                setTurbineMisc(prev => {
+                    const next = { ...prev };
+                    if (foundA && !prev.status_boiler_a) next.status_boiler_a = foundA;
+                    if (foundB && !prev.status_boiler_b) next.status_boiler_b = foundB;
+                    return next;
+                });
+            });
+        return () => { stale = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [prevReport, report]);
+    }, [date, report]);
 
     // ─── Previous report data for selisih calculations ───
     const prevSteam = prevReport?.daily_report_steam?.[0]

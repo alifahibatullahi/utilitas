@@ -40,10 +40,13 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                     </Card>
 
                     <Card title="Pabrik 2" icon="factory" color="cyan">
-                        <InputField label="Flow Steam" unit="t/h" color="cyan" name="pabrik2_flow" value={values.pabrik2_flow} onChange={onFieldChange} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Flow Steam" unit="t/h" color="cyan" name="pabrik2_flow" value={values.pabrik2_flow} onChange={onFieldChange} placeholder="0" />
+                            <InputField label="Pressure LPS" unit="MPa" color="cyan" name="press_lps" value={values.press_lps} onChange={onFieldChange} />
+                        </div>
                         <InputField label="Temperatur" unit="°C" color="cyan" name="pabrik2_temp" value={values.pabrik2_temp} onChange={onFieldChange} />
                         <div>
-                            <InputField label="Totaliser" unit="ton" color="cyan" name="pabrik2_totalizer" value={values.pabrik2_totalizer} onChange={onFieldChange} placeholder={prevP2 > 0 ? String(prevP2) : '0.0'} />
+                            <InputField label="Totaliser" unit="ton" color="cyan" name="pabrik2_totalizer" value={values.pabrik2_totalizer} onChange={onFieldChange} placeholder={prevP2 > 0 ? String(prevP2) : '0'} />
                             <SelisihInfo prev={prevP2} current={currentP2} />
                         </div>
                     </Card>

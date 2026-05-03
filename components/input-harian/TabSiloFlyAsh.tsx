@@ -86,14 +86,16 @@ export default function TabSiloFlyAsh({
                                             </span>
                                             <div className="flex flex-col gap-0.5">
                                                 {item.perusahaan && (
-                                                    <p className="text-sm font-bold text-slate-200 truncate flex items-center gap-1.5">
-                                                        <span className="material-symbols-outlined text-[14px] text-slate-500">domain</span>
+                                                    <p className="text-sm font-bold text-slate-200 truncate flex items-center">
+                                                        <span className="text-[10px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Perusahaan</span>
+                                                        <span className="text-slate-600 mr-1.5">·</span>
                                                         {item.perusahaan}
                                                     </p>
                                                 )}
                                                 {item.tujuan && (
-                                                    <p className="text-xs text-slate-400 truncate flex items-center gap-1.5">
-                                                        <span className="material-symbols-outlined text-[14px] text-slate-500">local_shipping</span>
+                                                    <p className="text-xs text-slate-400 truncate flex items-center">
+                                                        <span className="text-[10px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Tujuan</span>
+                                                        <span className="text-slate-600 mr-1.5">·</span>
                                                         {item.tujuan}
                                                     </p>
                                                 )}

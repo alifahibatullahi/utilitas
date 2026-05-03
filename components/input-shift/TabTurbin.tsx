@@ -65,11 +65,6 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                             <InputField label="Pressure Deaerator" unit="MPa" color="emerald" name="press_deaerator" value={values.press_deaerator} onChange={onFieldChange} />
                             <InputField label="Temp Deaerator" unit="°C" color="emerald" name="temp_deaerator" value={values.temp_deaerator} onChange={onFieldChange} />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Pressure LPS" unit="MPa" color="emerald" name="press_lps" value={values.press_lps} onChange={onFieldChange} />
-                            <div></div>
-                        </div>
-
                         <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-700/50">
                             <InputField label="Temp CW In" unit="°C" color="emerald" name="temp_cw_in" value={values.temp_cw_in} onChange={onFieldChange} />
                             <InputField label="Temp CW Out" unit="°C" color="emerald" name="temp_cw_out" value={values.temp_cw_out} onChange={onFieldChange} />

@@ -65,7 +65,17 @@ export default function InputShiftPage() {
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    const [selectedDate, setSelectedDate] = useState(todayWIB);
+    const [selectedDate, setSelectedDate] = useState<string>(() => {
+        const wib = nowWIB();
+        const h = wib.getHours();
+        // Shift malam 23:00–07:00 → laporan dibuat pukul 06.00, tanggal = kemarin (shift mulai)
+        if (h >= 6 && h < 14) {
+            const yesterday = new Date(wib.getTime());
+            yesterday.setDate(yesterday.getDate() - 1);
+            return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+        }
+        return todayWIB();
+    });
     const [mounted, setMounted] = useState(false);
     
     // Header specific states — persist to localStorage

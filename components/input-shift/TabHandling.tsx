@@ -147,21 +147,22 @@ export default function TabHandling({
                         <InputField label="Total Loading" unit="shovel" color="orange" name="loading" value={espValues.loading} onChange={onEspChange} />
                         <div className="space-y-1.5 w-full">
                             <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Hopper Aktif</label>
-                            <select className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 text-sm font-mono transition-all ${!espValues.hopper ? 'text-slate-400' : 'text-white'}`}
+                            <select className={`w-full bg-[#101822] border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 text-sm font-bold transition-all ${!espValues.hopper ? 'text-slate-400' : 'text-white'}`}
                                 value={(espValues.hopper as string) || ''} onChange={e => onEspChange?.('hopper', e.target.value || null)}>
-                                <option value="" className="text-slate-400">Pilih...</option>
-                                <option value="A">Hopper A</option>
-                                <option value="B">Hopper B</option>
+                                <option value="" className="text-slate-400 bg-[#101822]">Pilih...</option>
+                                <option value="A" className="text-white bg-[#101822] font-bold">Hopper A</option>
+                                <option value="B" className="text-white bg-[#101822] font-bold">Hopper B</option>
+                                <option value="AB" className="text-white bg-[#101822] font-bold">Hopper AB</option>
                             </select>
                         </div>
                         <div className="space-y-1.5 w-full">
                             <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Conveyor Status</label>
-                            <select className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 text-sm font-mono transition-all ${!espValues.conveyor ? 'text-slate-400' : 'text-white'}`}
+                            <select className={`w-full bg-[#101822] border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 text-sm font-bold transition-all ${!espValues.conveyor ? 'text-slate-400' : 'text-white'}`}
                                 value={(espValues.conveyor as string) || ''} onChange={e => onEspChange?.('conveyor', e.target.value || null)}>
-                                <option value="" className="text-slate-400">Pilih...</option>
-                                <option value="AB">Conveyor AB (1&amp;2)</option>
-                                <option value="A">Conveyor A (1)</option>
-                                <option value="B">Conveyor B (2)</option>
+                                <option value="" className="text-slate-400 bg-[#101822]">Pilih...</option>
+                                <option value="AB" className="text-white bg-[#101822] font-bold">Conveyor AB</option>
+                                <option value="A" className="text-white bg-[#101822] font-bold">Conveyor A</option>
+                                <option value="B" className="text-white bg-[#101822] font-bold">Conveyor B</option>
                             </select>
                         </div>
                     </Card>

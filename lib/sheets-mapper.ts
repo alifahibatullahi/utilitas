@@ -93,7 +93,7 @@ const TOTAL_COLS = 143;
 type CellValue = string | number | null;
 
 function n(v: number | null | undefined): CellValue {
-    return v ?? null;
+    return (v == null || v === 0) ? null : v;
 }
 
 function s(v: string | null | undefined): CellValue {

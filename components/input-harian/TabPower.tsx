@@ -52,14 +52,16 @@ export default function TabPower({
                                     const mwName  = `power_${key}`;
                                     const totName = `power_${key}_totalizer`;
                                     const prevTot = Number(prevPD?.[totName]) || 0;
-                                    const curTot  = Number(pv[totName]) || 0;
+                                    const defaultZero = key === 'revamping' || key === 'pie';
+                                    const totValue = defaultZero ? (pv[totName] ?? 0) : pv[totName];
+                                    const curTot  = Number(totValue) || 0;
 
                                     return (
                                         <div key={key} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <div>
-                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} thousands />
+                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} thousands />
                                                     <SelisihInfo prev={prevTot} current={curTot} />
                                                 </div>
                                                 <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />

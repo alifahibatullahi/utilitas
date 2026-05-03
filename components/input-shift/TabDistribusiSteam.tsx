@@ -31,32 +31,36 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                 <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
 
                     <Card title="Pabrik 1" icon="factory" color="blue">
-                        <InputField label="Flow Steam" unit="t/h" color="blue" name="pabrik1_flow" value={values.pabrik1_flow} onChange={onFieldChange} />
-                        <InputField label="Temperatur" unit="°C" color="blue" name="pabrik1_temp" value={values.pabrik1_temp} onChange={onFieldChange} />
-                        <div>
-                            <InputField label="Totaliser" unit="ton" color="blue" name="pabrik1_totalizer" value={values.pabrik1_totalizer} onChange={onFieldChange} placeholder={prevP1 > 0 ? String(prevP1) : '0.0'} />
-                            <SelisihInfo prev={prevP1} current={currentP1} />
+                        <div className="grid grid-cols-2 gap-4">
+                            <InputField label="Flow Steam" unit="t/h" color="blue" name="pabrik1_flow" value={values.pabrik1_flow} onChange={onFieldChange} />
+                            <InputField label="Temperatur" unit="°C" color="blue" name="pabrik1_temp" value={values.pabrik1_temp} onChange={onFieldChange} />
+                            <div className="col-span-2">
+                                <InputField label="Totaliser" unit="ton" color="blue" name="pabrik1_totalizer" value={values.pabrik1_totalizer} onChange={onFieldChange} placeholder={prevP1 > 0 ? String(prevP1) : '0.0'} />
+                                <SelisihInfo prev={prevP1} current={currentP1} />
+                            </div>
                         </div>
                     </Card>
 
                     <Card title="Pabrik 2" icon="factory" color="cyan">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-4">
                             <InputField label="Flow Steam" unit="t/h" color="cyan" name="pabrik2_flow" value={values.pabrik2_flow ?? 0} onChange={onFieldChange} />
                             <InputField label="Pressure LPS" unit="MPa" color="cyan" name="press_lps" value={values.press_lps} onChange={onFieldChange} />
-                        </div>
-                        <InputField label="Temperatur" unit="°C" color="cyan" name="pabrik2_temp" value={values.pabrik2_temp} onChange={onFieldChange} />
-                        <div>
-                            <InputField label="Totaliser" unit="ton" color="cyan" name="pabrik2_totalizer" value={values.pabrik2_totalizer ?? 0} onChange={onFieldChange} placeholder={prevP2 > 0 ? String(prevP2) : '0'} />
-                            <SelisihInfo prev={prevP2} current={currentP2} />
+                            <InputField label="Temperatur" unit="°C" color="cyan" name="pabrik2_temp" value={values.pabrik2_temp} onChange={onFieldChange} />
+                            <div>
+                                <InputField label="Totaliser" unit="ton" color="cyan" name="pabrik2_totalizer" value={values.pabrik2_totalizer ?? 0} onChange={onFieldChange} placeholder={prevP2 > 0 ? String(prevP2) : '0'} />
+                                <SelisihInfo prev={prevP2} current={currentP2} />
+                            </div>
                         </div>
                     </Card>
 
                     <Card title="Pabrik 3" icon="factory" color="emerald">
-                        <InputField label="Flow Steam" unit="t/h" color="emerald" name="pabrik3a_flow" value={values.pabrik3a_flow} onChange={onFieldChange} />
-                        <InputField label="Temperatur" unit="°C" color="emerald" name="pabrik3a_temp" value={values.pabrik3a_temp} onChange={onFieldChange} />
-                        <div>
-                            <InputField label="Totaliser" unit="ton" color="emerald" name="pabrik3a_totalizer" value={values.pabrik3a_totalizer} onChange={onFieldChange} placeholder={prevP3 > 0 ? String(prevP3) : '0.0'} />
-                            <SelisihInfo prev={prevP3} current={currentP3} />
+                        <div className="grid grid-cols-2 gap-4">
+                            <InputField label="Flow Steam" unit="t/h" color="emerald" name="pabrik3a_flow" value={values.pabrik3a_flow} onChange={onFieldChange} />
+                            <InputField label="Temperatur" unit="°C" color="emerald" name="pabrik3a_temp" value={values.pabrik3a_temp} onChange={onFieldChange} />
+                            <div className="col-span-2">
+                                <InputField label="Totaliser" unit="ton" color="emerald" name="pabrik3a_totalizer" value={values.pabrik3a_totalizer} onChange={onFieldChange} placeholder={prevP3 > 0 ? String(prevP3) : '0.0'} />
+                                <SelisihInfo prev={prevP3} current={currentP3} />
+                            </div>
                         </div>
                     </Card>
 

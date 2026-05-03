@@ -380,23 +380,29 @@ export default function InputShiftPage() {
         }
     }, [report]);
 
-    // Inherit status boiler & feeder dari shift sebelumnya (walkback hingga 10 shift)
+    // Inherit status boiler & feeder dari shift sebelumnya (walkback hingga 15 shift)
+    // Gunakan primitive values sebagai dep agar effect selalu fire saat data berubah
+    const _sf = latestBoilerStatus.statusFeeders;
     useEffect(() => {
         if (userModifiedRef.current || report) return;
-        const { statusBoilerA, statusBoilerB, statusFeeders } = latestBoilerStatus;
+        const { statusBoilerA, statusBoilerB } = latestBoilerStatus;
         if (statusBoilerA && !boilerA.status_boiler)
             setBoilerA(prev => ({ ...prev, status_boiler: statusBoilerA }));
         if (statusBoilerB && !boilerB.status_boiler)
             setBoilerB(prev => ({ ...prev, status_boiler: statusBoilerB }));
         const inherited: Record<string, string> = {};
-        Object.entries(statusFeeders).forEach(([k, v]) => {
-            if (v && !coalBunker[k]) inherited[k] = v;
+        Object.entries(latestBoilerStatus.statusFeeders).forEach(([k, v]) => {
+            if (v && !coalBunker[k]) inherited[k] = v as string;
         });
         if (Object.keys(inherited).length > 0)
             setCoalBunker(prev => ({ ...prev, ...inherited }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [latestBoilerStatus.statusBoilerA, latestBoilerStatus.statusBoilerB,
-        latestBoilerStatus.statusFeeders, report]);
+    }, [
+        latestBoilerStatus.statusBoilerA, latestBoilerStatus.statusBoilerB,
+        _sf.status_feeder_a, _sf.status_feeder_b, _sf.status_feeder_c,
+        _sf.status_feeder_d, _sf.status_feeder_e, _sf.status_feeder_f,
+        report,
+    ]);
 
     // Generic change handlers
     const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>

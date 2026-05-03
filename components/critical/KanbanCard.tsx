@@ -55,8 +55,8 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             {...(overlay ? {} : attributes)}
             {...(overlay ? {} : listeners)}
             className={`bg-white rounded-xl border border-gray-200 border-l-4 ${scopeAccent[item.scope] ?? 'border-l-gray-300'}
-                shadow-sm hover:shadow-md transition-shadow p-3 cursor-grab active:cursor-grabbing
-                ${overlay ? 'shadow-xl rotate-2 scale-105' : ''}`}
+                shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 p-3 cursor-grab active:cursor-grabbing active:scale-[0.97] active:shadow-inner active:translate-y-0
+                ${overlay ? 'shadow-2xl rotate-3 scale-[1.03] ring-4 ring-emerald-400/50 opacity-95 z-50' : ''}`}
         >
             {/* Header: Item name + critical deskripsi + status */}
             <div className="flex items-start justify-between gap-2 mb-1">
@@ -79,8 +79,8 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             </p>
 
             {/* Badges row */}
-            <div className="flex items-center gap-1.5 flex-wrap mb-3">
-                <ScopeBadge scope={item.scope} light />
+            <div className="flex items-center gap-2 flex-wrap mb-3 mt-1">
+                <ScopeBadge scope={item.scope} light className="!text-lg !px-3 !py-1 uppercase font-black tracking-widest border-2 shadow-sm" />
                 {item.tipe === 'preventif' ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-700">
                         Preventif

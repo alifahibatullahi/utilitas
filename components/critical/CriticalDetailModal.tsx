@@ -194,8 +194,8 @@ export default function CriticalDetailModal({
                                             onDragEnter={() => handleDragEnter(idx)}
                                             onDragEnd={handleDragEnd}
                                             onDragOver={(e) => e.preventDefault()}
-                                            className={`group relative bg-white p-4 rounded-2xl border-2 transition-all cursor-grab active:cursor-grabbing ${
-                                                draggedIdx === idx ? 'border-emerald-400 shadow-xl scale-[1.02] z-10 opacity-90' : 'border-black shadow-sm hover:border-slate-800 hover:shadow-md'
+                                            className={`group relative bg-white p-4 rounded-2xl border-2 transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98] active:shadow-inner active:translate-y-0 ${
+                                                draggedIdx === idx ? 'border-emerald-400 shadow-2xl scale-[1.03] rotate-1 z-10 opacity-95 ring-4 ring-emerald-400/30' : 'border-slate-300 shadow-sm hover:border-slate-400 hover:shadow-lg hover:-translate-y-1'
                                             }`}
                                         >
                                             <div className="flex items-center gap-4">

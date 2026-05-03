@@ -271,35 +271,64 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report, prevReport]);
 
-    // Inherit status boiler dari laporan harian terbaru (walkback hingga 10 hari)
+    // Inherit status boiler dari shift reports hari ini atau daily reports sebelumnya
     useEffect(() => {
         if (report) return;
         const supabase = createClient();
         let stale = false;
-        supabase
-            .from('daily_reports')
-            .select('date, daily_report_turbine_misc(status_boiler_a, status_boiler_b)')
-            .lt('date', date)
-            .order('date', { ascending: false })
-            .limit(10)
+
+        async function fetchStatus() {
+            let foundA: string | null = null, foundB: string | null = null;
+
+            // 1. Cari dari shift reports hari ini (sore → pagi → malam)
+            const { data: shiftData } = await supabase
+                .from('shift_reports')
+                .select('shift, shift_boiler(boiler, status_boiler)')
+                .eq('date', date)
+                .order('shift', { ascending: false });
+
+            const shiftOrder: Record<string, number> = { sore: 2, pagi: 1, malam: 0 };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .then(({ data }) => {
-                if (stale || !data) return;
-                let foundA: string | null = null, foundB: string | null = null;
-                for (const r of data as any[]) {
+            const shifts = ((shiftData ?? []) as any[]).sort((a, b) =>
+                (shiftOrder[b.shift] || 0) - (shiftOrder[a.shift] || 0)
+            );
+            for (const r of shifts) {
+                const boilers = Array.isArray(r.shift_boiler) ? r.shift_boiler : [];
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (!foundA) { const a = boilers.find((b: any) => b.boiler === 'A'); if (a?.status_boiler) foundA = a.status_boiler; }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (!foundB) { const b = boilers.find((b: any) => b.boiler === 'B'); if (b?.status_boiler) foundB = b.status_boiler; }
+                if (foundA && foundB) break;
+            }
+
+            // 2. Fallback: cari dari daily_reports hari sebelumnya
+            if (!foundA || !foundB) {
+                const { data: dailyData } = await supabase
+                    .from('daily_reports')
+                    .select('daily_report_turbine_misc(status_boiler_a, status_boiler_b)')
+                    .lt('date', date)
+                    .order('date', { ascending: false })
+                    .limit(10);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                for (const r of (dailyData ?? []) as any[]) {
                     const tm = Array.isArray(r.daily_report_turbine_misc) ? r.daily_report_turbine_misc[0] : r.daily_report_turbine_misc;
                     if (!tm) continue;
                     if (!foundA && tm.status_boiler_a) foundA = tm.status_boiler_a;
                     if (!foundB && tm.status_boiler_b) foundB = tm.status_boiler_b;
                     if (foundA && foundB) break;
                 }
-                setTurbineMisc(prev => {
-                    const next = { ...prev };
-                    if (foundA && !prev.status_boiler_a) next.status_boiler_a = foundA;
-                    if (foundB && !prev.status_boiler_b) next.status_boiler_b = foundB;
-                    return next;
-                });
+            }
+
+            if (stale) return;
+            setTurbineMisc(prev => {
+                const next = { ...prev };
+                if (foundA && !prev.status_boiler_a) next.status_boiler_a = foundA;
+                if (foundB && !prev.status_boiler_b) next.status_boiler_b = foundB;
+                return next;
             });
+        }
+
+        fetchStatus();
         return () => { stale = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [date, report]);

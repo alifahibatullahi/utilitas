@@ -140,10 +140,10 @@ function CriticalRow({
                 <td className="px-2 py-2 text-center">
                     <button
                         onClick={() => toggleStar(critical.id)}
-                        className={`p-0.5 rounded transition-colors ${starred ? 'text-amber-400 hover:text-amber-500' : 'text-gray-200 hover:text-amber-300'}`}
+                        className={`p-1 rounded transition-all hover:scale-110 active:scale-95 ${starred ? 'text-amber-400 hover:text-amber-500 drop-shadow-sm' : 'text-gray-200 hover:text-amber-300'}`}
                         title={starred ? 'Hapus starred' : 'Tambah starred'}
                     >
-                        <span className="material-symbols-outlined" style={{ fontSize: 15, fontVariationSettings: starred ? "'FILL' 1" : "'FILL' 0" }}>star</span>
+                        <span className="material-symbols-outlined block" style={{ fontSize: 26, fontVariationSettings: starred ? "'FILL' 1" : "'FILL' 0" }}>star</span>
                     </button>
                 </td>
                 {/* Tanggal */}
@@ -521,9 +521,9 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
             {starredItems.length > 0 && (
                 <div>
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="material-symbols-outlined text-amber-400" style={{ fontSize: 14, fontVariationSettings: "'FILL' 1" }}>star</span>
-                        <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest">Starred</span>
-                        <span className="text-[10px] font-bold text-gray-400">({starredItems.length})</span>
+                        <span className="material-symbols-outlined text-amber-400 drop-shadow-sm" style={{ fontSize: 22, fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest mt-0.5">Starred</span>
+                        <span className="text-[10px] font-bold text-gray-400 mt-0.5">({starredItems.length})</span>
                     </div>
                     <div className="bg-amber-50/70 border border-amber-200 rounded-xl overflow-hidden shadow-sm">
                         <div className="overflow-x-auto light-scrollbar">

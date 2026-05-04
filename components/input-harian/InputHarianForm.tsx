@@ -686,52 +686,54 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         })()}
                     </div>
 
-                    {/* Loading */}
-                    {loading && (
-                        <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-4 bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl">
-                            <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                            Memuat data harian...
+                    {/* Loading Overlay — tampil saat data sedang di-fetch dari Supabase */}
+                    {loading ? (
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl">
+                            <div className="w-12 h-12 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin shadow-[0_0_12px_rgba(16,185,129,0.3)]"></div>
+                            <div className="text-center">
+                                <h3 className="text-white font-bold text-base mb-1">Memuat data dari Supabase</h3>
+                                <p className="text-slate-400 text-sm">Mengambil data laporan harian...</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className={`pb-6${activeTab === 'Power' ? ' flex flex-row gap-4 items-start' : ''}`}>
+                            {(() => {
+                                const tabProps: DailyTabProps = {
+                                    steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,
+                                    prevSteam, prevPower, prevCoal, prevTurbineMisc, prevTotalizer: prevTotalizerData, prevStockTank, prevCoalTransfer,
+                                    onSteamChange: makeNumberHandler(setSteam),
+                                    onPowerChange: makeNumberHandler(setPower),
+                                    onCoalChange: makeNumberHandler(setCoal),
+                                    onTurbineMiscChange: makeMixedHandler(setTurbineMisc),
+                                    onStockTankChange: makeNumberHandler(setStockTank),
+                                    onCoalTransferChange: makeNumberHandler(setCoalTransfer),
+                                    onTotalizerChange: makeMixedHandler(setTotalizer),
+                                    crA, crB,
+                                    solarUnloadings,
+                                    solarUsages,
+                                    onDeleteSolarUnloading: handleDeleteSolarUnloading,
+                                    onDeleteSolarUsage: handleDeleteSolarUsage,
+                                    onEditSolarUnloading: handleEditSolarUnloading,
+                                    onEditSolarUsage: handleEditSolarUsage,
+                                    ashUnloadings,
+                                    onDeleteAshUnloading: handleDeleteAshUnloading,
+                                    onEditAshUnloading: handleEditAshUnloading,
+                                };
+                                return (
+                                    <>
+                                        {activeTab === 'Boiler' && <TabBoiler {...tabProps} />}
+                                        {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
+                                        {activeTab === 'Power' && <TabPower {...tabProps} />}
+                                        {activeTab === 'PIU' && <TabPIU {...tabProps} />}
+                                        {activeTab === 'Handling' && <TabHandling {...tabProps} />}
+                                        {activeTab === 'Chemical' && <TabChemical date={date} />}
+                                        {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}
+                                        {activeTab === 'Silo & Fly Ash' && <TabSiloFlyAsh {...tabProps} />}
+                                    </>
+                                );
+                            })()}
                         </div>
                     )}
-
-                    {/* Tab Content */}
-                    <div className={`pb-6${activeTab === 'Power' ? ' flex flex-row gap-4 items-start' : ''}`}>
-                        {(() => {
-                            const tabProps: DailyTabProps = {
-                                steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,
-                                prevSteam, prevPower, prevCoal, prevTurbineMisc, prevTotalizer: prevTotalizerData, prevStockTank, prevCoalTransfer,
-                                onSteamChange: makeNumberHandler(setSteam),
-                                onPowerChange: makeNumberHandler(setPower),
-                                onCoalChange: makeNumberHandler(setCoal),
-                                onTurbineMiscChange: makeMixedHandler(setTurbineMisc),
-                                onStockTankChange: makeNumberHandler(setStockTank),
-                                onCoalTransferChange: makeNumberHandler(setCoalTransfer),
-                                onTotalizerChange: makeMixedHandler(setTotalizer),
-                                crA, crB,
-                                solarUnloadings,
-                                solarUsages,
-                                onDeleteSolarUnloading: handleDeleteSolarUnloading,
-                                onDeleteSolarUsage: handleDeleteSolarUsage,
-                                onEditSolarUnloading: handleEditSolarUnloading,
-                                onEditSolarUsage: handleEditSolarUsage,
-                                ashUnloadings,
-                                onDeleteAshUnloading: handleDeleteAshUnloading,
-                                onEditAshUnloading: handleEditAshUnloading,
-                            };
-                            return (
-                                <>
-                                    {activeTab === 'Boiler' && <TabBoiler {...tabProps} />}
-                                    {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
-                                    {activeTab === 'Power' && <TabPower {...tabProps} />}
-                                    {activeTab === 'PIU' && <TabPIU {...tabProps} />}
-                                    {activeTab === 'Handling' && <TabHandling {...tabProps} />}
-                                    {activeTab === 'Chemical' && <TabChemical date={date} />}
-                                    {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}
-                                    {activeTab === 'Silo & Fly Ash' && <TabSiloFlyAsh {...tabProps} />}
-                                </>
-                            );
-                        })()}
-                    </div>
                 </div>
             </div>
         </>

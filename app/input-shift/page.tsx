@@ -480,6 +480,11 @@ export default function InputShiftPage() {
         }, 400);
         try {
             // Hitung selisih totalizer feeder (current - prev) sebagai konsumsi batubara shift ini
+            const calcSelisih = (cur: number | string | null | undefined, prev: number | string | null | undefined) => {
+                const c = Number(cur) || 0;
+                const p = Number(prev) || 0;
+                return p > 0 ? c - p : null;
+            };
             const selisih = (key: string) => {
                 const cur = Number(coalBunker[key]) || 0;
                 const prev = Number(prevCoalBunker[key]) || 0;
@@ -487,6 +492,45 @@ export default function InputShiftPage() {
             };
             const batubaraA = selisih('feeder_a') + selisih('feeder_b') + selisih('feeder_c');
             const batubaraB = selisih('feeder_d') + selisih('feeder_e') + selisih('feeder_f');
+
+            // Selisih totalizer boiler
+            const selisihSteamA = calcSelisih(boilerA.totalizer_steam, prevBoilerA.totalizer_steam);
+            const selisihBfwA = calcSelisih(boilerA.totalizer_bfw, prevBoilerA.totalizer_bfw);
+            const selisihSteamB = calcSelisih(boilerB.totalizer_steam, prevBoilerB.totalizer_steam);
+            const selisihBfwB = calcSelisih(boilerB.totalizer_bfw, prevBoilerB.totalizer_bfw);
+
+            // Selisih totalizer turbin
+            const selisihTurbin = {
+                selisih_steam_inlet: calcSelisih(turbin.totalizer_steam_inlet, prevTurbin.totalizer_steam_inlet),
+                selisih_condensate: calcSelisih(turbin.totalizer_condensate, prevTurbin.totalizer_condensate),
+            };
+
+            // Selisih totalizer steam dist
+            const selisihSteamDist = {
+                selisih_pabrik1: calcSelisih(steamDist.pabrik1_totalizer, prevSteamDist.pabrik1_totalizer),
+                selisih_pabrik2: calcSelisih(steamDist.pabrik2_totalizer, prevSteamDist.pabrik2_totalizer),
+                selisih_pabrik3a: calcSelisih(steamDist.pabrik3a_totalizer, prevSteamDist.pabrik3a_totalizer),
+            };
+
+            // Selisih totalizer power dist
+            const selisihPowerDist = {
+                selisih_ubb: calcSelisih(powerDist.power_ubb_totalizer, prevPowerDist.power_ubb_totalizer),
+                selisih_pabrik2: calcSelisih(powerDist.power_pabrik2_totalizer, prevPowerDist.power_pabrik2_totalizer),
+                selisih_pabrik3a: calcSelisih(powerDist.power_pabrik3a_totalizer, prevPowerDist.power_pabrik3a_totalizer),
+                selisih_revamping: calcSelisih(powerDist.power_revamping_totalizer, prevPowerDist.power_revamping_totalizer),
+                selisih_pie: calcSelisih(powerDist.power_pie_totalizer, prevPowerDist.power_pie_totalizer),
+                selisih_stg_ubb: calcSelisih(powerDist.power_stg_ubb_totalizer, prevPowerDist.power_stg_ubb_totalizer),
+            };
+
+            // Selisih totalizer feeder
+            const selisihCoalBunker = {
+                selisih_feeder_a: calcSelisih(coalBunker.feeder_a, prevCoalBunker.feeder_a),
+                selisih_feeder_b: calcSelisih(coalBunker.feeder_b, prevCoalBunker.feeder_b),
+                selisih_feeder_c: calcSelisih(coalBunker.feeder_c, prevCoalBunker.feeder_c),
+                selisih_feeder_d: calcSelisih(coalBunker.feeder_d, prevCoalBunker.feeder_d),
+                selisih_feeder_e: calcSelisih(coalBunker.feeder_e, prevCoalBunker.feeder_e),
+                selisih_feeder_f: calcSelisih(coalBunker.feeder_f, prevCoalBunker.feeder_f),
+            };
 
             // Total rit unloading fly ash per silo (saved + pending)
             const allAsh = [
@@ -509,12 +553,12 @@ export default function InputShiftPage() {
                 group_name: currentGroup || operator?.group || 'A',
                 supervisor: supervisor || operator?.name || 'Operator',
                 created_by: operator?.supabaseId || '',
-                boilerA: { ...finalBoilerA, batubara_ton: batubaraA },
-                boilerB: { ...finalBoilerB, batubara_ton: batubaraB },
-                turbin,
-                steamDist,
+                boilerA: { ...finalBoilerA, batubara_ton: batubaraA, selisih_steam: selisihSteamA, selisih_bfw: selisihBfwA },
+                boilerB: { ...finalBoilerB, batubara_ton: batubaraB, selisih_steam: selisihSteamB, selisih_bfw: selisihBfwB },
+                turbin: { ...turbin, ...selisihTurbin },
+                steamDist: { ...steamDist, ...selisihSteamDist },
                 generatorGi,
-                powerDist,
+                powerDist: { ...powerDist, ...selisihPowerDist },
                 espHandling: { hopper: 'A', conveyor: 'AB', ...espHandling, unloading_a: totalRitA, unloading_b: totalRitB },
                 tankyard,
                 personnel: {
@@ -525,7 +569,7 @@ export default function InputShiftPage() {
                     boiler_karu: foremanBoiler || null,
                     boiler_kasi: supervisor || null,
                 },
-                coalBunker,
+                coalBunker: { ...coalBunker, ...selisihCoalBunker },
                 waterQuality: { ...waterQuality, ...chemicalDosing },
                 prevBoilerA: { totalizer_steam: (prevBoilerA.totalizer_steam as number | null) ?? null },
                 prevBoilerB: { totalizer_steam: (prevBoilerB.totalizer_steam as number | null) ?? null },
@@ -634,7 +678,7 @@ export default function InputShiftPage() {
                     return hasVal(boilerB, ['totalizer_steam', 'totalizer_bfw']) && hasVal(coalBunker, ['feeder_d', 'feeder_e', 'feeder_f']);
                 return hasVal(boilerB, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam', 'bfw_press', 'temp_bfw', 'flow_bfw', 'totalizer_bfw', 'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas', 'primary_air', 'secondary_air', 'o2', 'steam_drum_press']) && hasVal(coalBunker, ['feeder_d', 'feeder_e', 'feeder_f']);
             case 'Turbin': return hasVal(turbin, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam_inlet', 'flow_cond', 'exh_steam', 'vacuum', 'level_condenser', 'hpo_durasi', 'totalizer_condensate', 'thrust_bearing', 'metal_bearing', 'vibrasi', 'winding', 'axial_displacement', 'press_deaerator', 'temp_deaerator', 'temp_cw_in', 'temp_cw_out']);
-            case 'Generator': return hasVal(generatorGi, ['gen_load', 'gen_ampere', 'gen_tegangan', 'gen_amp_react', 'gen_frequensi', 'gen_cos_phi', 'gi_sum_p', 'gi_sum_q', 'gi_cos_phi']) && hasVal(powerDist, ['power_ubb_totalizer', 'power_pabrik2_totalizer', 'power_pabrik3a_totalizer', 'power_revamping_totalizer', 'power_pie_totalizer']);
+            case 'Generator': return hasVal(generatorGi, ['gen_load', 'gen_ampere', 'gen_tegangan', 'gen_amp_react', 'gen_frequensi', 'gen_cos_phi', 'gi_sum_p', 'gi_sum_q', 'gi_cos_phi']) && hasVal(powerDist, ['power_ubb', 'power_ubb_totalizer', 'power_pabrik2', 'power_pabrik2_totalizer', 'power_pabrik3a', 'power_pabrik3a_totalizer', 'power_revamping', 'power_revamping_totalizer', 'power_pie', 'power_pie_totalizer', 'power_stg_ubb_totalizer']);
             case 'Distribusi Steam': return hasVal(steamDist, ['pabrik1_flow', 'pabrik1_temp', 'pabrik1_totalizer', 'pabrik2_flow', 'pabrik2_temp', 'pabrik2_totalizer', 'press_lps', 'pabrik3a_flow', 'pabrik3a_temp', 'pabrik3a_totalizer']);
             case 'Handling': return hasVal(espHandling, ['loading', 'hopper', 'conveyor']) && hasVal(tankyard, ['tk_rcw', 'tk_demin', 'tk_solar_ab']);
             case 'ESP': return hasVal(espHandling, ['esp_a1', 'esp_a2', 'esp_a3', 'esp_b1', 'esp_b2', 'esp_b3', 'silo_a', 'silo_b']);

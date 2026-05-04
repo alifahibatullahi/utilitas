@@ -404,27 +404,39 @@ export default function InputShiftPage() {
     }, [powerDist.power_revamping_totalizer, powerDist.power_pie_totalizer]);
 
     // Inherit status boiler & feeder dari shift sebelumnya (walkback hingga 15 shift)
-    // Gunakan primitive values sebagai dep agar effect selalu fire saat data berubah
+    // Re-fire saat boilerA/B/coalBunker status berubah (mis. setelah clear effect navigasi shift)
     const _sf = latestBoilerStatus.statusFeeders;
+    const _boilerAStatus = boilerA.status_boiler;
+    const _boilerBStatus = boilerB.status_boiler;
+    const _feederSig = [
+        coalBunker.status_feeder_a, coalBunker.status_feeder_b, coalBunker.status_feeder_c,
+        coalBunker.status_feeder_d, coalBunker.status_feeder_e, coalBunker.status_feeder_f,
+    ].map(v => v ?? '').join('|');
     useEffect(() => {
         if (userModifiedRef.current || report) return;
         const { statusBoilerA, statusBoilerB } = latestBoilerStatus;
-        if (statusBoilerA && !boilerA.status_boiler)
-            setBoilerA(prev => ({ ...prev, status_boiler: statusBoilerA }));
-        if (statusBoilerB && !boilerB.status_boiler)
-            setBoilerB(prev => ({ ...prev, status_boiler: statusBoilerB }));
+        if (statusBoilerA && !_boilerAStatus)
+            setBoilerA(prev => prev.status_boiler ? prev : { ...prev, status_boiler: statusBoilerA });
+        if (statusBoilerB && !_boilerBStatus)
+            setBoilerB(prev => prev.status_boiler ? prev : { ...prev, status_boiler: statusBoilerB });
         const inherited: Record<string, string> = {};
         Object.entries(latestBoilerStatus.statusFeeders).forEach(([k, v]) => {
             if (v && !coalBunker[k]) inherited[k] = v as string;
         });
         if (Object.keys(inherited).length > 0)
-            setCoalBunker(prev => ({ ...prev, ...inherited }));
+            setCoalBunker(prev => {
+                const next = { ...prev };
+                let changed = false;
+                Object.entries(inherited).forEach(([k, v]) => { if (!prev[k]) { next[k] = v; changed = true; } });
+                return changed ? next : prev;
+            });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         latestBoilerStatus.statusBoilerA, latestBoilerStatus.statusBoilerB,
         _sf.status_feeder_a, _sf.status_feeder_b, _sf.status_feeder_c,
         _sf.status_feeder_d, _sf.status_feeder_e, _sf.status_feeder_f,
         report,
+        _boilerAStatus, _boilerBStatus, _feederSig,
     ]);
 
     // Generic change handlers

@@ -123,7 +123,7 @@ export default function KanbanColumn({ status, items, prevItems = [], onKonfirma
             {/* Cards container */}
             <div
                 ref={setNodeRef}
-                className="flex-1 p-3 space-y-3 min-h-[200px] overflow-y-auto"
+                className="flex-1 p-3 space-y-3 min-h-[200px] overflow-y-auto light-scrollbar"
             >
                 <SortableContext items={[...items, ...prevItems].map(i => i.id)} strategy={verticalListSortingStrategy}>
                     {renderGroups(items, '', true)}

@@ -151,8 +151,8 @@ function CriticalRow({
                 {/* Item */}
                 <td className="px-5 py-5 text-lg font-black text-black whitespace-nowrap">{critical.item}</td>
                 {/* Deskripsi */}
-                <td className="px-5 py-5 text-lg font-medium text-black max-w-[250px] leading-relaxed">
-                    <span className="line-clamp-2">{critical.deskripsi}</span>
+                <td className="px-5 py-5 text-lg font-medium text-black max-w-md leading-relaxed">
+                    <span>{critical.deskripsi}</span>
                 </td>
                 {/* Scope */}
                 <td className="px-5 py-5">
@@ -161,7 +161,7 @@ function CriticalRow({
                             critical.scope,
                             ...(critical.maintenance_logs?.map(m => m.scope) || [])
                         ])).map(s => (
-                            <ScopeBadge key={s} scope={s} solid className="px-3 py-1.5 text-sm shadow-sm" />
+                            <ScopeBadge key={s} scope={s} solid className="!text-lg !px-4 !py-2 font-black uppercase tracking-wider shadow-sm" />
                         ))}
                     </div>
                 </td>
@@ -266,12 +266,12 @@ function WorkOrderRow({
             {/* Item */}
             <td className="px-5 py-4 text-base font-black text-black whitespace-nowrap">{wo.item}</td>
             {/* Deskripsi */}
-            <td className="px-5 py-4 text-base font-medium text-black max-w-[250px] leading-relaxed">
-                <span className="line-clamp-2">{wo.deskripsi}</span>
+            <td className="px-5 py-4 text-base font-medium text-black max-w-md leading-relaxed">
+                <span>{wo.deskripsi}</span>
             </td>
             {/* Scope */}
             <td className="px-5 py-4">
-                <ScopeBadge scope={wo.scope} solid className="px-3 py-1.5 text-sm shadow-sm" />
+                <ScopeBadge scope={wo.scope} solid className="!text-lg !px-4 !py-2 font-black uppercase tracking-wider shadow-sm" />
             </td>
             {/* Foreman */}
             <td className="px-5 py-4 text-base font-bold text-black whitespace-nowrap">{getForemanLabel(wo.foreman)}</td>

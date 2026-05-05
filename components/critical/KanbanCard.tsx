@@ -74,8 +74,8 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             </div>
 
             {/* Uraian */}
-            <p className="text-sm text-black font-medium mb-3 mt-2 line-clamp-3">
-                <span className="font-bold text-black">Maintenance : </span>{item.uraian}
+            <p className="text-lg text-black font-bold mb-3 mt-2 line-clamp-3 leading-snug">
+                <span className="font-black text-black">Maintenance : </span>{item.uraian}
             </p>
 
             {/* Badges row */}

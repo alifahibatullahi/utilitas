@@ -66,8 +66,8 @@ export default function CriticalPage() {
     const [returnToWOId, setReturnToWOId] = useState<string | null>(null);
     const [activeWorkOrderContext, setActiveWorkOrderContext] = useState<WorkOrderWithPekerjaan | null>(null);
 
-    // Apply basic Kanban filters (no scope/foreman filters applied anymore per user request)
-    const filteredKanban = cm.maintenances;
+    // Apply basic Kanban filters — exclude notes (they only appear in detail modal)
+    const filteredKanban = cm.maintenances.filter(m => m.keterangan !== 'IS_NOTE' && m.item !== 'NOTE');
 
     // Photos for Kanban board
     const [photosByMaintId, setPhotosByMaintId] = useState<Record<string, PhotoRow[]>>({});
@@ -150,7 +150,7 @@ export default function CriticalPage() {
             </header>
 
             {/* Main Content Area */}
-            <main className="max-w-[1600px] mx-auto px-4 py-6 min-h-[calc(100vh-100px)] flex flex-col">
+            <main className="max-w-[1920px] mx-auto px-4 py-6 min-h-[calc(100vh-100px)] flex flex-col">
                 {cm.loading ? (
                     <div className="flex flex-col flex-1 items-center justify-center text-gray-400">
                         <span className="material-symbols-outlined animate-spin text-4xl mb-3 text-blue-500">progress_activity</span>

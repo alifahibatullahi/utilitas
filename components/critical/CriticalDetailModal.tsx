@@ -50,9 +50,35 @@ interface CriticalDetailModalProps {
 export default function CriticalDetailModal({
     critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onRefresh, fetchPhotos, deletePhoto, operatorName
 }: CriticalDetailModalProps) {
+    const ORDER_KEY = `mlog-order-${critical.id}`;
+
+    function applySavedOrder(logs: MaintenanceLogRow[]): MaintenanceLogRow[] {
+        try {
+            const raw = localStorage.getItem(ORDER_KEY);
+            if (raw) {
+                const savedIds: string[] = JSON.parse(raw);
+                const map = new Map(logs.map(m => [m.id, m]));
+                const ordered: MaintenanceLogRow[] = [];
+                // Place items in saved order first
+                for (const id of savedIds) {
+                    const item = map.get(id);
+                    if (item) { ordered.push(item); map.delete(id); }
+                }
+                // Append any new items not in saved order
+                for (const item of map.values()) ordered.push(item);
+                return ordered;
+            }
+        } catch { /* ignore */ }
+        return [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+
+    function saveOrder(logs: MaintenanceLogRow[]) {
+        try { localStorage.setItem(ORDER_KEY, JSON.stringify(logs.map(m => m.id))); } catch { /* quota */ }
+    }
+
     const [photos, setPhotos] = useState<PhotoRow[]>([]);
     const [photosLoaded, setPhotosLoaded] = useState(false);
-    const [mLogs, setMLogs] = useState([...critical.maintenance_logs].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+    const [mLogs, setMLogs] = useState(() => applySavedOrder(critical.maintenance_logs));
     const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
     const [showNoteForm, setShowNoteForm] = useState(false);
     const [noteText, setNoteText] = useState('');
@@ -79,7 +105,11 @@ export default function CriticalDetailModal({
                 .select().single();
             setIsSubmittingNote(false);
             if (!error && data) {
-                setMLogs(prev => prev.map(m => m.id === editingNoteId ? data as MaintenanceLogRow : m));
+                setMLogs(prev => {
+                    const next = prev.map(m => m.id === editingNoteId ? data as MaintenanceLogRow : m);
+                    saveOrder(next);
+                    return next;
+                });
                 setShowNoteForm(false);
                 setNoteText('');
                 setEditingNoteId(null);
@@ -103,7 +133,11 @@ export default function CriticalDetailModal({
             const { data, error } = await supabase.from('maintenance_logs').insert(newLog).select().single();
             setIsSubmittingNote(false);
             if (!error && data) {
-                setMLogs(prev => [...prev, data as MaintenanceLogRow]);
+                setMLogs(prev => {
+                    const next = [...prev, data as MaintenanceLogRow];
+                    saveOrder(next);
+                    return next;
+                });
                 setShowNoteForm(false);
                 setNoteText('');
                 await onRefresh?.();
@@ -125,16 +159,16 @@ export default function CriticalDetailModal({
         const { error } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
         if (error) {
             alert('Gagal mengubah status');
-            // Rollback
-            setMLogs([...critical.maintenance_logs].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+            setMLogs(applySavedOrder(critical.maintenance_logs));
         } else {
             await onRefresh?.();
         }
     }
 
-    // Sync when maintenance logs change externally
+    // Sync when maintenance logs change externally — preserve saved order
     useEffect(() => {
-        setMLogs([...critical.maintenance_logs].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+        setMLogs(applySavedOrder(critical.maintenance_logs));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [critical.maintenance_logs]);
 
     useEffect(() => {
@@ -183,12 +217,19 @@ export default function CriticalDetailModal({
 
     function handleDragEnd() {
         setDraggedIdx(null);
+        // Save order immediately after drag
+        saveOrder(mLogs);
+    }
+
+    function handleClose() {
+        saveOrder(mLogs);
+        onClose();
     }
 
     const allScopes = Array.from(new Set([critical.scope, ...mLogs.map(m => m.scope)]));
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={handleClose}>
             <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" />
             <div
                 className="relative bg-white w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
@@ -215,7 +256,7 @@ export default function CriticalDetailModal({
                         )}
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] text-slate-500 hover:bg-slate-100 transition-colors shadow-sm"
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 24 }}>close</span>

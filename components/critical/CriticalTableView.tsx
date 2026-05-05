@@ -155,8 +155,8 @@ function CriticalRow({
                 {/* Item */}
                 <td className="px-5 py-5 text-lg font-black text-black whitespace-nowrap">{critical.item}</td>
                 {/* Deskripsi */}
-                <td className="px-5 py-5 text-lg font-medium text-black max-w-lg leading-relaxed">
-                    <span className="line-clamp-3">{critical.deskripsi}</span>
+                <td className="px-5 py-5 text-lg font-medium text-black max-w-3xl leading-relaxed">
+                    <span className="line-clamp-3 whitespace-pre-wrap">{critical.deskripsi}</span>
                 </td>
                 {/* Scope */}
                 <td className="px-5 py-5">
@@ -270,8 +270,8 @@ function WorkOrderRow({
             {/* Item */}
             <td className="px-5 py-4 text-base font-black text-black whitespace-nowrap">{wo.item}</td>
             {/* Deskripsi */}
-            <td className="px-5 py-4 text-base font-medium text-black max-w-lg leading-relaxed">
-                <span className="line-clamp-3">{wo.deskripsi}</span>
+            <td className="px-5 py-4 text-base font-medium text-black max-w-3xl leading-relaxed">
+                <span className="line-clamp-3 whitespace-pre-wrap">{wo.deskripsi}</span>
             </td>
             {/* Scope */}
             <td className="px-5 py-4">
@@ -659,8 +659,8 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                 </div>
 
                 {/* Table */}
-                <div className="overflow-x-auto light-scrollbar" style={{ maxHeight: 'calc(100vh - 320px)' }}>
-                    <table className="w-full min-w-[960px] text-xs border-collapse">
+                <div className="overflow-x-auto light-scrollbar">
+                    <table className="w-full min-w-[1500px] text-xs border-collapse">
                         <TableHeader />
                         <tbody>
                             {allFilteredItems === 0 ? (

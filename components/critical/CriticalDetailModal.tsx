@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import type { CriticalWithMaintenance, MaintenanceLogRow, PhotoRow } from '@/lib/supabase/types';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
@@ -52,6 +53,36 @@ export default function CriticalDetailModal({
     const [photosLoaded, setPhotosLoaded] = useState(false);
     const [mLogs, setMLogs] = useState([...critical.maintenance_logs].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+    const [showNoteForm, setShowNoteForm] = useState(false);
+    const [noteText, setNoteText] = useState('');
+    const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+
+    async function submitNote() {
+        if (!noteText.trim()) return;
+        setIsSubmittingNote(true);
+        const supabase = createClient();
+        const newLog = {
+            critical_id: critical.id,
+            date: new Date().toISOString().split('T')[0],
+            item: 'NOTE',
+            uraian: noteText.startsWith('Note:') ? noteText : `Note: ${noteText}`,
+            scope: critical.scope,
+            foreman: critical.foreman,
+            tipe: 'preventif',
+            status: 'OPEN',
+            keterangan: 'IS_NOTE',
+            reported_by: operatorName || null
+        };
+        const { data, error } = await supabase.from('maintenance_logs').insert(newLog).select().single();
+        setIsSubmittingNote(false);
+        if (!error && data) {
+            setMLogs(prev => [...prev, data as MaintenanceLogRow]);
+            setShowNoteForm(false);
+            setNoteText('');
+        } else {
+            alert('Gagal menambah note');
+        }
+    }
 
     // Sync when maintenance logs change externally
     useEffect(() => {
@@ -170,13 +201,22 @@ export default function CriticalDetailModal({
                                     <span className="material-symbols-outlined text-emerald-500">handyman</span>
                                     Log Maintenance
                                 </h3>
-                                <button
-                                    onClick={() => onAddMaintenance?.(critical)}
-                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-sm shadow-emerald-500/20"
-                                >
-                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-                                    Tambah
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setShowNoteForm(true)}
+                                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-sm shadow-amber-500/20"
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit_note</span>
+                                        Note
+                                    </button>
+                                    <button
+                                        onClick={() => onAddMaintenance?.(critical)}
+                                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-sm shadow-emerald-500/20"
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                                        Tambah
+                                    </button>
+                                </div>
                             </div>
                             
                             <div className="flex-1 rounded-2xl p-1 overflow-y-auto light-scrollbar flex flex-col gap-4">
@@ -186,7 +226,46 @@ export default function CriticalDetailModal({
                                         <p className="text-base font-medium">Belum ada maintenance</p>
                                     </div>
                                 ) : (
-                                    mLogs.map((m, idx) => (
+                                    mLogs.map((m, idx) => {
+                                        const isOk = m.status === 'OK';
+                                        const isNote = m.keterangan === 'IS_NOTE' || m.item === 'NOTE';
+                                        
+                                        if (isNote) {
+                                            return (
+                                                <div
+                                                    key={m.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, idx)}
+                                                    onDragEnter={() => handleDragEnter(idx)}
+                                                    onDragEnd={handleDragEnd}
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    className={`group relative p-3 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98] active:shadow-inner active:translate-y-0 ${
+                                                        draggedIdx === idx ? 'shadow-xl scale-[1.02] rotate-1 z-10 opacity-95 ring-4 ring-amber-400/30 bg-amber-50 border-amber-300' : 'shadow-sm hover:shadow-md hover:-translate-y-0.5 bg-[#FFFDF7] border-amber-200/60'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-amber-100 rounded-lg text-amber-600 shadow-sm border border-amber-200">
+                                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>sticky_note_2</span>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <span className="text-[15px] font-black text-slate-800 break-words">{m.uraian}</span>
+                                                            {m.reported_by && (
+                                                                <span className="text-[10px] text-slate-500 block font-black tracking-wide uppercase mt-0.5">— {m.reported_by}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-shrink-0 border-l border-slate-100 pl-3">
+                                                            <button onClick={() => {
+                                                                if (confirm('Hapus note ini?')) onDeleteMaintenance?.(m.id);
+                                                            }} className="w-8 h-8 flex items-center justify-center text-rose-400 hover:text-white bg-rose-50 hover:bg-rose-500 rounded-lg border border-rose-200 hover:border-rose-500 shadow-sm transition-all">
+                                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
                                         <div
                                             key={m.id}
                                             draggable
@@ -194,13 +273,14 @@ export default function CriticalDetailModal({
                                             onDragEnter={() => handleDragEnter(idx)}
                                             onDragEnd={handleDragEnd}
                                             onDragOver={(e) => e.preventDefault()}
-                                            className={`group relative bg-white p-4 rounded-2xl border-2 transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98] active:shadow-inner active:translate-y-0 ${
-                                                draggedIdx === idx ? 'border-emerald-400 shadow-2xl scale-[1.03] rotate-1 z-10 opacity-95 ring-4 ring-emerald-400/30' : 'border-slate-300 shadow-sm hover:border-slate-400 hover:shadow-lg hover:-translate-y-1'
+                                            className={`group relative p-4 rounded-2xl border-2 transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98] active:shadow-inner active:translate-y-0 ${
+                                                draggedIdx === idx ? 'border-emerald-400 shadow-2xl scale-[1.03] rotate-1 z-10 opacity-95 ring-4 ring-emerald-400/30 bg-white' : 
+                                                (isOk ? 'border-slate-200 shadow-sm bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)]' : 'border-slate-300 shadow-sm hover:border-slate-400 hover:shadow-lg hover:-translate-y-1 bg-white')
                                             }`}
                                         >
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 h-10 bg-slate-50 rounded-xl border border-slate-100">
-                                                    <span className="text-xl font-black text-black">#{idx + 1}</span>
+                                            <div className={`flex items-center gap-4 ${isOk ? 'opacity-80' : ''}`}>
+                                                <div className={`flex-shrink-0 flex flex-col items-center justify-center w-10 h-10 rounded-xl border ${isOk ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-100'}`}>
+                                                    <span className={`text-xl font-black ${isOk ? 'text-slate-400' : 'text-black'}`}>#{idx + 1}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0 pr-4">
                                                     <div className="flex flex-wrap items-center gap-3 mb-3 break-words">
@@ -210,7 +290,7 @@ export default function CriticalDetailModal({
                                                             m.scope === 'instrumen' ? 'text-purple-600 bg-purple-50 border-purple-200' :
                                                             m.scope === 'sipil' ? 'text-teal-600 bg-teal-50 border-teal-200' : 'text-slate-500 bg-slate-50 border-slate-200'
                                                         } px-2 py-0.5 rounded shadow-sm border`}>{m.scope}</span>
-                                                        <span className="text-xl font-black text-slate-800 leading-tight flex-1">{m.uraian}</span>
+                                                        <span className={`text-xl font-black leading-tight flex-1 ${isOk ? 'text-slate-400' : 'text-slate-800'}`}>{m.uraian}</span>
                                                         
                                                         {/* Status Dropdown Inline */}
                                                         <div className="relative flex-shrink-0">
@@ -240,17 +320,17 @@ export default function CriticalDetailModal({
                                                     
                                                     {/* Labels */}
                                                     <div className="flex flex-wrap items-center gap-2 mb-3">
-                                                        <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm border border-amber-200">
+                                                        <span className={`px-3 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm border ${isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
                                                             <span className="material-symbols-outlined" style={{fontSize:14}}>event</span>
                                                             {formatDate(m.date)}
                                                         </span>
                                                         {m.notif && (
-                                                            <span className="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-lg shadow-sm border border-indigo-200">
+                                                            <span className={`px-3 py-1 text-xs font-bold rounded-lg shadow-sm border ${isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-100 text-indigo-800 border-indigo-200'}`}>
                                                                 Notif: {m.notif}
                                                             </span>
                                                         )}
                                                         {m.reported_by && (
-                                                            <span className="px-3 py-1 bg-teal-100 text-teal-800 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm border border-teal-200">
+                                                            <span className={`px-3 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm border ${isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-teal-100 text-teal-800 border-teal-200'}`}>
                                                                 <span className="material-symbols-outlined" style={{fontSize:14}}>person</span>
                                                                 {m.reported_by}
                                                             </span>
@@ -258,27 +338,28 @@ export default function CriticalDetailModal({
                                                     </div>
 
                                                     {m.keterangan && (
-                                                        <div className="text-sm text-slate-600 bg-slate-50/80 p-3 rounded-xl border border-slate-100 mt-2">
-                                                            <span className="font-bold text-slate-500 block mb-1 text-xs">Keterangan:</span>
+                                                        <div className={`text-sm p-3 rounded-xl border mt-2 ${isOk ? 'text-slate-400 bg-slate-100 border-slate-200' : 'text-slate-600 bg-slate-50/80 border-slate-100'}`}>
+                                                            <span className={`font-bold block mb-1 text-xs ${isOk ? 'text-slate-400' : 'text-slate-500'}`}>Keterangan:</span>
                                                             {m.keterangan}
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-shrink-0 flex flex-col justify-center gap-2 min-w-[100px] border-l border-slate-100 pl-4">
-                                                    <button onClick={() => onEditMaintenance?.(m)} className="w-full py-2.5 rounded-lg text-blue-600 font-bold hover:text-white bg-blue-50 border border-blue-200 hover:bg-blue-600 hover:border-transparent flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm">
+                                                <div className={`flex-shrink-0 flex flex-col justify-center gap-2 min-w-[100px] border-l pl-4 ${isOk ? 'border-slate-200' : 'border-slate-100'}`}>
+                                                    <button onClick={() => onEditMaintenance?.(m)} className={`w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border ${isOk ? 'text-slate-400 bg-slate-100 border-slate-200 hover:bg-slate-200 hover:text-slate-500' : 'text-blue-600 hover:text-white bg-blue-50 border-blue-200 hover:bg-blue-600 hover:border-transparent'}`}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
                                                         Edit
                                                     </button>
                                                     <button onClick={() => {
                                                         if (confirm('Hapus log maintenance ini?')) onDeleteMaintenance?.(m.id);
-                                                    }} className="w-full py-2.5 rounded-lg text-rose-600 font-bold hover:text-white bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:border-transparent flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm">
+                                                    }} className={`w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border ${isOk ? 'text-slate-400 bg-slate-100 border-slate-200 hover:bg-slate-200 hover:text-slate-500' : 'text-rose-600 hover:text-white bg-rose-50 border-rose-200 hover:bg-rose-600 hover:border-transparent'}`}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
                                                         Hapus
                                                     </button>
                                                 </div>
                                             </div>
                                         </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>
@@ -356,6 +437,31 @@ export default function CriticalDetailModal({
                     </div>
                 </div>
             </div>
+            {/* Note Pop Up Form */}
+            {showNoteForm && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm rounded-3xl" onClick={() => setShowNoteForm(false)}>
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-4 text-amber-600">
+                            <span className="material-symbols-outlined text-3xl">edit_note</span>
+                            <h3 className="text-xl font-black text-slate-800">Tambah Note Baru</h3>
+                        </div>
+                        <textarea
+                            value={noteText}
+                            onChange={e => setNoteText(e.target.value)}
+                            className="w-full border-2 border-slate-200 rounded-xl p-3 h-32 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 outline-none transition-all text-sm font-medium resize-none light-scrollbar"
+                            placeholder="Ketik isi note..."
+                            autoFocus
+                        />
+                        <div className="flex items-center justify-end gap-3 mt-5">
+                            <button onClick={() => setShowNoteForm(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">Batal</button>
+                            <button onClick={submitNote} disabled={isSubmittingNote || !noteText.trim()} className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2">
+                                {isSubmittingNote ? <span className="material-symbols-outlined animate-spin" style={{fontSize:18}}>sync</span> : <span className="material-symbols-outlined" style={{fontSize:18}}>save</span>}
+                                Simpan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -151,8 +151,8 @@ function CriticalRow({
                 {/* Item */}
                 <td className="px-5 py-5 text-lg font-black text-black whitespace-nowrap">{critical.item}</td>
                 {/* Deskripsi */}
-                <td className="px-5 py-5 text-lg font-medium text-black max-w-md leading-relaxed">
-                    <span>{critical.deskripsi}</span>
+                <td className="px-5 py-5 text-lg font-medium text-black max-w-lg leading-relaxed">
+                    <span className="line-clamp-3">{critical.deskripsi}</span>
                 </td>
                 {/* Scope */}
                 <td className="px-5 py-5">
@@ -161,7 +161,7 @@ function CriticalRow({
                             critical.scope,
                             ...(critical.maintenance_logs?.map(m => m.scope) || [])
                         ])).map(s => (
-                            <ScopeBadge key={s} scope={s} solid className="!text-lg !px-4 !py-2 font-black uppercase tracking-wider shadow-sm" />
+                            <ScopeBadge key={s} scope={s} solid className="px-3 py-1.5 text-sm shadow-sm" />
                         ))}
                     </div>
                 </td>
@@ -266,12 +266,12 @@ function WorkOrderRow({
             {/* Item */}
             <td className="px-5 py-4 text-base font-black text-black whitespace-nowrap">{wo.item}</td>
             {/* Deskripsi */}
-            <td className="px-5 py-4 text-base font-medium text-black max-w-md leading-relaxed">
-                <span>{wo.deskripsi}</span>
+            <td className="px-5 py-4 text-base font-medium text-black max-w-lg leading-relaxed">
+                <span className="line-clamp-3">{wo.deskripsi}</span>
             </td>
             {/* Scope */}
             <td className="px-5 py-4">
-                <ScopeBadge scope={wo.scope} solid className="!text-lg !px-4 !py-2 font-black uppercase tracking-wider shadow-sm" />
+                <ScopeBadge scope={wo.scope} solid className="px-3 py-1.5 text-sm shadow-sm" />
             </td>
             {/* Foreman */}
             <td className="px-5 py-4 text-base font-bold text-black whitespace-nowrap">{getForemanLabel(wo.foreman)}</td>
@@ -475,6 +475,9 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
         setExpandedId(expandedId === id ? null : id);
     }
 
+    const [currentPage, setCurrentPage]       = useState(1);
+    const ITEMS_PER_PAGE = 15;
+
     const [filterItem, setFilterItem]         = useState('');
     const [filterScope, setFilterScope]       = useState<HarScope | ''>('');
     const [filterDateFrom, setFilterDateFrom] = useState('');
@@ -487,6 +490,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
         setFilterScope('');
         setFilterDateFrom('');
         setFilterDateTo('');
+        setCurrentPage(1);
     }
 
     const tabCounts = {
@@ -513,7 +517,14 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
         return true;
     });
 
-    const allFilteredItems = filteredCriticals.length + filteredWorkOrders.length;
+    const combinedFilteredItems = [
+        ...filteredCriticals.map(c => ({ ...c, _type: 'critical' as const })),
+        ...filteredWorkOrders.map(w => ({ ...w, _type: 'wo' as const }))
+    ];
+    const totalPages = Math.max(1, Math.ceil(combinedFilteredItems.length / ITEMS_PER_PAGE));
+    const paginatedItems = combinedFilteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const allFilteredItems = combinedFilteredItems.length;
 
     return (
         <div className="flex flex-col gap-4">
@@ -577,13 +588,13 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                     {/* Item search combobox */}
                     <ItemSearchCombobox
                         value={filterItem}
-                        onChange={val => { setFilterItem(val); setExpandedId(null); }}
+                        onChange={val => { setFilterItem(val); setExpandedId(null); setCurrentPage(1); }}
                         items={[...new Set([...criticals.map(c => c.item), ...workOrders.map(w => w.item)])].sort()}
                     />
                     {/* Status */}
                     <select
                         value={activeTab}
-                        onChange={e => { setActiveTab(e.target.value as TableStatusTab); setExpandedId(null); }}
+                        onChange={e => { setActiveTab(e.target.value as TableStatusTab); setExpandedId(null); setCurrentPage(1); }}
                         className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                     >
                         {STATUS_TABS.map(t => (
@@ -593,7 +604,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                     {/* Scope */}
                     <select
                         value={filterScope}
-                        onChange={e => { setFilterScope(e.target.value as HarScope | ''); setExpandedId(null); }}
+                        onChange={e => { setFilterScope(e.target.value as HarScope | ''); setExpandedId(null); setCurrentPage(1); }}
                         className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                     >
                         <option value="">Semua Scope</option>
@@ -607,7 +618,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                         <input
                             type="date"
                             value={filterDateFrom}
-                            onChange={e => { setFilterDateFrom(e.target.value); setExpandedId(null); }}
+                            onChange={e => { setFilterDateFrom(e.target.value); setExpandedId(null); setCurrentPage(1); }}
                             className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                             title="Dari tanggal"
                         />
@@ -615,7 +626,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                         <input
                             type="date"
                             value={filterDateTo}
-                            onChange={e => { setFilterDateTo(e.target.value); setExpandedId(null); }}
+                            onChange={e => { setFilterDateTo(e.target.value); setExpandedId(null); setCurrentPage(1); }}
                             className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                             title="Sampai tanggal"
                         />
@@ -658,30 +669,68 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                 </tr>
                             ) : (
                                 <>
-                                    <TableBody
-                                        items={filteredCriticals}
-                                        starredIds={starredIds}
-                                        toggleStar={toggleStar}
-                                        onEditCritical={onEditCritical}
-                                        onDeleteCritical={onDeleteCritical}
-                                        expandedId={expandedId}
-                                        onToggleExpand={handleToggleExpand}
-                                    />
-                                    {filteredWorkOrders.map((wo, idx) => (
-                                        <WorkOrderRow
-                                            key={wo.id}
-                                            wo={wo}
-                                            isEven={(filteredCriticals.length + idx) % 2 === 1}
-                                            onEdit={onEditWorkOrder}
-                                            onDelete={onDeleteWorkOrder}
-                                            onToggleExpand={id => setExpandedWOId(expandedWOId === id ? null : id)}
-                                        />
-                                    ))}
+                                    {paginatedItems.map((item, idx) => {
+                                        const globalIdx = (currentPage - 1) * ITEMS_PER_PAGE + idx;
+                                        if (item._type === 'critical') {
+                                            return (
+                                                <CriticalRow
+                                                    key={`crit-${item.id}`}
+                                                    critical={item as any}
+                                                    starred={starredIds.has(item.id)}
+                                                    isEven={globalIdx % 2 === 1}
+                                                    rowIndex={globalIdx + 1}
+                                                    toggleStar={toggleStar}
+                                                    onEditCritical={onEditCritical}
+                                                    onDeleteCritical={onDeleteCritical}
+                                                    expandedId={expandedId}
+                                                    onToggleExpand={handleToggleExpand}
+                                                />
+                                            );
+                                        } else {
+                                            return (
+                                                <WorkOrderRow
+                                                    key={`wo-${item.id}`}
+                                                    wo={item as any}
+                                                    isEven={globalIdx % 2 === 1}
+                                                    onEdit={onEditWorkOrder}
+                                                    onDelete={onDeleteWorkOrder}
+                                                    onToggleExpand={id => setExpandedWOId(expandedWOId === id ? null : id)}
+                                                />
+                                            );
+                                        }
+                                    })}
                                 </>
                             )}
                         </tbody>
                     </table>
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-100">
+                        <span className="text-xs text-gray-500 font-medium">
+                            Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, combinedFilteredItems.length)} dari {combinedFilteredItems.length} item
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
+                            </button>
+                            <span className="text-xs font-bold text-gray-700 mx-2">
+                                Halaman {currentPage} dari {totalPages}
+                            </span>
+                            <button
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Optional Full Detail Modal popup */}
                 {expandedId && criticals.find(c => c.id === expandedId) && (() => {

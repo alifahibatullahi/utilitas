@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope, PhotoRow, MaintenanceType, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
-import { FOREMAN_OPTIONS } from '@/lib/constants';
+import { FOREMAN_OPTIONS, PREDEFINED_ITEMS } from '@/lib/constants';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
 import CriticalDetailModal from './CriticalDetailModal';
@@ -24,6 +24,7 @@ interface CriticalTableViewProps {
     onDeleteWorkOrder?: (id: string) => Promise<void>;
     onAddWorkOrder?: () => void;
     onAddPekerjaanToWO?: (wo: WorkOrderWithPekerjaan) => void;
+    onRefresh?: () => Promise<void>;
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
@@ -33,9 +34,10 @@ interface CriticalTableViewProps {
     onSetExpandedWOId?: (id: string | null) => void;
 }
 
-type TableStatusTab = 'OPEN' | 'CLOSED';
+type TableStatusTab = 'ALL' | 'OPEN' | 'CLOSED';
 
 const STATUS_TABS: { key: TableStatusTab; label: string }[] = [
+    { key: 'ALL', label: 'Semua' },
     { key: 'OPEN', label: 'Open' },
     { key: 'CLOSED', label: 'Closed' },
 ];
@@ -86,11 +88,13 @@ function getTipeLabel(tipe: MaintenanceType): string {
 }
 
 function filterByTab(criticals: CriticalWithMaintenance[], tab: TableStatusTab) {
+    if (tab === 'ALL') return criticals;
     return criticals.filter(c => c.status === tab);
 }
 
 function getTabCounts(criticals: CriticalWithMaintenance[]): Record<TableStatusTab, number> {
     return {
+        ALL:    criticals.length,
         OPEN:   criticals.filter(c => c.status === 'OPEN').length,
         CLOSED: criticals.filter(c => c.status === 'CLOSED').length,
     };
@@ -437,9 +441,9 @@ function TableBody({
 }
 
 // ─── Main Export ───
-export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId }: CriticalTableViewProps) {
+export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId }: CriticalTableViewProps) {
     const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
-    const [activeTab, setActiveTab] = useState<TableStatusTab>('OPEN');
+    const [activeTab, setActiveTab] = useState<TableStatusTab>('ALL');
     const [expandedIdLocal, setExpandedIdLocal] = useState<string | null>(null);
 
     const expandedId = expandedIdProp !== undefined ? expandedIdProp : expandedIdLocal;
@@ -494,6 +498,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
     }
 
     const tabCounts = {
+        ALL:    criticals.length + workOrders.length,
         OPEN:   criticals.filter(c => c.status === 'OPEN').length + workOrders.filter(w => w.status !== 'OK').length,
         CLOSED: criticals.filter(c => c.status === 'CLOSED').length + workOrders.filter(w => w.status === 'OK').length,
     };
@@ -510,6 +515,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
     const filteredWorkOrders = workOrders.filter(w => {
         if (activeTab === 'OPEN' && w.status === 'OK') return false;
         if (activeTab === 'CLOSED' && w.status !== 'OK') return false;
+        // ALL => no status filter
         if (filterItem && !w.item.toLowerCase().includes(filterItem.toLowerCase())) return false;
         if (filterScope && w.scope !== filterScope) return false;
         if (filterDateFrom && w.date < filterDateFrom) return false;
@@ -589,18 +595,24 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                     <ItemSearchCombobox
                         value={filterItem}
                         onChange={val => { setFilterItem(val); setExpandedId(null); setCurrentPage(1); }}
-                        items={[...new Set([...criticals.map(c => c.item), ...workOrders.map(w => w.item)])].sort()}
+                        items={[...new Set([...PREDEFINED_ITEMS, ...criticals.map(c => c.item), ...workOrders.map(w => w.item)])].sort()}
                     />
-                    {/* Status */}
-                    <select
-                        value={activeTab}
-                        onChange={e => { setActiveTab(e.target.value as TableStatusTab); setExpandedId(null); setCurrentPage(1); }}
-                        className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
-                    >
+                    {/* Status Tabs */}
+                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
                         {STATUS_TABS.map(t => (
-                            <option key={t.key} value={t.key}>{t.label} ({tabCounts[t.key]})</option>
+                            <button
+                                key={t.key}
+                                onClick={() => { setActiveTab(t.key); setExpandedId(null); setCurrentPage(1); }}
+                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                    activeTab === t.key
+                                        ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                {t.label} ({tabCounts[t.key]})
+                            </button>
                         ))}
-                    </select>
+                    </div>
                     {/* Scope */}
                     <select
                         value={filterScope}
@@ -743,6 +755,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             onEditMaintenance={onEditMaintenance}
                             onDeleteMaintenance={onDeleteMaintenance}
                             onAddMaintenance={onAddMaintenance}
+                            onRefresh={onRefresh}
                             fetchPhotos={fetchPhotos}
                             deletePhoto={deletePhoto}
                             operatorName={operatorName}

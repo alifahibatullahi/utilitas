@@ -41,13 +41,14 @@ interface CriticalDetailModalProps {
     onEditMaintenance?: (m: MaintenanceLogRow) => void;
     onDeleteMaintenance?: (id: string) => Promise<void>;
     onAddMaintenance?: (critical: CriticalWithMaintenance) => void;
+    onRefresh?: () => Promise<void>;
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
 }
 
 export default function CriticalDetailModal({
-    critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, fetchPhotos, deletePhoto, operatorName
+    critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onRefresh, fetchPhotos, deletePhoto, operatorName
 }: CriticalDetailModalProps) {
     const [photos, setPhotos] = useState<PhotoRow[]>([]);
     const [photosLoaded, setPhotosLoaded] = useState(false);
@@ -56,31 +57,78 @@ export default function CriticalDetailModal({
     const [showNoteForm, setShowNoteForm] = useState(false);
     const [noteText, setNoteText] = useState('');
     const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+    const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+
+    function handleEditNote(m: MaintenanceLogRow) {
+        setEditingNoteId(m.id);
+        const text = m.uraian.startsWith('Note: ') ? m.uraian.substring(6) : m.uraian.startsWith('Note:') ? m.uraian.substring(5) : m.uraian;
+        setNoteText(text);
+        setShowNoteForm(true);
+    }
 
     async function submitNote() {
         if (!noteText.trim()) return;
         setIsSubmittingNote(true);
         const supabase = createClient();
-        const newLog = {
-            critical_id: critical.id,
-            date: new Date().toISOString().split('T')[0],
-            item: 'NOTE',
-            uraian: noteText.startsWith('Note:') ? noteText : `Note: ${noteText}`,
-            scope: critical.scope,
-            foreman: critical.foreman,
-            tipe: 'preventif',
-            status: 'OPEN',
-            keterangan: 'IS_NOTE',
-            reported_by: operatorName || null
-        };
-        const { data, error } = await supabase.from('maintenance_logs').insert(newLog).select().single();
-        setIsSubmittingNote(false);
-        if (!error && data) {
-            setMLogs(prev => [...prev, data as MaintenanceLogRow]);
-            setShowNoteForm(false);
-            setNoteText('');
+        const noteUraian = noteText.startsWith('Note:') ? noteText : `Note: ${noteText}`;
+        
+        if (editingNoteId) {
+            const { data, error } = await supabase.from('maintenance_logs')
+                .update({ uraian: noteUraian })
+                .eq('id', editingNoteId)
+                .select().single();
+            setIsSubmittingNote(false);
+            if (!error && data) {
+                setMLogs(prev => prev.map(m => m.id === editingNoteId ? data as MaintenanceLogRow : m));
+                setShowNoteForm(false);
+                setNoteText('');
+                setEditingNoteId(null);
+                await onRefresh?.();
+            } else {
+                alert('Gagal mengupdate note');
+            }
         } else {
-            alert('Gagal menambah note');
+            const newLog = {
+                critical_id: critical.id,
+                date: new Date().toISOString().split('T')[0],
+                item: 'NOTE',
+                uraian: noteUraian,
+                scope: critical.scope,
+                foreman: critical.foreman,
+                tipe: 'preventif',
+                status: 'OPEN',
+                keterangan: 'IS_NOTE',
+                reported_by: operatorName || null
+            };
+            const { data, error } = await supabase.from('maintenance_logs').insert(newLog).select().single();
+            setIsSubmittingNote(false);
+            if (!error && data) {
+                setMLogs(prev => [...prev, data as MaintenanceLogRow]);
+                setShowNoteForm(false);
+                setNoteText('');
+                await onRefresh?.();
+            } else {
+                alert('Gagal menambah note');
+            }
+        }
+    }
+
+    async function updateMaintenanceStatus(id: string, newStatus: 'OPEN' | 'IP' | 'OK', idx: number) {
+        // Optimistic local update
+        setMLogs(prev => {
+            const n = [...prev];
+            n[idx] = { ...n[idx], status: newStatus };
+            return n;
+        });
+        // Persist to Supabase
+        const supabase = createClient();
+        const { error } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
+        if (error) {
+            alert('Gagal mengubah status');
+            // Rollback
+            setMLogs([...critical.maintenance_logs].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+        } else {
+            await onRefresh?.();
         }
     }
 
@@ -203,7 +251,7 @@ export default function CriticalDetailModal({
                                 </h3>
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setShowNoteForm(true)}
+                                        onClick={() => { setEditingNoteId(null); setNoteText(''); setShowNoteForm(true); }}
                                         className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-sm shadow-amber-500/20"
                                     >
                                         <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit_note</span>
@@ -229,6 +277,8 @@ export default function CriticalDetailModal({
                                     mLogs.map((m, idx) => {
                                         const isOk = m.status === 'OK';
                                         const isNote = m.keterangan === 'IS_NOTE' || m.item === 'NOTE';
+                                        // Compute maintenance-only index (notes excluded)
+                                        const maintenanceIndex = isNote ? -1 : mLogs.slice(0, idx).filter(x => x.keterangan !== 'IS_NOTE' && x.item !== 'NOTE').length + 1;
                                         
                                         if (isNote) {
                                             return (
@@ -253,11 +303,16 @@ export default function CriticalDetailModal({
                                                                 <span className="text-[10px] text-slate-500 block font-black tracking-wide uppercase mt-0.5">— {m.reported_by}</span>
                                                             )}
                                                         </div>
-                                                        <div className="flex-shrink-0 border-l border-slate-100 pl-3">
+                                                        <div className="flex-shrink-0 flex items-center gap-2 border-l border-amber-200/50 pl-3">
+                                                            <button onClick={() => handleEditNote(m)} className="px-3 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border text-blue-600 hover:text-white bg-blue-50 border-blue-200 hover:bg-blue-600 hover:border-transparent">
+                                                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
+                                                                Edit
+                                                            </button>
                                                             <button onClick={() => {
                                                                 if (confirm('Hapus note ini?')) onDeleteMaintenance?.(m.id);
-                                                            }} className="w-8 h-8 flex items-center justify-center text-rose-400 hover:text-white bg-rose-50 hover:bg-rose-500 rounded-lg border border-rose-200 hover:border-rose-500 shadow-sm transition-all">
-                                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
+                                                            }} className="px-3 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border text-rose-600 hover:text-white bg-rose-50 border-rose-200 hover:bg-rose-600 hover:border-transparent">
+                                                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
+                                                                Hapus
                                                             </button>
                                                         </div>
                                                     </div>
@@ -280,7 +335,7 @@ export default function CriticalDetailModal({
                                         >
                                             <div className={`flex items-center gap-4 ${isOk ? 'opacity-80' : ''}`}>
                                                 <div className={`flex-shrink-0 flex flex-col items-center justify-center w-10 h-10 rounded-xl border ${isOk ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-100'}`}>
-                                                    <span className={`text-xl font-black ${isOk ? 'text-slate-400' : 'text-black'}`}>#{idx + 1}</span>
+                                                    <span className={`text-xl font-black ${isOk ? 'text-slate-400' : 'text-black'}`}>#{maintenanceIndex}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0 pr-4">
                                                     <div className="flex flex-wrap items-center gap-3 mb-3 break-words">
@@ -298,11 +353,7 @@ export default function CriticalDetailModal({
                                                                 value={m.status}
                                                                 onChange={(e) => {
                                                                     const nextStatus = e.target.value as 'OPEN' | 'IP' | 'OK';
-                                                                    setMLogs(prev => {
-                                                                        const n = [...prev];
-                                                                        n[idx] = { ...n[idx], status: nextStatus };
-                                                                        return n;
-                                                                    });
+                                                                    updateMaintenanceStatus(m.id, nextStatus, idx);
                                                                 }}
                                                                 className={`appearance-none outline-none cursor-pointer inline-block px-4 py-1.5 pr-8 rounded-lg text-sm font-black border uppercase tracking-wider text-center shadow-sm hover:opacity-80 transition-opacity ${
                                                                     m.status === 'OK' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
@@ -443,12 +494,12 @@ export default function CriticalDetailModal({
                     <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-3 mb-4 text-amber-600">
                             <span className="material-symbols-outlined text-3xl">edit_note</span>
-                            <h3 className="text-xl font-black text-slate-800">Tambah Note Baru</h3>
+                            <h3 className="text-xl font-black text-slate-800">{editingNoteId ? 'Edit Note' : 'Tambah Note Baru'}</h3>
                         </div>
                         <textarea
                             value={noteText}
                             onChange={e => setNoteText(e.target.value)}
-                            className="w-full border-2 border-slate-200 rounded-xl p-3 h-32 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 outline-none transition-all text-sm font-medium resize-none light-scrollbar"
+                            className="w-full border-2 border-slate-200 rounded-xl p-3 h-32 text-black focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 outline-none transition-all text-sm font-medium resize-none light-scrollbar"
                             placeholder="Ketik isi note..."
                             autoFocus
                         />

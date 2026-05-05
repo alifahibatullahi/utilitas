@@ -202,6 +202,7 @@ export default function CriticalPage() {
                                         }
                                         setShowMaintenanceForm(true);
                                     }}
+                                    onRefresh={cm.refetch}
                                     expandedId={expandedCriticalId}
                                     onSetExpandedId={setExpandedCriticalId}
                                     fetchPhotos={cm.fetchPhotos}

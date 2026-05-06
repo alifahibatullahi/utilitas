@@ -49,32 +49,27 @@ export default function WorkOrderDetailModal({
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className={`flex-shrink-0 ${headerBg} border-b px-8 py-5 flex items-start justify-between`}>
+                <div className={`flex-shrink-0 bg-[#EAEFF5] border-b border-[#D8E2ED] px-8 py-5 flex items-start justify-between`}>
                     <div className="flex flex-col gap-3 w-full overflow-hidden">
                         {/* Upper Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
-                            {rowIndex !== undefined && (
-                                <span className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white border ${borderSoft} ${textMedium} text-base font-black shadow-sm`}>
-                                    {rowIndex}
-                                </span>
-                            )}
-                            <h2 className={`text-2xl font-black ${textDark} whitespace-nowrap uppercase`}>ITEM : {workOrder.item}</h2>
-                            <span className={`px-3 py-1 bg-white ${textMedium} text-sm font-black rounded-full uppercase tracking-widest border ${borderSoft} whitespace-nowrap`}>{tipeLabel}</span>
-                            <span className={`px-3 py-1 bg-white ${textMedium} text-sm font-bold rounded-full border ${borderSoft} whitespace-nowrap`}>ID {tipeLabel.toUpperCase()} : #{workOrder.id.slice(0, 8).toUpperCase()}</span>
+                            <span className={`px-4 py-1.5 bg-${accentColor}-500 text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap shadow-sm`}>{tipeLabel}</span>
+                            <h2 className={`text-2xl font-black text-slate-800 whitespace-nowrap uppercase`}>ITEM : {workOrder.item}</h2>
+                            <span className={`px-3 py-1 bg-white text-slate-700 text-sm font-bold rounded-full border border-slate-200 whitespace-nowrap`}>ID {tipeLabel.toUpperCase()} : #{workOrder.id.slice(0, 8).toUpperCase()}</span>
                             <StatusBadge status={workOrder.status} solid className="px-3 py-1 text-sm shadow-sm" />
                         </div>
                         {/* Lower Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
-                            <ScopeBadge scope={workOrder.scope} solid className="px-3 py-1 text-sm shadow-sm" />
+                            <ScopeBadge scope={workOrder.scope} solid className="px-4 py-1.5 text-base font-black shadow-sm" />
                             {workOrder.reported_by && (
-                                <span className={`px-3 py-1 bg-white ${textMedium} font-bold text-sm rounded-full border ${borderSoft} whitespace-nowrap`}>
-                                    👤 {workOrder.reported_by}
+                                <span className={`px-3 py-1 bg-white text-slate-700 font-bold text-sm rounded-full border border-slate-200 whitespace-nowrap`}>
+                                    👤 Yang Melaporkan : {workOrder.reported_by}
                                 </span>
                             )}
                         </div>
                     </div>
                     <button onClick={onClose}
-                        className={`flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border ${borderSoft} hover:bg-slate-50 ${textMedium} transition-colors shadow-sm`}>
+                        className={`flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-slate-100 text-slate-500 transition-colors shadow-sm`}>
                         <span className="material-symbols-outlined" style={{ fontSize: 24 }}>close</span>
                     </button>
                 </div>

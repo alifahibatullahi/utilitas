@@ -236,35 +236,30 @@ export default function CriticalDetailModal({
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex-shrink-0 bg-rose-50/80 border-b border-rose-200 px-8 py-5 flex items-start justify-between">
+                <div className="flex-shrink-0 bg-[#EAEFF5] border-b border-[#D8E2ED] px-8 py-5 flex items-start justify-between">
                     <div className="flex flex-col gap-3 w-full overflow-hidden">
                         {/* Upper Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
-                            {rowIndex !== undefined && (
-                                <span className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-rose-200 text-rose-600 text-base font-black shadow-sm">
-                                    {rowIndex}
-                                </span>
-                            )}
-                            <h2 className="text-2xl font-black text-rose-950 whitespace-nowrap uppercase">ITEM : {critical.item}</h2>
-                            <span className="px-3 py-1 bg-white text-rose-700 text-sm font-black rounded-full uppercase tracking-widest border border-rose-200 whitespace-nowrap">CRITICAL</span>
-                            <span className="px-3 py-1 bg-white text-rose-700 text-sm font-bold rounded-full border border-rose-200 whitespace-nowrap">ID CRITICAL : #{critical.id.slice(0, 8).toUpperCase()}</span>
+                            <span className="px-4 py-1.5 bg-rose-500 text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap shadow-sm">CRITICAL</span>
+                            <h2 className="text-2xl font-black text-slate-800 whitespace-nowrap uppercase">ITEM : {critical.item}</h2>
+                            <span className="px-3 py-1 bg-white text-slate-700 text-sm font-bold rounded-full border border-slate-200 whitespace-nowrap">ID CRITICAL : #{critical.id.slice(0, 8).toUpperCase()}</span>
                             <StatusBadge status={critical.status} solid className="px-3 py-1 text-sm shadow-sm" />
                         </div>
                         {/* Lower Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
                             {allScopes.map(s => (
-                                <ScopeBadge key={s} scope={s} solid className="px-3 py-1 text-sm shadow-sm" />
+                                <ScopeBadge key={s} scope={s} solid className="px-4 py-1.5 text-base font-black shadow-sm" />
                             ))}
                             {critical.reported_by && (
-                                <span className="px-3 py-1 bg-white text-rose-700 font-bold text-sm rounded-full border border-rose-200 whitespace-nowrap">
-                                    👤 {critical.reported_by}
+                                <span className="px-3 py-1 bg-white text-slate-700 font-bold text-sm rounded-full border border-slate-200 whitespace-nowrap">
+                                    👤 Yang Melaporkan : {critical.reported_by}
                                 </span>
                             )}
                         </div>
                     </div>
                     <button
                         onClick={handleClose}
-                        className="flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-rose-200 hover:bg-rose-100 text-rose-600 transition-colors shadow-sm"
+                        className="flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-slate-100 text-slate-500 transition-colors shadow-sm"
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 24 }}>close</span>
                     </button>

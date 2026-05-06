@@ -235,29 +235,36 @@ export default function CriticalDetailModal({
                 className="relative bg-white w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header (Table-like, Black Bold text) */}
-                <div className="flex-shrink-0 bg-[#EAEFF5] border-b border-[#D8E2ED] px-8 py-5 flex items-center justify-between text-slate-800">
-                    <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4">
-                        {rowIndex !== undefined && (
-                            <span className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] text-slate-500 text-base font-black shadow-sm">
-                                {rowIndex}
-                            </span>
-                        )}
-                        <h2 className="text-2xl font-black whitespace-nowrap">{critical.item}</h2>
-                        <StatusBadge status={critical.status} solid className="px-4 py-1.5 text-base shadow-sm" />
-                        {allScopes.map(s => (
-                            <ScopeBadge key={s} scope={s} solid className="px-4 py-1.5 text-base shadow-sm" />
-                        ))}
-                        {critical.reported_by && (
-                            <div className="px-4 py-1.5 bg-violet-100 text-violet-700 font-bold rounded-xl whitespace-nowrap shadow-sm flex flex-col justify-center leading-tight">
-                                <span className="text-[10px] font-black uppercase tracking-wider opacity-75">Yang melaporkan :</span>
-                                <span className="text-base flex items-center gap-1 mt-0.5">👤 {critical.reported_by}</span>
-                            </div>
-                        )}
+                {/* Header */}
+                <div className="flex-shrink-0 bg-gradient-to-r from-rose-500 to-rose-600 px-8 py-5 flex items-start justify-between shadow-md">
+                    <div className="flex flex-col gap-3 w-full overflow-hidden">
+                        {/* Upper Part */}
+                        <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
+                            {rowIndex !== undefined && (
+                                <span className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white/20 text-white text-base font-black shadow-sm">
+                                    {rowIndex}
+                                </span>
+                            )}
+                            <h2 className="text-2xl font-black text-white whitespace-nowrap uppercase">ITEM : {critical.item}</h2>
+                            <span className="px-3 py-1 bg-white/20 text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap">CRITICAL</span>
+                            <span className="px-3 py-1 bg-white/20 text-white text-sm font-bold rounded-full whitespace-nowrap">ID CRITICAL : #{critical.id.slice(0, 8).toUpperCase()}</span>
+                            <StatusBadge status={critical.status} solid className="px-3 py-1 text-sm shadow-sm border border-white/20" />
+                        </div>
+                        {/* Lower Part */}
+                        <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
+                            {allScopes.map(s => (
+                                <ScopeBadge key={s} scope={s} solid className="px-3 py-1 text-sm shadow-sm border border-white/20" />
+                            ))}
+                            {critical.reported_by && (
+                                <span className="px-3 py-1 bg-white/20 text-white font-bold text-sm rounded-full whitespace-nowrap">
+                                    👤 {critical.reported_by}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <button
                         onClick={handleClose}
-                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] text-slate-500 hover:bg-slate-100 transition-colors shadow-sm"
+                        className="flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors shadow-sm"
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 24 }}>close</span>
                     </button>
@@ -272,7 +279,7 @@ export default function CriticalDetailModal({
                             <span className="text-xs uppercase font-black text-black block mb-1.5">Tanggal</span>
                             <span className="text-base font-bold text-slate-800">{formatDate(critical.date)}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border-rose-400 border-[1.5px] col-span-4">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-4">
                             <span className="text-sm uppercase font-black text-black block mb-1.5">Deskripsi Critical</span>
                             <span className="text-lg font-bold text-slate-800 leading-relaxed">{critical.deskripsi}</span>
                         </div>
@@ -525,8 +532,9 @@ export default function CriticalDetailModal({
                                 </div>
                             </div>
                         </div>
-
                     </div>
+                    {/* Spacer for bottom scroll */}
+                    <div className="h-8 flex-shrink-0" />
                 </div>
             </div>
             {/* Note Pop Up Form */}

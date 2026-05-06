@@ -46,27 +46,32 @@ export default function WorkOrderDetailModal({
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className={`flex-shrink-0 ${headerGradient} px-8 py-5 flex items-center justify-between`}>
-                    <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4">
-                        {rowIndex !== undefined && (
-                            <span className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white/20 text-white text-base font-black">
-                                {rowIndex}
-                            </span>
-                        )}
-                        <span className={`px-3 py-1 bg-white/20 text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap`}>
-                            {tipeLabel}
-                        </span>
-                        <h2 className="text-2xl font-black text-white whitespace-nowrap">{workOrder.item}</h2>
-                        <StatusBadge status={workOrder.status} solid className="px-4 py-1.5 text-base shadow-sm" />
-                        <ScopeBadge scope={workOrder.scope} solid className="px-4 py-1.5 text-base shadow-sm" />
-                        {workOrder.reported_by && (
-                            <span className="px-3 py-1.5 bg-white/20 text-white font-bold text-sm rounded-full whitespace-nowrap">
-                                👤 {workOrder.reported_by}
-                            </span>
-                        )}
+                <div className={`flex-shrink-0 ${headerGradient} px-8 py-5 flex items-start justify-between shadow-md`}>
+                    <div className="flex flex-col gap-3 w-full overflow-hidden">
+                        {/* Upper Part */}
+                        <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
+                            {rowIndex !== undefined && (
+                                <span className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white/20 text-white text-base font-black shadow-sm">
+                                    {rowIndex}
+                                </span>
+                            )}
+                            <h2 className="text-2xl font-black text-white whitespace-nowrap uppercase">ITEM : {workOrder.item}</h2>
+                            <span className="px-3 py-1 bg-white/20 text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap">{tipeLabel}</span>
+                            <span className="px-3 py-1 bg-white/20 text-white text-sm font-bold rounded-full whitespace-nowrap">ID {tipeLabel.toUpperCase()} : #{workOrder.id.slice(0, 8).toUpperCase()}</span>
+                            <StatusBadge status={workOrder.status} solid className="px-3 py-1 text-sm shadow-sm border border-white/20" />
+                        </div>
+                        {/* Lower Part */}
+                        <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
+                            <ScopeBadge scope={workOrder.scope} solid className="px-3 py-1 text-sm shadow-sm border border-white/20" />
+                            {workOrder.reported_by && (
+                                <span className="px-3 py-1 bg-white/20 text-white font-bold text-sm rounded-full whitespace-nowrap">
+                                    👤 {workOrder.reported_by}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <button onClick={onClose}
-                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors">
+                        className="flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors shadow-sm">
                         <span className="material-symbols-outlined" style={{ fontSize: 24 }}>close</span>
                     </button>
                 </div>
@@ -79,7 +84,7 @@ export default function WorkOrderDetailModal({
                             <span className="text-xs uppercase font-black text-black block mb-1.5">Tanggal</span>
                             <span className="text-base font-bold text-slate-800">{formatDate(workOrder.date)}</span>
                         </div>
-                        <div className={`bg-white p-4 rounded-2xl shadow-sm border-${accentColor}-300 border-[1.5px] md:col-span-2`}>
+                        <div className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-200 md:col-span-2`}>
                             <span className="text-xs uppercase font-black text-black block mb-1.5">Deskripsi</span>
                             <span className="text-base font-bold text-slate-800">{workOrder.deskripsi}</span>
                         </div>

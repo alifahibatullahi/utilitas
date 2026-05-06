@@ -248,7 +248,7 @@ export default function CriticalDetailModal({
                         {/* Lower Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
                             {allScopes.map(s => (
-                                <ScopeBadge key={s} scope={s} solid className="px-4 py-1.5 text-base font-black shadow-sm" />
+                                <ScopeBadge key={s} scope={s} solid className="px-6 py-2 text-xl font-black shadow-sm" />
                             ))}
                             {critical.reported_by && (
                                 <span className="px-3 py-1 bg-white text-slate-700 font-bold text-sm rounded-full border border-slate-200 whitespace-nowrap">
@@ -347,15 +347,13 @@ export default function CriticalDetailModal({
                                                             )}
                                                         </div>
                                                         <div className="flex-shrink-0 flex items-center gap-2 border-l border-amber-200/50 pl-3">
-                                                            <button onClick={() => handleEditNote(m)} className="px-3 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border text-blue-600 hover:text-white bg-blue-50 border-blue-200 hover:bg-blue-600 hover:border-transparent">
+                                                            <button onClick={() => handleEditNote(m)} className="w-9 h-9 rounded-lg font-bold flex items-center justify-center transition-all text-sm shadow-sm border text-blue-600 hover:text-white bg-blue-50 border-blue-200 hover:bg-blue-600 hover:border-transparent">
                                                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
-                                                                Edit
                                                             </button>
                                                             <button onClick={() => {
                                                                 if (confirm('Hapus note ini?')) onDeleteMaintenance?.(m.id);
-                                                            }} className="px-3 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border text-rose-600 hover:text-white bg-rose-50 border-rose-200 hover:bg-rose-600 hover:border-transparent">
+                                                            }} className="w-9 h-9 rounded-lg font-bold flex items-center justify-center transition-all text-sm shadow-sm border text-rose-600 hover:text-white bg-rose-50 border-rose-200 hover:bg-rose-600 hover:border-transparent">
                                                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
-                                                                Hapus
                                                             </button>
                                                         </div>
                                                     </div>
@@ -529,7 +527,7 @@ export default function CriticalDetailModal({
                         </div>
                     </div>
                     {/* Spacer for bottom scroll */}
-                    <div className="h-8 flex-shrink-0" />
+                    <div className="w-full h-24 min-h-[6rem] flex-shrink-0" />
                 </div>
             </div>
             {/* Note Pop Up Form */}

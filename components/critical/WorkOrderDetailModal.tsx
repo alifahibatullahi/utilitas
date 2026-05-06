@@ -60,7 +60,7 @@ export default function WorkOrderDetailModal({
                         </div>
                         {/* Lower Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
-                            <ScopeBadge scope={workOrder.scope} solid className="px-4 py-1.5 text-base font-black shadow-sm" />
+                            <ScopeBadge scope={workOrder.scope} solid className="px-6 py-2 text-xl font-black shadow-sm" />
                             {workOrder.reported_by && (
                                 <span className={`px-3 py-1 bg-white text-slate-700 font-bold text-sm rounded-full border border-slate-200 whitespace-nowrap`}>
                                     👤 Yang Melaporkan : {workOrder.reported_by}
@@ -185,6 +185,8 @@ export default function WorkOrderDetailModal({
                             </div>
                         )}
                     </div>
+                    {/* Spacer for bottom scroll */}
+                    <div className="w-full h-24 min-h-[6rem] flex-shrink-0" />
                 </div>
             </div>
         </div>

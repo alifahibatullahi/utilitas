@@ -35,7 +35,10 @@ export default function WorkOrderDetailModal({
 
     const isPreventif = workOrder.tipe === 'preventif';
     const accentColor = isPreventif ? 'emerald' : 'violet';
-    const headerGradient = isPreventif ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-violet-500 to-violet-600';
+    const headerBg = isPreventif ? 'bg-emerald-50 border-emerald-200' : 'bg-violet-50 border-violet-200';
+    const textDark = isPreventif ? 'text-emerald-950' : 'text-violet-950';
+    const textMedium = isPreventif ? 'text-emerald-700' : 'text-violet-700';
+    const borderSoft = isPreventif ? 'border-emerald-200' : 'border-violet-200';
     const tipeLabel = isPreventif ? 'Preventif' : 'Modifikasi';
 
     return (
@@ -46,32 +49,32 @@ export default function WorkOrderDetailModal({
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className={`flex-shrink-0 ${headerGradient} px-8 py-5 flex items-start justify-between shadow-md`}>
+                <div className={`flex-shrink-0 ${headerBg} border-b px-8 py-5 flex items-start justify-between`}>
                     <div className="flex flex-col gap-3 w-full overflow-hidden">
                         {/* Upper Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
                             {rowIndex !== undefined && (
-                                <span className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white/20 text-white text-base font-black shadow-sm">
+                                <span className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white border ${borderSoft} ${textMedium} text-base font-black shadow-sm`}>
                                     {rowIndex}
                                 </span>
                             )}
-                            <h2 className="text-2xl font-black text-white whitespace-nowrap uppercase">ITEM : {workOrder.item}</h2>
-                            <span className="px-3 py-1 bg-white/20 text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap">{tipeLabel}</span>
-                            <span className="px-3 py-1 bg-white/20 text-white text-sm font-bold rounded-full whitespace-nowrap">ID {tipeLabel.toUpperCase()} : #{workOrder.id.slice(0, 8).toUpperCase()}</span>
-                            <StatusBadge status={workOrder.status} solid className="px-3 py-1 text-sm shadow-sm border border-white/20" />
+                            <h2 className={`text-2xl font-black ${textDark} whitespace-nowrap uppercase`}>ITEM : {workOrder.item}</h2>
+                            <span className={`px-3 py-1 bg-white ${textMedium} text-sm font-black rounded-full uppercase tracking-widest border ${borderSoft} whitespace-nowrap`}>{tipeLabel}</span>
+                            <span className={`px-3 py-1 bg-white ${textMedium} text-sm font-bold rounded-full border ${borderSoft} whitespace-nowrap`}>ID {tipeLabel.toUpperCase()} : #{workOrder.id.slice(0, 8).toUpperCase()}</span>
+                            <StatusBadge status={workOrder.status} solid className="px-3 py-1 text-sm shadow-sm" />
                         </div>
                         {/* Lower Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
-                            <ScopeBadge scope={workOrder.scope} solid className="px-3 py-1 text-sm shadow-sm border border-white/20" />
+                            <ScopeBadge scope={workOrder.scope} solid className="px-3 py-1 text-sm shadow-sm" />
                             {workOrder.reported_by && (
-                                <span className="px-3 py-1 bg-white/20 text-white font-bold text-sm rounded-full whitespace-nowrap">
+                                <span className={`px-3 py-1 bg-white ${textMedium} font-bold text-sm rounded-full border ${borderSoft} whitespace-nowrap`}>
                                     👤 {workOrder.reported_by}
                                 </span>
                             )}
                         </div>
                     </div>
                     <button onClick={onClose}
-                        className="flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors shadow-sm">
+                        className={`flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border ${borderSoft} hover:bg-slate-50 ${textMedium} transition-colors shadow-sm`}>
                         <span className="material-symbols-outlined" style={{ fontSize: 24 }}>close</span>
                     </button>
                 </div>

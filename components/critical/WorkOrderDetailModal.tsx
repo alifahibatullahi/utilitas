@@ -189,5 +189,6 @@ export default function WorkOrderDetailModal({
                 </div>
             </div>
         </div>
+    </div>
     );
 }

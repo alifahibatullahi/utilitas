@@ -529,6 +529,7 @@ export default function CriticalDetailModal({
                     </div>
                 </div>
             </div>
+        </div>
             {/* Note Pop Up Form */}
             {showNoteForm && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm rounded-3xl" onClick={() => setShowNoteForm(false)}>

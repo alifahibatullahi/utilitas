@@ -60,12 +60,12 @@ export default function WorkOrderDetailModal({
                         </div>
                         {/* Lower Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
-                            <ScopeBadge scope={workOrder.scope} solid className="px-6 py-2 text-xl font-black shadow-sm" />
                             {workOrder.reported_by && (
                                 <span className={`px-3 py-1 bg-white text-slate-700 font-bold text-sm rounded-full border border-slate-200 whitespace-nowrap`}>
                                     👤 Yang Melaporkan : {workOrder.reported_by}
                                 </span>
                             )}
+                            <ScopeBadge scope={workOrder.scope} solid className="px-6 py-2 text-xl font-black shadow-sm" />
                         </div>
                     </div>
                     <button onClick={onClose}
@@ -75,8 +75,9 @@ export default function WorkOrderDetailModal({
                 </div>
 
                 {/* Body */}
-                <div className="p-8 overflow-y-auto light-scrollbar flex-1 bg-slate-50 flex flex-col gap-6">
-                    {/* Meta */}
+                <div className="overflow-y-auto light-scrollbar flex-1 bg-slate-50">
+                    <div className="p-8 pb-32 flex flex-col gap-6 min-h-max">
+                        {/* Meta */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                             <span className="text-xs uppercase font-black text-black block mb-1.5">Tanggal</span>
@@ -185,8 +186,6 @@ export default function WorkOrderDetailModal({
                             </div>
                         )}
                     </div>
-                    {/* Spacer for bottom scroll */}
-                    <div className="w-full h-24 min-h-[6rem] flex-shrink-0" />
                 </div>
             </div>
         </div>

@@ -40,8 +40,8 @@
 
 /* Custom light scrollbar for specific modules */
 .light-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
 }
 .light-scrollbar::-webkit-scrollbar-track {
   background: #ffffff;

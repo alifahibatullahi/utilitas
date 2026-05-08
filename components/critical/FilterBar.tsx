@@ -23,7 +23,11 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
             .from('equipment_items')
             .select('id, no_item, deskripsi, created_at, updated_at')
             .order('no_item')
-            .then(({ data }) => { if (data) setItems(data); });
+            .limit(2000)
+            .then(({ data, error }) => {
+                if (error) console.error('Failed to load equipment_items:', error);
+                if (data) setItems(data);
+            });
     }, []);
 
     useEffect(() => { setSearch(value); }, [value]);
@@ -36,12 +40,26 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const filtered = search
-        ? items.filter(item =>
-            item.deskripsi.toLowerCase().includes(search.toLowerCase()) ||
-            item.no_item.toLowerCase().includes(search.toLowerCase())
-        )
-        : items;
+    const filtered = (() => {
+        if (!search) return items.slice(0, 10);
+        const q = search.toLowerCase();
+        const scored = items
+            .map(item => {
+                const desc = item.deskripsi.toLowerCase();
+                const no = item.no_item.toLowerCase();
+                let score = -1;
+                if (desc === q || no === q) score = 0;
+                else if (desc.startsWith(q)) score = 1;
+                else if (no.startsWith(q)) score = 2;
+                else if (new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(desc)) score = 3;
+                else if (desc.includes(q)) score = 4;
+                else if (no.includes(q)) score = 5;
+                return { item, score };
+            })
+            .filter(x => x.score >= 0)
+            .sort((a, b) => a.score - b.score);
+        return scored.map(x => x.item);
+    })();
 
     return (
         <div ref={ref} className="relative">
@@ -58,23 +76,34 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
                 onFocus={() => setOpen(true)}
                 className="pl-9 pr-3 py-2 rounded-xl border-2 border-gray-900 bg-white text-black text-xs font-bold focus:ring-1 focus:ring-black focus:border-black outline-none w-48 shadow-sm transition-all placeholder:text-gray-500"
             />
-            {open && filtered.length > 0 && (
-                <div className="absolute z-50 mt-1 w-64 max-h-56 overflow-y-auto bg-white border-2 border-gray-900 rounded-xl shadow-xl">
-                    {filtered.map(item => (
-                        <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => {
-                                setSearch(item.deskripsi);
-                                onSelect(item.deskripsi);
-                                setOpen(false);
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 transition-colors"
-                        >
-                            <span className="text-xs font-bold text-gray-400">{item.no_item}</span>
-                            <span className="text-xs font-bold text-gray-900"> — {item.deskripsi}</span>
-                        </button>
-                    ))}
+            {open && (
+                <div className="absolute z-50 mt-1 w-72 max-h-72 overflow-y-auto bg-white border-2 border-gray-900 rounded-xl shadow-xl">
+                    <div className="sticky top-0 bg-gray-100 px-3 py-1 text-[10px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-300">
+                        {items.length === 0
+                            ? 'Memuat...'
+                            : !search
+                                ? `Menampilkan ${filtered.length} dari ${items.length} item — ketik untuk cari`
+                                : `${filtered.length} dari ${items.length} item`}
+                    </div>
+                    {filtered.length === 0 && items.length > 0 ? (
+                        <div className="px-3 py-3 text-xs text-gray-400 text-center">Tidak ada item cocok</div>
+                    ) : (
+                        filtered.map(item => (
+                            <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                    setSearch(item.deskripsi);
+                                    onSelect(item.deskripsi);
+                                    setOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-100 transition-colors"
+                            >
+                                <span className="text-xs font-bold text-gray-400">{item.no_item}</span>
+                                <span className="text-xs font-bold text-gray-900"> — {item.deskripsi}</span>
+                            </button>
+                        ))
+                    )}
                 </div>
             )}
         </div>

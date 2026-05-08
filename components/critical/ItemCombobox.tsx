@@ -43,10 +43,28 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filtered = items.filter(item =>
-        item.no_item.toLowerCase().includes(search.toLowerCase()) ||
-        item.deskripsi.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = (() => {
+        if (!search) return items.slice(0, 10);
+        const q = search.toLowerCase();
+        const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const wordRe = new RegExp(`\\b${escaped}`);
+        return items
+            .map(item => {
+                const desc = item.deskripsi.toLowerCase();
+                const no = item.no_item.toLowerCase();
+                let score = -1;
+                if (desc === q || no === q) score = 0;
+                else if (desc.startsWith(q)) score = 1;
+                else if (no.startsWith(q)) score = 2;
+                else if (wordRe.test(desc)) score = 3;
+                else if (desc.includes(q)) score = 4;
+                else if (no.includes(q)) score = 5;
+                return { item, score };
+            })
+            .filter(x => x.score >= 0)
+            .sort((a, b) => a.score - b.score)
+            .map(x => x.item);
+    })();
 
     const baseInput = light
         ? 'w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none'

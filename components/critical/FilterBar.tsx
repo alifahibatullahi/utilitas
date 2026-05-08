@@ -1,30 +1,24 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { CriticalEquipmentStatus, HarScope, EquipmentItemRow } from '@/lib/supabase/types';
+import type { CriticalEquipmentStatus, HarScope } from '@/lib/supabase/types';
 import { HAR_SCOPES, CRITICAL_STATUSES } from '@/lib/constants';
 import type { CriticalMaintenanceFilters } from '@/hooks/useCriticalMaintenance';
-import { createClient } from '@/lib/supabase/client';
 
 interface FilterBarProps {
     filters: CriticalMaintenanceFilters;
     onChange: (filters: CriticalMaintenanceFilters) => void;
+    availableItems?: string[];
 }
 
-function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: string | undefined) => void }) {
+function ItemSearchDropdown({ value, onSelect, availableItems }: {
+    value: string;
+    onSelect: (v: string | undefined) => void;
+    availableItems: string[];
+}) {
     const [search, setSearch] = useState(value);
     const [open, setOpen] = useState(false);
-    const [items, setItems] = useState<EquipmentItemRow[]>([]);
     const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const supabase = createClient();
-        supabase
-            .from('equipment_items')
-            .select('id, no_item, deskripsi, created_at, updated_at')
-            .order('no_item')
-            .then(({ data }) => { if (data) setItems(data); });
-    }, []);
 
     useEffect(() => { setSearch(value); }, [value]);
 
@@ -37,11 +31,8 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
     }, []);
 
     const filtered = search
-        ? items.filter(item =>
-            item.deskripsi.toLowerCase().includes(search.toLowerCase()) ||
-            item.no_item.toLowerCase().includes(search.toLowerCase())
-        )
-        : items;
+        ? availableItems.filter(item => item.toLowerCase().includes(search.toLowerCase()))
+        : availableItems;
 
     return (
         <div ref={ref} className="relative">
@@ -59,20 +50,19 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
                 className="pl-9 pr-3 py-2 rounded-xl border-2 border-gray-900 bg-white text-black text-xs font-bold focus:ring-1 focus:ring-black focus:border-black outline-none w-48 shadow-sm transition-all placeholder:text-gray-500"
             />
             {open && filtered.length > 0 && (
-                <div className="absolute z-50 mt-1 w-64 max-h-56 overflow-y-auto bg-white border-2 border-gray-900 rounded-xl shadow-xl">
+                <div className="absolute z-50 mt-1 w-56 max-h-56 overflow-y-auto bg-white border-2 border-gray-900 rounded-xl shadow-xl">
                     {filtered.map(item => (
                         <button
-                            key={item.id}
+                            key={item}
                             type="button"
                             onClick={() => {
-                                setSearch(item.deskripsi);
-                                onSelect(item.deskripsi);
+                                setSearch(item);
+                                onSelect(item);
                                 setOpen(false);
                             }}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 transition-colors"
+                            className="w-full text-left px-3 py-2 text-xs font-bold text-gray-900 hover:bg-gray-100 transition-colors"
                         >
-                            <span className="text-xs font-bold text-gray-400">{item.no_item}</span>
-                            <span className="text-xs font-bold text-gray-900"> — {item.deskripsi}</span>
+                            {item}
                         </button>
                     ))}
                 </div>
@@ -81,7 +71,7 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
     );
 }
 
-export default function FilterBar({ filters, onChange }: FilterBarProps) {
+export default function FilterBar({ filters, onChange, availableItems = [] }: FilterBarProps) {
     const update = (patch: Partial<CriticalMaintenanceFilters>) => onChange({ ...filters, ...patch });
 
     return (
@@ -90,6 +80,7 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
             <ItemSearchDropdown
                 value={filters.item ?? ''}
                 onSelect={v => update({ item: v })}
+                availableItems={availableItems}
             />
 
             {/* Status pills — OPEN / CLOSED */}

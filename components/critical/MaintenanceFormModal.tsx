@@ -202,7 +202,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                     )}
 
                     {/* Row 1: Item | Critical (hanya mode corrective) */}
-                    <div>
+                    <div className={isPreventifModifikasiMode || isWOMode ? 'md:col-span-2' : ''}>
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
                         <ItemCombobox value={item} onChange={handleItemChange} light={true} />
                     </div>

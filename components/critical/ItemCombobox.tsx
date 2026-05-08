@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { PREDEFINED_ITEMS } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
+import type { EquipmentItemRow } from '@/lib/supabase/types';
 
 interface ItemComboboxProps {
     value: string;
@@ -12,7 +13,17 @@ interface ItemComboboxProps {
 export default function ItemCombobox({ value, onChange, light = false }: ItemComboboxProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState(value);
+    const [items, setItems] = useState<EquipmentItemRow[]>([]);
     const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const supabase = createClient();
+        supabase
+            .from('equipment_items')
+            .select('id, no_item, deskripsi, created_at, updated_at')
+            .order('no_item')
+            .then(({ data }) => { if (data) setItems(data); });
+    }, []);
 
     useEffect(() => { setSearch(value); }, [value]);
 
@@ -24,8 +35,9 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filtered = PREDEFINED_ITEMS.filter(item =>
-        item.toLowerCase().includes(search.toLowerCase())
+    const filtered = items.filter(item =>
+        item.deskripsi.toLowerCase().includes(search.toLowerCase()) ||
+        item.no_item.toLowerCase().includes(search.toLowerCase())
     );
 
     const baseInput = light
@@ -49,12 +61,13 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
                 <div className={`absolute z-50 mt-1 w-full max-h-48 overflow-y-auto light-scrollbar rounded-lg border ${dropdownBg}`}>
                     {filtered.map(item => (
                         <button
-                            key={item}
+                            key={item.id}
                             type="button"
-                            onClick={() => { onChange(item); setSearch(item); setOpen(false); }}
+                            onClick={() => { onChange(item.deskripsi); setSearch(item.deskripsi); setOpen(false); }}
                             className={`w-full text-left px-3 py-2 text-sm ${itemHover} transition-colors`}
                         >
-                            {item}
+                            <span className="font-semibold">{item.deskripsi}</span>
+                            <span className="ml-2 text-xs opacity-50">{item.no_item}</span>
                         </button>
                     ))}
                 </div>

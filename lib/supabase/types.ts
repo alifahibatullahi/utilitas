@@ -6,6 +6,16 @@ export type ReportStatus = 'draft' | 'submitted' | 'approved';
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface Database {}
 
+// ─── Equipment Items ───
+
+export interface EquipmentItemRow {
+    id: string;
+    no_item: string;
+    deskripsi: string;
+    created_at: string;
+    updated_at: string;
+}
+
 // ─── Base / Anchor Tables ───
 
 export interface OperatorRow {

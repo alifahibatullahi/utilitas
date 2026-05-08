@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "PowerShell($content = Get-Content \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\No item.html\" -Raw -Encoding UTF8; $content.Substring\\(0, 3000\\))",
+      "mcp__5fa8677e-dbe4-4c40-ac74-99d19317835e__list_projects",
+      "mcp__5fa8677e-dbe4-4c40-ac74-99d19317835e__execute_sql"
+    ]
+  }
+}

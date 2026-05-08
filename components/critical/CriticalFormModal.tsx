@@ -1,7 +1,8 @@
 ﻿'use client';
 
 import { useState } from 'react';
-import { HAR_SCOPES, FOREMAN_OPTIONS } from '@/lib/constants';
+import { FOREMAN_OPTIONS } from '@/lib/constants';
+import ScopeCombobox from './ScopeCombobox';
 import type { HarScope, ForemanType, CriticalEquipmentRow } from '@/lib/supabase/types';
 import ItemCombobox from './ItemCombobox';
 import OperatorCombobox from './OperatorCombobox';
@@ -91,18 +92,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                     {/* Scope */}
                     <div>
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
-                        <div className="relative">
-                            <select
-                                value={scope}
-                                onChange={e => setScope(e.target.value as HarScope)}
-                                className="appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none cursor-pointer transition-all shadow-sm"
-                            >
-                                {HAR_SCOPES.map(s => (
-                                    <option key={s.value} value={s.value}>{s.label}</option>
-                                ))}
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
-                        </div>
+                        <ScopeCombobox value={scope} onChange={setScope} light={true} />
                     </div>
 
                     {/* Notif SAP */}

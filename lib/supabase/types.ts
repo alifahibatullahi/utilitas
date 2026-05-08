@@ -16,6 +16,17 @@ export interface EquipmentItemRow {
     updated_at: string;
 }
 
+// ─── HAR Scopes (master data) ───
+
+export interface HarScopeRow {
+    id: string;
+    value: string;
+    label: string;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+}
+
 // ─── Base / Anchor Tables ───
 
 export interface OperatorRow {

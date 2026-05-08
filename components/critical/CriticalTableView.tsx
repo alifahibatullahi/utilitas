@@ -7,6 +7,9 @@ import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
 import CriticalDetailModal from './CriticalDetailModal';
 import WorkOrderDetailModal from './WorkOrderDetailModal';
+import EditableCombobox, { type ComboboxItem } from './EditableCombobox';
+import MasterDataFormModal from './MasterDataFormModal';
+import { useEquipmentItems } from '@/hooks/useMasterData';
 
 const STORAGE_KEY = 'critical-starred-ids';
 const COL_COUNT = 9;
@@ -437,117 +440,44 @@ function WorkOrderRow({
 }
 
 // ─── Item Search Combobox ───
-interface EquipmentItem { no_item: string; deskripsi: string; }
-
 function ItemSearchCombobox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    const [open, setOpen] = useState(false);
-    const [items, setItems] = useState<EquipmentItem[]>([]);
-    const [activeIndex, setActiveIndex] = useState(-1);
-    const ref = useRef<HTMLDivElement>(null);
-    const listRef = useRef<HTMLDivElement>(null);
+    const { items, createItem, updateItem } = useEquipmentItems();
+    const [formOpen, setFormOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetch('/api/equipment-items')
-            .then(r => r.json())
-            .then(data => { if (Array.isArray(data.items)) setItems(data.items); })
-            .catch(() => {});
-    }, []);
+    const comboboxItems: ComboboxItem[] = items.map(it => ({
+        id: it.id, value: it.deskripsi, primary: it.deskripsi, secondary: it.no_item,
+    }));
 
-    useEffect(() => {
-        function handleOutside(e: MouseEvent) {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        }
-        document.addEventListener('mousedown', handleOutside);
-        return () => document.removeEventListener('mousedown', handleOutside);
-    }, []);
-
-    const MAX_DROPDOWN = 10;
-    const filtered = (() => {
-        if (!value) return items.slice(0, MAX_DROPDOWN);
-        const q = value.toLowerCase();
-        const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const wordRe = new RegExp(`\\b${escaped}`);
-        return items
-            .map(item => {
-                const desc = item.deskripsi.toLowerCase();
-                const no = item.no_item.toLowerCase();
-                let score = -1;
-                if (desc === q || no === q) score = 0;
-                else if (desc.startsWith(q)) score = 1;
-                else if (no.startsWith(q)) score = 2;
-                else if (wordRe.test(desc)) score = 3;
-                else if (desc.includes(q)) score = 4;
-                else if (no.includes(q)) score = 5;
-                return { item, score };
-            })
-            .filter(x => x.score >= 0)
-            .sort((a, b) => a.score - b.score)
-            .slice(0, MAX_DROPDOWN)
-            .map(x => x.item);
-    })();
-
-    function selectItem(item: EquipmentItem) {
-        onChange(item.deskripsi);
-        setOpen(false);
-        setActiveIndex(-1);
-    }
-
-    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-        if (!open) { if (e.key === 'ArrowDown') { setOpen(true); setActiveIndex(0); } return; }
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            const next = Math.min(activeIndex + 1, filtered.length - 1);
-            setActiveIndex(next);
-            listRef.current?.children[next]?.scrollIntoView({ block: 'nearest' });
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            const prev = Math.max(activeIndex - 1, 0);
-            setActiveIndex(prev);
-            listRef.current?.children[prev]?.scrollIntoView({ block: 'nearest' });
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (activeIndex >= 0 && filtered[activeIndex]) selectItem(filtered[activeIndex]);
-        } else if (e.key === 'Escape') {
-            setOpen(false);
-            setActiveIndex(-1);
-        }
-    }
+    const editing = editingId ? items.find(i => i.id === editingId) : null;
+    const initialValues = editing ? { no_item: editing.no_item, deskripsi: editing.deskripsi } : undefined;
 
     return (
-        <div ref={ref} className="relative w-[420px]">
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-                <span className="material-symbols-outlined text-gray-400" style={{ fontSize: 16 }}>search</span>
-                <input
-                    type="text"
-                    placeholder="Cari item..."
-                    value={value}
-                    onChange={e => { onChange(e.target.value); setOpen(true); setActiveIndex(-1); }}
-                    onFocus={() => setOpen(true)}
-                    onKeyDown={handleKeyDown}
-                    className="text-sm text-black outline-none bg-transparent w-full placeholder:text-gray-400"
-                />
-                {value && (
-                    <button onClick={() => { onChange(''); setOpen(false); setActiveIndex(-1); }} className="text-gray-300 hover:text-gray-500">
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
-                    </button>
-                )}
-            </div>
-            {open && filtered.length > 0 && (
-                <div ref={listRef} className="absolute z-50 top-full mt-1 w-[420px] max-h-72 overflow-y-auto light-scrollbar rounded-xl border border-gray-200 bg-white shadow-2xl">
-                    {filtered.map((item, idx) => (
-                        <button
-                            key={item.no_item}
-                            type="button"
-                            onMouseEnter={() => setActiveIndex(idx)}
-                            onClick={() => selectItem(item)}
-                            className={`w-full text-left px-4 py-2.5 transition-colors ${idx === activeIndex ? 'bg-blue-50 text-blue-700' : 'text-gray-800 hover:bg-gray-50'}`}
-                        >
-                            <span className={`text-xs font-bold ${idx === activeIndex ? 'text-blue-400' : 'text-gray-400'}`}>{item.no_item}</span>
-                            <span className={`text-sm font-semibold ml-2 ${idx === activeIndex ? 'text-blue-700' : 'text-gray-800'}`}>— {item.deskripsi}</span>
-                        </button>
-                    ))}
-                </div>
-            )}
+        <div className="w-[420px]">
+            <EditableCombobox
+                value={value}
+                onChange={onChange}
+                items={comboboxItems}
+                light={true}
+                placeholder="Cari item..."
+                onAdd={() => { setEditingId(null); setFormOpen(true); }}
+                onEdit={(id) => { setEditingId(id); setFormOpen(true); }}
+                addLabel="+ Tambahkan item baru"
+            />
+            <MasterDataFormModal
+                open={formOpen}
+                title={editing ? `Edit Item — ${editing.no_item}` : 'Tambah Item Baru'}
+                fields={[
+                    { key: 'no_item', label: 'No Item', placeholder: 'cth: 20 P-09.05 D', required: true },
+                    { key: 'deskripsi', label: 'Deskripsi', placeholder: 'cth: Dosing Pump D', required: true },
+                ]}
+                initial={initialValues}
+                onClose={() => { setFormOpen(false); setEditingId(null); }}
+                onSubmit={async (data) => {
+                    if (editingId) return updateItem(editingId, { no_item: data.no_item, deskripsi: data.deskripsi });
+                    return createItem({ no_item: data.no_item, deskripsi: data.deskripsi });
+                }}
+            />
         </div>
     );
 }

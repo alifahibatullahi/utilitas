@@ -334,15 +334,15 @@ interface EquipmentItem { no_item: string; deskripsi: string; }
 function ItemSearchCombobox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
     const [open, setOpen] = useState(false);
     const [items, setItems] = useState<EquipmentItem[]>([]);
+    const [activeIndex, setActiveIndex] = useState(-1);
     const ref = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetch('/api/equipment-items')
             .then(r => r.json())
-            .then(data => {
-                if (Array.isArray(data.items)) setItems(data.items);
-            })
-            .catch(() => { /* ignore */ });
+            .then(data => { if (Array.isArray(data.items)) setItems(data.items); })
+            .catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -378,40 +378,66 @@ function ItemSearchCombobox({ value, onChange }: { value: string; onChange: (v: 
             .map(x => x.item);
     })();
 
+    function selectItem(item: EquipmentItem) {
+        onChange(item.deskripsi);
+        setOpen(false);
+        setActiveIndex(-1);
+    }
+
+    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (!open) { if (e.key === 'ArrowDown') { setOpen(true); setActiveIndex(0); } return; }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = Math.min(activeIndex + 1, filtered.length - 1);
+            setActiveIndex(next);
+            listRef.current?.children[next]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = Math.max(activeIndex - 1, 0);
+            setActiveIndex(prev);
+            listRef.current?.children[prev]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0 && filtered[activeIndex]) selectItem(filtered[activeIndex]);
+        } else if (e.key === 'Escape') {
+            setOpen(false);
+            setActiveIndex(-1);
+        }
+    }
+
     return (
-        <div ref={ref} className="relative min-w-[220px]">
+        <div ref={ref} className="relative w-[420px]">
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
                 <span className="material-symbols-outlined text-gray-400" style={{ fontSize: 16 }}>search</span>
                 <input
                     type="text"
                     placeholder="Cari item..."
                     value={value}
-                    onChange={e => { onChange(e.target.value); setOpen(true); }}
+                    onChange={e => { onChange(e.target.value); setOpen(true); setActiveIndex(-1); }}
                     onFocus={() => setOpen(true)}
+                    onKeyDown={handleKeyDown}
                     className="text-sm text-black outline-none bg-transparent w-full placeholder:text-gray-400"
                 />
                 {value && (
-                    <button onClick={() => { onChange(''); setOpen(false); }} className="text-gray-300 hover:text-gray-500">
+                    <button onClick={() => { onChange(''); setOpen(false); setActiveIndex(-1); }} className="text-gray-300 hover:text-gray-500">
                         <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
                     </button>
                 )}
             </div>
             {open && filtered.length > 0 && (
-                <div className="absolute z-50 top-full mt-1 w-full max-h-52 overflow-y-auto light-scrollbar rounded-lg border border-gray-200 bg-white shadow-xl">
-                    {filtered.map(item => {
-                        const label = item.deskripsi ? `${item.no_item} — ${item.deskripsi}` : item.no_item;
-                        return (
-                            <button
-                                key={item.no_item}
-                                type="button"
-                                onClick={() => { onChange(label); setOpen(false); }}
-                                className="w-full text-left px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                            >
-                                <span className="text-gray-400">{item.no_item}</span>
-                                {item.deskripsi && <span className="text-gray-800"> — {item.deskripsi}</span>}
-                            </button>
-                        );
-                    })}
+                <div ref={listRef} className="absolute z-50 top-full mt-1 w-[420px] max-h-72 overflow-y-auto light-scrollbar rounded-xl border border-gray-200 bg-white shadow-2xl">
+                    {filtered.map((item, idx) => (
+                        <button
+                            key={item.no_item}
+                            type="button"
+                            onMouseEnter={() => setActiveIndex(idx)}
+                            onClick={() => selectItem(item)}
+                            className={`w-full text-left px-4 py-2.5 transition-colors ${idx === activeIndex ? 'bg-blue-50 text-blue-700' : 'text-gray-800 hover:bg-gray-50'}`}
+                        >
+                            <span className={`text-xs font-bold ${idx === activeIndex ? 'text-blue-400' : 'text-gray-400'}`}>{item.no_item}</span>
+                            <span className={`text-sm font-semibold ml-2 ${idx === activeIndex ? 'text-blue-700' : 'text-gray-800'}`}>— {item.deskripsi}</span>
+                        </button>
+                    ))}
                 </div>
             )}
         </div>

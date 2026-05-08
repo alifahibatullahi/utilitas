@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope, PhotoRow, MaintenanceType, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
-import { FOREMAN_OPTIONS, PREDEFINED_ITEMS } from '@/lib/constants';
+import { FOREMAN_OPTIONS } from '@/lib/constants';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
 import CriticalDetailModal from './CriticalDetailModal';
@@ -329,9 +329,21 @@ function WorkOrderRow({
 }
 
 // ─── Item Search Combobox ───
-function ItemSearchCombobox({ value, onChange, items }: { value: string; onChange: (v: string) => void; items: string[] }) {
+interface EquipmentItem { no_item: string; deskripsi: string; }
+
+function ItemSearchCombobox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
     const [open, setOpen] = useState(false);
+    const [items, setItems] = useState<EquipmentItem[]>([]);
     const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        fetch('/api/equipment-items')
+            .then(r => r.json())
+            .then(data => {
+                if (Array.isArray(data.items)) setItems(data.items);
+            })
+            .catch(() => { /* ignore */ });
+    }, []);
 
     useEffect(() => {
         function handleOutside(e: MouseEvent) {
@@ -341,9 +353,30 @@ function ItemSearchCombobox({ value, onChange, items }: { value: string; onChang
         return () => document.removeEventListener('mousedown', handleOutside);
     }, []);
 
-    const filtered = value
-        ? items.filter(i => i.toLowerCase().includes(value.toLowerCase()))
-        : items.slice(0, 8);
+    const MAX_DROPDOWN = 10;
+    const filtered = (() => {
+        if (!value) return items.slice(0, MAX_DROPDOWN);
+        const q = value.toLowerCase();
+        const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const wordRe = new RegExp(`\\b${escaped}`);
+        return items
+            .map(item => {
+                const desc = item.deskripsi.toLowerCase();
+                const no = item.no_item.toLowerCase();
+                let score = -1;
+                if (desc === q || no === q) score = 0;
+                else if (desc.startsWith(q)) score = 1;
+                else if (no.startsWith(q)) score = 2;
+                else if (wordRe.test(desc)) score = 3;
+                else if (desc.includes(q)) score = 4;
+                else if (no.includes(q)) score = 5;
+                return { item, score };
+            })
+            .filter(x => x.score >= 0)
+            .sort((a, b) => a.score - b.score)
+            .slice(0, MAX_DROPDOWN)
+            .map(x => x.item);
+    })();
 
     return (
         <div ref={ref} className="relative min-w-[220px]">
@@ -365,16 +398,20 @@ function ItemSearchCombobox({ value, onChange, items }: { value: string; onChang
             </div>
             {open && filtered.length > 0 && (
                 <div className="absolute z-50 top-full mt-1 w-full max-h-52 overflow-y-auto light-scrollbar rounded-lg border border-gray-200 bg-white shadow-xl">
-                    {filtered.map(item => (
-                        <button
-                            key={item}
-                            type="button"
-                            onClick={() => { onChange(item); setOpen(false); }}
-                            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                        >
-                            {item}
-                        </button>
-                    ))}
+                    {filtered.map(item => {
+                        const label = item.deskripsi ? `${item.no_item} — ${item.deskripsi}` : item.no_item;
+                        return (
+                            <button
+                                key={item.no_item}
+                                type="button"
+                                onClick={() => { onChange(label); setOpen(false); }}
+                                className="w-full text-left px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                            >
+                                <span className="text-gray-400">{item.no_item}</span>
+                                {item.deskripsi && <span className="text-gray-800"> — {item.deskripsi}</span>}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -595,7 +632,6 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                     <ItemSearchCombobox
                         value={filterItem}
                         onChange={val => { setFilterItem(val); setExpandedId(null); setCurrentPage(1); }}
-                        items={[...new Set([...PREDEFINED_ITEMS, ...criticals.map(c => c.item), ...workOrders.map(w => w.item)])].sort()}
                     />
                     {/* Status Tabs */}
                     <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">

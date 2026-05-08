@@ -54,6 +54,7 @@ export default function CriticalPage() {
     // Modal state
     const [showCriticalForm, setShowCriticalForm] = useState(false);
     const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
+    const [maintenanceRestrictTipe, setMaintenanceRestrictTipe] = useState<'preventifModifikasi' | undefined>(undefined);
     // Edit state
     const [editingCritical, setEditingCritical] = useState<CriticalWithMaintenance | null>(null);
     const [editingMaintenance, setEditingMaintenance] = useState<MaintenanceWithCritical | null>(null);
@@ -165,7 +166,11 @@ export default function CriticalPage() {
                                     workOrders={cm.workOrders}
                                     expandedWOId={expandedWOId}
                                     onSetExpandedWOId={setExpandedWOId}
-                                    onAddWorkOrder={() => setShowWorkOrderForm(true)}
+                                    onAddWorkOrder={() => {
+                                        setMaintenanceInitial({ date: new Date().toISOString().split('T')[0] });
+                                        setMaintenanceRestrictTipe('preventifModifikasi');
+                                        setShowMaintenanceForm(true);
+                                    }}
                                     onEditWorkOrder={(wo) => setEditingWorkOrder(wo)}
                                     onDeleteWorkOrder={async (id) => { await cm.deleteWorkOrder(id); }}
                                     onAddPekerjaanToWO={(wo) => {
@@ -240,18 +245,22 @@ export default function CriticalPage() {
                                     
                                     <div className="flex items-center gap-2">
                                         <button
-                                            onClick={() => setShowMaintenanceForm(true)}
-                                            className="whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer"
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>build</span>
-                                            + Tambah Pekerjaan
-                                        </button>
-                                        <button
                                             onClick={() => setShowCriticalForm(true)}
                                             className="whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 text-sm font-bold hover:bg-rose-100 transition-colors shadow-sm cursor-pointer"
                                         >
                                             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>warning</span>
                                             + Tambah Critical
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setMaintenanceInitial({ date: new Date().toISOString().split('T')[0] });
+                                                setMaintenanceRestrictTipe('preventifModifikasi');
+                                                setShowMaintenanceForm(true);
+                                            }}
+                                            className="whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer"
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>event_available</span>
+                                            + Preventif / Modifikasi
                                         </button>
                                     </div>
                                 </div>
@@ -299,6 +308,7 @@ export default function CriticalPage() {
                 onClose={() => {
                     setShowMaintenanceForm(false);
                     setMaintenanceInitial(undefined);
+                    setMaintenanceRestrictTipe(undefined);
                     setActiveWorkOrderContext(null);
                     if (returnToDetailId) {
                         setExpandedCriticalId(returnToDetailId);
@@ -324,6 +334,7 @@ export default function CriticalPage() {
                 workOrderContext={activeWorkOrderContext ?? undefined}
                 initial={maintenanceInitial}
                 operatorName={operator?.name}
+                restrictTipe={maintenanceRestrictTipe}
             />
             {/* Modals — edit */}
             {editingCritical && (

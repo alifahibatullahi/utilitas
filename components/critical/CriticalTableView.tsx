@@ -629,11 +629,11 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
             {/* ── Action Buttons ── */}
             <div className="flex items-center justify-center gap-3 py-2 flex-wrap">
                 <button
-                    onClick={() => onAddMaintenance?.()}
-                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-blue-50 text-blue-600 border-2 border-blue-200 text-sm font-black hover:bg-blue-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                    onClick={onAddCritical}
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-rose-50 text-rose-600 border-2 border-rose-200 text-sm font-black hover:bg-rose-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
                 >
-                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>build</span>
-                    + Maintenance (Critical)
+                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>warning</span>
+                    + Tambah Critical
                 </button>
                 <button
                     onClick={onAddWorkOrder}
@@ -641,13 +641,6 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                 >
                     <span className="material-symbols-outlined" style={{ fontSize: 20 }}>event_available</span>
                     + Preventif / Modifikasi
-                </button>
-                <button
-                    onClick={onAddCritical}
-                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-rose-50 text-rose-600 border-2 border-rose-200 text-sm font-black hover:bg-rose-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>warning</span>
-                    + Tambah Critical
                 </button>
             </div>
 

@@ -18,9 +18,11 @@ interface MaintenanceFormModalProps {
     workOrderContext?: WorkOrderWithPekerjaan;
     initial?: Partial<MaintenanceFormData>;
     operatorName?: string;
+    // Saat 'preventifModifikasi': hanya tampilkan tipe preventif/modifikasi (corrective disembunyikan)
+    restrictTipe?: 'preventifModifikasi';
 }
 
-export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmitPreventifModifikasi, activeCriticals, workOrderContext, initial, operatorName }: MaintenanceFormModalProps) {
+export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmitPreventifModifikasi, activeCriticals, workOrderContext, initial, operatorName, restrictTipe }: MaintenanceFormModalProps) {
     // Mode: 'wo' (pekerjaan dalam work order) atau 'corrective' (maintenance untuk critical)
     const isWOMode = !!workOrderContext || !!initial?.work_order_id;
 
@@ -34,13 +36,17 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
     const [foreman, setForeman] = useState<ForemanType>(initial?.foreman ?? workOrderContext?.foreman ?? 'foreman_turbin');
     const [notif, setNotif] = useState(initial?.notif ?? '');
     const [reportedBy, setReportedBy] = useState(initial?.reported_by ?? operatorName ?? '');
-    const [tipeSelected, setTipeSelected] = useState<MaintenanceType>(initial?.tipe ?? 'corrective');
+    const [tipeSelected, setTipeSelected] = useState<MaintenanceType>(
+        initial?.tipe ?? (restrictTipe === 'preventifModifikasi' ? 'preventif' : 'corrective')
+    );
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState<string | null>(null);
 
     // Tampilkan tipe selector hanya saat: bukan WO mode, bukan edit, & tidak ada critical_id awal
-    const showTipeSelector = !isWOMode && !initial?.uraian && !initial?.critical_id;
-    const isPreventifModifikasiMode = showTipeSelector && (tipeSelected === 'preventif' || tipeSelected === 'modifikasi');
+    const showTipeSelector = (!isWOMode && !initial?.uraian && !initial?.critical_id) || restrictTipe === 'preventifModifikasi';
+    const isPreventifModifikasiMode = restrictTipe === 'preventifModifikasi'
+        ? true
+        : showTipeSelector && (tipeSelected === 'preventif' || tipeSelected === 'modifikasi');
 
     if (!open) return null;
 
@@ -169,7 +175,9 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                                     { value: 'corrective' as MaintenanceType, label: 'Corrective', desc: 'Untuk Critical', activeCls: 'border-blue-500 bg-blue-50 shadow-md', titleCls: 'text-blue-700', descCls: 'text-blue-600' },
                                     { value: 'preventif' as MaintenanceType, label: 'Preventif', desc: 'Pemeliharaan rutin', activeCls: 'border-emerald-500 bg-emerald-50 shadow-md', titleCls: 'text-emerald-700', descCls: 'text-emerald-600' },
                                     { value: 'modifikasi' as MaintenanceType, label: 'Modifikasi', desc: 'Perubahan/upgrade', activeCls: 'border-violet-500 bg-violet-50 shadow-md', titleCls: 'text-violet-700', descCls: 'text-violet-600' },
-                                ]).map(opt => {
+                                ])
+                                .filter(opt => restrictTipe !== 'preventifModifikasi' || opt.value !== 'corrective')
+                                .map(opt => {
                                     const active = tipeSelected === opt.value;
                                     return (
                                         <button

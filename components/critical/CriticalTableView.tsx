@@ -32,6 +32,8 @@ interface CriticalTableViewProps {
     onSetExpandedId?: (id: string | null) => void;
     expandedWOId?: string | null;
     onSetExpandedWOId?: (id: string | null) => void;
+    onChangeCriticalStatus?: (id: string, newStatus: 'OPEN' | 'CLOSED') => Promise<void>;
+    onChangeWorkOrderStatus?: (id: string, newStatus: 'OPEN' | 'IP' | 'OK') => Promise<void>;
 }
 
 type TableStatusTab = 'ALL' | 'OPEN' | 'CLOSED';
@@ -56,6 +58,89 @@ const ACTION_CONFIG: Record<string, { icon: string; color: string }> = {
 function getForemanLabel(val: string) {
     return FOREMAN_OPTIONS.find(f => f.value === val)?.label ?? val;
 }
+
+// ─── Clickable Status Dropdown ───
+function ClickableStatusDropdown({
+    currentStatus,
+    options,
+    onChange,
+    label,
+}: {
+    currentStatus: string;
+    options: { value: string; label: string; color: string }[];
+    onChange: (newStatus: string) => Promise<void> | void;
+    label: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const [updating, setUpdating] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const current = options.find(o => o.value === currentStatus);
+
+    async function handleSelect(value: string) {
+        if (value === currentStatus) { setOpen(false); return; }
+        setUpdating(true);
+        try { await onChange(value); }
+        finally { setUpdating(false); setOpen(false); }
+    }
+
+    return (
+        <div ref={ref} className="relative inline-block">
+            <button
+                onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+                disabled={updating}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-extrabold uppercase tracking-wide shadow-sm transition-all cursor-pointer hover:opacity-80 disabled:opacity-50 ${current?.color ?? 'bg-gray-200 text-gray-700'}`}
+                title={`Klik untuk ubah status (${label})`}
+            >
+                {updating ? (
+                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 14 }}>progress_activity</span>
+                ) : null}
+                {current?.label ?? currentStatus}
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>expand_more</span>
+            </button>
+            {open && (
+                <div className="absolute z-50 left-0 mt-1 min-w-[160px] bg-white border-2 border-gray-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3 py-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-widest border-b border-gray-100 bg-gray-50">
+                        Ubah Status
+                    </div>
+                    {options.map(opt => {
+                        const active = opt.value === currentStatus;
+                        return (
+                            <button
+                                key={opt.value}
+                                onClick={(e) => { e.stopPropagation(); handleSelect(opt.value); }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold transition-colors text-left ${active ? `${opt.color}` : 'text-gray-700 hover:bg-gray-50'}`}
+                            >
+                                <span className={`w-2 h-2 rounded-full ${opt.color.split(' ')[0]}`} />
+                                {opt.label}
+                                {active && <span className="ml-auto text-[10px] text-gray-400 normal-case">saat ini</span>}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+const CRITICAL_STATUS_OPTIONS = [
+    { value: 'OPEN',   label: 'Open',   color: 'bg-rose-500 text-white' },
+    { value: 'CLOSED', label: 'Closed', color: 'bg-slate-600 text-white' },
+];
+
+const WO_STATUS_OPTIONS = [
+    { value: 'OPEN', label: 'Open',        color: 'bg-blue-500 text-white' },
+    { value: 'IP',   label: 'In Progress', color: 'bg-amber-500 text-white' },
+    { value: 'OK',   label: 'Selesai',     color: 'bg-emerald-500 text-white' },
+];
 
 function formatDate(d: string) {
     if (!d) return '-';
@@ -107,6 +192,7 @@ function CriticalRow({
     critical, starred, isEven, rowIndex, toggleStar, onEditCritical, onDeleteCritical,
     onEditMaintenance, onDeleteMaintenance, onAddMaintenance,
     expandedId, onToggleExpand, fetchPhotos, deletePhoto, operatorName,
+    onChangeStatus,
 }: {
     critical: CriticalWithMaintenance;
     starred: boolean;
@@ -123,6 +209,7 @@ function CriticalRow({
     fetchPhotos?: (maintenanceId: string) => Promise<PhotoRow[]>;
     deletePhoto?: (photoId: string) => Promise<void>;
     operatorName?: string;
+    onChangeStatus?: (id: string, newStatus: 'OPEN' | 'CLOSED') => Promise<void>;
 }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -177,9 +264,18 @@ function CriticalRow({
                 </td>
                 {/* Status */}
                 <td className="px-5 py-5 whitespace-nowrap">
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-col gap-1 items-start">
                         <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Critical</span>
-                        <StatusBadge status={critical.status} solid className="px-3 py-1 text-sm shadow-sm" />
+                        {onChangeStatus ? (
+                            <ClickableStatusDropdown
+                                currentStatus={critical.status}
+                                options={CRITICAL_STATUS_OPTIONS}
+                                onChange={(s) => onChangeStatus(critical.id, s as 'OPEN' | 'CLOSED')}
+                                label="Critical"
+                            />
+                        ) : (
+                            <StatusBadge status={critical.status} solid className="px-3 py-1 text-sm shadow-sm" />
+                        )}
                     </div>
                 </td>
                 <td className="px-5 py-5 text-center">
@@ -240,13 +336,14 @@ function CriticalRow({
 
 // ─── Work Order Row ───
 function WorkOrderRow({
-    wo, isEven, onEdit, onDelete, onToggleExpand,
+    wo, isEven, onEdit, onDelete, onToggleExpand, onChangeStatus,
 }: {
     wo: WorkOrderWithPekerjaan;
     isEven: boolean;
     onEdit?: (wo: WorkOrderWithPekerjaan) => void;
     onDelete?: (id: string) => Promise<void>;
     onToggleExpand: (id: string) => void;
+    onChangeStatus?: (id: string, newStatus: 'OPEN' | 'IP' | 'OK') => Promise<void>;
 }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -285,9 +382,18 @@ function WorkOrderRow({
             </td>
             {/* Status dengan tipe */}
             <td className="px-5 py-4 whitespace-nowrap">
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-1 items-start">
                     <span className={`text-[10px] font-black uppercase tracking-widest ${tipeColor}`}>{isPreventif ? 'Preventif' : 'Modifikasi'}</span>
-                    <StatusBadge status={wo.status} solid className="px-3 py-1 text-sm shadow-sm" />
+                    {onChangeStatus ? (
+                        <ClickableStatusDropdown
+                            currentStatus={wo.status}
+                            options={WO_STATUS_OPTIONS}
+                            onChange={(s) => onChangeStatus(wo.id, s as 'OPEN' | 'IP' | 'OK')}
+                            label="Pekerjaan"
+                        />
+                    ) : (
+                        <StatusBadge status={wo.status} solid className="px-3 py-1 text-sm shadow-sm" />
+                    )}
                 </div>
             </td>
             {/* Actions */}
@@ -468,6 +574,7 @@ function TableBody({
     items, starredIds, toggleStar, onEditCritical, onDeleteCritical,
     onEditMaintenance, onDeleteMaintenance, onAddMaintenance,
     expandedId, onToggleExpand, fetchPhotos, deletePhoto, operatorName,
+    onChangeStatus,
 }: {
     items: CriticalWithMaintenance[];
     starredIds: Set<string>;
@@ -482,6 +589,7 @@ function TableBody({
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
+    onChangeStatus?: (id: string, newStatus: 'OPEN' | 'CLOSED') => Promise<void>;
 }) {
     return (
         <>
@@ -497,6 +605,7 @@ function TableBody({
                     onDeleteCritical={onDeleteCritical}
                     expandedId={expandedId}
                     onToggleExpand={onToggleExpand}
+                    onChangeStatus={onChangeStatus}
                 />
             ))}
         </>
@@ -504,7 +613,7 @@ function TableBody({
 }
 
 // ─── Main Export ───
-export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId }: CriticalTableViewProps) {
+export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus }: CriticalTableViewProps) {
     const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<TableStatusTab>('ALL');
     const [expandedIdLocal, setExpandedIdLocal] = useState<string | null>(null);
@@ -589,7 +698,14 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
     const combinedFilteredItems = [
         ...filteredCriticals.map(c => ({ ...c, _type: 'critical' as const })),
         ...filteredWorkOrders.map(w => ({ ...w, _type: 'wo' as const }))
-    ];
+    ].sort((a, b) => {
+        // status: OPEN/IP di atas, CLOSED/OK di bawah
+        const aClosed = a._type === 'critical' ? a.status === 'CLOSED' : a.status === 'OK';
+        const bClosed = b._type === 'critical' ? b.status === 'CLOSED' : b.status === 'OK';
+        if (aClosed !== bClosed) return aClosed ? 1 : -1;
+        // tanggal terbaru di atas
+        return (b.date || '').localeCompare(a.date || '');
+    });
     const totalPages = Math.max(1, Math.ceil(combinedFilteredItems.length / ITEMS_PER_PAGE));
     const paginatedItems = combinedFilteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
@@ -618,6 +734,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                         onDeleteCritical={onDeleteCritical}
                                         expandedId={expandedId}
                                         onToggleExpand={handleToggleExpand}
+                                        onChangeStatus={onChangeCriticalStatus}
                                     />
                                 </tbody>
                             </table>
@@ -755,6 +872,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                                     onDeleteCritical={onDeleteCritical}
                                                     expandedId={expandedId}
                                                     onToggleExpand={handleToggleExpand}
+                                                    onChangeStatus={onChangeCriticalStatus}
                                                 />
                                             );
                                         } else {
@@ -766,6 +884,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                                     onEdit={onEditWorkOrder}
                                                     onDelete={onDeleteWorkOrder}
                                                     onToggleExpand={id => setExpandedWOId(expandedWOId === id ? null : id)}
+                                                    onChangeStatus={onChangeWorkOrderStatus}
                                                 />
                                             );
                                         }

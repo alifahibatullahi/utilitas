@@ -213,6 +213,8 @@ export default function CriticalPage() {
                                     fetchPhotos={cm.fetchPhotos}
                                     deletePhoto={cm.deletePhoto}
                                     operatorName={operator?.name}
+                                    onChangeCriticalStatus={async (id, newStatus) => { await cm.moveCriticalStatus(id, newStatus, operator?.name); }}
+                                    onChangeWorkOrderStatus={async (id, newStatus) => { await cm.moveWorkOrderStatus(id, newStatus); }}
                                 />
                             </div>
                         )}

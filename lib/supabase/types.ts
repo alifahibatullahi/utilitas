@@ -500,6 +500,8 @@ export interface WorkOrderRow {
 
 export interface WorkOrderWithPekerjaan extends WorkOrderRow {
     maintenance_logs: MaintenanceLogRow[];
+    work_order_activity_logs?: WorkOrderActivityLogRow[];
+    photos?: PhotoRow[];
 }
 
 export interface MaintenanceLogRow {
@@ -531,12 +533,25 @@ export interface CriticalActivityLogRow {
     created_at: string;
 }
 
+// ─── Work Order Activity Logs (mirror CriticalActivityLogRow) ───
+
+export interface WorkOrderActivityLogRow {
+    id: string;
+    work_order_id: string;
+    action_type: ActivityActionType;
+    description: string;
+    actor: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+}
+
 // ─── Photos ───
 
 export interface PhotoRow {
     id:             string;
     critical_id:    string | null;
     maintenance_id: string | null;
+    work_order_id:  string | null;
     url:            string;
     filename:       string;
     uploaded_via:   'app' | 'whatsapp';

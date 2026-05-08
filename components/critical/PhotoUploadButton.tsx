@@ -6,6 +6,7 @@ import type { PhotoRow } from '@/lib/supabase/types';
 interface PhotoUploadButtonProps {
   criticalId?:     string;
   maintenanceId?:  string;
+  workOrderId?:    string;
   uploadedBy?:     string;
   onUploadSuccess: (photo: PhotoRow) => void;
 }
@@ -13,6 +14,7 @@ interface PhotoUploadButtonProps {
 export default function PhotoUploadButton({
   criticalId,
   maintenanceId,
+  workOrderId,
   uploadedBy,
   onUploadSuccess,
 }: PhotoUploadButtonProps) {
@@ -30,6 +32,7 @@ export default function PhotoUploadButton({
       form.append('file', file);
       if (criticalId)    form.append('critical_id',    criticalId);
       if (maintenanceId) form.append('maintenance_id', maintenanceId);
+      if (workOrderId)   form.append('work_order_id',  workOrderId);
       if (uploadedBy)    form.append('uploaded_by',    uploadedBy);
 
       try {

@@ -7,6 +7,7 @@ import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
 import PhotoGallery from './PhotoGallery';
 import PhotoUploadButton from './PhotoUploadButton';
+import ActivityTimelineImproved from './ActivityTimelineImproved';
 
 const ACTION_CONFIG: Record<string, { icon: string; color: string }> = {
     created:              { icon: 'flag',                    color: 'text-rose-500' },
@@ -45,10 +46,11 @@ interface CriticalDetailModalProps {
     fetchPhotos?: (type: 'critical', id: string) => Promise<PhotoRow[]>;
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
+    addActivityNote?: (criticalId: string, note: string, actor?: string | null) => Promise<{ error: string | null }>;
 }
 
 export default function CriticalDetailModal({
-    critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onRefresh, fetchPhotos, deletePhoto, operatorName
+    critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onRefresh, fetchPhotos, deletePhoto, operatorName, addActivityNote,
 }: CriticalDetailModalProps) {
     const ORDER_KEY = `mlog-order-${critical.id}`;
 
@@ -489,40 +491,20 @@ export default function CriticalDetailModal({
                             </div>
                             
                             {/* Activity logs */}
-                            <div className="flex flex-col gap-3 flex-1">
+                            <div className="flex flex-col gap-3 flex-1 min-h-[300px]">
                                 <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                                     <span className="material-symbols-outlined text-blue-500">history</span>
                                     Riwayat Aktivitas
                                 </h3>
-                                <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex-1 overflow-y-auto light-scrollbar">
-                                    {critical.critical_activity_logs.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-slate-300 py-4">
-                                            <span className="material-symbols-outlined text-3xl mb-1">timeline</span>
-                                            <p className="text-xs font-medium">Belum ada aktivitas</p>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col gap-3">
-                                            {[...critical.critical_activity_logs]
-                                                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                                                .map(log => {
-                                                    const cfg = ACTION_CONFIG[log.action_type] || { icon: 'info', color: 'text-slate-400' };
-                                                    return (
-                                                        <div key={log.id} className="flex items-start gap-2.5">
-                                                            <div className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center bg-slate-50 border border-slate-100 flex-shrink-0 ${cfg.color}`}>
-                                                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{cfg.icon}</span>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs text-slate-700 leading-tight mb-0.5">{log.description}</p>
-                                                                <p className="text-[10px] text-slate-400">
-                                                                    {log.actor && <span className="font-medium text-slate-500 mr-1">{log.actor} •</span>}
-                                                                    {timeAgo(log.created_at)}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                            })}
-                                        </div>
-                                    )}
+                                <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col">
+                                    <ActivityTimelineImproved
+                                        logs={critical.critical_activity_logs ?? []}
+                                        onAddNote={async (note, actor) => {
+                                            if (addActivityNote) return addActivityNote(critical.id, note, actor);
+                                            return { error: 'Handler tidak tersedia' };
+                                        }}
+                                        operatorName={operatorName}
+                                    />
                                 </div>
                             </div>
                         </div>

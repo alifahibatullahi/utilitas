@@ -34,6 +34,9 @@ interface CriticalTableViewProps {
     onSetExpandedWOId?: (id: string | null) => void;
     onChangeCriticalStatus?: (id: string, newStatus: 'OPEN' | 'CLOSED') => Promise<void>;
     onChangeWorkOrderStatus?: (id: string, newStatus: 'OPEN' | 'IP' | 'OK') => Promise<void>;
+    addActivityNote?: (criticalId: string, note: string, actor?: string | null) => Promise<{ error: string | null }>;
+    addWOActivityNote?: (workOrderId: string, note: string, actor?: string | null) => Promise<{ error: string | null }>;
+    fetchWOPhotos?: (workOrderId: string) => Promise<PhotoRow[]>;
 }
 
 type TableStatusTab = 'ALL' | 'OPEN' | 'CLOSED';
@@ -137,9 +140,8 @@ const CRITICAL_STATUS_OPTIONS = [
 ];
 
 const WO_STATUS_OPTIONS = [
-    { value: 'OPEN', label: 'Open',        color: 'bg-blue-500 text-white' },
-    { value: 'IP',   label: 'In Progress', color: 'bg-amber-500 text-white' },
-    { value: 'OK',   label: 'Selesai',     color: 'bg-emerald-500 text-white' },
+    { value: 'OPEN',   label: 'Open',   color: 'bg-rose-500 text-white' },
+    { value: 'OK',     label: 'Closed', color: 'bg-slate-600 text-white' },
 ];
 
 function formatDate(d: string) {
@@ -401,7 +403,7 @@ function WorkOrderRow({
                 <div className="flex items-center justify-center gap-2">
                     <button
                         onClick={() => onToggleExpand(wo.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-sm hover:from-slate-600 hover:to-slate-700 transition-all"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:from-blue-600 hover:to-blue-700 transition-all"
                         title="Detail pekerjaan"
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>open_in_new</span>
@@ -613,7 +615,7 @@ function TableBody({
 }
 
 // ─── Main Export ───
-export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus }: CriticalTableViewProps) {
+export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus, addActivityNote, addWOActivityNote, fetchWOPhotos }: CriticalTableViewProps) {
     const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<TableStatusTab>('ALL');
     const [expandedIdLocal, setExpandedIdLocal] = useState<string | null>(null);
@@ -937,6 +939,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             fetchPhotos={fetchPhotos}
                             deletePhoto={deletePhoto}
                             operatorName={operatorName}
+                            addActivityNote={addActivityNote}
                         />
                     );
                 })()}
@@ -951,7 +954,11 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             onEditPekerjaan={onEditMaintenance}
                             onDeletePekerjaan={onDeleteMaintenance}
                             onAddPekerjaan={onAddPekerjaanToWO}
+                            onRefresh={onRefresh}
+                            fetchPhotos={fetchWOPhotos}
+                            deletePhoto={deletePhoto}
                             operatorName={operatorName}
+                            addActivityNote={addWOActivityNote}
                         />
                     );
                 })()}

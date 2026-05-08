@@ -214,7 +214,10 @@ export default function CriticalPage() {
                                     deletePhoto={cm.deletePhoto}
                                     operatorName={operator?.name}
                                     onChangeCriticalStatus={async (id, newStatus) => { await cm.moveCriticalStatus(id, newStatus, operator?.name); }}
-                                    onChangeWorkOrderStatus={async (id, newStatus) => { await cm.moveWorkOrderStatus(id, newStatus); }}
+                                    onChangeWorkOrderStatus={async (id, newStatus) => { await cm.moveWorkOrderStatus(id, newStatus, operator?.name); }}
+                                    addActivityNote={cm.addActivityNote}
+                                    addWOActivityNote={cm.addWOActivityNote}
+                                    fetchWOPhotos={cm.fetchWOPhotos}
                                 />
                             </div>
                         )}
@@ -379,7 +382,7 @@ export default function CriticalPage() {
                     onClose={() => setEditingWorkOrder(null)}
                     initial={editingWorkOrder}
                     onSubmit={async (data) => {
-                        const res = await cm.updateWorkOrder(editingWorkOrder.id, data as Partial<WorkOrderRow>);
+                        const res = await cm.updateWorkOrder(editingWorkOrder.id, data as Partial<WorkOrderRow>, operator?.name);
                         if (!res.error) setEditingWorkOrder(null);
                         return res;
                     }}

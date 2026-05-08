@@ -12,16 +12,18 @@ export async function POST(req: NextRequest) {
     const file          = formData.get('file')           as File   | null;
     const criticalId    = formData.get('critical_id')    as string | null;
     const maintId       = formData.get('maintenance_id') as string | null;
+    const workOrderId   = formData.get('work_order_id')  as string | null;
     const uploadedBy    = formData.get('uploaded_by')    as string | null;
 
     // ── Validation ──
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
-    if (!criticalId && !maintId) {
-      return NextResponse.json({ error: 'critical_id or maintenance_id required' }, { status: 400 });
+    const parentCount = [criticalId, maintId, workOrderId].filter(Boolean).length;
+    if (parentCount === 0) {
+      return NextResponse.json({ error: 'critical_id, maintenance_id, or work_order_id required' }, { status: 400 });
     }
-    if (criticalId && maintId) {
+    if (parentCount > 1) {
       return NextResponse.json({ error: 'Only one parent ID allowed' }, { status: 400 });
     }
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
@@ -39,8 +41,8 @@ export async function POST(req: NextRequest) {
 
     // ── Build R2 key ──
     const ext        = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-    const prefix     = criticalId ? 'critical' : 'maintenance';
-    const parentId   = criticalId ?? maintId;
+    const prefix     = criticalId ? 'critical' : workOrderId ? 'work-order' : 'maintenance';
+    const parentId   = criticalId ?? workOrderId ?? maintId;
     const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const r2Key      = `photos/${prefix}/${parentId}/${uniqueName}`;
 
@@ -54,6 +56,7 @@ export async function POST(req: NextRequest) {
       .insert({
         critical_id:    criticalId    ?? null,
         maintenance_id: maintId       ?? null,
+        work_order_id:  workOrderId   ?? null,
         url:            publicUrl,
         filename:       file.name,
         uploaded_via:   'app',

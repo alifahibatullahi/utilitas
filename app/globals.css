@@ -19,32 +19,33 @@
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — light style (dipakai global & .light-scrollbar) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #101822;
+  background: #f3f4f6;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2b3d52;
+  background: #9ca3af;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2b7cee;
+  background: #6b7280;
 }
 
-/* Custom light scrollbar for specific modules */
+/* light-scrollbar — identik dengan global, tersedia untuk override eksplisit */
 .light-scrollbar::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
+  width: 8px;
+  height: 8px;
 }
 .light-scrollbar::-webkit-scrollbar-track {
-  background: #ffffff;
+  background: #f3f4f6;
   border-radius: 4px;
 }
 .light-scrollbar::-webkit-scrollbar-thumb {

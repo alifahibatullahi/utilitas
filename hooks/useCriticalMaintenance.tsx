@@ -87,6 +87,23 @@ async function insertActivityLog(
     });
 }
 
+async function insertWOActivityLog(
+    supabase: ReturnType<typeof createClient>,
+    workOrderId: string,
+    actionType: ActivityActionType,
+    description: string,
+    actor: string | null = null,
+    metadata: Record<string, unknown> | null = null
+) {
+    await supabase.from('work_order_activity_logs').insert({
+        work_order_id: workOrderId,
+        action_type: actionType,
+        description,
+        actor,
+        metadata,
+    });
+}
+
 export function useCriticalMaintenance() {
     const [criticals, setCriticals] = useState<CriticalWithMaintenance[]>([]);
     const [maintenances, setMaintenances] = useState<MaintenanceWithCritical[]>([]);
@@ -108,7 +125,7 @@ export function useCriticalMaintenance() {
             ] = await Promise.all([
                 supabase.from('critical_equipment').select('*, maintenance_logs(*), critical_activity_logs(*)').order('created_at', { ascending: false }),
                 supabase.from('maintenance_logs').select('*, critical_equipment(*)').order('created_at', { ascending: false }),
-                supabase.from('work_orders').select('*, maintenance_logs(*)').order('created_at', { ascending: false }),
+                supabase.from('work_orders').select('*, maintenance_logs(*), work_order_activity_logs(*)').order('created_at', { ascending: false }),
             ]);
 
             if (critErr) throw critErr;
@@ -137,7 +154,7 @@ export function useCriticalMaintenance() {
             ] = await Promise.all([
                 supabase.from('critical_equipment').select('*, maintenance_logs(*), critical_activity_logs(*)').order('created_at', { ascending: false }),
                 supabase.from('maintenance_logs').select('*, critical_equipment(*)').order('created_at', { ascending: false }),
-                supabase.from('work_orders').select('*, maintenance_logs(*)').order('created_at', { ascending: false }),
+                supabase.from('work_orders').select('*, maintenance_logs(*), work_order_activity_logs(*)').order('created_at', { ascending: false }),
             ]);
             if (critErr || maintErr || woErr) return;
             setCriticals((critData ?? []) as CriticalWithMaintenance[]);
@@ -401,17 +418,49 @@ export function useCriticalMaintenance() {
             await supabase.from('work_orders').delete().eq('id', woRow.id);
             return { error: mErr.message };
         }
+        // Activity log: created
+        await insertWOActivityLog(
+            supabase, woRow.id, 'created',
+            `${woData.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'} dibuat untuk ${woData.item}`,
+            woData.reported_by,
+            { item: woData.item, tipe: woData.tipe }
+        );
         await fetchData();
         return { error: null };
     }, [supabase, fetchData]);
 
-    const updateWorkOrder = useCallback(async (id: string, data: Partial<WorkOrderRow>) => {
+    const updateWorkOrder = useCallback(async (id: string, data: Partial<WorkOrderRow>, actor?: string | null) => {
+        const oldWO = workOrders.find(w => w.id === id);
         setWorkOrders(prev => prev.map(w => w.id === id ? { ...w, ...data } : w));
         const { error: err } = await supabase.from('work_orders').update(data).eq('id', id);
         if (err) { await fetchData(); return { error: err.message }; }
+        // Track field changes in activity log
+        if (oldWO) {
+            const changes: string[] = [];
+            const meta: Record<string, unknown> = {};
+            if (data.deskripsi && data.deskripsi !== oldWO.deskripsi) {
+                changes.push(`Deskripsi: "${oldWO.deskripsi}" → "${data.deskripsi}"`);
+                meta.deskripsi = { old: oldWO.deskripsi, new: data.deskripsi };
+            }
+            if (data.scope && data.scope !== oldWO.scope) {
+                changes.push(`Scope: ${oldWO.scope} → ${data.scope}`);
+                meta.scope = { old: oldWO.scope, new: data.scope };
+            }
+            if (data.foreman && data.foreman !== oldWO.foreman) {
+                changes.push(`P. Jawab: ${oldWO.foreman} → ${data.foreman}`);
+                meta.foreman = { old: oldWO.foreman, new: data.foreman };
+            }
+            if (data.notif !== undefined && data.notif !== oldWO.notif) {
+                changes.push(`Notif: ${oldWO.notif ?? '-'} → ${data.notif ?? '-'}`);
+                meta.notif = { old: oldWO.notif, new: data.notif };
+            }
+            if (changes.length > 0) {
+                await insertWOActivityLog(supabase, id, 'maintenance_updated', changes.join(' | '), actor ?? null, meta);
+            }
+        }
         await silentFetch();
         return { error: null };
-    }, [supabase, fetchData, silentFetch]);
+    }, [supabase, fetchData, silentFetch, workOrders]);
 
     const deleteWorkOrder = useCallback(async (id: string) => {
         await supabase.from('maintenance_logs').delete().eq('work_order_id', id);
@@ -421,13 +470,40 @@ export function useCriticalMaintenance() {
         return { error: null };
     }, [supabase, fetchData]);
 
-    const moveWorkOrderStatus = useCallback(async (id: string, newStatus: WorkOrderStatus) => {
+    const moveWorkOrderStatus = useCallback(async (id: string, newStatus: WorkOrderStatus, actor?: string | null) => {
+        const oldWO = workOrders.find(w => w.id === id);
         setWorkOrders(prev => prev.map(w => w.id === id ? { ...w, status: newStatus } : w));
         const { error: err } = await supabase.from('work_orders').update({ status: newStatus }).eq('id', id);
         if (err) { await fetchData(); return { error: err.message }; }
+        if (oldWO && oldWO.status !== newStatus) {
+            await insertWOActivityLog(
+                supabase, id, 'status_changed',
+                `Status diubah: ${STATUS_LABEL[oldWO.status] ?? oldWO.status} → ${STATUS_LABEL[newStatus] ?? newStatus}`,
+                actor ?? null,
+                { old_status: oldWO.status, new_status: newStatus }
+            );
+        }
         await silentFetch();
         return { error: null };
-    }, [supabase, fetchData, silentFetch]);
+    }, [supabase, fetchData, silentFetch, workOrders]);
+
+    const addWOActivityNote = useCallback(async (workOrderId: string, note: string, actor?: string | null) => {
+        const { error: err } = await supabase.from('work_order_activity_logs').insert({
+            work_order_id: workOrderId,
+            action_type: 'note',
+            description: note,
+            actor: actor ?? null,
+            metadata: null,
+        });
+        if (err) return { error: err.message };
+        await silentFetch();
+        return { error: null };
+    }, [supabase, silentFetch]);
+
+    const fetchWOPhotos = useCallback(async (workOrderId: string) => {
+        const { data } = await supabase.from('photos').select('*').eq('work_order_id', workOrderId).order('created_at', { ascending: false });
+        return (data ?? []) as PhotoRow[];
+    }, [supabase]);
 
     // ─── Add manual activity note ───
     const addActivityNote = useCallback(async (criticalId: string, note: string, actor?: string | null) => {
@@ -515,5 +591,7 @@ export function useCriticalMaintenance() {
         updateWorkOrder,
         deleteWorkOrder,
         moveWorkOrderStatus,
+        addWOActivityNote,
+        fetchWOPhotos,
     };
 }

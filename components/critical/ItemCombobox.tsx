@@ -44,7 +44,7 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
     }, []);
 
     const filtered = (() => {
-        if (!search) return items.slice(0, 10);
+        if (!search) return items;
         const q = search.toLowerCase();
         const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const wordRe = new RegExp(`\\b${escaped}`);

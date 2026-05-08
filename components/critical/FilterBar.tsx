@@ -40,8 +40,9 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
+    const MAX_DROPDOWN = 10;
     const filtered = (() => {
-        if (!search) return items.slice(0, 10);
+        if (!search) return items.slice(0, MAX_DROPDOWN);
         const q = search.toLowerCase();
         const scored = items
             .map(item => {
@@ -57,7 +58,8 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
                 return { item, score };
             })
             .filter(x => x.score >= 0)
-            .sort((a, b) => a.score - b.score);
+            .sort((a, b) => a.score - b.score)
+            .slice(0, MAX_DROPDOWN);
         return scored.map(x => x.item);
     })();
 
@@ -79,11 +81,7 @@ function ItemSearchDropdown({ value, onSelect }: { value: string; onSelect: (v: 
             {open && (
                 <div className="absolute z-50 mt-1 w-72 max-h-72 overflow-y-auto bg-white border-2 border-gray-900 rounded-xl shadow-xl">
                     <div className="sticky top-0 bg-gray-100 px-3 py-1 text-[10px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-300">
-                        {items.length === 0
-                            ? 'Memuat...'
-                            : !search
-                                ? `Menampilkan ${filtered.length} dari ${items.length} item — ketik untuk cari`
-                                : `${filtered.length} dari ${items.length} item`}
+                        {items.length === 0 ? 'Memuat...' : `${filtered.length} dari ${items.length} item`}
                     </div>
                     {filtered.length === 0 && items.length > 0 ? (
                         <div className="px-3 py-3 text-xs text-gray-400 text-center">Tidak ada item cocok</div>

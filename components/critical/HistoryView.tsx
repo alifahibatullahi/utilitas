@@ -47,11 +47,9 @@ export default function HistoryView({
 
     const filteredCriticals = filterCriticals(filters);
 
-    const availableItems = [...new Set(criticals.map(c => c.item).filter(Boolean))].sort();
-
     const filterNode = (
         <div className="mb-4">
-            <FilterBar filters={filters} onChange={setFilters} availableItems={availableItems} />
+            <FilterBar filters={filters} onChange={setFilters} />
         </div>
     );
 

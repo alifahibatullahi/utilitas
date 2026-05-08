@@ -368,6 +368,43 @@ export function useCriticalMaintenance() {
         return { error: null };
     }, [supabase, fetchData]);
 
+    // Create WorkOrder (preventif/modifikasi) + 1 MaintenanceLog tertaut, atomic
+    const createPreventifModifikasi = useCallback(async (
+        woData: Omit<WorkOrderRow, 'id' | 'created_at' | 'updated_at'>,
+        uraian: string,
+    ) => {
+        const { data: wo, error: woErr } = await supabase
+            .from('work_orders')
+            .insert(woData)
+            .select()
+            .single();
+        if (woErr || !wo) return { error: woErr?.message ?? 'Gagal membuat work order' };
+
+        const woRow = wo as WorkOrderRow;
+        const today = new Date().toISOString().slice(0, 10);
+        const { error: mErr } = await supabase.from('maintenance_logs').insert({
+            shift_report_id: null,
+            critical_id: null,
+            work_order_id: woRow.id,
+            date: woData.date || today,
+            item: woData.item,
+            uraian,
+            scope: woData.scope,
+            foreman: woData.foreman,
+            tipe: woData.tipe,
+            status: 'OPEN',
+            keterangan: null,
+            notif: woData.notif,
+            reported_by: woData.reported_by,
+        });
+        if (mErr) {
+            await supabase.from('work_orders').delete().eq('id', woRow.id);
+            return { error: mErr.message };
+        }
+        await fetchData();
+        return { error: null };
+    }, [supabase, fetchData]);
+
     const updateWorkOrder = useCallback(async (id: string, data: Partial<WorkOrderRow>) => {
         setWorkOrders(prev => prev.map(w => w.id === id ? { ...w, ...data } : w));
         const { error: err } = await supabase.from('work_orders').update(data).eq('id', id);
@@ -474,6 +511,7 @@ export function useCriticalMaintenance() {
         deletePhoto,
         fetchPhotosForMaintList,
         createWorkOrder,
+        createPreventifModifikasi,
         updateWorkOrder,
         deleteWorkOrder,
         moveWorkOrderStatus,

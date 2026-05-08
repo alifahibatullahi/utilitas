@@ -317,6 +317,9 @@ export default function CriticalPage() {
                     }
                     return res;
                 }}
+                onSubmitPreventifModifikasi={async (woData, uraian) => {
+                    return await cm.createPreventifModifikasi(woData, uraian);
+                }}
                 activeCriticals={cm.criticals}
                 workOrderContext={activeWorkOrderContext ?? undefined}
                 initial={maintenanceInitial}

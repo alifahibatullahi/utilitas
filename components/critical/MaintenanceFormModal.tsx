@@ -2,24 +2,25 @@
 
 import { useState } from 'react';
 import { HAR_SCOPES, FOREMAN_OPTIONS } from '@/lib/constants';
-import type { HarScope, ForemanType, MaintenanceLogRow, CriticalWithMaintenance, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
+import type { HarScope, ForemanType, MaintenanceLogRow, CriticalWithMaintenance, WorkOrderWithPekerjaan, MaintenanceType, WorkOrderRow } from '@/lib/supabase/types';
 import ItemCombobox from './ItemCombobox';
 import OperatorCombobox from './OperatorCombobox';
 
 type MaintenanceFormData = Omit<MaintenanceLogRow, 'id' | 'created_at' | 'updated_at'>;
+type WorkOrderFormData = Omit<WorkOrderRow, 'id' | 'created_at' | 'updated_at'>;
 
 interface MaintenanceFormModalProps {
     open: boolean;
     onClose: () => void;
     onSubmit: (data: MaintenanceFormData) => Promise<{ error: string | null }>;
+    onSubmitPreventifModifikasi?: (wo: WorkOrderFormData, uraian: string) => Promise<{ error: string | null }>;
     activeCriticals: CriticalWithMaintenance[];
-    // Jika diset, form hanya untuk pekerjaan di bawah work order ini
     workOrderContext?: WorkOrderWithPekerjaan;
     initial?: Partial<MaintenanceFormData>;
     operatorName?: string;
 }
 
-export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCriticals, workOrderContext, initial, operatorName }: MaintenanceFormModalProps) {
+export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmitPreventifModifikasi, activeCriticals, workOrderContext, initial, operatorName }: MaintenanceFormModalProps) {
     // Mode: 'wo' (pekerjaan dalam work order) atau 'corrective' (maintenance untuk critical)
     const isWOMode = !!workOrderContext || !!initial?.work_order_id;
 
@@ -33,8 +34,13 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
     const [foreman, setForeman] = useState<ForemanType>(initial?.foreman ?? workOrderContext?.foreman ?? 'foreman_turbin');
     const [notif, setNotif] = useState(initial?.notif ?? '');
     const [reportedBy, setReportedBy] = useState(initial?.reported_by ?? operatorName ?? '');
+    const [tipeSelected, setTipeSelected] = useState<MaintenanceType>(initial?.tipe ?? 'corrective');
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState<string | null>(null);
+
+    // Tampilkan tipe selector hanya saat: bukan WO mode, bukan edit, & tidak ada critical_id awal
+    const showTipeSelector = !isWOMode && !initial?.uraian && !initial?.critical_id;
+    const isPreventifModifikasiMode = showTipeSelector && (tipeSelected === 'preventif' || tipeSelected === 'modifikasi');
 
     if (!open) return null;
 
@@ -67,11 +73,36 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
         setErr(null);
         const today = new Date().toISOString().slice(0, 10);
 
+        // Mode preventif/modifikasi: buat WorkOrder + auto MaintenanceLog tertaut
+        if (isPreventifModifikasiMode) {
+            if (!onSubmitPreventifModifikasi) {
+                setSaving(false);
+                setErr('Handler preventif/modifikasi belum tersedia');
+                return;
+            }
+            const woData: WorkOrderFormData = {
+                date: initial?.date ?? today,
+                item: item.trim(),
+                deskripsi: uraian.trim(),
+                tipe: tipeSelected as 'preventif' | 'modifikasi',
+                scope,
+                foreman,
+                status: 'OPEN',
+                notif: notif.trim() || null,
+                reported_by: reportedBy.trim() || null,
+            };
+            const res = await onSubmitPreventifModifikasi(woData, uraian.trim());
+            setSaving(false);
+            if (res.error) { setErr(res.error); return; }
+            onClose();
+            return;
+        }
+
         let tipe: MaintenanceFormData['tipe'] = 'corrective';
         if (isWOMode && workOrderContext) {
-            tipe = workOrderContext.tipe; // 'preventif' atau 'modifikasi'
+            tipe = workOrderContext.tipe;
         } else if (!criticalId) {
-            tipe = 'corrective'; // corrective tanpa critical linkage (jarang tapi valid)
+            tipe = 'corrective';
         }
 
         const result = await onSubmit({
@@ -94,19 +125,24 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
         onClose();
     };
 
-    const isPreventifWO = workOrderContext?.tipe === 'preventif';
-    const accentColor = isWOMode ? (isPreventifWO ? 'emerald' : 'violet') : 'blue';
-    const headerGradient = isWOMode
-        ? (isPreventifWO ? 'from-emerald-500 to-emerald-600' : 'from-violet-500 to-violet-600')
-        : 'from-blue-500 to-blue-600';
-    const ringClass = `focus:ring-${accentColor}-500/30 focus:border-${accentColor}-500`;
-    const btnGradient = isWOMode
-        ? (isPreventifWO ? 'from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20' : 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20')
-        : 'from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-blue-500/20';
+    const isPreventifWO = workOrderContext?.tipe === 'preventif' || tipeSelected === 'preventif';
+    const isModifikasiNew = !isWOMode && tipeSelected === 'modifikasi' && showTipeSelector;
+    const useEmerald = (isWOMode && workOrderContext?.tipe === 'preventif') || (isPreventifModifikasiMode && tipeSelected === 'preventif');
+    const useViolet = (isWOMode && workOrderContext?.tipe === 'modifikasi') || (isPreventifModifikasiMode && tipeSelected === 'modifikasi');
+    const headerGradient = useEmerald ? 'from-emerald-500 to-emerald-600'
+                         : useViolet ? 'from-violet-500 to-violet-600'
+                         : 'from-blue-500 to-blue-600';
+    const btnGradient = useEmerald ? 'from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20'
+                      : useViolet ? 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20'
+                      : 'from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-blue-500/20';
 
     const modalTitle = isWOMode
         ? `${initial?.uraian ? 'Edit' : 'Tambah'} Pekerjaan — ${workOrderContext?.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'}`
-        : initial?.uraian ? 'Edit Maintenance' : 'Tambah Maintenance';
+        : isPreventifModifikasiMode
+            ? `Tambah ${tipeSelected === 'preventif' ? 'Preventif' : 'Modifikasi'}`
+            : initial?.uraian ? 'Edit Maintenance' : 'Tambah Maintenance';
+    // suppress unused warnings
+    void isModifikasiNew; void isPreventifWO;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
@@ -124,13 +160,46 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, activeCr
 
                 {/* Body */}
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Tipe Maintenance — hanya muncul saat tambah baru tanpa konteks WO/critical */}
+                    {showTipeSelector && (
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Tipe Maintenance</label>
+                            <div className="flex gap-2">
+                                {([
+                                    { value: 'corrective' as MaintenanceType, label: 'Corrective', desc: 'Untuk Critical', activeCls: 'border-blue-500 bg-blue-50 shadow-md', titleCls: 'text-blue-700', descCls: 'text-blue-600' },
+                                    { value: 'preventif' as MaintenanceType, label: 'Preventif', desc: 'Pemeliharaan rutin', activeCls: 'border-emerald-500 bg-emerald-50 shadow-md', titleCls: 'text-emerald-700', descCls: 'text-emerald-600' },
+                                    { value: 'modifikasi' as MaintenanceType, label: 'Modifikasi', desc: 'Perubahan/upgrade', activeCls: 'border-violet-500 bg-violet-50 shadow-md', titleCls: 'text-violet-700', descCls: 'text-violet-600' },
+                                ]).map(opt => {
+                                    const active = tipeSelected === opt.value;
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => { setTipeSelected(opt.value); if (opt.value !== 'corrective') setCriticalId(''); }}
+                                            className={`flex-1 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${active ? opt.activeCls : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                                        >
+                                            <div className={`text-sm font-extrabold ${active ? opt.titleCls : 'text-gray-700'}`}>{opt.label}</div>
+                                            <div className={`text-[10px] font-medium mt-0.5 ${active ? opt.descCls : 'text-gray-500'}`}>{opt.desc}</div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {isPreventifModifikasiMode && (
+                                <p className="text-[11px] font-medium text-gray-600 mt-2 italic flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-amber-500" style={{ fontSize: 14 }}>info</span>
+                                    Akan dibuat sebagai pekerjaan {tipeSelected} baru dan ditambahkan langsung ke daftar pekerjaan tim HAR
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     {/* Row 1: Item | Critical (hanya mode corrective) */}
                     <div>
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
                         <ItemCombobox value={item} onChange={handleItemChange} light={true} />
                     </div>
 
-                    {!isWOMode && (
+                    {!isWOMode && !isPreventifModifikasiMode && (
                         <div>
                             <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Critical Terkait (ops)</label>
                             <div className="relative">

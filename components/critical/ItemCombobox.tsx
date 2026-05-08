@@ -20,7 +20,9 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState(value);
     const [items, setItems] = useState<EquipmentItem[]>(FALLBACK_ITEMS);
+    const [activeIndex, setActiveIndex] = useState(-1);
     const ref = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => { setSearch(value); }, [value]);
 
@@ -28,11 +30,9 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
         fetch('/api/equipment-items')
             .then(r => r.json())
             .then(data => {
-                if (Array.isArray(data.items) && data.items.length > 0) {
-                    setItems(data.items);
-                }
+                if (Array.isArray(data.items) && data.items.length > 0) setItems(data.items);
             })
-            .catch(() => { /* gunakan fallback */ });
+            .catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -44,7 +44,7 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
     }, []);
 
     const filtered = (() => {
-        if (!search) return items;
+        if (!search) return items.slice(0, 10);
         const q = search.toLowerCase();
         const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const wordRe = new RegExp(`\\b${escaped}`);
@@ -63,45 +63,73 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
             })
             .filter(x => x.score >= 0)
             .sort((a, b) => a.score - b.score)
+            .slice(0, 10)
             .map(x => x.item);
     })();
-
-    const baseInput = light
-        ? 'w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none'
-        : 'w-full px-3 py-2 rounded-lg border border-slate-700 bg-[#0f1923] text-slate-100 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none';
-
-    const dropdownBg = light ? 'bg-white border-gray-200 shadow-lg' : 'bg-[#16202e] border-slate-700 shadow-xl';
-    const itemHover = light ? 'hover:bg-blue-50' : 'hover:bg-surface-highlight';
 
     function selectItem(item: EquipmentItem) {
         const val = item.deskripsi ? `${item.no_item} - ${item.deskripsi}` : item.no_item;
         onChange(val);
         setSearch(val);
         setOpen(false);
+        setActiveIndex(-1);
     }
+
+    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (!open) { if (e.key === 'ArrowDown') { setOpen(true); setActiveIndex(0); } return; }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = Math.min(activeIndex + 1, filtered.length - 1);
+            setActiveIndex(next);
+            listRef.current?.children[next]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = Math.max(activeIndex - 1, 0);
+            setActiveIndex(prev);
+            listRef.current?.children[prev]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0 && filtered[activeIndex]) selectItem(filtered[activeIndex]);
+        } else if (e.key === 'Escape') {
+            setOpen(false);
+            setActiveIndex(-1);
+        }
+    }
+
+    const baseInput = light
+        ? 'w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none'
+        : 'w-full px-3 py-2 rounded-lg border border-slate-700 bg-[#0f1923] text-slate-100 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none';
+
+    const dropdownBg = light ? 'bg-white border-gray-200 shadow-lg' : 'bg-[#16202e] border-slate-700 shadow-xl';
 
     return (
         <div ref={ref} className="relative">
             <input
                 type="text"
                 value={search}
-                onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
+                onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); setActiveIndex(-1); }}
                 onFocus={() => setOpen(true)}
+                onKeyDown={handleKeyDown}
                 placeholder="Ketik atau pilih item..."
                 className={baseInput}
             />
             {open && filtered.length > 0 && (
-                <div className={`absolute z-50 mt-1 w-full max-h-48 overflow-y-auto light-scrollbar rounded-lg border ${dropdownBg}`}>
-                    {filtered.map(item => (
+                <div ref={listRef} className={`absolute z-50 mt-1 w-full max-h-60 overflow-y-auto light-scrollbar rounded-lg border ${dropdownBg}`}>
+                    {filtered.map((item, idx) => (
                         <button
                             key={item.no_item}
                             type="button"
+                            onMouseEnter={() => setActiveIndex(idx)}
                             onClick={() => selectItem(item)}
-                            className={`w-full text-left px-3 py-2 text-sm ${itemHover} transition-colors`}
+                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                                idx === activeIndex
+                                    ? light ? 'bg-blue-50 text-blue-700' : 'bg-surface-highlight text-slate-100'
+                                    : light ? 'text-gray-800 hover:bg-blue-50' : 'text-slate-200 hover:bg-surface-highlight'
+                            }`}
                         >
-                            <span className={`font-bold ${light ? 'text-gray-900' : 'text-slate-100'}`}>{item.no_item}</span>
+                            <span className={`font-bold ${idx === activeIndex ? (light ? 'text-blue-400' : 'text-slate-400') : (light ? 'text-gray-400' : 'text-slate-400')}`}>{item.no_item}</span>
                             {item.deskripsi && (
-                                <span className={`ml-2 font-normal ${light ? 'text-gray-500' : 'text-slate-400'}`}>— {item.deskripsi}</span>
+                                <span className={`ml-2 font-semibold ${idx === activeIndex ? (light ? 'text-blue-700' : 'text-slate-100') : (light ? 'text-gray-800' : 'text-slate-200')}`}>— {item.deskripsi}</span>
                             )}
                         </button>
                     ))}

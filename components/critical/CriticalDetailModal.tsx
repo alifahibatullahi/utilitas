@@ -8,6 +8,7 @@ import ScopeBadge from './ScopeBadge';
 import PhotoGallery from './PhotoGallery';
 import PhotoUploadButton from './PhotoUploadButton';
 import ActivityTimelineImproved from './ActivityTimelineImproved';
+import { useEquipmentItems } from '@/hooks/useMasterData';
 
 const ACTION_CONFIG: Record<string, { icon: string; color: string }> = {
     created:              { icon: 'flag',                    color: 'text-rose-500' },
@@ -52,6 +53,16 @@ interface CriticalDetailModalProps {
 export default function CriticalDetailModal({
     critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onRefresh, fetchPhotos, deletePhoto, operatorName, addActivityNote,
 }: CriticalDetailModalProps) {
+    const { items: equipmentItems } = useEquipmentItems();
+
+    function getDisplayItem(rawItem: string) {
+        if (!rawItem) return '-';
+        if (rawItem.includes(' - ')) return rawItem;
+        const found = equipmentItems.find(it => it.deskripsi === rawItem);
+        if (found && found.no_item) return `${found.no_item} - ${found.deskripsi}`;
+        return rawItem;
+    }
+
     const ORDER_KEY = `mlog-order-${critical.id}`;
 
     function applySavedOrder(logs: MaintenanceLogRow[]): MaintenanceLogRow[] {
@@ -243,7 +254,7 @@ export default function CriticalDetailModal({
                         {/* Upper Part */}
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
                             <span className="px-4 py-1.5 bg-rose-500 text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap shadow-sm">CRITICAL</span>
-                            <h2 className="text-2xl font-black text-slate-800 whitespace-nowrap uppercase">ITEM : {critical.item}</h2>
+                            <h2 className="text-2xl font-black text-slate-800 whitespace-nowrap uppercase">ITEM : {getDisplayItem(critical.item)}</h2>
                             <span className="px-3 py-1 bg-white text-slate-700 text-sm font-bold rounded-full border border-slate-200 whitespace-nowrap">ID CRITICAL : #{critical.id.slice(0, 8).toUpperCase()}</span>
                             <StatusBadge status={critical.status} solid className="px-3 py-1 text-sm shadow-sm" />
                         </div>

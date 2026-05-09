@@ -215,6 +215,7 @@ function CriticalRow({
     deletePhoto?: (photoId: string) => Promise<void>;
     operatorName?: string;
     onChangeStatus?: (id: string, newStatus: 'OPEN' | 'CLOSED') => Promise<void>;
+    displayItem: string;
 }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -245,7 +246,7 @@ function CriticalRow({
                 {/* Tanggal */}
                 <td className="px-5 py-5 whitespace-nowrap text-lg font-bold text-black">{formatDate(critical.date)}</td>
                 {/* Item */}
-                <td className="px-5 py-5 text-lg font-black text-black whitespace-nowrap">{critical.item}</td>
+                <td className="px-5 py-5 text-lg font-black text-black whitespace-nowrap">{displayItem}</td>
                 {/* Deskripsi */}
                 <td className="px-5 py-5 text-lg font-medium text-black max-w-3xl leading-relaxed">
                     <span className="line-clamp-3 whitespace-pre-wrap">{critical.deskripsi}</span>
@@ -349,6 +350,7 @@ function WorkOrderRow({
     onDelete?: (id: string) => Promise<void>;
     onToggleExpand: (id: string) => void;
     onChangeStatus?: (id: string, newStatus: 'OPEN' | 'IP' | 'OK') => Promise<void>;
+    displayItem: string;
 }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -370,7 +372,7 @@ function WorkOrderRow({
             {/* Tanggal */}
             <td className="px-5 py-4 whitespace-nowrap text-base font-bold text-black">{formatDate(wo.date)}</td>
             {/* Item */}
-            <td className="px-5 py-4 text-base font-black text-black whitespace-nowrap">{wo.item}</td>
+            <td className="px-5 py-4 text-base font-black text-black whitespace-nowrap">{displayItem}</td>
             {/* Deskripsi */}
             <td className="px-5 py-4 text-base font-medium text-black max-w-3xl leading-relaxed">
                 <span className="line-clamp-3 whitespace-pre-wrap">{wo.deskripsi}</span>
@@ -446,7 +448,7 @@ function ItemSearchCombobox({ value, onChange }: { value: string; onChange: (v: 
     const [editingId, setEditingId] = useState<string | null>(null);
 
     const comboboxItems: ComboboxItem[] = items.map(it => ({
-        id: it.id, value: it.deskripsi, primary: it.deskripsi, secondary: it.no_item,
+        id: it.id, value: `${it.no_item} - ${it.deskripsi}`, primary: it.deskripsi, secondary: it.no_item,
     }));
 
     const editing = editingId ? items.find(i => i.id === editingId) : null;
@@ -522,6 +524,7 @@ function TableBody({
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
     onChangeStatus?: (id: string, newStatus: 'OPEN' | 'CLOSED') => Promise<void>;
+    getDisplayItem: (item: string) => string;
 }) {
     return (
         <>
@@ -538,6 +541,7 @@ function TableBody({
                     expandedId={expandedId}
                     onToggleExpand={onToggleExpand}
                     onChangeStatus={onChangeStatus}
+                    displayItem={getDisplayItem(c.item)}
                 />
             ))}
         </>
@@ -546,6 +550,16 @@ function TableBody({
 
 // ─── Main Export ───
 export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus, addActivityNote, addWOActivityNote, fetchWOPhotos }: CriticalTableViewProps) {
+    const { items: equipmentItems } = useEquipmentItems();
+    
+    function getDisplayItem(rawItem: string) {
+        if (!rawItem) return '-';
+        if (rawItem.includes(' - ')) return rawItem;
+        const found = equipmentItems.find(it => it.deskripsi === rawItem);
+        if (found && found.no_item) return `${found.no_item} - ${found.deskripsi}`;
+        return rawItem;
+    }
+
     const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<TableStatusTab>('ALL');
     const [expandedIdLocal, setExpandedIdLocal] = useState<string | null>(null);
@@ -667,6 +681,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                         expandedId={expandedId}
                                         onToggleExpand={handleToggleExpand}
                                         onChangeStatus={onChangeCriticalStatus}
+                                        getDisplayItem={getDisplayItem}
                                     />
                                 </tbody>
                             </table>
@@ -805,6 +820,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                                     expandedId={expandedId}
                                                     onToggleExpand={handleToggleExpand}
                                                     onChangeStatus={onChangeCriticalStatus}
+                                                    displayItem={getDisplayItem((item as any).item)}
                                                 />
                                             );
                                         } else {
@@ -817,6 +833,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                                     onDelete={onDeleteWorkOrder}
                                                     onToggleExpand={id => setExpandedWOId(expandedWOId === id ? null : id)}
                                                     onChangeStatus={onChangeWorkOrderStatus}
+                                                    displayItem={getDisplayItem((item as any).item)}
                                                 />
                                             );
                                         }

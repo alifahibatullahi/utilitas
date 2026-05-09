@@ -8,6 +8,7 @@ import ScopeBadge from './ScopeBadge';
 import PhotoGallery from './PhotoGallery';
 import PhotoUploadButton from './PhotoUploadButton';
 import ActivityTimelineImproved from './ActivityTimelineImproved';
+import { useEquipmentItems } from '@/hooks/useMasterData';
 
 function formatDate(d: string) {
     if (!d) return '-';
@@ -32,6 +33,16 @@ export default function WorkOrderDetailModal({
     workOrder, onClose, onEditPekerjaan, onDeletePekerjaan, onAddPekerjaan,
     onRefresh, fetchPhotos, deletePhoto, operatorName, addActivityNote,
 }: WorkOrderDetailModalProps) {
+    const { items: equipmentItems } = useEquipmentItems();
+
+    function getDisplayItem(rawItem: string) {
+        if (!rawItem) return '-';
+        if (rawItem.includes(' - ')) return rawItem;
+        const found = equipmentItems.find(it => it.deskripsi === rawItem);
+        if (found && found.no_item) return `${found.no_item} - ${found.deskripsi}`;
+        return rawItem;
+    }
+
     const [pekerjaan, setPekerjaan] = useState([...workOrder.maintenance_logs].sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     ));
@@ -120,7 +131,7 @@ export default function WorkOrderDetailModal({
                     <div className="flex flex-col gap-3 w-full overflow-hidden">
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
                             <span className={`px-4 py-1.5 ${accentBg} text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap shadow-sm`}>{tipeLabel}</span>
-                            <h2 className="text-2xl font-black text-slate-800 whitespace-nowrap uppercase">ITEM : {workOrder.item}</h2>
+                            <h2 className="text-2xl font-black text-slate-800 whitespace-nowrap uppercase">ITEM : {getDisplayItem(workOrder.item)}</h2>
                             <span className="px-3 py-1 bg-white text-slate-700 text-sm font-bold rounded-full border border-slate-200 whitespace-nowrap">ID {tipeLabel.toUpperCase()} : #{workOrder.id.slice(0, 8).toUpperCase()}</span>
                             <StatusBadge status={workOrder.status} solid className="px-3 py-1 text-sm shadow-sm" />
                         </div>

@@ -197,7 +197,7 @@ function CriticalRow({
     critical, starred, isEven, rowIndex, toggleStar, onEditCritical, onDeleteCritical,
     onEditMaintenance, onDeleteMaintenance, onAddMaintenance,
     expandedId, onToggleExpand, fetchPhotos, deletePhoto, operatorName,
-    onChangeStatus,
+    onChangeStatus, displayItem
 }: {
     critical: CriticalWithMaintenance;
     starred: boolean;
@@ -342,7 +342,7 @@ function CriticalRow({
 
 // ─── Work Order Row ───
 function WorkOrderRow({
-    wo, isEven, onEdit, onDelete, onToggleExpand, onChangeStatus,
+    wo, isEven, onEdit, onDelete, onToggleExpand, onChangeStatus, displayItem
 }: {
     wo: WorkOrderWithPekerjaan;
     isEven: boolean;

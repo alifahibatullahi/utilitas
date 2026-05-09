@@ -19,7 +19,7 @@ export default function ItemCombobox({ value, onChange, light = false }: ItemCom
     const comboboxItems: ComboboxItem[] = useMemo(() =>
         items.map(it => ({
             id: it.id,
-            value: it.deskripsi,
+            value: `${it.no_item} - ${it.deskripsi}`,
             primary: it.deskripsi,
             secondary: it.no_item,
         })),

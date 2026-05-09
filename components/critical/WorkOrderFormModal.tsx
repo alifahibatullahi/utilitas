@@ -19,8 +19,8 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
     const [tipe, setTipe] = useState<WorkOrderType>(initial?.tipe ?? 'preventif');
     const [item, setItem] = useState(initial?.item ?? '');
     const [deskripsi, setDeskripsi] = useState(initial?.deskripsi ?? '');
-    const [scope, setScope] = useState<HarScope>(initial?.scope ?? 'mekanik');
-    const [foreman, setForeman] = useState<ForemanType>(initial?.foreman ?? 'foreman_turbin');
+    const [scope, setScope] = useState<HarScope | ''>(initial?.scope ?? '');
+    const [foreman, setForeman] = useState<ForemanType | ''>(initial?.foreman ?? '');
     const [notif, setNotif] = useState(initial?.notif ?? '');
     const [reportedBy, setReportedBy] = useState(initial?.reported_by ?? '');
     const [saving, setSaving] = useState(false);
@@ -36,6 +36,14 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
             setErr('Item dan deskripsi wajib diisi');
             return;
         }
+        if (!scope) {
+            setErr('Scope HAR wajib dipilih');
+            return;
+        }
+        if (!foreman) {
+            setErr('Penanggung jawab wajib dipilih');
+            return;
+        }
         setSaving(true);
         setErr(null);
         const today = new Date().toISOString().slice(0, 10);
@@ -44,8 +52,8 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
             date: initial?.date ?? today,
             item: item.trim(),
             deskripsi: deskripsi.trim(),
-            scope,
-            foreman,
+            scope: scope as HarScope,
+            foreman: foreman as ForemanType,
             status: initial?.status ?? 'OPEN',
             notif: notif.trim() || null,
             reported_by: reportedBy.trim() || null,
@@ -123,6 +131,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                         <div className="relative">
                             <select value={scope} onChange={e => setScope(e.target.value as HarScope)}
                                 className={`appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium ${ringClass} outline-none cursor-pointer transition-all shadow-sm`}>
+                                <option value="" disabled>— Pilih scope HAR —</option>
                                 {HAR_SCOPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>
                             <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
@@ -143,6 +152,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                         <div className="relative">
                             <select value={foreman} onChange={e => setForeman(e.target.value as ForemanType)}
                                 className={`appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium ${ringClass} outline-none cursor-pointer transition-all shadow-sm`}>
+                                <option value="" disabled>— Pilih penanggung jawab —</option>
                                 {FOREMAN_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                             </select>
                             <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>

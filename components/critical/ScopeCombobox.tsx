@@ -10,9 +10,10 @@ interface ScopeComboboxProps {
     value: HarScope | '';
     onChange: (value: HarScope) => void;
     light?: boolean;
+    placeholder?: string;
 }
 
-export default function ScopeCombobox({ value, onChange, light = true }: ScopeComboboxProps) {
+export default function ScopeCombobox({ value, onChange, light = true, placeholder }: ScopeComboboxProps) {
     const { scopes, createScope, updateScope } = useHarScopes();
     const [formOpen, setFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export default function ScopeCombobox({ value, onChange, light = true }: ScopeCo
                 }}
                 items={comboboxItems}
                 light={light}
-                placeholder="Pilih scope..."
+                placeholder={placeholder || "Pilih scope..."}
                 onAdd={() => { setEditingId(null); setFormOpen(true); }}
                 onEdit={(id) => { setEditingId(id); setFormOpen(true); }}
                 addLabel="+ Tambahkan scope baru"

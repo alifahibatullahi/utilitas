@@ -508,7 +508,7 @@ function TableBody({
     items, starredIds, toggleStar, onEditCritical, onDeleteCritical,
     onEditMaintenance, onDeleteMaintenance, onAddMaintenance,
     expandedId, onToggleExpand, fetchPhotos, deletePhoto, operatorName,
-    onChangeStatus,
+    onChangeStatus, getDisplayItem,
 }: {
     items: CriticalWithMaintenance[];
     starredIds: Set<string>;

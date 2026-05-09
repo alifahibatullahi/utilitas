@@ -21,18 +21,19 @@
 
 /* Custom scrollbar — light style (dipakai global & .light-scrollbar) */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
 }
 
 ::-webkit-scrollbar-track {
   background: #f3f4f6;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #9ca3af;
-  border-radius: 4px;
+  border-radius: 6px;
+  border: 3px solid #f3f4f6;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -41,16 +42,17 @@
 
 /* light-scrollbar — identik dengan global, tersedia untuk override eksplisit */
 .light-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
 }
 .light-scrollbar::-webkit-scrollbar-track {
   background: #f3f4f6;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 .light-scrollbar::-webkit-scrollbar-thumb {
   background: #9ca3af;
-  border-radius: 4px;
+  border-radius: 6px;
+  border: 3px solid #f3f4f6;
 }
 .light-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #6b7280;

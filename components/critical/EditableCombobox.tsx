@@ -165,13 +165,13 @@ export default function EditableCombobox({
                             type="button"
                             onClick={() => { onAdd(); setOpen(false); }}
                             onMouseEnter={() => setActiveIndex(filtered.length)}
-                            className={`w-full text-left px-3 py-2.5 text-xs font-bold border-t flex items-center gap-2 transition-colors ${
+                            className={`w-full text-left px-4 py-3.5 text-sm font-extrabold border-t-2 flex items-center gap-2.5 transition-colors sticky bottom-0 ${
                                 activeIndex === filtered.length
-                                    ? light ? 'bg-emerald-100 text-emerald-700 border-gray-200' : 'bg-emerald-900/30 text-emerald-300 border-slate-700'
-                                    : light ? 'text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100 border-gray-200' : 'text-emerald-300 bg-emerald-900/20 hover:bg-emerald-900/30 border-slate-700'
+                                    ? light ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-emerald-900/30 text-emerald-300 border-emerald-600'
+                                    : light ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' : 'text-emerald-300 bg-emerald-900/20 hover:bg-emerald-900/30 border-emerald-700'
                             }`}
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add_circle</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>add_circle</span>
                             {addLabel}
                         </button>
                     )}

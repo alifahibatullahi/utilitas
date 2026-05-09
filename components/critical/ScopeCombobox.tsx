@@ -50,18 +50,14 @@ export default function ScopeCombobox({ value, onChange, light = true }: ScopeCo
             <MasterDataFormModal
                 open={formOpen}
                 title={editing ? `Edit Scope — ${editing.label}` : 'Tambah Scope Baru'}
-                fields={editing
-                    ? [{ key: 'label', label: 'Nama Scope', placeholder: 'cth: Mekanik', required: true }]
-                    : [
-                        { key: 'value', label: 'Slug (huruf kecil, tanpa spasi)', placeholder: 'cth: instrumentasi', required: true },
-                        { key: 'label', label: 'Nama Scope (tampilan)', placeholder: 'cth: Instrumentasi', required: true },
-                    ]
-                }
+                fields={[{ key: 'label', label: 'Nama Scope', placeholder: 'cth: Instrumentasi', required: true }]}
                 initial={initialValues}
                 onClose={() => { setFormOpen(false); setEditingId(null); }}
                 onSubmit={async (data) => {
                     if (editingId) return updateScope(editingId, { label: data.label });
-                    return createScope({ value: data.value, label: data.label });
+                    // Auto-generate slug dari nama: lowercase, ganti spasi/non-alphanumeric jadi underscore
+                    const slug = data.label.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+                    return createScope({ value: slug, label: data.label });
                 }}
             />
         </>

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
@@ -20,9 +20,9 @@ interface CriticalFormModalProps {
 export default function CriticalFormModal({ open, onClose, onSubmit, initial }: CriticalFormModalProps) {
     const [item, setItem] = useState(initial?.item ?? '');
     const [deskripsi, setDeskripsi] = useState(initial?.deskripsi ?? '');
-    const [scope, setScope] = useState<HarScope>(initial?.scope ?? 'mekanik');
+    const [scope, setScope] = useState<HarScope | ''>(initial?.scope ?? '');
     const [notif, setNotif] = useState(initial?.notif ?? '');
-    const [foreman, setForeman] = useState<ForemanType>(initial?.foreman ?? 'foreman_turbin');
+    const [foreman, setForeman] = useState<ForemanType | ''>(initial?.foreman ?? '');
     const [reportedBy, setReportedBy] = useState(initial?.reported_by ?? '');
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState<string | null>(null);
@@ -34,6 +34,14 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
             setErr('Item dan deskripsi wajib diisi');
             return;
         }
+        if (!scope) {
+            setErr('Scope HAR wajib dipilih');
+            return;
+        }
+        if (!foreman) {
+            setErr('Penanggung jawab wajib dipilih');
+            return;
+        }
         setSaving(true);
         setErr(null);
         const today = new Date().toISOString().slice(0, 10);
@@ -42,8 +50,8 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
             date: initial?.date ?? today,
             item: item.trim(),
             deskripsi: deskripsi.trim(),
-            scope,
-            foreman,
+            scope: scope as HarScope,
+            foreman: foreman as ForemanType,
             status: initial?.status ?? 'OPEN',
             notif: notif.trim() || null,
             reported_by: reportedBy.trim() || null,
@@ -92,7 +100,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                     {/* Scope */}
                     <div>
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
-                        <ScopeCombobox value={scope} onChange={setScope} light={true} />
+                        <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="— Pilih scope HAR —" />
                     </div>
 
                     {/* Notif SAP */}
@@ -116,6 +124,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                                 onChange={e => setForeman(e.target.value as ForemanType)}
                                 className="appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none cursor-pointer transition-all shadow-sm"
                             >
+                                <option value="" disabled>— Pilih penanggung jawab —</option>
                                 {FOREMAN_OPTIONS.map(f => (
                                     <option key={f.value} value={f.value}>{f.label}</option>
                                 ))}

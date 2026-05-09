@@ -30,7 +30,8 @@ export default function MasterDataFormModal({ open, title, fields, initial, onCl
             setValues(init);
             setErr(null);
         }
-    }, [open, initial, fields]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, initial]);
 
     if (!open) return null;
 

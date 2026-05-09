@@ -32,6 +32,7 @@ export default function ScopeCombobox({ value, onChange, light = true }: ScopeCo
     return (
         <>
             <EditableCombobox
+                dropUp
                 value={currentLabel}
                 onChange={(v) => {
                     // v bisa berupa slug (value) atau teks bebas; cek match exact

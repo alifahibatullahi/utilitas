@@ -21,12 +21,13 @@ interface EditableComboboxProps {
     showSecondary?: boolean;
     maxItems?: number;
     smartSort?: boolean;
+    dropUp?: boolean;
 }
 
 export default function EditableCombobox({
     value, onChange, items, placeholder = 'Cari atau pilih...', light = false,
     onAdd, onEdit, addLabel = '+ Tambahkan data', showSecondary = true,
-    maxItems = 10, smartSort = true,
+    maxItems = 10, smartSort = true, dropUp = false,
 }: EditableComboboxProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState(value);
@@ -118,7 +119,7 @@ export default function EditableCombobox({
                 className={baseInput}
             />
             {open && (
-                <div ref={listRef} className={`absolute z-50 mt-1 w-full max-h-72 overflow-y-auto light-scrollbar rounded-lg border ${dropdownBg}`}>
+                <div ref={listRef} className={`absolute z-50 w-full max-h-72 overflow-y-auto light-scrollbar rounded-lg border ${dropdownBg} ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                     {filtered.length === 0 && !onAdd && (
                         <div className={`px-3 py-3 text-xs text-center ${light ? 'text-gray-400' : 'text-slate-400'}`}>Tidak ada hasil</div>
                     )}

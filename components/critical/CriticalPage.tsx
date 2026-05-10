@@ -13,6 +13,8 @@ import CriticalFormModal from './CriticalFormModal';
 import MaintenanceFormModal from './MaintenanceFormModal';
 import WorkOrderFormModal from './WorkOrderFormModal';
 import CloseCriticalModal from './CloseCriticalModal';
+import CriticalDetailModal from './CriticalDetailModal';
+import WorkOrderDetailModal from './WorkOrderDetailModal';
 
 function HeaderOperatorSelect() {
     const { operator, operators, login } = useOperator();

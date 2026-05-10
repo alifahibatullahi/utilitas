@@ -16,8 +16,6 @@ const TIPE_BADGE: Record<MaintenanceType, string> = {
     modifikasi: 'bg-violet-50 text-violet-600 border-violet-200',
 };
 
-import StatusBadge from './StatusBadge';
-import ClickableStatusDropdown from './CriticalTableView'; // Wait, let's just use StatusBadge or custom dropdown
 
 interface MaintenanceTableViewProps {
     maintenances: MaintenanceWithCritical[];

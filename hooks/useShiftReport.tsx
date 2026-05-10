@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, ReportStatus } from '@/lib/supabase/types';
-import { getShiftWindow } from '@/lib/constants';
 
 // Determine the previous shift based on chronological report order:
 // 06.00 (malam) → prev is sore (22.00) from yesterday
@@ -578,10 +577,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
             setLoading(true);
             setError(null);
 
-            const win = getShiftWindow(date, shift as 'pagi' | 'sore' | 'malam');
-            const winStart = win.start.toISOString();
-            const winEnd = win.end.toISOString();
-
+            // Fetch via maintenance_shift_assignments pivot — only maintenance ter-attach ke shift report (date,shift) ini
             const [{ data, error: fetchError }, maintRes, critRes] = await Promise.all([
                 supabase
                     .from('shift_reports')
@@ -608,10 +604,9 @@ export function useShiftReport(date: string, shift: ShiftType) {
                     .maybeSingle(),
                 supabase
                     .from('maintenance_logs')
-                    .select('*, critical_equipment(item, deskripsi)')
-                    .in('status', ['IP', 'OK'])
-                    .gte('updated_at', winStart)
-                    .lte('updated_at', winEnd)
+                    .select('*, critical_equipment(item, deskripsi), maintenance_shift_assignments!inner(shift_reports!inner(date, shift))')
+                    .eq('maintenance_shift_assignments.shift_reports.date', date)
+                    .eq('maintenance_shift_assignments.shift_reports.shift', shift)
                     .order('created_at', { ascending: true }),
                 supabase
                     .from('critical_equipment')
@@ -910,5 +905,79 @@ export function useShiftReport(date: string, shift: ShiftType) {
         return { error: null, reportId };
     }, [date, shift]);
 
-    return { report, activeMaintenance, openCriticals, loading, error, submitReport, refetch };
+    /**
+     * Ensure shift_report exists (create draft if missing) and assign maintenance_logs to it.
+     * Idempotent: existing assignments are kept (UNIQUE constraint).
+     */
+    const assignMaintenanceToShift = useCallback(async (
+        maintenanceIds: string[],
+        actor?: string,
+    ): Promise<{ error: string | null; reportId?: string }> => {
+        if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
+        if (maintenanceIds.length === 0) return { error: null };
+
+        const supabase = createClient();
+
+        // Resolve or create shift_report row for (date, shift)
+        let reportId: string | null = null;
+        const { data: existing } = await supabase
+            .from('shift_reports')
+            .select('id')
+            .eq('date', date)
+            .eq('shift', shift)
+            .maybeSingle();
+
+        if (existing && (existing as Record<string, unknown>).id) {
+            reportId = (existing as Record<string, unknown>).id as string;
+        } else {
+            const { data: created, error: cErr } = await supabase
+                .from('shift_reports')
+                .insert({
+                    date,
+                    shift,
+                    group_name: '',
+                    supervisor: '',
+                    status: 'draft' as ReportStatus,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                } as any)
+                .select('id')
+                .single();
+            if (cErr || !created) return { error: cErr?.message || 'Failed to create shift report' };
+            reportId = (created as Record<string, unknown>).id as string;
+        }
+
+        const rows = maintenanceIds.map(mid => ({
+            maintenance_id: mid,
+            shift_report_id: reportId!,
+            assigned_by: actor || null,
+        }));
+
+        const { error: insErr } = await supabase
+            .from('maintenance_shift_assignments')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .upsert(rows as any, { onConflict: 'maintenance_id,shift_report_id', ignoreDuplicates: true });
+
+        if (insErr) return { error: insErr.message, reportId };
+        refetch();
+        return { error: null, reportId };
+    }, [date, shift, refetch]);
+
+    /** Remove a single maintenance from a shift report's assignment list. */
+    const unassignMaintenanceFromShift = useCallback(async (
+        maintenanceId: string,
+        shiftReportId: string,
+    ): Promise<{ error: string | null }> => {
+        if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
+        const supabase = createClient();
+        const { error: delErr } = await supabase
+            .from('maintenance_shift_assignments')
+            .delete()
+            .eq('maintenance_id', maintenanceId)
+            .eq('shift_report_id', shiftReportId);
+        if (delErr) return { error: delErr.message };
+        refetch();
+        return { error: null };
+    }, [refetch]);
+
+    return { report, activeMaintenance, openCriticals, loading, error, submitReport, refetch, assignMaintenanceToShift, unassignMaintenanceFromShift };
 }

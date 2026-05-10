@@ -33,7 +33,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
 
     const [item, setItem] = useState(initial?.item ?? workOrderContext?.item ?? '');
     const [uraian, setUraian] = useState(initial?.uraian ?? '');
-    const [scope, setScope] = useState<HarScope>(initial?.scope ?? workOrderContext?.scope ?? 'mekanik');
+    const [scope, setScope] = useState<HarScope | ''>(initial?.scope ?? workOrderContext?.scope ?? '');
     const [foreman, setForeman] = useState<ForemanType>(initial?.foreman ?? workOrderContext?.foreman ?? 'foreman_turbin');
     const [notif, setNotif] = useState(initial?.notif ?? '');
     const [reportedBy, setReportedBy] = useState(initial?.reported_by ?? operatorName ?? '');
@@ -74,6 +74,10 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
     const handleSubmit = async () => {
         if (!item.trim() || !uraian.trim()) {
             setErr('Item dan uraian pekerjaan wajib diisi');
+            return;
+        }
+        if (!scope) {
+            setErr('Scope HAR wajib dipilih');
             return;
         }
         setSaving(true);

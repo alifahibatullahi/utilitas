@@ -7,11 +7,12 @@ import { useOperator } from '@/hooks/useOperator';
 import { SHIFT_OPTIONS, getShiftWindow, detectCurrentShift } from '@/lib/constants';
 import type { CriticalWithMaintenance, MaintenanceWithCritical, MaintenanceLogRow, PhotoRow, WorkOrderWithPekerjaan, WorkOrderRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
-import HistoryView from './HistoryView';
 import CriticalTableView from './CriticalTableView';
+import MaintenanceTableView from './MaintenanceTableView';
 import CriticalFormModal from './CriticalFormModal';
 import MaintenanceFormModal from './MaintenanceFormModal';
 import WorkOrderFormModal from './WorkOrderFormModal';
+import CloseCriticalModal from './CloseCriticalModal';
 
 function HeaderOperatorSelect() {
     const { operator, operators, login } = useOperator();
@@ -43,7 +44,8 @@ export default function CriticalPage() {
     const { operator } = useOperator();
     const cm = useCriticalMaintenance();
 
-    const [view, setView] = useState<'history' | 'board'>('history');
+    const [view, setView] = useState<'critical' | 'maintenance'>('critical');
+    const [maintSubView, setMaintSubView] = useState<'table' | 'board'>('table');
 
     // Shift selector for board view
     const defaultShift = detectCurrentShift();
@@ -67,16 +69,21 @@ export default function CriticalPage() {
     const [returnToWOId, setReturnToWOId] = useState<string | null>(null);
     const [activeWorkOrderContext, setActiveWorkOrderContext] = useState<WorkOrderWithPekerjaan | null>(null);
 
+    // Close confirmation modal state
+    const [closingCritical, setClosingCritical] = useState<CriticalWithMaintenance | null>(null);
+    const [closingWorkOrder, setClosingWorkOrder] = useState<WorkOrderWithPekerjaan | null>(null);
+    const [closingWOSaving, setClosingWOSaving] = useState(false);
+
     // Apply basic Kanban filters — exclude notes (they only appear in detail modal)
     const filteredKanban = cm.maintenances.filter(m => m.keterangan !== 'IS_NOTE' && m.item !== 'NOTE');
 
     // Photos for Kanban board
     const [photosByMaintId, setPhotosByMaintId] = useState<Record<string, PhotoRow[]>>({});
     useEffect(() => {
-        if (view !== 'board') return;
+        if (view !== 'maintenance' || maintSubView !== 'board') return;
         const ids = cm.maintenances.map(m => m.id);
         cm.fetchPhotosForMaintList(ids).then(setPhotosByMaintId);
-    }, [view, cm.maintenances]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [view, maintSubView, cm.maintenances]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const today = new Date();
     const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -107,22 +114,22 @@ export default function CriticalPage() {
                         {/* Middle: Tab Toggle */}
                         <div className="flex bg-gray-100/80 p-1.5 rounded-xl border border-gray-200/60 shadow-inner max-w-fit mx-auto xl:mx-0">
                             <button
-                                onClick={() => setView('history')}
+                                onClick={() => setView('critical')}
                                 className={`flex items-center px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-                                    view === 'history' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 shadow-transparent'
+                                    view === 'critical' ? 'bg-white text-rose-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 shadow-transparent'
                                 }`}
                             >
-                                <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>table_view</span>
-                                List
+                                <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>warning</span>
+                                Critical
                             </button>
                             <button
-                                onClick={() => setView('board')}
+                                onClick={() => setView('maintenance')}
                                 className={`flex items-center px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-                                    view === 'board' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 shadow-transparent'
+                                    view === 'maintenance' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700 shadow-transparent'
                                 }`}
                             >
-                                <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>view_kanban</span>
-                                Board Pekerjaan
+                                <span className="material-symbols-outlined mr-2" style={{ fontSize: 18 }}>build</span>
+                                Maintenance
                             </button>
                         </div>
 
@@ -159,7 +166,7 @@ export default function CriticalPage() {
                     </div>
                 ) : (
                     <>
-                        {view === 'history' && (
+                        {view === 'critical' && (
                             <div className="w-full flex-1 transition-all animate-in fade-in zoom-in-95 duration-300">
                                 <CriticalTableView
                                     criticals={cm.criticals}
@@ -213,8 +220,20 @@ export default function CriticalPage() {
                                     fetchPhotos={cm.fetchPhotos}
                                     deletePhoto={cm.deletePhoto}
                                     operatorName={operator?.name}
-                                    onChangeCriticalStatus={async (id, newStatus) => { await cm.moveCriticalStatus(id, newStatus, operator?.name); }}
-                                    onChangeWorkOrderStatus={async (id, newStatus) => { await cm.moveWorkOrderStatus(id, newStatus, operator?.name); }}
+                                    onChangeCriticalStatus={async (id, newStatus) => {
+                                        if (newStatus === 'CLOSED') {
+                                            const crit = cm.criticals.find(c => c.id === id);
+                                            if (crit) { setClosingCritical(crit); return; }
+                                        }
+                                        await cm.moveCriticalStatus(id, newStatus, operator?.name);
+                                    }}
+                                    onChangeWorkOrderStatus={async (id, newStatus) => {
+                                        if (newStatus === 'OK') {
+                                            const wo = cm.workOrders.find(w => w.id === id);
+                                            if (wo) { setClosingWorkOrder(wo); return; }
+                                        }
+                                        await cm.moveWorkOrderStatus(id, newStatus, operator?.name);
+                                    }}
                                     addActivityNote={cm.addActivityNote}
                                     addWOActivityNote={cm.addWOActivityNote}
                                     fetchWOPhotos={cm.fetchWOPhotos}
@@ -222,40 +241,28 @@ export default function CriticalPage() {
                             </div>
                         )}
 
-                        {view === 'board' && (
+                        {view === 'maintenance' && (
                             <div className="w-full flex-1 flex flex-col transition-all animate-in fade-in zoom-in-95 duration-300">
-                                {/* Shift selector and Actions — centered above columns */}
-                                <div className="flex flex-wrap items-center justify-center gap-4 mb-5">
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="date"
-                                            value={boardDate}
-                                            onChange={e => setBoardDate(e.target.value)}
-                                            className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium outline-none cursor-pointer shadow-sm"
-                                        />
-                                        <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
-                                            {SHIFT_OPTIONS.map(s => (
-                                                <button
-                                                    key={s.value}
-                                                    onClick={() => setBoardShift(s.value)}
-                                                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${boardShift === s.value ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
-                                                >
-                                                    {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="w-px h-8 bg-gray-300 hidden md:block"></div>
-                                    
-                                    <div className="flex items-center gap-2">
+                                {/* Sub-view toggle + Action buttons */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                    <div className="flex bg-gray-100/80 p-1 rounded-lg border border-gray-200/60 shadow-inner">
                                         <button
-                                            onClick={() => setShowCriticalForm(true)}
-                                            className="whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 text-sm font-bold hover:bg-rose-100 transition-colors shadow-sm cursor-pointer"
+                                            onClick={() => setMaintSubView('table')}
+                                            className={`flex items-center px-4 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${maintSubView === 'table' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
                                         >
-                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>warning</span>
-                                            + Tambah Critical
+                                            <span className="material-symbols-outlined mr-1.5" style={{ fontSize: 14 }}>table_view</span>
+                                            Tabel
                                         </button>
+                                        <button
+                                            onClick={() => setMaintSubView('board')}
+                                            className={`flex items-center px-4 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${maintSubView === 'board' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                                        >
+                                            <span className="material-symbols-outlined mr-1.5" style={{ fontSize: 14 }}>view_kanban</span>
+                                            Board
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => {
                                                 setMaintenanceInitial({ date: new Date().toISOString().split('T')[0] });
@@ -269,28 +276,67 @@ export default function CriticalPage() {
                                         </button>
                                     </div>
                                 </div>
-                                <KanbanBoard
-                                    maintenances={filteredKanban}
-                                    shiftWindow={shiftWindow}
-                                    onMoveStatus={cm.moveMaintenanceStatus}
-                                    onKonfirmasiShift={cm.konfirmasiShift}
-                                    photosByMaintId={photosByMaintId}
-                                />
-                                {/* Summary footer */}
-                                <div className="mt-8 flex items-center justify-center gap-6 text-xs text-gray-500 bg-white py-2 px-6 rounded-full shadow-sm w-fit mx-auto border border-gray-200">
-                                    <span className="flex items-center gap-2 font-bold">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/30" />
-                                        Open: {filteredKanban.filter(m => m.status === 'OPEN').length}
-                                    </span>
-                                    <span className="flex items-center gap-2 font-bold">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/30" />
-                                        In Progress: {filteredKanban.filter(m => m.status === 'IP').length}
-                                    </span>
-                                    <span className="flex items-center gap-2 font-bold">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/30" />
-                                        Selesai: {filteredKanban.filter(m => m.status === 'OK').length}
-                                    </span>
-                                </div>
+
+                                {maintSubView === 'table' && (
+                                    <MaintenanceTableView
+                                        maintenances={cm.maintenances}
+                                        workOrders={cm.workOrders}
+                                        onEdit={(m) => setEditingMaintenance(m)}
+                                        onDelete={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
+                                        onChangeStatus={async (id, newStatus) => {
+                                            await cm.moveMaintenanceStatus(id, newStatus, operator?.name);
+                                        }}
+                                    />
+                                )}
+
+                                {maintSubView === 'board' && (
+                                    <>
+                                        {/* Shift selector */}
+                                        <div className="flex flex-wrap items-center justify-center gap-4 mb-5">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="date"
+                                                    value={boardDate}
+                                                    onChange={e => setBoardDate(e.target.value)}
+                                                    className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium outline-none cursor-pointer shadow-sm"
+                                                />
+                                                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                                                    {SHIFT_OPTIONS.map(s => (
+                                                        <button
+                                                            key={s.value}
+                                                            onClick={() => setBoardShift(s.value)}
+                                                            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${boardShift === s.value ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                                                        >
+                                                            {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <KanbanBoard
+                                            maintenances={filteredKanban}
+                                            shiftWindow={shiftWindow}
+                                            onMoveStatus={cm.moveMaintenanceStatus}
+                                            onKonfirmasiShift={cm.konfirmasiShift}
+                                            photosByMaintId={photosByMaintId}
+                                        />
+                                        {/* Summary footer */}
+                                        <div className="mt-8 flex items-center justify-center gap-6 text-xs text-gray-500 bg-white py-2 px-6 rounded-full shadow-sm w-fit mx-auto border border-gray-200">
+                                            <span className="flex items-center gap-2 font-bold">
+                                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/30" />
+                                                Open: {filteredKanban.filter(m => m.status === 'OPEN').length}
+                                            </span>
+                                            <span className="flex items-center gap-2 font-bold">
+                                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/30" />
+                                                In Progress: {filteredKanban.filter(m => m.status === 'IP').length}
+                                            </span>
+                                            <span className="flex items-center gap-2 font-bold">
+                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/30" />
+                                                Selesai: {filteredKanban.filter(m => m.status === 'OK').length}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
@@ -298,6 +344,77 @@ export default function CriticalPage() {
                     </>
                 )}
             </main>
+
+            {/* Close Critical confirmation popup */}
+            {closingCritical && (
+                <CloseCriticalModal
+                    open={true}
+                    critical={closingCritical}
+                    operatorName={operator?.name}
+                    onClose={() => setClosingCritical(null)}
+                    onConfirm={async (actor) => {
+                        const res = await cm.moveCriticalStatus(closingCritical.id, 'CLOSED', actor);
+                        setClosingCritical(null);
+                        return { error: res ? null : null };
+                    }}
+                />
+            )}
+
+            {/* Close Work Order confirmation popup */}
+            {closingWorkOrder && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <div className={`flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r ${closingWorkOrder.tipe === 'preventif' ? 'from-emerald-500 to-emerald-600' : 'from-violet-500 to-violet-600'}`}>
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>lock</span>
+                                <div>
+                                    <h2 className="text-sm font-extrabold text-white">Tutup {closingWorkOrder.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'}</h2>
+                                    <p className="text-xs text-white/70 font-medium truncate max-w-[200px]">{closingWorkOrder.item}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setClosingWorkOrder(null)} className="text-white/70 hover:text-white cursor-pointer bg-white/10 hover:bg-white/20 p-1 rounded-lg">
+                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+                            </button>
+                        </div>
+                        <div className="px-6 py-5">
+                            <p className="text-sm font-bold text-gray-700 leading-relaxed">
+                                Yakin ingin menutup pekerjaan <span className="font-black text-black">{closingWorkOrder.item}</span>?
+                            </p>
+                            <p className="text-xs text-gray-500 mt-2">{closingWorkOrder.deskripsi}</p>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-2xl">
+                            <button
+                                onClick={() => setClosingWorkOrder(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-black bg-white text-sm font-bold hover:bg-gray-50 transition-colors cursor-pointer shadow-sm"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setClosingWOSaving(true);
+                                    await cm.moveWorkOrderStatus(closingWorkOrder.id, 'OK', operator?.name);
+                                    setClosingWOSaving(false);
+                                    setClosingWorkOrder(null);
+                                }}
+                                disabled={closingWOSaving}
+                                className={`flex-1 py-2.5 rounded-xl bg-gradient-to-r ${closingWorkOrder.tipe === 'preventif' ? 'from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20' : 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20'} text-white text-sm font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2`}
+                            >
+                                {closingWOSaving ? (
+                                    <>
+                                        <span className="material-symbols-outlined animate-spin" style={{ fontSize: 16 }}>progress_activity</span>
+                                        Menutup...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>lock</span>
+                                        Tutup {closingWorkOrder.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modals — create */}
             <CriticalFormModal

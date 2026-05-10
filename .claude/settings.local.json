@@ -35,7 +35,8 @@
       "Bash(node -e \"const ts = require\\('typescript'\\); const p = ts.createProgram\\(['components/input-harian/TabSiloFlyAsh.tsx'], {noEmit:true,skipLibCheck:true}\\); const d = ts.getPreEmitDiagnostics\\(p\\); d.forEach\\(x => console.log\\(ts.flattenDiagnosticMessageText\\(x.messageText, '\\\\n'\\)\\)\\); console.log\\(d.length === 0 ? 'OK' : d.length + ' errors'\\);\")",
       "Bash(xargs grep:*)",
       "mcp__claude_ai_Google_Drive__read_file_content",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "mcp__5fa8677e-dbe4-4c40-ac74-99d19317835e__list_projects"
     ]
   }
 }

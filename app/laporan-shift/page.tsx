@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useShiftReport, ShiftReportData } from '@/hooks/useShiftReport';
 import { todayWIB } from '@/lib/utils';
+import SelectMaintenanceModal from '@/components/critical/SelectMaintenanceModal';
 
 // ─── Data Interfaces ───
 interface BoilerData {
@@ -269,7 +270,8 @@ export default function LaporanShiftPage() {
     const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
     const [selectedDate, setSelectedDate] = useState(todayWIB);
 
-    const { report: supaReport, activeMaintenance, openCriticals, loading, error } = useShiftReport(selectedDate, activeShift);
+    const { report: supaReport, activeMaintenance, openCriticals, loading, error, assignMaintenanceToShift, unassignMaintenanceFromShift } = useShiftReport(selectedDate, activeShift);
+    const [showSelectMaintenance, setShowSelectMaintenance] = useState(false);
 
     const report = useMemo(() => {
         if (supaReport) return buildReportFromSupabase(supaReport);
@@ -567,9 +569,18 @@ export default function LaporanShiftPage() {
 
                     {/* Maintenance Logs */}
                     <section className="flex-1 flex flex-col">
-                        <div className="flex items-center gap-2 mb-3">
-                            <div className="w-1.5 h-4 bg-green-500 rounded-full" />
-                            <h3 className="text-xs font-bold text-white uppercase tracking-widest">Maintenance Logs</h3>
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-4 bg-green-500 rounded-full" />
+                                <h3 className="text-xs font-bold text-white uppercase tracking-widest">Maintenance Logs</h3>
+                            </div>
+                            <button
+                                onClick={() => setShowSelectMaintenance(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-colors cursor-pointer shadow-sm"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>checklist</span>
+                                Pilih Maintenance
+                            </button>
                         </div>
                         <div className="bg-surface-dark rounded-xl border border-slate-800 flex flex-col flex-1 overflow-hidden">
                             <div className="bg-green-600 p-2.5">
@@ -662,6 +673,25 @@ export default function LaporanShiftPage() {
                 </button>
             </div>
             </>)}
+
+            {/* Pilih Maintenance Modal */}
+            <SelectMaintenanceModal
+                open={showSelectMaintenance}
+                onClose={() => setShowSelectMaintenance(false)}
+                date={selectedDate}
+                shift={activeShift}
+                alreadyAssignedIds={activeMaintenance.map(m => m.id)}
+                onConfirm={async (addIds, removeIds) => {
+                    if (addIds.length > 0) {
+                        await assignMaintenanceToShift(addIds, operator?.name);
+                    }
+                    if (removeIds.length > 0 && supaReport) {
+                        for (const id of removeIds) {
+                            await unassignMaintenanceFromShift(id, supaReport.id);
+                        }
+                    }
+                }}
+            />
         </div>
     );
 }

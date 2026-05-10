@@ -243,8 +243,19 @@ export function useCriticalMaintenance() {
 
     // ─── CRUD Maintenance ───
     const createMaintenance = useCallback(async (data: Omit<MaintenanceLogRow, 'id' | 'created_at' | 'updated_at'>) => {
-        const { error: err } = await supabase.from('maintenance_logs').insert(data);
+        const { data: inserted, error: err } = await supabase
+            .from('maintenance_logs')
+            .insert(data)
+            .select('id')
+            .single();
         if (err) return { error: err.message };
+        // Auto-assign ke shift report kalau dibuat dari context laporan shift
+        if (data.shift_report_id && inserted?.id) {
+            await supabase.from('maintenance_shift_assignments').upsert(
+                { maintenance_id: inserted.id, shift_report_id: data.shift_report_id, assigned_by: data.reported_by ?? null },
+                { onConflict: 'maintenance_id,shift_report_id', ignoreDuplicates: true }
+            );
+        }
         if (data.critical_id) {
             await insertActivityLog(
                 supabase, data.critical_id, 'maintenance_added',

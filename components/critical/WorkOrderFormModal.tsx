@@ -5,6 +5,7 @@ import { HAR_SCOPES, FOREMAN_OPTIONS } from '@/lib/constants';
 import type { HarScope, ForemanType, WorkOrderRow, WorkOrderType } from '@/lib/supabase/types';
 import ItemCombobox from './ItemCombobox';
 import OperatorCombobox from './OperatorCombobox';
+import ScopeCombobox from './ScopeCombobox';
 
 type WorkOrderFormData = Omit<WorkOrderRow, 'id' | 'created_at' | 'updated_at'>;
 
@@ -63,13 +64,9 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
         onClose();
     };
 
-    const gradientClass = isPreventif
-        ? 'from-emerald-500 to-emerald-600'
-        : 'from-violet-500 to-violet-600';
+    const gradientClass = isPreventif ? 'from-emerald-500 to-emerald-600' : 'from-violet-500 to-violet-600';
     const ringClass = isPreventif ? 'focus:ring-emerald-500/30 focus:border-emerald-500' : 'focus:ring-violet-500/30 focus:border-violet-500';
-    const btnClass = isPreventif
-        ? 'from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20'
-        : 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20';
+    const btnClass = isPreventif ? 'from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20' : 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20';
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
@@ -98,7 +95,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                             <select
                                 value={tipe}
                                 onChange={e => setTipe(e.target.value as WorkOrderType)}
-                                className={`appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium ${ringClass} outline-none cursor-pointer transition-all shadow-sm`}
+                                className={`appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-black text-sm font-bold ${ringClass} outline-none cursor-pointer transition-all shadow-sm`}
                             >
                                 <option value="preventif">Preventif</option>
                                 <option value="modifikasi">Modifikasi</option>
@@ -109,7 +106,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
 
                     {/* Item */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={setItem} light={true} />
                     </div>
 
@@ -121,21 +118,14 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                             onChange={e => setDeskripsi(e.target.value)}
                             rows={3}
                             placeholder="Jelaskan pekerjaan yang akan dilakukan..."
-                            className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium ${ringClass} outline-none resize-none transition-all shadow-sm placeholder-gray-400`}
+                            className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-black text-sm font-bold ${ringClass} outline-none resize-none transition-all shadow-sm placeholder-gray-400`}
                         />
                     </div>
 
                     {/* Scope */}
                     <div>
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
-                        <div className="relative">
-                            <select value={scope} onChange={e => setScope(e.target.value as HarScope)}
-                                className={`appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium ${ringClass} outline-none cursor-pointer transition-all shadow-sm`}>
-                                <option value="" disabled>— Pilih scope HAR —</option>
-                                {HAR_SCOPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
-                        </div>
+                        <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="Pilih scope HAR" />
                     </div>
 
                     {/* Notif */}
@@ -143,19 +133,33 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Notif SAP (ops)</label>
                         <input type="text" value={notif} onChange={e => setNotif(e.target.value)}
                             placeholder="Nomor notifikasi SAP..."
-                            className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium ${ringClass} outline-none transition-all shadow-sm placeholder-gray-400`} />
+                            className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-black text-sm font-bold ${ringClass} outline-none transition-all shadow-sm placeholder-gray-400`} />
                     </div>
 
                     {/* Foreman */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">P. Jawab</label>
-                        <div className="relative">
-                            <select value={foreman} onChange={e => setForeman(e.target.value as ForemanType)}
-                                className={`appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium ${ringClass} outline-none cursor-pointer transition-all shadow-sm`}>
-                                <option value="" disabled>— Pilih penanggung jawab —</option>
-                                {FOREMAN_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Penanggung Jawab</label>
+                        <div className="flex gap-2">
+                            {FOREMAN_OPTIONS.map(f => {
+                                const active = foreman === f.value;
+                                const activeClass = f.value === 'foreman_turbin' 
+                                    ? 'bg-teal-50 border-teal-500 text-teal-700 shadow-sm' 
+                                    : 'bg-orange-50 border-orange-500 text-orange-700 shadow-sm';
+                                return (
+                                    <button
+                                        key={f.value}
+                                        type="button"
+                                        onClick={() => setForeman(f.value as ForemanType)}
+                                        className={`flex-1 py-2.5 px-3 rounded-xl border text-sm font-bold transition-all cursor-pointer text-center ${
+                                            active
+                                                ? activeClass
+                                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

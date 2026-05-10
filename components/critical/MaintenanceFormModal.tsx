@@ -204,7 +204,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
 
                     {/* Row 1: Item | Critical (hanya mode corrective) */}
                     <div className={isPreventifModifikasiMode || isWOMode ? 'md:col-span-2' : ''}>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={handleItemChange} light={true} />
                     </div>
 
@@ -220,7 +220,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                                     <option value="">— Tanpa Critical —</option>
                                     {activeCriticalList.map(c => (
                                         <option key={c.id} value={c.id}>
-                                            {c.item} — {c.deskripsi.slice(0, 40)}
+                                            {c.item} — {c.deskripsi.length > 40 ? c.deskripsi.slice(0, 40) + '...' : c.deskripsi}
                                         </option>
                                     ))}
                                 </select>
@@ -279,13 +279,28 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
 
                     {/* Foreman */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">P. Jawab</label>
-                        <div className="relative">
-                            <select value={foreman} onChange={e => setForeman(e.target.value as ForemanType)}
-                                className="appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 outline-none cursor-pointer transition-all shadow-sm">
-                                {FOREMAN_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Penanggung Jawab</label>
+                        <div className="flex gap-2">
+                            {FOREMAN_OPTIONS.map(f => {
+                                const active = foreman === f.value;
+                                const activeClass = f.value === 'foreman_turbin' 
+                                    ? 'bg-teal-50 border-teal-500 text-teal-700 shadow-sm' 
+                                    : 'bg-orange-50 border-orange-500 text-orange-700 shadow-sm';
+                                return (
+                                    <button
+                                        key={f.value}
+                                        type="button"
+                                        onClick={() => setForeman(f.value as ForemanType)}
+                                        className={`flex-1 py-2.5 px-3 rounded-xl border text-sm font-bold transition-all cursor-pointer text-center ${
+                                            active
+                                                ? activeClass
+                                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

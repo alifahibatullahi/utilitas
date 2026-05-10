@@ -81,7 +81,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Item */}
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Item / Peralatan</label>
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={setItem} light={true} />
                     </div>
 
@@ -100,7 +100,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                     {/* Scope */}
                     <div>
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
-                        <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="— Pilih scope HAR —" />
+                        <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="Pilih scope HAR" />
                     </div>
 
                     {/* Notif SAP */}
@@ -118,18 +118,27 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                     {/* Penanggung Jawab */}
                     <div>
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Penanggung Jawab</label>
-                        <div className="relative">
-                            <select
-                                value={foreman}
-                                onChange={e => setForeman(e.target.value as ForemanType)}
-                                className="appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none cursor-pointer transition-all shadow-sm"
-                            >
-                                <option value="" disabled>— Pilih penanggung jawab —</option>
-                                {FOREMAN_OPTIONS.map(f => (
-                                    <option key={f.value} value={f.value}>{f.label}</option>
-                                ))}
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                        <div className="flex gap-2">
+                            {FOREMAN_OPTIONS.map(f => {
+                                const active = foreman === f.value;
+                                const activeClass = f.value === 'foreman_turbin' 
+                                    ? 'bg-teal-50 border-teal-500 text-teal-700 shadow-sm' 
+                                    : 'bg-orange-50 border-orange-500 text-orange-700 shadow-sm';
+                                return (
+                                    <button
+                                        key={f.value}
+                                        type="button"
+                                        onClick={() => setForeman(f.value as ForemanType)}
+                                        className={`flex-1 py-2.5 px-3 rounded-xl border text-sm font-bold transition-all cursor-pointer text-center ${
+                                            active
+                                                ? activeClass
+                                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

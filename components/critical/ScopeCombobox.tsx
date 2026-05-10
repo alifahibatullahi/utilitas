@@ -43,7 +43,7 @@ export default function ScopeCombobox({ value, onChange, light = true, placehold
                 }}
                 items={comboboxItems}
                 light={light}
-                placeholder={placeholder || "Pilih scope..."}
+                placeholder={placeholder || "Pilih scope HAR"}
                 onAdd={() => { setEditingId(null); setFormOpen(true); }}
                 onEdit={(id) => { setEditingId(id); setFormOpen(true); }}
                 addLabel="+ Tambahkan scope baru"

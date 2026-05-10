@@ -16,15 +16,19 @@ const TIPE_BADGE: Record<MaintenanceType, string> = {
     modifikasi: 'bg-violet-50 text-violet-600 border-violet-200',
 };
 
+import StatusBadge from './StatusBadge';
+import ClickableStatusDropdown from './CriticalTableView'; // Wait, let's just use StatusBadge or custom dropdown
+
 interface MaintenanceTableViewProps {
     maintenances: MaintenanceWithCritical[];
     workOrders: WorkOrderWithPekerjaan[];
     onEdit: (m: MaintenanceWithCritical) => void;
     onDelete: (id: string) => Promise<void> | void;
     onChangeStatus: (id: string, newStatus: MaintenanceStatus) => Promise<unknown> | unknown;
+    onToggleExpand: (id: string, type: 'critical' | 'wo') => void;
 }
 
-export default function MaintenanceTableView({ maintenances, workOrders, onEdit, onDelete, onChangeStatus }: MaintenanceTableViewProps) {
+export default function MaintenanceTableView({ maintenances, workOrders, onEdit, onDelete, onChangeStatus, onToggleExpand }: MaintenanceTableViewProps) {
     const [search, setSearch] = useState('');
     const [filterTipe, setFilterTipe] = useState<MaintenanceType | 'all'>('all');
     const [filterStatus, setFilterStatus] = useState<MaintenanceStatus | 'all'>('all');
@@ -137,23 +141,22 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             {/* Table */}
             <div className="overflow-auto light-scrollbar" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                 <table className="w-full text-sm">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
-                        <tr className="text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                            <th className="px-4 py-3">Tanggal</th>
-                            <th className="px-4 py-3">Item</th>
-                            <th className="px-4 py-3 min-w-[200px]">Uraian</th>
-                            <th className="px-4 py-3">Tipe</th>
-                            <th className="px-4 py-3">Scope</th>
-                            <th className="px-4 py-3">Foreman</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Asal</th>
-                            <th className="px-4 py-3 text-right">Aksi</th>
+                    <thead className="bg-[#EAEFF5] border-b border-[#D8E2ED] sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Tanggal</th>
+                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Item</th>
+                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest min-w-[200px]">Uraian</th>
+                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Tipe</th>
+                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Scope</th>
+                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Foreman</th>
+                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Status</th>
+                            <th className="px-4 py-4 text-center text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Detail / Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={9} className="text-center py-12 text-gray-400 text-sm font-medium">
+                                <td colSpan={8} className="text-center py-12 text-gray-400 text-sm font-medium">
                                     <div className="flex flex-col items-center gap-2">
                                         <span className="material-symbols-outlined text-4xl text-gray-300">build</span>
                                         Tidak ada maintenance yang sesuai filter.
@@ -169,58 +172,58 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                     ? { type: 'wo' as const, label: wo.item, sub: wo.tipe === 'preventif' ? 'Preventif' : 'Modifikasi' }
                                     : null;
                                 return (
-                                    <tr key={m.id} className="hover:bg-gray-50/60 transition-colors">
-                                        <td className="px-4 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">{m.date}</td>
-                                        <td className="px-4 py-3 text-xs text-gray-800 font-bold">{m.item}</td>
-                                        <td className="px-4 py-3 text-xs text-gray-700">{m.uraian}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${TIPE_BADGE[m.tipe]}`}>
-                                                {TIPE_LABEL[m.tipe]}
+                                    <tr key={m.id} className="border-b border-gray-100 transition-colors hover:bg-blue-50 bg-white">
+                                        <td className="px-4 py-4 whitespace-nowrap text-lg font-bold text-black">{new Date(m.date + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                                        <td className="px-4 py-4 text-lg font-black text-black">{m.item}</td>
+                                        <td className="px-4 py-4 text-lg font-medium text-black"><span className="line-clamp-3 whitespace-pre-wrap">{m.uraian}</span></td>
+                                        <td className="px-4 py-4">
+                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold border ${TIPE_BADGE[m.tipe]}`}>
+                                                {m.tipe === 'corrective' ? 'Critical' : TIPE_LABEL[m.tipe]}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3"><ScopeBadge scope={m.scope} light /></td>
-                                        <td className="px-4 py-3 text-xs text-gray-700 font-medium">{m.foreman === 'foreman_turbin' ? 'Turbin' : m.foreman === 'foreman_boiler' ? 'Boiler' : m.foreman}</td>
-                                        <td className="px-4 py-3">
-                                            <select
-                                                value={m.status}
-                                                onChange={e => onChangeStatus(m.id, e.target.value as MaintenanceStatus)}
-                                                className="px-2 py-1 rounded-md border border-gray-200 bg-white text-[11px] font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500/20"
-                                            >
-                                                <option value="OPEN">Open</option>
-                                                <option value="IP">In Progress</option>
-                                                <option value="OK">Selesai</option>
-                                            </select>
+                                        <td className="px-4 py-4"><ScopeBadge scope={m.scope} solid className="px-3 py-1.5 text-sm shadow-sm" /></td>
+                                        <td className="px-4 py-4 text-lg font-bold text-black whitespace-nowrap">{m.foreman === 'foreman_turbin' ? 'Turbin' : m.foreman === 'foreman_boiler' ? 'Boiler' : m.foreman}</td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col gap-1 items-start">
+                                                <select
+                                                    value={m.status}
+                                                    onChange={e => onChangeStatus(m.id, e.target.value as MaintenanceStatus)}
+                                                    className="px-3 py-1.5 rounded-full border-none shadow-sm text-sm font-extrabold uppercase tracking-wide cursor-pointer outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none text-white bg-gradient-to-r from-blue-500 to-blue-600"
+                                                    style={{
+                                                        backgroundImage: m.status === 'OK' ? 'linear-gradient(to right, #475569, #334155)' : m.status === 'IP' ? 'linear-gradient(to right, #f59e0b, #d97706)' : 'linear-gradient(to right, #f43f5e, #e11d48)'
+                                                    }}
+                                                >
+                                                    <option value="OPEN" className="bg-rose-500 text-white font-bold">OPEN</option>
+                                                    <option value="IP" className="bg-amber-500 text-white font-bold">IN PROGRESS</option>
+                                                    <option value="OK" className="bg-slate-600 text-white font-bold">SELESAI</option>
+                                                </select>
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-3 text-xs">
-                                            {asal ? (
-                                                <div className="flex items-center gap-1">
-                                                    <span className={`material-symbols-outlined ${asal.type === 'critical' ? 'text-rose-500' : 'text-emerald-500'}`} style={{ fontSize: 14 }}>
-                                                        {asal.type === 'critical' ? 'warning' : 'event_available'}
-                                                    </span>
-                                                    <span className="font-bold text-gray-700">{asal.label}</span>
-                                                    <span className="text-gray-400 text-[10px]">· {asal.sub}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-300 italic">—</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1">
+                                        <td className="px-4 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => onToggleExpand(asal?.type === 'critical' && m.critical_id ? m.critical_id : (m.work_order_id ?? ''), asal?.type || 'critical')}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:from-blue-600 hover:to-blue-700 transition-all"
+                                                    title="Detail"
+                                                >
+                                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>open_in_new</span>
+                                                    Detail
+                                                </button>
                                                 <button
                                                     onClick={() => onEdit(m)}
-                                                    className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors cursor-pointer"
+                                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm cursor-pointer"
                                                     title="Edit"
                                                 >
-                                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit</span>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>edit</span>
                                                 </button>
                                                 <button
                                                     onClick={async () => {
                                                         if (confirm(`Hapus maintenance "${m.uraian}"?`)) await onDelete(m.id);
                                                     }}
-                                                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+                                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm cursor-pointer"
                                                     title="Hapus"
                                                 >
-                                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>delete</span>
                                                 </button>
                                             </div>
                                         </td>

@@ -244,8 +244,8 @@ export default function CriticalPage() {
                         {view === 'maintenance' && (
                             <div className="w-full flex-1 flex flex-col transition-all animate-in fade-in zoom-in-95 duration-300">
                                 {/* Sub-view toggle + Action buttons */}
-                                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                                    <div className="flex bg-gray-100/80 p-1 rounded-lg border border-gray-200/60 shadow-inner">
+                                <div className="flex flex-wrap items-center justify-center gap-3 mb-4 relative">
+                                    <div className="absolute left-0 flex bg-gray-100/80 p-1 rounded-lg border border-gray-200/60 shadow-inner">
                                         <button
                                             onClick={() => setMaintSubView('table')}
                                             className={`flex items-center px-4 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${maintSubView === 'table' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
@@ -262,17 +262,17 @@ export default function CriticalPage() {
                                         </button>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 z-10">
                                         <button
                                             onClick={() => {
                                                 setMaintenanceInitial({ date: new Date().toISOString().split('T')[0] });
-                                                setMaintenanceRestrictTipe('preventifModifikasi');
+                                                setMaintenanceRestrictTipe(undefined);
                                                 setShowMaintenanceForm(true);
                                             }}
-                                            className="whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm cursor-pointer"
+                                            className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-blue-50 text-blue-600 border-2 border-blue-200 text-sm font-black hover:bg-blue-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
                                         >
-                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>event_available</span>
-                                            + Preventif / Modifikasi
+                                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>add_circle</span>
+                                            + Tambah Maintenance
                                         </button>
                                     </div>
                                 </div>
@@ -285,6 +285,10 @@ export default function CriticalPage() {
                                         onDelete={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
                                         onChangeStatus={async (id, newStatus) => {
                                             await cm.moveMaintenanceStatus(id, newStatus, operator?.name);
+                                        }}
+                                        onToggleExpand={(id, type) => {
+                                            if (type === 'critical') setExpandedCriticalId(id);
+                                            else setExpandedWOId(id);
                                         }}
                                     />
                                 )}
@@ -337,6 +341,67 @@ export default function CriticalPage() {
                                         </div>
                                     </>
                                 )}
+
+                                {/* Detail Modals for Maintenance View */}
+                                {expandedCriticalId && cm.criticals.find(c => c.id === expandedCriticalId) && (() => {
+                                    const critical = cm.criticals.find(c => c.id === expandedCriticalId)!;
+                                    return (
+                                        <CriticalDetailModal
+                                            critical={critical}
+                                            rowIndex={0}
+                                            onClose={() => setExpandedCriticalId(null)}
+                                            onEditMaintenance={(m) => setEditingMaintenance({ ...m, critical_equipment: null })}
+                                            onDeleteMaintenance={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
+                                            onAddMaintenance={(c) => {
+                                                setMaintenanceInitial(c ? {
+                                                    critical_id: c.id,
+                                                    item: c.item,
+                                                    scope: c.scope,
+                                                    foreman: c.foreman,
+                                                    date: new Date().toISOString().split('T')[0],
+                                                } : { date: new Date().toISOString().split('T')[0] });
+                                                if (c?.id) { setReturnToDetailId(c.id); setExpandedCriticalId(null); }
+                                                setShowMaintenanceForm(true);
+                                            }}
+                                            onRefresh={cm.refetch}
+                                            fetchPhotos={cm.fetchPhotos}
+                                            deletePhoto={cm.deletePhoto}
+                                            operatorName={operator?.name}
+                                            addActivityNote={cm.addActivityNote}
+                                        />
+                                    );
+                                })()}
+
+                                {expandedWOId && cm.workOrders.find(w => w.id === expandedWOId) && (() => {
+                                    const wo = cm.workOrders.find(w => w.id === expandedWOId)!;
+                                    return (
+                                        <WorkOrderDetailModal
+                                            workOrder={wo}
+                                            rowIndex={0}
+                                            onClose={() => setExpandedWOId(null)}
+                                            onEditPekerjaan={(m) => setEditingMaintenance({ ...m, critical_equipment: null })}
+                                            onDeletePekerjaan={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
+                                            onAddPekerjaan={(wData) => {
+                                                setMaintenanceInitial({
+                                                    work_order_id: wData.id,
+                                                    item: wData.item,
+                                                    scope: wData.scope,
+                                                    foreman: wData.foreman,
+                                                    date: new Date().toISOString().split('T')[0],
+                                                });
+                                                setActiveWorkOrderContext(wData);
+                                                setReturnToWOId(wData.id);
+                                                setExpandedWOId(null);
+                                                setShowMaintenanceForm(true);
+                                            }}
+                                            onRefresh={cm.refetch}
+                                            fetchPhotos={cm.fetchWOPhotos}
+                                            deletePhoto={cm.deletePhoto}
+                                            operatorName={operator?.name}
+                                            addActivityNote={cm.addWOActivityNote}
+                                        />
+                                    );
+                                })()}
                             </div>
                         )}
 

@@ -177,7 +177,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                             <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Tipe Maintenance</label>
                             <div className="flex gap-2">
                                 {([
-                                    { value: 'corrective' as MaintenanceType, label: 'Corrective', desc: 'Untuk Critical', activeCls: 'border-blue-500 bg-blue-50 shadow-md', titleCls: 'text-blue-700', descCls: 'text-blue-600' },
+                                    { value: 'corrective' as MaintenanceType, label: 'Critical', desc: 'Terkait Critical Equipment', activeCls: 'border-blue-500 bg-blue-50 shadow-md', titleCls: 'text-blue-700', descCls: 'text-blue-600' },
                                     { value: 'preventif' as MaintenanceType, label: 'Preventif', desc: 'Pemeliharaan rutin', activeCls: 'border-emerald-500 bg-emerald-50 shadow-md', titleCls: 'text-emerald-700', descCls: 'text-emerald-600' },
                                     { value: 'modifikasi' as MaintenanceType, label: 'Modifikasi', desc: 'Perubahan/upgrade', activeCls: 'border-violet-500 bg-violet-50 shadow-md', titleCls: 'text-violet-700', descCls: 'text-violet-600' },
                                 ])

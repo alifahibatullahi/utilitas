@@ -61,12 +61,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             .filter(m => !dateFrom || m.date >= dateFrom)
             .filter(m => !dateTo || m.date <= dateTo)
             .filter(m => !q || m.item.toLowerCase().includes(q) || m.uraian.toLowerCase().includes(q) || (m.notif ?? '').toLowerCase().includes(q))
-            .sort((a, b) => {
-                // OPEN/IP di atas, OK di bawah; lalu by date desc
-                const order = { OPEN: 0, IP: 1, OK: 2 };
-                if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-                return b.date.localeCompare(a.date);
-            });
+            .sort((a, b) => b.date.localeCompare(a.date));
     }, [maintenances, search, filterTipe, filterStatus, filterScope, filterForeman, dateFrom, dateTo]);
 
     const counts = useMemo(() => ({
@@ -143,7 +138,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             </div>
 
             {/* Table */}
-            <div className="overflow-auto light-scrollbar" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+            <div className="overflow-x-auto light-scrollbar">
                 <table className="w-full text-sm">
                     <thead className="bg-[#EAEFF5] border-b border-[#D8E2ED] sticky top-0 z-10 shadow-sm">
                         <tr>

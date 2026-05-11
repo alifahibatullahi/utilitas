@@ -576,10 +576,6 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
         ...filteredCriticals.map(c => ({ ...c, _type: 'critical' as const })),
         ...filteredWorkOrders.map(w => ({ ...w, _type: 'wo' as const }))
     ].sort((a, b) => {
-        // status: OPEN/IP di atas, CLOSED/OK di bawah
-        const aClosed = a._type === 'critical' ? a.status === 'CLOSED' : a.status === 'OK';
-        const bClosed = b._type === 'critical' ? b.status === 'CLOSED' : b.status === 'OK';
-        if (aClosed !== bClosed) return aClosed ? 1 : -1;
         // tanggal terbaru di atas
         return (b.date || '').localeCompare(a.date || '');
     });

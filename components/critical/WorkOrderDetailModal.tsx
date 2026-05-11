@@ -9,6 +9,13 @@ import PhotoGallery from './PhotoGallery';
 import PhotoUploadButton from './PhotoUploadButton';
 import ActivityTimelineImproved from './ActivityTimelineImproved';
 import { useEquipmentItems } from '@/hooks/useMasterData';
+import ClickableStatusDropdown from './ClickableStatusDropdown';
+
+const PEKERJAAN_STATUS_OPTIONS = [
+    { value: 'OPEN', label: 'OPEN', color: 'bg-rose-500 text-white' },
+    { value: 'IP', label: 'IN PROGRESS', color: 'bg-amber-500 text-white' },
+    { value: 'OK', label: 'SELESAI', color: 'bg-slate-600 text-white' },
+];
 
 function formatDate(d: string) {
     if (!d) return '-';
@@ -72,6 +79,35 @@ export default function WorkOrderDetailModal({
     const accentHover = isPreventif ? 'hover:bg-emerald-600' : 'hover:bg-violet-600';
     const accentShadow = isPreventif ? 'shadow-emerald-500/20' : 'shadow-violet-500/20';
     const tipeLabel = isPreventif ? 'Preventif' : 'Modifikasi';
+
+    // Count non-note pekerjaan
+    const realPekerjaan = pekerjaan.filter(p => p.keterangan !== 'IS_NOTE' && p.item !== 'NOTE');
+
+    async function updatePekerjaanStatus(id: string, newStatus: 'OPEN' | 'IP' | 'OK', idx: number) {
+        setPekerjaan(prev => {
+            const n = [...prev];
+            n[idx] = { ...n[idx], status: newStatus };
+            return n;
+        });
+        const supabase = createClient();
+        const { error } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
+        if (error) {
+            alert('Gagal mengubah status');
+            setPekerjaan([...workOrder.maintenance_logs].sort(
+                (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+            ));
+        } else {
+            await onRefresh?.();
+        }
+    }
+
+    function handleDeletePekerjaan(m: MaintenanceLogRow) {
+        const isLastReal = realPekerjaan.length === 1 && realPekerjaan[0].id === m.id;
+        const message = isLastReal
+            ? `Ini adalah pekerjaan terakhir. Menghapusnya akan menghapus ${tipeLabel} "${workOrder.item}" secara keseluruhan.\n\nLanjutkan hapus?`
+            : 'Hapus pekerjaan ini?';
+        if (confirm(message)) onDeletePekerjaan?.(m.id);
+    }
 
     function handlePhotoUploaded(p: PhotoRow) { setPhotos(prev => [p, ...prev]); }
     async function handlePhotoDeleted(id: string) {
@@ -250,6 +286,16 @@ export default function WorkOrderDetailModal({
                                                                     'text-teal-600 bg-teal-50 border-teal-200'
                                                                 } px-2 py-0.5 rounded shadow-sm border`}>{m.scope}</span>
                                                                 <span className={`text-lg font-black flex-1 ${isOk ? 'text-slate-400' : 'text-slate-800'}`}>{m.uraian}</span>
+                                                                
+                                                                {/* Status Dropdown */}
+                                                                <div className="relative flex-shrink-0">
+                                                                    <ClickableStatusDropdown
+                                                                        currentStatus={m.status}
+                                                                        options={PEKERJAAN_STATUS_OPTIONS}
+                                                                        onChange={(newStatus) => updatePekerjaanStatus(m.id, newStatus as 'OPEN' | 'IP' | 'OK', idx)}
+                                                                        label="Status Pekerjaan"
+                                                                    />
+                                                                </div>
                                                             </div>
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
@@ -271,7 +317,7 @@ export default function WorkOrderDetailModal({
                                                             <button onClick={() => onEditPekerjaan?.(m)} className={`w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border ${isOk ? 'text-slate-400 bg-slate-100 border-slate-200 hover:bg-slate-200' : 'text-blue-600 hover:text-white bg-blue-50 border-blue-200 hover:bg-blue-600 hover:border-transparent'}`}>
                                                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>Edit
                                                             </button>
-                                                            <button onClick={() => { if (confirm('Hapus pekerjaan ini?')) onDeletePekerjaan?.(m.id); }} className={`w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border ${isOk ? 'text-slate-400 bg-slate-100 border-slate-200 hover:bg-slate-200' : 'text-rose-600 hover:text-white bg-rose-50 border-rose-200 hover:bg-rose-600 hover:border-transparent'}`}>
+                                                            <button onClick={() => handleDeletePekerjaan(m)} className={`w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border ${isOk ? 'text-slate-400 bg-slate-100 border-slate-200 hover:bg-slate-200' : 'text-rose-600 hover:text-white bg-rose-50 border-rose-200 hover:bg-rose-600 hover:border-transparent'}`}>
                                                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>Hapus
                                                             </button>
                                                         </div>

@@ -192,7 +192,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                                 <ClickableStatusDropdown
                                                     currentStatus={m.status}
                                                     options={STATUS_OPTIONS}
-                                                    onChange={newStatus => onChangeStatus(m.id, newStatus as MaintenanceStatus)}
+                                                    onChange={newStatus => { onChangeStatus(m.id, newStatus as MaintenanceStatus); }}
                                                     label={m.item}
                                                 />
                                             </div>

@@ -309,6 +309,23 @@ export function useCriticalMaintenance() {
                 actor ?? null
             );
         }
+        // Cascade: jika pekerjaan terakhir di work order (preventif/modifikasi), hapus work order juga
+        if (oldMaint?.work_order_id) {
+            const remainingReal = maintenances.filter(
+                m => m.work_order_id === oldMaint.work_order_id
+                    && m.id !== id
+                    && m.keterangan !== 'IS_NOTE'
+                    && m.item !== 'NOTE'
+            );
+            if (remainingReal.length === 0) {
+                // Hapus sisa notes jika ada
+                await supabase.from('maintenance_logs').delete().eq('work_order_id', oldMaint.work_order_id);
+                // Hapus activity logs work order
+                await supabase.from('work_order_activity_logs').delete().eq('work_order_id', oldMaint.work_order_id);
+                // Hapus work order itu sendiri
+                await supabase.from('work_orders').delete().eq('id', oldMaint.work_order_id);
+            }
+        }
         await fetchData();
         return { error: null };
     }, [supabase, fetchData, maintenances]);

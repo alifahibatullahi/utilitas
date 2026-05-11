@@ -211,6 +211,22 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                                 </button>
                                                 <button
                                                     onClick={async () => {
+                                                        // Check if this is the last real pekerjaan in a work order
+                                                        if (m.work_order_id && wo) {
+                                                            const siblingsInWO = maintenances.filter(
+                                                                s => s.work_order_id === m.work_order_id
+                                                                    && s.id !== m.id
+                                                                    && s.keterangan !== 'IS_NOTE'
+                                                                    && s.item !== 'NOTE'
+                                                            );
+                                                            if (siblingsInWO.length === 0) {
+                                                                const tipeLabel = wo.tipe === 'preventif' ? 'Preventif' : 'Modifikasi';
+                                                                if (confirm(`Ini adalah pekerjaan terakhir. Menghapusnya akan menghapus ${tipeLabel} "${wo.item}" secara keseluruhan.\n\nLanjutkan hapus?`)) {
+                                                                    await onDelete(m.id);
+                                                                }
+                                                                return;
+                                                            }
+                                                        }
                                                         if (confirm(`Hapus maintenance "${m.uraian}"?`)) await onDelete(m.id);
                                                     }}
                                                     className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm cursor-pointer"

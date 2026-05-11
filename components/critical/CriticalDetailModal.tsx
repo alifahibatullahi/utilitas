@@ -9,6 +9,7 @@ import PhotoGallery from './PhotoGallery';
 import PhotoUploadButton from './PhotoUploadButton';
 import ActivityTimelineImproved from './ActivityTimelineImproved';
 import { useEquipmentItems } from '@/hooks/useMasterData';
+import ClickableStatusDropdown from './ClickableStatusDropdown';
 
 const ACTION_CONFIG: Record<string, { icon: string; color: string }> = {
     created:              { icon: 'flag',                    color: 'text-rose-500' },
@@ -404,23 +405,16 @@ export default function CriticalDetailModal({
                                                         
                                                         {/* Status Dropdown Inline */}
                                                         <div className="relative flex-shrink-0">
-                                                            <select
-                                                                value={m.status}
-                                                                onChange={(e) => {
-                                                                    const nextStatus = e.target.value as 'OPEN' | 'IP' | 'OK';
-                                                                    updateMaintenanceStatus(m.id, nextStatus, idx);
-                                                                }}
-                                                                className={`appearance-none outline-none cursor-pointer inline-block px-4 py-1.5 pr-8 rounded-lg text-sm font-black border uppercase tracking-wider text-center shadow-sm hover:opacity-80 transition-opacity ${
-                                                                    m.status === 'OK' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                                                                    m.status === 'IP' ? 'bg-amber-100 text-amber-700 border-amber-300' :
-                                                                    'bg-blue-100 text-blue-700 border-blue-300'
-                                                                }`}
-                                                            >
-                                                                <option value="OPEN" className="bg-blue-100 text-blue-700 font-bold">OPEN</option>
-                                                                <option value="IP" className="bg-amber-100 text-amber-700 font-bold">IP</option>
-                                                                <option value="OK" className="bg-emerald-100 text-emerald-700 font-bold">OK</option>
-                                                            </select>
-                                                            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-800" style={{ fontSize: 16 }}>expand_more</span>
+                                                            <ClickableStatusDropdown
+                                                                currentStatus={m.status}
+                                                                options={[
+                                                                    { value: 'OPEN', label: 'OPEN', color: 'bg-rose-500 text-white' },
+                                                                    { value: 'IP', label: 'IN PROGRESS', color: 'bg-amber-500 text-white' },
+                                                                    { value: 'OK', label: 'SELESAI', color: 'bg-slate-600 text-white' }
+                                                                ]}
+                                                                onChange={(newStatus) => updateMaintenanceStatus(m.id, newStatus as 'OPEN' | 'IP' | 'OK', idx)}
+                                                                label="Status Pekerjaan"
+                                                            />
                                                         </div>
                                                     </div>
                                                     

@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import type { MaintenanceWithCritical, WorkOrderWithPekerjaan, MaintenanceStatus, MaintenanceType } from '@/lib/supabase/types';
 import ScopeBadge from './ScopeBadge';
+import ClickableStatusDropdown from './ClickableStatusDropdown';
 
 const TIPE_LABEL: Record<MaintenanceType, string> = {
     corrective: 'Corrective',
@@ -16,6 +17,12 @@ const TIPE_BADGE: Record<MaintenanceType, string> = {
     modifikasi: 'bg-violet-50 text-violet-600 border-violet-200',
 };
 
+const STATUS_OPTIONS = [
+    { value: 'OPEN', label: 'OPEN', color: 'bg-rose-500 text-white' },
+    { value: 'IP', label: 'IN PROGRESS', color: 'bg-amber-500 text-white' },
+    { value: 'OK', label: 'SELESAI', color: 'bg-slate-600 text-white' },
+];
+];
 
 interface MaintenanceTableViewProps {
     maintenances: MaintenanceWithCritical[];
@@ -172,7 +179,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                 return (
                                     <tr key={m.id} className="border-b border-gray-100 transition-colors hover:bg-blue-50 bg-white">
                                         <td className="px-4 py-4 whitespace-nowrap text-lg font-bold text-black">{new Date(m.date + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                                        <td className="px-4 py-4 text-lg font-black text-black">{m.item}</td>
+                                        <td className="px-4 py-4 text-lg font-black text-black whitespace-nowrap">{m.item}</td>
                                         <td className="px-4 py-4 text-lg font-medium text-black"><span className="line-clamp-3 whitespace-pre-wrap">{m.uraian}</span></td>
                                         <td className="px-4 py-4">
                                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold border ${TIPE_BADGE[m.tipe]}`}>
@@ -183,18 +190,12 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                         <td className="px-4 py-4 text-lg font-bold text-black whitespace-nowrap">{m.foreman === 'foreman_turbin' ? 'Turbin' : m.foreman === 'foreman_boiler' ? 'Boiler' : m.foreman}</td>
                                         <td className="px-4 py-4">
                                             <div className="flex flex-col gap-1 items-start">
-                                                <select
-                                                    value={m.status}
-                                                    onChange={e => onChangeStatus(m.id, e.target.value as MaintenanceStatus)}
-                                                    className="px-3 py-1.5 rounded-full border-none shadow-sm text-sm font-extrabold uppercase tracking-wide cursor-pointer outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none text-white bg-gradient-to-r from-blue-500 to-blue-600"
-                                                    style={{
-                                                        backgroundImage: m.status === 'OK' ? 'linear-gradient(to right, #475569, #334155)' : m.status === 'IP' ? 'linear-gradient(to right, #f59e0b, #d97706)' : 'linear-gradient(to right, #f43f5e, #e11d48)'
-                                                    }}
-                                                >
-                                                    <option value="OPEN" className="bg-rose-500 text-white font-bold">OPEN</option>
-                                                    <option value="IP" className="bg-amber-500 text-white font-bold">IN PROGRESS</option>
-                                                    <option value="OK" className="bg-slate-600 text-white font-bold">SELESAI</option>
-                                                </select>
+                                                <ClickableStatusDropdown
+                                                    currentStatus={m.status}
+                                                    options={STATUS_OPTIONS}
+                                                    onChange={newStatus => onChangeStatus(m.id, newStatus as MaintenanceStatus)}
+                                                    label={m.item}
+                                                />
                                             </div>
                                         </td>
                                         <td className="px-4 py-4 text-center">

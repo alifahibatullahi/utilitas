@@ -148,7 +148,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                       : 'from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-blue-500/20';
 
     const modalTitle = isWOMode
-        ? `${initial?.uraian ? 'Edit' : 'Tambah'} Pekerjaan — ${workOrderContext?.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'}`
+        ? `${initial?.uraian ? 'Edit' : 'Tambah'} Pekerjaan`
         : isPreventifModifikasiMode
             ? `Tambah ${tipeSelected === 'preventif' ? 'Preventif' : 'Modifikasi'}`
             : initial?.uraian ? 'Edit Maintenance' : 'Tambah Maintenance';
@@ -238,12 +238,8 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                         </div>
                     )}
 
-                    {/* Work order context info */}
                     {isWOMode && workOrderContext && (
                         <div className={`bg-${isPreventifWO ? 'emerald' : 'violet'}-50 border border-${isPreventifWO ? 'emerald' : 'violet'}-200 rounded-xl px-4 py-3 flex flex-col gap-1`}>
-                            <span className={`text-[10px] font-black text-${isPreventifWO ? 'emerald' : 'violet'}-600 uppercase tracking-widest`}>
-                                {isPreventifWO ? 'Preventif' : 'Modifikasi'}
-                            </span>
                             <span className={`text-sm font-extrabold text-${isPreventifWO ? 'emerald' : 'violet'}-800`}>{workOrderContext.item}</span>
                             <span className={`text-xs font-medium text-${isPreventifWO ? 'emerald' : 'violet'}-700`}>{workOrderContext.deskripsi}</span>
                         </div>

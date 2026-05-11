@@ -22,7 +22,6 @@ const STATUS_OPTIONS = [
     { value: 'IP', label: 'IN PROGRESS', color: 'bg-amber-500 text-white' },
     { value: 'OK', label: 'SELESAI', color: 'bg-slate-600 text-white' },
 ];
-];
 
 interface MaintenanceTableViewProps {
     maintenances: MaintenanceWithCritical[];

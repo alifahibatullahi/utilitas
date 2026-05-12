@@ -202,7 +202,7 @@ function CriticalRow({
                 {/* Status */}
                 <td className="px-5 py-5 whitespace-nowrap">
                     <div className="flex flex-col gap-1 items-start">
-                        <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Critical</span>
+                        <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md uppercase tracking-widest">Critical</span>
                         {onChangeStatus ? (
                             <ClickableStatusDropdown
                                 currentStatus={critical.status}
@@ -321,7 +321,9 @@ function WorkOrderRow({
             {/* Status dengan tipe */}
             <td className="px-5 py-4 whitespace-nowrap">
                 <div className="flex flex-col gap-1 items-start">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${tipeColor}`}>{isPreventif ? 'Preventif' : 'Modifikasi'}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${isPreventif ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>
+                        {isPreventif ? 'Preventif' : 'Modifikasi'}
+                    </span>
                     {onChangeStatus ? (
                         <ClickableStatusDropdown
                             currentStatus={wo.status}

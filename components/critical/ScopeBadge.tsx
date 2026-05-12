@@ -54,7 +54,7 @@ export default function ScopeBadge({ scope, light = false, solid = false, classN
     const style = colorSet[mode];
 
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${style.bg} ${style.text} ${className}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${style.bg} ${style.text} ${className}`}>
             {label}
         </span>
     );

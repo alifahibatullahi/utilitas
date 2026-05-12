@@ -49,10 +49,11 @@ interface CriticalDetailModalProps {
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
     addActivityNote?: (criticalId: string, note: string, actor?: string | null) => Promise<{ error: string | null }>;
+    onChangeMaintenanceStatus?: (id: string, newStatus: 'OPEN' | 'IP' | 'OK', actor?: string | null) => Promise<{ error: string | null }>;
 }
 
 export default function CriticalDetailModal({
-    critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onRefresh, fetchPhotos, deletePhoto, operatorName, addActivityNote,
+    critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onRefresh, fetchPhotos, deletePhoto, operatorName, addActivityNote, onChangeMaintenanceStatus,
 }: CriticalDetailModalProps) {
     const { items: equipmentItems } = useEquipmentItems();
     const { scopes: harScopes } = useHarScopes();
@@ -174,14 +175,23 @@ export default function CriticalDetailModal({
             n[idx] = { ...n[idx], status: newStatus };
             return n;
         });
-        // Persist to Supabase
-        const supabase = createClient();
-        const { error } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
-        if (error) {
-            alert('Gagal mengubah status');
-            setMLogs(applySavedOrder(critical.maintenance_logs));
+        // Use centralized hook callback so activity log is properly recorded
+        if (onChangeMaintenanceStatus) {
+            const result = await onChangeMaintenanceStatus(id, newStatus, operatorName ?? null);
+            if (result.error) {
+                alert('Gagal mengubah status');
+                setMLogs(applySavedOrder(critical.maintenance_logs));
+            }
         } else {
-            await onRefresh?.();
+            // Fallback: direct Supabase update (no activity log)
+            const supabase = createClient();
+            const { error } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
+            if (error) {
+                alert('Gagal mengubah status');
+                setMLogs(applySavedOrder(critical.maintenance_logs));
+            } else {
+                await onRefresh?.();
+            }
         }
     }
 

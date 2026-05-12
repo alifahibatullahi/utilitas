@@ -34,11 +34,12 @@ interface WorkOrderDetailModalProps {
     deletePhoto?: (id: string) => Promise<{ error: string | null }>;
     operatorName?: string;
     addActivityNote?: (workOrderId: string, note: string, actor?: string | null) => Promise<{ error: string | null }>;
+    onChangePekerjaanStatus?: (id: string, newStatus: 'OPEN' | 'IP' | 'OK', actor?: string | null) => Promise<{ error: string | null }>;
 }
 
 export default function WorkOrderDetailModal({
     workOrder, onClose, onEditPekerjaan, onDeletePekerjaan, onAddPekerjaan,
-    onRefresh, fetchPhotos, deletePhoto, operatorName, addActivityNote,
+    onRefresh, fetchPhotos, deletePhoto, operatorName, addActivityNote, onChangePekerjaanStatus,
 }: WorkOrderDetailModalProps) {
     const { items: equipmentItems } = useEquipmentItems();
 
@@ -89,15 +90,27 @@ export default function WorkOrderDetailModal({
             n[idx] = { ...n[idx], status: newStatus };
             return n;
         });
-        const supabase = createClient();
-        const { error } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
-        if (error) {
-            alert('Gagal mengubah status');
-            setPekerjaan([...workOrder.maintenance_logs].sort(
-                (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-            ));
+        // Use centralized hook callback so activity log is properly recorded
+        if (onChangePekerjaanStatus) {
+            const result = await onChangePekerjaanStatus(id, newStatus, operatorName ?? null);
+            if (result.error) {
+                alert('Gagal mengubah status');
+                setPekerjaan([...workOrder.maintenance_logs].sort(
+                    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+                ));
+            }
         } else {
-            await onRefresh?.();
+            // Fallback: direct Supabase update (no activity log)
+            const supabase = createClient();
+            const { error } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
+            if (error) {
+                alert('Gagal mengubah status');
+                setPekerjaan([...workOrder.maintenance_logs].sort(
+                    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+                ));
+            } else {
+                await onRefresh?.();
+            }
         }
     }
 

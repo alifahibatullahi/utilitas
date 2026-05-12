@@ -41,6 +41,7 @@ interface CriticalTableViewProps {
     addActivityNote?: (criticalId: string, note: string, actor?: string | null) => Promise<{ error: string | null }>;
     addWOActivityNote?: (workOrderId: string, note: string, actor?: string | null) => Promise<{ error: string | null }>;
     fetchWOPhotos?: (workOrderId: string) => Promise<PhotoRow[]>;
+    onChangeMaintenanceStatus?: (id: string, newStatus: 'OPEN' | 'IP' | 'OK', actor?: string | null) => Promise<{ error: string | null }>;
 }
 
 type TableStatusTab = 'ALL' | 'ACTIVE' | 'DONE';
@@ -483,7 +484,7 @@ function TableBody({
 }
 
 // ─── Main Export ───
-export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus, addActivityNote, addWOActivityNote, fetchWOPhotos }: CriticalTableViewProps) {
+export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus, addActivityNote, addWOActivityNote, fetchWOPhotos, onChangeMaintenanceStatus }: CriticalTableViewProps) {
     const { items: equipmentItems } = useEquipmentItems();
     const { scopes: harScopes } = useHarScopes();
     
@@ -817,6 +818,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             deletePhoto={deletePhoto}
                             operatorName={operatorName}
                             addActivityNote={addActivityNote}
+                            onChangeMaintenanceStatus={onChangeMaintenanceStatus}
                         />
                     );
                 })()}
@@ -836,6 +838,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             deletePhoto={deletePhoto}
                             operatorName={operatorName}
                             addActivityNote={addWOActivityNote}
+                            onChangePekerjaanStatus={onChangeMaintenanceStatus}
                         />
                     );
                 })()}

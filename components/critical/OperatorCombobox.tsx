@@ -75,7 +75,7 @@ export default function OperatorCombobox({ value, onChange, placeholder = 'Ketik
             <input
                 type="text"
                 value={search}
-                onChange={e => { setSearch(e.target.value); onChange(''); setOpen(true); setActiveIndex(-1); }}
+                onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); setActiveIndex(-1); }}
                 onFocus={() => setOpen(true)}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}

@@ -239,6 +239,9 @@ export default function CriticalPage() {
                                     addActivityNote={cm.addActivityNote}
                                     addWOActivityNote={cm.addWOActivityNote}
                                     fetchWOPhotos={cm.fetchWOPhotos}
+                                    onChangeMaintenanceStatus={async (id, newStatus, actor) => {
+                                        return await cm.moveMaintenanceStatus(id, newStatus, actor);
+                                    }}
                                 />
                             </div>
                         )}
@@ -370,6 +373,9 @@ export default function CriticalPage() {
                                             deletePhoto={cm.deletePhoto}
                                             operatorName={operator?.name}
                                             addActivityNote={cm.addActivityNote}
+                                            onChangeMaintenanceStatus={async (id, newStatus, actor) => {
+                                                return await cm.moveMaintenanceStatus(id, newStatus, actor);
+                                            }}
                                         />
                                     );
                                 })()}
@@ -401,6 +407,9 @@ export default function CriticalPage() {
                                             deletePhoto={cm.deletePhoto}
                                             operatorName={operator?.name}
                                             addActivityNote={cm.addWOActivityNote}
+                                            onChangePekerjaanStatus={async (id, newStatus, actor) => {
+                                                return await cm.moveMaintenanceStatus(id, newStatus, actor);
+                                            }}
                                         />
                                     );
                                 })()}

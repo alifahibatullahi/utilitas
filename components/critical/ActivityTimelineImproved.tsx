@@ -86,7 +86,7 @@ function renderMetaChanges(log: AnyActivityLog) {
         elements.push(
             <div key="maint_item" className="mt-1 flex flex-col gap-0.5 text-[11px] bg-slate-50 border border-slate-100 rounded p-1.5">
                 <span className="font-semibold text-slate-500">Item HAR: <span className="font-bold text-slate-700">{String(meta.maintenance_item)}</span></span>
-                {meta.scope && <span className="font-semibold text-slate-500">Scope: <span className="font-bold text-slate-700">{String(meta.scope)}</span></span>}
+                {Boolean(meta.scope) && <span className="font-semibold text-slate-500">Scope: <span className="font-bold text-slate-700">{String(meta.scope)}</span></span>}
             </div>
         );
     }

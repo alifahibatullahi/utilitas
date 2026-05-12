@@ -140,7 +140,7 @@ export default function CriticalDetailModal({
                 scope: critical.scope,
                 foreman: critical.foreman,
                 tipe: 'preventif',
-                status: 'OPEN',
+                status: null,
                 keterangan: 'IS_NOTE',
                 reported_by: operatorName || null
             };

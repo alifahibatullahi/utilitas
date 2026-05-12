@@ -12,9 +12,9 @@ const TIPE_LABEL: Record<MaintenanceType, string> = {
 };
 
 const TIPE_BADGE: Record<MaintenanceType, string> = {
-    corrective: 'bg-rose-50 text-rose-600 border-rose-200',
-    preventif: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-    modifikasi: 'bg-violet-50 text-violet-600 border-violet-200',
+    corrective: 'bg-rose-100 text-rose-700 border-rose-300',
+    preventif: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+    modifikasi: 'bg-violet-100 text-violet-700 border-violet-300',
 };
 
 const STATUS_OPTIONS = [
@@ -35,7 +35,7 @@ interface MaintenanceTableViewProps {
 export default function MaintenanceTableView({ maintenances, workOrders, onEdit, onDelete, onChangeStatus, onToggleExpand }: MaintenanceTableViewProps) {
     const [search, setSearch] = useState('');
     const [filterTipe, setFilterTipe] = useState<MaintenanceType | 'all'>('all');
-    const [filterStatus, setFilterStatus] = useState<MaintenanceStatus | 'all'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'done'>('all');
     const [filterScope, setFilterScope] = useState<string>('all');
     const [filterForeman, setFilterForeman] = useState<string>('all');
     const [dateFrom, setDateFrom] = useState<string>('');
@@ -55,7 +55,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
         return maintenances
             .filter(m => m.keterangan !== 'IS_NOTE' && m.item !== 'NOTE')
             .filter(m => filterTipe === 'all' || m.tipe === filterTipe)
-            .filter(m => filterStatus === 'all' || m.status === filterStatus)
+            .filter(m => filterStatus === 'all' || (filterStatus === 'active' ? m.status !== 'OK' : m.status === 'OK'))
             .filter(m => filterScope === 'all' || m.scope === filterScope)
             .filter(m => filterForeman === 'all' || m.foreman === filterForeman)
             .filter(m => !dateFrom || m.date >= dateFrom)
@@ -66,9 +66,8 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
 
     const counts = useMemo(() => ({
         total: filtered.length,
-        open: filtered.filter(m => m.status === 'OPEN').length,
-        ip: filtered.filter(m => m.status === 'IP').length,
-        ok: filtered.filter(m => m.status === 'OK').length,
+        active: filtered.filter(m => m.status !== 'OK').length,
+        done: filtered.filter(m => m.status === 'OK').length,
     }), [filtered]);
 
     return (
@@ -93,11 +92,10 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                     <option value="modifikasi">Modifikasi</option>
                 </select>
 
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as MaintenanceStatus | 'all')} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as 'all' | 'active' | 'done')} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
                     <option value="all">Semua Status</option>
-                    <option value="OPEN">Open</option>
-                    <option value="IP">In Progress</option>
-                    <option value="OK">Selesai</option>
+                    <option value="active">Belum Selesai</option>
+                    <option value="done">Selesai</option>
                 </select>
 
                 <select value={filterScope} onChange={e => setFilterScope(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
@@ -130,11 +128,9 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-white text-xs font-bold text-gray-500">
                 <span>Total: <span className="text-gray-800">{counts.total}</span></span>
                 <span className="text-gray-300">·</span>
-                <span className="text-blue-600">Open: {counts.open}</span>
+                <span className="text-amber-600">Belum Selesai: {counts.active}</span>
                 <span className="text-gray-300">·</span>
-                <span className="text-amber-600">IP: {counts.ip}</span>
-                <span className="text-gray-300">·</span>
-                <span className="text-emerald-600">Selesai: {counts.ok}</span>
+                <span className="text-emerald-600">Selesai: {counts.done}</span>
             </div>
 
             {/* Table */}
@@ -176,12 +172,17 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                         <td className="px-4 py-4 text-lg font-black text-black whitespace-nowrap">{m.item}</td>
                                         <td className="px-4 py-4 text-lg font-medium text-black"><span className="line-clamp-3 whitespace-pre-wrap">{m.uraian}</span></td>
                                         <td className="px-4 py-4">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold border ${TIPE_BADGE[m.tipe]}`}>
+                                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${TIPE_BADGE[m.tipe]}`}>
                                                 {m.tipe === 'corrective' ? 'Critical' : TIPE_LABEL[m.tipe]}
                                             </span>
                                         </td>
                                         <td className="px-4 py-4"><ScopeBadge scope={m.scope} solid className="px-3 py-1.5 text-sm shadow-sm" /></td>
-                                        <td className="px-4 py-4 text-lg font-bold text-black whitespace-nowrap">{m.foreman === 'foreman_turbin' ? 'Turbin' : m.foreman === 'foreman_boiler' ? 'Boiler' : m.foreman}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col leading-tight">
+                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Foreman</span>
+                                                <span className="text-lg font-bold text-black">{m.foreman === 'foreman_turbin' ? 'Turbin' : m.foreman === 'foreman_boiler' ? 'Boiler' : m.foreman}</span>
+                                            </div>
+                                        </td>
                                         <td className="px-4 py-4">
                                             <div className="flex flex-col gap-1 items-start">
                                                 <ClickableStatusDropdown

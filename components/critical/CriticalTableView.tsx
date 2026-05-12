@@ -43,12 +43,12 @@ interface CriticalTableViewProps {
     fetchWOPhotos?: (workOrderId: string) => Promise<PhotoRow[]>;
 }
 
-type TableStatusTab = 'ALL' | 'OPEN' | 'CLOSED';
+type TableStatusTab = 'ALL' | 'ACTIVE' | 'DONE';
 
 const STATUS_TABS: { key: TableStatusTab; label: string }[] = [
     { key: 'ALL', label: 'Semua' },
-    { key: 'OPEN', label: 'Open' },
-    { key: 'CLOSED', label: 'Closed' },
+    { key: 'ACTIVE', label: 'Belum Selesai' },
+    { key: 'DONE', label: 'Selesai' },
 ];
 
 const ACTION_CONFIG: Record<string, { icon: string; color: string }> = {
@@ -110,14 +110,15 @@ function getTipeLabel(tipe: MaintenanceType): string {
 
 function filterByTab(criticals: CriticalWithMaintenance[], tab: TableStatusTab) {
     if (tab === 'ALL') return criticals;
-    return criticals.filter(c => c.status === tab);
+    if (tab === 'ACTIVE') return criticals.filter(c => c.status !== 'CLOSED');
+    return criticals.filter(c => c.status === 'CLOSED');
 }
 
 function getTabCounts(criticals: CriticalWithMaintenance[]): Record<TableStatusTab, number> {
     return {
         ALL:    criticals.length,
-        OPEN:   criticals.filter(c => c.status === 'OPEN').length,
-        CLOSED: criticals.filter(c => c.status === 'CLOSED').length,
+        ACTIVE: criticals.filter(c => c.status !== 'CLOSED').length,
+        DONE:   criticals.filter(c => c.status === 'CLOSED').length,
     };
 }
 
@@ -550,8 +551,8 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
 
     const tabCounts = {
         ALL:    criticals.length + workOrders.length,
-        OPEN:   criticals.filter(c => c.status === 'OPEN').length + workOrders.filter(w => w.status !== 'OK').length,
-        CLOSED: criticals.filter(c => c.status === 'CLOSED').length + workOrders.filter(w => w.status === 'OK').length,
+        ACTIVE: criticals.filter(c => c.status !== 'CLOSED').length + workOrders.filter(w => w.status !== 'OK').length,
+        DONE:   criticals.filter(c => c.status === 'CLOSED').length + workOrders.filter(w => w.status === 'OK').length,
     };
     const starredItems = criticals.filter(c => starredIds.has(c.id));
 
@@ -564,8 +565,8 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
     });
 
     const filteredWorkOrders = workOrders.filter(w => {
-        if (activeTab === 'OPEN' && w.status === 'OK') return false;
-        if (activeTab === 'CLOSED' && w.status !== 'OK') return false;
+        if (activeTab === 'ACTIVE' && w.status === 'OK') return false;
+        if (activeTab === 'DONE' && w.status !== 'OK') return false;
         // ALL => no status filter
         if (filterItem && !w.item.toLowerCase().includes(filterItem.toLowerCase())) return false;
         if (filterScope && w.scope !== filterScope) return false;
@@ -653,10 +654,10 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                 onClick={() => { setActiveTab(t.key); setExpandedId(null); setCurrentPage(1); }}
                                 className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
                                     activeTab === t.key
-                                        ? `bg-white shadow-sm border border-gray-200/50 ${
-                                            t.key === 'OPEN' ? 'text-amber-600' :
-                                            t.key === 'CLOSED' ? 'text-emerald-600' :
-                                            'text-blue-600'
+                                        ? `bg-white shadow-sm border border-gray-200/50 ${\r
+                                            t.key === 'ACTIVE' ? 'text-amber-600' :\r
+                                            t.key === 'DONE' ? 'text-emerald-600' :\r
+                                            'text-blue-600'\r
                                           }`
                                         : 'text-gray-500 hover:text-gray-700'
                                 }`}
@@ -720,7 +721,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                     <td colSpan={COL_COUNT} className="py-16 text-center">
                                         <span className="material-symbols-outlined text-gray-200 block mb-2" style={{ fontSize: 40 }}>search_off</span>
                                         <p className="text-sm font-bold text-black">Tidak ada data untuk tab ini</p>
-                                        {activeTab === 'OPEN' && (
+                                        {activeTab === 'ACTIVE' && (
                                             <button
                                                 onClick={onAddCritical}
                                                 className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold hover:bg-rose-100 transition-colors"

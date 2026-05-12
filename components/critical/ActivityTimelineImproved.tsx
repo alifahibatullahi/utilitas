@@ -210,25 +210,7 @@ export default function ActivityTimelineImproved({ logs, onAddNote, operatorName
                 )}
             </div>
 
-            {/* Add note input */}
-            <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                <input
-                    type="text"
-                    value={note}
-                    onChange={e => setNote(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-                    placeholder="Tambah catatan pantauan..."
-                    className="flex-1 bg-white border-2 border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                />
-                <button
-                    onClick={handleSubmit}
-                    disabled={!note.trim() || saving}
-                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 shadow-sm"
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{saving ? 'progress_activity' : 'send'}</span>
-                    {saving ? '...' : 'Kirim'}
-                </button>
-            </div>
+
         </div>
     );
 }

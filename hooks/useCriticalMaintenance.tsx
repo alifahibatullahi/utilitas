@@ -259,9 +259,9 @@ export function useCriticalMaintenance() {
         if (data.critical_id) {
             await insertActivityLog(
                 supabase, data.critical_id, 'maintenance_added',
-                `Maintenance ditambahkan: ${data.uraian}`,
+                `Maintenance ditambahkan: (Tim ${data.scope.charAt(0).toUpperCase() + data.scope.slice(1)}) ${data.uraian}`,
                 data.reported_by ?? null,
-                { maintenance_item: data.item, maintenance_uraian: data.uraian, scope: data.scope }
+                { maintenance_id: inserted?.id, maintenance_item: data.item, maintenance_uraian: data.uraian, scope: data.scope }
             );
         }
         await fetchData();
@@ -286,7 +286,7 @@ export function useCriticalMaintenance() {
                 await deleteMilestoneLog(supabase, oldMaint.critical_id, data.status, id);
                 await insertActivityLog(
                     supabase, oldMaint.critical_id, 'maintenance_updated',
-                    `Status maintenance '${oldMaint.uraian}': ${STATUS_LABEL[oldMaint.status]} → ${STATUS_LABEL[data.status]}`,
+                    `(Tim ${oldMaint.scope.charAt(0).toUpperCase() + oldMaint.scope.slice(1)}) ${oldMaint.uraian}`,
                     actor ?? null,
                     { old_status: oldMaint.status, new_status: data.status, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope }
                 );
@@ -306,7 +306,8 @@ export function useCriticalMaintenance() {
             await insertActivityLog(
                 supabase, oldMaint.critical_id, 'maintenance_deleted',
                 `Maintenance '${oldMaint.uraian}' dihapus`,
-                actor ?? null
+                actor ?? null,
+                { maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope }
             );
         }
         // Cascade: jika pekerjaan terakhir di work order (preventif/modifikasi), hapus work order juga
@@ -350,7 +351,7 @@ export function useCriticalMaintenance() {
                 await deleteMilestoneLog(supabase, oldMaint.critical_id, newStatus, id);
                 await insertActivityLog(
                     supabase, oldMaint.critical_id, 'maintenance_updated',
-                    `Status maintenance '${oldMaint.uraian}': ${STATUS_LABEL[oldMaint.status]} → ${STATUS_LABEL[newStatus]}`,
+                    `(Tim ${oldMaint.scope.charAt(0).toUpperCase() + oldMaint.scope.slice(1)}) ${oldMaint.uraian}`,
                     actor ?? null,
                     { old_status: oldMaint.status, new_status: newStatus, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope }
                 );

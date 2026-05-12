@@ -200,23 +200,38 @@ function MaintenanceGroupCard({ group }: { group: MaintenanceGroup }) {
 
             <div className={`bg-white border-2 rounded-xl shadow-sm overflow-hidden ${deleted ? 'border-gray-300 opacity-75' : 'border-emerald-200'}`}>
                 {/* Header */}
-                <div className={`flex items-center justify-between gap-2 px-3 py-2 border-b ${deleted ? 'bg-gray-50 border-gray-200' : 'bg-emerald-50/60 border-emerald-100'}`}>
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className={`material-symbols-outlined ${deleted ? 'text-gray-400' : 'text-emerald-600'}`} style={{ fontSize: 14 }}>
+                <div className={`flex items-start justify-between gap-2 px-3 py-2 border-b ${deleted ? 'bg-gray-50 border-gray-200' : 'bg-emerald-50/60 border-emerald-100'}`}>
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                        <span className={`material-symbols-outlined shrink-0 mt-0.5 ${deleted ? 'text-gray-400' : 'text-emerald-600'}`} style={{ fontSize: 14 }}>
                             {deleted ? 'delete' : 'build'}
                         </span>
-                        {group.scope && <ScopeBadge scope={group.scope} light />}
-                        <p className={`text-xs font-extrabold leading-tight truncate min-w-0 flex-1 ${deleted ? 'line-through text-gray-500' : 'text-emerald-900'}`}>
-                            {group.uraian ?? 'Maintenance'}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                            {group.scope && (
+                                <div className="mb-1">
+                                    <ScopeBadge scope={group.scope} light />
+                                </div>
+                            )}
+                            <p
+                                className={`text-xs font-extrabold leading-snug ${deleted ? 'line-through text-gray-500' : 'text-emerald-900'}`}
+                                style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                }}
+                                title={group.uraian ?? undefined}
+                            >
+                                {group.uraian ?? 'Maintenance'}
+                            </p>
+                        </div>
                     </div>
                     {!deleted && lastNewStatus && (
-                        <span className={`shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-bold ${getStatusStyle(lastNewStatus, false)}`}>
+                        <span className={`shrink-0 mt-0.5 px-2 py-0.5 rounded-md border text-[10px] font-bold ${getStatusStyle(lastNewStatus, false)}`}>
                             {lastNewStatus}
                         </span>
                     )}
                     {deleted && (
-                        <span className="shrink-0 px-2 py-0.5 rounded-md border bg-gray-100 text-gray-600 border-gray-200 text-[10px] font-bold">Dihapus</span>
+                        <span className="shrink-0 mt-0.5 px-2 py-0.5 rounded-md border bg-gray-100 text-gray-600 border-gray-200 text-[10px] font-bold">Dihapus</span>
                     )}
                 </div>
 

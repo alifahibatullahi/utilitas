@@ -654,10 +654,10 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                 onClick={() => { setActiveTab(t.key); setExpandedId(null); setCurrentPage(1); }}
                                 className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
                                     activeTab === t.key
-                                        ? `bg-white shadow-sm border border-gray-200/50 ${\r
-                                            t.key === 'ACTIVE' ? 'text-amber-600' :\r
-                                            t.key === 'DONE' ? 'text-emerald-600' :\r
-                                            'text-blue-600'\r
+                                        ? `bg-white shadow-sm border border-gray-200/50 ${
+                                            t.key === 'ACTIVE' ? 'text-amber-600' :
+                                            t.key === 'DONE' ? 'text-emerald-600' :
+                                            'text-blue-600'
                                           }`
                                         : 'text-gray-500 hover:text-gray-700'
                                 }`}

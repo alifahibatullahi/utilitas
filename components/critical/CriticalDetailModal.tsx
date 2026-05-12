@@ -140,15 +140,18 @@ export default function CriticalDetailModal({
             }
         } else {
             const newLog = {
+                shift_report_id: null,
                 critical_id: critical.id,
+                work_order_id: null,
                 date: new Date().toISOString().split('T')[0],
                 item: 'NOTE',
                 uraian: noteUraian,
                 scope: critical.scope,
                 foreman: critical.foreman,
-                tipe: 'preventif',
-                status: null,
+                tipe: 'corrective',
+                status: 'OK',
                 keterangan: 'IS_NOTE',
+                notif: null,
                 reported_by: operatorName || null
             };
             const { data, error } = await supabase.from('maintenance_logs').insert(newLog).select().single();

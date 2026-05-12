@@ -196,7 +196,12 @@ function CriticalRow({
                     </div>
                 </td>
                 {/* Foreman */}
-                <td className="px-5 py-5 text-lg font-bold text-black whitespace-nowrap">{getForemanLabel(critical.foreman)}</td>
+                <td className="px-5 py-5 whitespace-nowrap">
+                    <div className="flex flex-col leading-tight">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Foreman</span>
+                        <span className="text-lg font-bold text-black">{getForemanLabel(critical.foreman)}</span>
+                    </div>
+                </td>
                 {/* Notif */}
                 <td className="px-5 py-5 text-lg font-mono font-bold text-black whitespace-nowrap">
                     {critical.notif ?? <span className="text-gray-300">—</span>}
@@ -315,7 +320,12 @@ function WorkOrderRow({
                 <ScopeBadge scope={wo.scope} solid className="px-3 py-1.5 text-sm shadow-sm" />
             </td>
             {/* Foreman */}
-            <td className="px-5 py-4 text-base font-bold text-black whitespace-nowrap">{getForemanLabel(wo.foreman)}</td>
+            <td className="px-5 py-4 whitespace-nowrap">
+                <div className="flex flex-col leading-tight">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Foreman</span>
+                    <span className="text-base font-bold text-black">{getForemanLabel(wo.foreman)}</span>
+                </div>
+            </td>
             {/* Notif */}
             <td className="px-5 py-4 text-base font-mono font-bold text-black whitespace-nowrap">
                 {wo.notif ?? <span className="text-gray-300">—</span>}
@@ -427,7 +437,7 @@ function TableHeader() {
                 <th className="w-7 px-4 py-4" />
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Tanggal</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Item</th>
-                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Deskripsi</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest min-w-[300px]">Deskripsi</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Scope</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Foreman</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Notif/SAP</th>

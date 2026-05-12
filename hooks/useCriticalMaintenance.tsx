@@ -261,7 +261,7 @@ export function useCriticalMaintenance() {
                 supabase, data.critical_id, 'maintenance_added',
                 `Maintenance ditambahkan: ${data.uraian}`,
                 data.reported_by ?? null,
-                { maintenance_item: data.item }
+                { maintenance_item: data.item, maintenance_uraian: data.uraian, scope: data.scope }
             );
         }
         await fetchData();
@@ -288,7 +288,7 @@ export function useCriticalMaintenance() {
                     supabase, oldMaint.critical_id, 'maintenance_updated',
                     `Status maintenance '${oldMaint.uraian}': ${STATUS_LABEL[oldMaint.status]} → ${STATUS_LABEL[data.status]}`,
                     actor ?? null,
-                    { old_status: oldMaint.status, new_status: data.status, maintenance_id: id }
+                    { old_status: oldMaint.status, new_status: data.status, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope }
                 );
             } else {
                 await deleteForwardMilestonesAbove(supabase, oldMaint.critical_id, data.status, id);
@@ -352,7 +352,7 @@ export function useCriticalMaintenance() {
                     supabase, oldMaint.critical_id, 'maintenance_updated',
                     `Status maintenance '${oldMaint.uraian}': ${STATUS_LABEL[oldMaint.status]} → ${STATUS_LABEL[newStatus]}`,
                     actor ?? null,
-                    { old_status: oldMaint.status, new_status: newStatus, maintenance_id: id }
+                    { old_status: oldMaint.status, new_status: newStatus, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope }
                 );
             } else {
                 await deleteForwardMilestonesAbove(supabase, oldMaint.critical_id, newStatus, id);

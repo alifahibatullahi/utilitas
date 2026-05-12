@@ -43,7 +43,25 @@ interface Props {
     compact?: boolean;
 }
 
+function getStatusStyle(val: string, isFrom: boolean) {
+    const v = val.toUpperCase();
+    if (v === 'OPEN' || v === 'BELUM SELESAI') return `bg-rose-50 text-rose-700 border-rose-200 ${isFrom ? 'line-through decoration-rose-300/50' : ''}`;
+    if (v === 'IP' || v === 'IN PROGRESS') return `bg-amber-50 text-amber-700 border-amber-200 ${isFrom ? 'line-through decoration-amber-300/50' : ''}`;
+    if (v === 'OK' || v === 'SELESAI') return `bg-slate-100 text-slate-700 border-slate-300 ${isFrom ? 'line-through decoration-slate-400/50' : ''}`;
+    if (v === 'CLOSED') return `bg-emerald-50 text-emerald-700 border-emerald-200 ${isFrom ? 'line-through decoration-emerald-300/50' : ''}`;
+    return `bg-gray-50 text-gray-700 border-gray-200 ${isFrom ? 'line-through decoration-gray-300/50' : ''}`;
+}
+
 function BeforeAfter({ from, to, label }: { from: string; to: string; label: string }) {
+    if (label === 'status') {
+        return (
+            <div className="flex items-center gap-1.5 text-[11px] font-bold mt-1">
+                <span className={`px-2 py-0.5 rounded-md border ${getStatusStyle(from, true)}`}>{from}</span>
+                <span className="material-symbols-outlined text-gray-400" style={{ fontSize: 12 }}>arrow_forward</span>
+                <span className={`px-2 py-0.5 rounded-md border ${getStatusStyle(to, false)}`}>{to}</span>
+            </div>
+        );
+    }
     return (
         <div className="flex items-center gap-1.5 text-[11px] font-bold mt-1">
             <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 border border-rose-100 line-through decoration-rose-300/50">{from}</span>
@@ -61,6 +79,24 @@ function renderMetaChanges(log: AnyActivityLog) {
 
     if (meta.old_status && meta.new_status) {
         elements.push(<BeforeAfter key="status" from={String(meta.old_status)} to={String(meta.new_status)} label="status" />);
+    }
+    
+    // Add HAR/Maintenance Item explanation if present
+    if (meta.maintenance_item) {
+        elements.push(
+            <div key="maint_item" className="mt-1 flex flex-col gap-0.5 text-[11px] bg-slate-50 border border-slate-100 rounded p-1.5">
+                <span className="font-semibold text-slate-500">Item HAR: <span className="font-bold text-slate-700">{String(meta.maintenance_item)}</span></span>
+                {meta.scope && <span className="font-semibold text-slate-500">Scope: <span className="font-bold text-slate-700">{String(meta.scope)}</span></span>}
+            </div>
+        );
+    }
+    
+    if (meta.maintenance_uraian && !meta.maintenance_item) {
+        elements.push(
+            <div key="maint_uraian" className="mt-1 text-[11px] bg-slate-50 border border-slate-100 rounded p-1.5 text-slate-600 font-medium italic">
+                "{String(meta.maintenance_uraian)}"
+            </div>
+        );
     }
     // Field-by-field for maintenance_updated
     for (const k of ['deskripsi', 'scope', 'foreman', 'notif', 'uraian'] as const) {

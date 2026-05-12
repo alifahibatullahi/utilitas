@@ -81,20 +81,22 @@ function renderMetaChanges(log: AnyActivityLog) {
         elements.push(<BeforeAfter key="status" from={String(meta.old_status)} to={String(meta.new_status)} label="status" />);
     }
     
-    // Add HAR/Maintenance Item explanation if present
-    if (meta.maintenance_item) {
+    // Show HAR team + description for maintenance activities
+    if (Boolean(meta.scope) || Boolean(meta.maintenance_uraian) || Boolean(meta.maintenance_item)) {
+        const scopeRaw = meta.scope ? String(meta.scope) : '';
+        const scopeLabel = scopeRaw.charAt(0).toUpperCase() + scopeRaw.slice(1);
+        const uraian = meta.maintenance_uraian ? String(meta.maintenance_uraian) : '';
         elements.push(
-            <div key="maint_item" className="mt-1 flex flex-col gap-0.5 text-[11px] bg-slate-50 border border-slate-100 rounded p-1.5">
-                <span className="font-semibold text-slate-500">Item HAR: <span className="font-bold text-slate-700">{String(meta.maintenance_item)}</span></span>
-                {Boolean(meta.scope) && <span className="font-semibold text-slate-500">Scope: <span className="font-bold text-slate-700">{String(meta.scope)}</span></span>}
-            </div>
-        );
-    }
-    
-    if (meta.maintenance_uraian && !meta.maintenance_item) {
-        elements.push(
-            <div key="maint_uraian" className="mt-1 text-[11px] bg-slate-50 border border-slate-100 rounded p-1.5 text-slate-600 font-medium italic">
-                "{String(meta.maintenance_uraian)}"
+            <div key="har_info" className="mt-1 text-[11px] bg-slate-50 border border-slate-100 rounded-lg p-2 space-y-0.5">
+                {Boolean(scopeLabel) && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 font-bold text-[10px] uppercase tracking-wide mr-1.5">
+                        <span className="material-symbols-outlined" style={{ fontSize: 11 }}>group</span>
+                        Tim {scopeLabel}
+                    </span>
+                )}
+                {Boolean(uraian) && (
+                    <span className="text-slate-700 font-medium">{uraian}</span>
+                )}
             </div>
         );
     }

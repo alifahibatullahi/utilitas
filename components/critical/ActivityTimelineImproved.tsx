@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { CriticalActivityLogRow, WorkOrderActivityLogRow, ActivityActionType } from '@/lib/supabase/types';
+import ScopeBadge from './ScopeBadge';
 
 const ACTION_CONFIG: Record<ActivityActionType, { icon: string; bg: string; text: string; ring: string; label: string }> = {
     created:              { icon: 'flag',                    bg: 'bg-rose-500',    text: 'text-rose-700',    ring: 'ring-rose-200',    label: 'Dibuat' },
@@ -204,14 +205,10 @@ function MaintenanceGroupCard({ group }: { group: MaintenanceGroup }) {
                         <span className={`material-symbols-outlined ${deleted ? 'text-gray-400' : 'text-emerald-600'}`} style={{ fontSize: 14 }}>
                             {deleted ? 'delete' : 'build'}
                         </span>
-                        <div className="min-w-0 flex-1">
-                            <p className={`text-xs font-extrabold leading-tight truncate ${deleted ? 'line-through text-gray-500' : 'text-emerald-900'}`}>
-                                {group.uraian ?? group.item ?? 'Maintenance'}
-                            </p>
-                            {group.item && group.uraian && group.item !== group.uraian && (
-                                <p className="text-[10px] text-emerald-700/70 font-semibold truncate">{group.item}</p>
-                            )}
-                        </div>
+                        {group.scope && <ScopeBadge scope={group.scope} light />}
+                        <p className={`text-xs font-extrabold leading-tight truncate min-w-0 flex-1 ${deleted ? 'line-through text-gray-500' : 'text-emerald-900'}`}>
+                            {group.uraian ?? 'Maintenance'}
+                        </p>
                     </div>
                     {!deleted && lastNewStatus && (
                         <span className={`shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-bold ${getStatusStyle(lastNewStatus, false)}`}>

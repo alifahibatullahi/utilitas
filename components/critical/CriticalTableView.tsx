@@ -64,7 +64,8 @@ const ACTION_CONFIG: Record<string, { icon: string; color: string }> = {
 // ─── Helpers ───
 
 function getForemanLabel(val: string) {
-    return FOREMAN_OPTIONS.find(f => f.value === val)?.label ?? val;
+    const label = FOREMAN_OPTIONS.find(f => f.value === val)?.label ?? val;
+    return label.replace(/^Foreman\s+/i, '');
 }
 
 // Removed local ClickableStatusDropdown, using imported one instead.

@@ -158,7 +158,7 @@ export default function ActivityTimelineImproved({ logs, onAddNote, operatorName
                         <p className="text-xs font-bold">{logs.length === 0 ? 'Belum ada aktivitas' : 'Tidak ada hasil filter'}</p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-4 pr-3">
                         {grouped.map(group => (
                             <div key={group.label}>
                                 {/* Date header */}
@@ -167,7 +167,7 @@ export default function ActivityTimelineImproved({ logs, onAddNote, operatorName
                                         {group.label}
                                     </span>
                                     <div className="flex-1 h-px bg-slate-200" />
-                                    <span className="text-[10px] font-semibold text-slate-400">{group.items.length} aktivitas</span>
+                                    <span className="text-[10px] font-semibold text-slate-400 whitespace-nowrap">{group.items.length} aktivitas</span>
                                 </div>
 
                                 {/* Events with vertical line */}

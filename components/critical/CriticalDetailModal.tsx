@@ -8,7 +8,7 @@ import ScopeBadge from './ScopeBadge';
 import PhotoGallery from './PhotoGallery';
 import PhotoUploadButton from './PhotoUploadButton';
 import ActivityTimelineImproved from './ActivityTimelineImproved';
-import { useEquipmentItems } from '@/hooks/useMasterData';
+import { useEquipmentItems, useHarScopes } from '@/hooks/useMasterData';
 import ClickableStatusDropdown from './ClickableStatusDropdown';
 
 const ACTION_CONFIG: Record<string, { icon: string; color: string }> = {
@@ -55,6 +55,12 @@ export default function CriticalDetailModal({
     critical, rowIndex, onClose, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onRefresh, fetchPhotos, deletePhoto, operatorName, addActivityNote,
 }: CriticalDetailModalProps) {
     const { items: equipmentItems } = useEquipmentItems();
+    const { scopes: harScopes } = useHarScopes();
+
+    function getScopeLabel(slug: string) {
+        const found = harScopes.find(s => s.value === slug);
+        return found?.label ?? slug.charAt(0).toUpperCase() + slug.slice(1);
+    }
 
     function getDisplayItem(rawItem: string) {
         if (!rawItem) return '-';
@@ -400,7 +406,7 @@ export default function CriticalDetailModal({
                                                             m.scope === 'listrik' ? 'text-amber-600 bg-amber-50 border-amber-200' :
                                                             m.scope === 'instrumen' ? 'text-purple-600 bg-purple-50 border-purple-200' :
                                                             m.scope === 'sipil' ? 'text-teal-600 bg-teal-50 border-teal-200' : 'text-slate-500 bg-slate-50 border-slate-200'
-                                                        } px-2 py-0.5 rounded shadow-sm border`}>{m.scope}</span>
+                                                        } px-2 py-0.5 rounded shadow-sm border`}>{getScopeLabel(m.scope)}</span>
                                                         <span className={`text-xl font-black leading-tight flex-1 ${isOk ? 'text-slate-400' : 'text-slate-800'}`}>{m.uraian}</span>
                                                         
                                                         {/* Status Dropdown Inline */}

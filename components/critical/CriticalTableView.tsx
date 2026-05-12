@@ -9,7 +9,7 @@ import CriticalDetailModal from './CriticalDetailModal';
 import WorkOrderDetailModal from './WorkOrderDetailModal';
 import EditableCombobox, { type ComboboxItem } from './EditableCombobox';
 import MasterDataFormModal from './MasterDataFormModal';
-import { useEquipmentItems } from '@/hooks/useMasterData';
+import { useEquipmentItems, useHarScopes } from '@/hooks/useMasterData';
 import ClickableStatusDropdown from './ClickableStatusDropdown';
 
 const STORAGE_KEY = 'critical-starred-ids';
@@ -485,6 +485,7 @@ function TableBody({
 // ─── Main Export ───
 export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus, addActivityNote, addWOActivityNote, fetchWOPhotos }: CriticalTableViewProps) {
     const { items: equipmentItems } = useEquipmentItems();
+    const { scopes: harScopes } = useHarScopes();
     
     function getDisplayItem(rawItem: string) {
         if (!rawItem) return '-';
@@ -673,10 +674,9 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                         className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
                     >
                         <option value="">Semua Scope</option>
-                        <option value="mekanik">Mekanik</option>
-                        <option value="listrik">Listrik</option>
-                        <option value="instrumen">Instrumen</option>
-                        <option value="sipil">Sipil</option>
+                        {harScopes.map(s => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
                     </select>
                     {/* Date range */}
                     <div className="flex items-center gap-2">

@@ -52,11 +52,24 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
         setColumnOrders(prev => {
             const next: Record<string, string[]> = {};
             STATUSES.forEach(status => {
+                // OPEN: sort by item asc (item sama bersebelahan), then by created_at
+                // IP/OK: sort by created_at saja (custom order via drag tetap dihormati di prevOrder)
                 const statusItems = [...maintenances]
                     .filter(m => m.status === status)
-                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                    .sort((a, b) => {
+                        if (status === 'OPEN') {
+                            const itemCmp = a.item.localeCompare(b.item);
+                            if (itemCmp !== 0) return itemCmp;
+                        }
+                        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                    });
                 const prevOrder = prev[status] || [];
-                // Keep existing custom order, append any new items
+                // OPEN: ALWAYS pakai sort by item (ignore custom order biar item sama tetap bersebelahan)
+                if (status === 'OPEN') {
+                    next[status] = statusItems.map(m => m.id);
+                    return;
+                }
+                // Keep existing custom order untuk IP/OK, append any new items
                 const stillPresent = prevOrder.filter(id => statusItems.find(m => m.id === id));
                 const newIds = statusItems.filter(m => !prevOrder.includes(m.id)).map(m => m.id);
                 next[status] = [...stillPresent, ...newIds];

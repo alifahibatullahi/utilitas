@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
 import type { PhotoRow } from '@/lib/supabase/types';
 
 interface PhotoGalleryProps {
@@ -116,7 +115,8 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                             className="block w-full h-full rounded-xl overflow-hidden border-2 border-slate-100 hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400"
                             title={photo.caption || photo.filename}
                         >
-                            <Image src={photo.url} alt={photo.caption || photo.filename} fill className="object-cover" />
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={photo.url} alt={photo.caption || photo.filename} className="w-full h-full object-cover" loading="lazy" />
                         </button>
                         {photo.caption && !compact && (
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-[10px] font-semibold px-2 py-1 line-clamp-2 rounded-b-xl">
@@ -250,39 +250,20 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                             </div>
                         </div>
 
-                        {/* Caption box — terpisah di bawah foto, panel putih biar text terlihat jelas */}
-                        <div className="w-full max-w-3xl bg-white rounded-xl shadow-xl px-4 py-3 relative">
+                        {/* Caption box — kotak polos saja */}
+                        <div className="w-full max-w-3xl bg-white rounded-xl shadow-xl px-4 py-3">
                             {onCaptionUpdate ? (
-                                <>
-                                    <div className="flex items-start gap-2">
-                                        <span className="material-symbols-outlined text-gray-400 mt-1" style={{ fontSize: 16 }}>edit_note</span>
-                                        <textarea
-                                            value={draftCaption}
-                                            onChange={e => setDraftCaption(e.target.value)}
-                                            onBlur={flushCaption}
-                                            placeholder="Tambahkan keterangan foto…"
-                                            rows={2}
-                                            className="flex-1 resize-none text-sm font-medium text-gray-900 placeholder-gray-400 outline-none bg-transparent border-0 focus:ring-0"
-                                            aria-label="Keterangan foto"
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-between mt-1 text-[10px]">
-                                        <span className="text-gray-400 truncate max-w-[60%]" title={photos[lightboxIdx].filename}>{photos[lightboxIdx].filename}</span>
-                                        {savingCaption ? (
-                                            <span className="flex items-center gap-1 font-bold text-blue-600">
-                                                <span className="material-symbols-outlined animate-spin" style={{ fontSize: 11 }}>progress_activity</span>
-                                                Menyimpan…
-                                            </span>
-                                        ) : (
-                                            <span className="font-bold text-emerald-600">Auto-save aktif</span>
-                                        )}
-                                    </div>
-                                </>
+                                <textarea
+                                    value={draftCaption}
+                                    onChange={e => setDraftCaption(e.target.value)}
+                                    onBlur={flushCaption}
+                                    placeholder="Tambahkan keterangan foto…"
+                                    rows={2}
+                                    className="w-full resize-none text-sm font-medium text-gray-900 placeholder-gray-400 outline-none bg-transparent border-0 focus:ring-0"
+                                    aria-label="Keterangan foto"
+                                />
                             ) : (
-                                <>
-                                    <p className="text-sm text-gray-800">{photos[lightboxIdx].caption || <span className="italic text-gray-400">Tidak ada keterangan</span>}</p>
-                                    <p className="mt-1 text-[10px] text-gray-400 truncate">{photos[lightboxIdx].filename}</p>
-                                </>
+                                <p className="text-sm text-gray-800">{photos[lightboxIdx].caption || <span className="italic text-gray-400">Tidak ada keterangan</span>}</p>
                             )}
                         </div>
                     </div>

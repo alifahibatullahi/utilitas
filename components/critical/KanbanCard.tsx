@@ -61,6 +61,11 @@ function shortDateLabel(date: string) {
     return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 }
 
+function capitalizeFirst(s: string | null | undefined): string {
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown, statusTimeIso, boardDate, boardShift }: KanbanCardProps) {
     const {
         attributes,
@@ -103,39 +108,25 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
                 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-150 p-2 cursor-grab active:cursor-grabbing active:scale-[0.97] active:shadow-inner active:translate-y-0
                 ${overlay ? 'shadow-2xl rotate-2 scale-[1.03] ring-2 ring-emerald-400/50 opacity-95 z-50' : ''}`}
         >
-            {/* Header: Item name + status */}
-            <div className="flex items-start justify-between gap-1.5 mb-0.5">
-                <div className="min-w-0 flex-1">
-                    <h4 className="text-xs font-black text-black leading-tight truncate">{item.item}</h4>
-                    {item.critical_equipment?.deskripsi && (
-                        <p className="text-[10px] font-bold text-rose-700 leading-tight line-clamp-1">
-                            {item.critical_equipment.deskripsi}
-                        </p>
-                    )}
-                </div>
-                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                    <StatusBadge status={item.status} light />
-                    {statusTimeIso && (
-                        <span className="text-[9px] font-bold text-black bg-slate-100 px-1 py-0.5 rounded border border-slate-300 whitespace-nowrap" title={`Status ${item.status} sejak ${new Date(statusTimeIso).toLocaleString('id-ID')}`}>
-                            {formatStatusTime(statusTimeIso)}
-                        </span>
-                    )}
-                    {isFromPreviousShift && originShift && (
-                        <span className="text-[9px] font-extrabold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex items-center gap-0.5"
-                            title={`Status ${item.status} pertama kali pada shift ${shiftLabel(originShift.shift)} ${shortDateLabel(originShift.date)}`}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 9 }}>history</span>
-                            dari {shiftLabel(originShift.shift)} {shortDateLabel(originShift.date)}
-                        </span>
-                    )}
-                </div>
+            {/* Header: Item name + status badge */}
+            <div className="flex items-start justify-between gap-1.5">
+                <h4 className="text-xs font-black text-black leading-tight truncate min-w-0 flex-1">{item.item}</h4>
+                <StatusBadge status={item.status} light />
             </div>
 
-            {/* Uraian — langsung di bawah item, no extra spacing */}
-            <p className="text-[11px] text-black font-semibold mb-1.5 line-clamp-2 leading-snug">
-                {item.uraian}
+            {/* Critical desc dengan prefix "Critical : " — langsung di bawah item, no gap */}
+            {item.critical_equipment?.deskripsi && (
+                <p className="text-[10px] font-bold text-rose-700 leading-tight line-clamp-1">
+                    Critical : {capitalizeFirst(item.critical_equipment.deskripsi)}
+                </p>
+            )}
+
+            {/* Uraian — kapital pada huruf pertama, langsung tempel ke critical desc */}
+            <p className="text-[11px] text-black font-semibold mt-0.5 mb-1.5 line-clamp-2 leading-snug">
+                {capitalizeFirst(item.uraian)}
             </p>
 
-            {/* Badges row */}
+            {/* Badges row: scope + tipe */}
             <div className="flex items-center gap-1 flex-wrap mb-1">
                 <ScopeBadge scope={item.scope} light className="!text-[9px] !px-1.5 !py-0.5 uppercase font-bold tracking-wider" />
                 {item.tipe === 'preventif' && (
@@ -146,17 +137,29 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
                 )}
             </div>
 
-            {/* Footer info */}
+            {/* Footer: foreman + tanggal + statusTime + dari-shift + notif */}
             <div className="flex items-center justify-between gap-1 text-[9px] text-black flex-wrap">
-                <span className="font-bold bg-gray-100 px-1.5 py-0.5 rounded text-black">{getForemanLabel(item.foreman)}</span>
-                <div className="flex items-center gap-1">
-                    {item.notif && (
-                        <span className="bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold text-indigo-800" title={`Notif: ${item.notif}`}>
-                            #{item.notif}
+                <div className="flex items-center gap-1 flex-wrap">
+                    <span className="font-bold bg-gray-100 px-1.5 py-0.5 rounded text-black">{getForemanLabel(item.foreman)}</span>
+                    <span className="font-bold bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded text-black">{item.date}</span>
+                    {statusTimeIso && (
+                        <span className="font-bold text-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 whitespace-nowrap" title={`Status ${item.status} sejak ${new Date(statusTimeIso).toLocaleString('id-ID')}`}>
+                            {formatStatusTime(statusTimeIso)}
                         </span>
                     )}
-                    <span className="font-bold bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded text-black">{item.date}</span>
+                    {isFromPreviousShift && originShift && (
+                        <span className="font-extrabold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex items-center gap-0.5"
+                            title={`Status ${item.status} pertama kali pada shift ${shiftLabel(originShift.shift)} ${shortDateLabel(originShift.date)}`}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 9 }}>history</span>
+                            dari {shiftLabel(originShift.shift)} {shortDateLabel(originShift.date)}
+                        </span>
+                    )}
                 </div>
+                {item.notif && (
+                    <span className="bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold text-indigo-800" title={`Notif: ${item.notif}`}>
+                        #{item.notif}
+                    </span>
+                )}
             </div>
 
             {/* Photo thumbnails — compact */}

@@ -565,6 +565,7 @@ export interface PhotoRow {
     work_order_id:  string | null;
     url:            string;
     filename:       string;
+    caption:        string | null;
     uploaded_via:   'app' | 'whatsapp';
     uploaded_by:    string | null;
     created_at:     string;

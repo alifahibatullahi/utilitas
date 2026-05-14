@@ -436,8 +436,11 @@ export default function CriticalPage() {
                 boardShift={boardShift}
                 onChangeBoardDate={setBoardDate}
                 onChangeBoardShift={setBoardShift}
-                onMoveStatus={cm.moveMaintenanceStatus}
+                onMoveStatus={(id, s) => cm.moveMaintenanceStatus(id, s, operator?.name)}
                 onKonfirmasiShift={cm.konfirmasiShift}
+                onAssignToShift={(ids, d, s) => cm.assignMaintenanceToShift(ids, d, s, operator?.name)}
+                onUnassignFromShift={(ids, d, s) => cm.unassignMaintenanceFromShift(ids, d, s)}
+                actor={operator?.name}
                 photosByMaintId={photosByMaintId}
                 statusTimeByMaintId={statusTimeByMaintId}
             />

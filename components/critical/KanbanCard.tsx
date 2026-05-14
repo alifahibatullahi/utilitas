@@ -62,24 +62,24 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             style={overlay ? undefined : style}
             {...(overlay ? {} : attributes)}
             {...(overlay ? {} : listeners)}
-            className={`bg-white rounded-xl border border-gray-200 border-l-4 ${scopeAccent[item.scope] ?? 'border-l-gray-300'}
-                shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 p-3 cursor-grab active:cursor-grabbing active:scale-[0.97] active:shadow-inner active:translate-y-0
-                ${overlay ? 'shadow-2xl rotate-3 scale-[1.03] ring-4 ring-emerald-400/50 opacity-95 z-50' : ''}`}
+            className={`bg-white rounded-lg border border-gray-200 border-l-4 ${scopeAccent[item.scope] ?? 'border-l-gray-300'}
+                shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-150 p-2 cursor-grab active:cursor-grabbing active:scale-[0.97] active:shadow-inner active:translate-y-0
+                ${overlay ? 'shadow-2xl rotate-2 scale-[1.03] ring-2 ring-emerald-400/50 opacity-95 z-50' : ''}`}
         >
-            {/* Header: Item name + critical deskripsi + status */}
-            <div className="flex items-start justify-between gap-2 mb-1">
-                <div className="min-w-0 flex-1 mt-0.5">
-                    <h4 className="text-base font-black text-black leading-tight mb-1">Item: {item.item}</h4>
+            {/* Header: Item name + status */}
+            <div className="flex items-start justify-between gap-1.5 mb-1">
+                <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-black text-black leading-tight truncate">{item.item}</h4>
                     {item.critical_equipment?.deskripsi && (
-                        <p className="text-xs font-bold text-rose-600 leading-tight line-clamp-2">
-                            Critical: {item.critical_equipment.deskripsi}
+                        <p className="text-[10px] font-semibold text-rose-600 leading-tight line-clamp-1">
+                            {item.critical_equipment.deskripsi}
                         </p>
                     )}
                 </div>
-                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                     <StatusBadge status={item.status} light />
                     {statusTimeIso && (
-                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title={`Status ${item.status} sejak ${new Date(statusTimeIso).toLocaleString('id-ID')}`}>
+                        <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200 whitespace-nowrap" title={`Status ${item.status} sejak ${new Date(statusTimeIso).toLocaleString('id-ID')}`}>
                             {formatStatusTime(statusTimeIso)}
                         </span>
                     )}
@@ -87,36 +87,37 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             </div>
 
             {/* Uraian */}
-            <p className="text-lg text-black font-bold mb-3 mt-2 line-clamp-3 leading-snug">
-                <span className="font-black text-black">Maintenance : </span>{item.uraian}
+            <p className="text-[11px] text-gray-800 font-semibold mb-1.5 line-clamp-2 leading-snug">
+                {item.uraian}
             </p>
 
             {/* Badges row */}
-            <div className="flex items-center gap-2 flex-wrap mb-3 mt-1">
-                <ScopeBadge scope={item.scope} light className="!text-lg !px-3 !py-1 uppercase font-black tracking-widest border-2 shadow-sm" />
-                {item.tipe === 'preventif' ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-700">
-                        Preventif
-                    </span>
-                ) : null}
+            <div className="flex items-center gap-1 flex-wrap mb-1">
+                <ScopeBadge scope={item.scope} light className="!text-[9px] !px-1.5 !py-0.5 uppercase font-bold tracking-wider" />
+                {item.tipe === 'preventif' && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-100 text-cyan-700">Preventif</span>
+                )}
+                {item.tipe === 'modifikasi' && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-100 text-violet-700">Modifikasi</span>
+                )}
             </div>
 
             {/* Footer info */}
-            <div className="flex items-center justify-between text-xs text-black">
-                <span className="font-bold bg-gray-100 px-2 py-1 rounded">{getForemanLabel(item.foreman)}</span>
-                <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-1 text-[9px] text-gray-700 flex-wrap">
+                <span className="font-bold bg-gray-100 px-1.5 py-0.5 rounded">{getForemanLabel(item.foreman)}</span>
+                <div className="flex items-center gap-1">
                     {item.notif && (
-                        <span className="bg-indigo-100 border border-indigo-200 px-2 py-1 rounded font-bold text-indigo-900">
-                            Notif: {item.notif}
+                        <span className="bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold text-indigo-700" title={`Notif: ${item.notif}`}>
+                            #{item.notif}
                         </span>
                     )}
-                    <span className="font-bold bg-slate-100 border border-slate-200 px-2 py-1 rounded text-slate-700">{item.date}</span>
+                    <span className="font-semibold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-slate-600">{item.date}</span>
                 </div>
             </div>
 
-            {/* Photo thumbnails */}
+            {/* Photo thumbnails — compact */}
             {photos && photos.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-100">
+                <div className="mt-1.5 pt-1.5 border-t border-gray-100">
                     <PhotoGallery photos={photos} compact />
                 </div>
             )}

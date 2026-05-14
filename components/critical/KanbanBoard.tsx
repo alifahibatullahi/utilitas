@@ -28,11 +28,15 @@ interface KanbanBoardProps {
     /** Search query, hanya difilter pada kolom OPEN. */
     openSearch?: string;
     onOpenSearchChange?: (q: string) => void;
+    /** Maintenance IDs yang sudah ter-assign ke shift sekarang (date+shift yang dilihat). */
+    assignedToCurrentShiftIds?: Set<string>;
+    /** Handler untuk batal Lanjut Kerja: hapus assignment dari shift sekarang. */
+    onUnassignCurrentShift?: (id: string) => Promise<{ error: string | null }>;
 }
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, boardDate, openSearch, onOpenSearchChange }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, boardDate, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
     const [columnOrders, setColumnOrders] = useState<Record<string, string[]>>({});
 
@@ -117,16 +121,26 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
             ...allStatusItems.filter(m => !order.includes(m.id)),
         ];
 
+        // Helper: maintenance ter-assign ke shift sekarang (via pivot)
+        const isAssigned = (m: MaintenanceWithCritical) => assignedToCurrentShiftIds?.has(m.id) ?? false;
+
         if (status === 'OK') {
-            return { status, items: sortedAll.filter(m => inWindow(timeFor(m))), prevItems: [], hiddenFuture: 0 };
+            // OK di shift sekarang = OK yang ter-assign. Yang tidak ter-assign disembunyikan.
+            // Fallback (kalau assignment data belum tersedia): pakai window berdasarkan statusTime
+            const items = assignedToCurrentShiftIds
+                ? sortedAll.filter(isAssigned)
+                : sortedAll.filter(m => inWindow(timeFor(m)));
+            return { status, items, prevItems: [], hiddenFuture: 0 };
         }
         if (status === 'IP') {
-            return {
-                status,
-                items: sortedAll.filter(m => inWindow(timeFor(m))),
-                prevItems: sortedAll.filter(m => !inWindow(timeFor(m))),
-                hiddenFuture: 0,
-            };
+            // IP di shift sekarang = ter-assign. prevItems = IP yang belum ter-assign (kandidat Lanjut Kerja).
+            const items = assignedToCurrentShiftIds
+                ? sortedAll.filter(isAssigned)
+                : sortedAll.filter(m => inWindow(timeFor(m)));
+            const prevItems = assignedToCurrentShiftIds
+                ? sortedAll.filter(m => !isAssigned(m))
+                : sortedAll.filter(m => !inWindow(timeFor(m)));
+            return { status, items, prevItems, hiddenFuture: 0 };
         }
         // OPEN: filter berdasarkan search query (jika ada) + date <= boardDate (kalau search kosong)
         const q = (openSearch ?? '').trim().toLowerCase();
@@ -148,7 +162,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="flex gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-4 px-1">
+            <div className="flex gap-2 md:gap-3 overflow-x-auto snap-x snap-mandatory pb-2 px-1">
                 {columns.map(col => (
                     <KanbanColumn
                         key={col.status}
@@ -160,6 +174,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
                         onMoveInColumn={(id, dir) => handleMoveInColumn(col.status, id, dir)}
+                        onUnassignCurrentShift={onUnassignCurrentShift}
                         headerExtra={col.status === 'OPEN' && onOpenSearchChange ? (
                             <div className="px-3 pt-2">
                                 <div className="relative">

@@ -575,6 +575,71 @@ export function useCriticalMaintenance() {
         return { error: null };
     }, []);
 
+    /**
+     * Assign maintenance ke shift report (date+shift). Otomatis create draft shift_report kalau belum ada.
+     * Idempotent karena UNIQUE constraint di pivot.
+     */
+    const assignMaintenanceToShift = useCallback(async (
+        maintenanceIds: string[],
+        date: string,
+        shift: 'pagi' | 'sore' | 'malam',
+        actor?: string | null,
+    ): Promise<{ error: string | null }> => {
+        if (maintenanceIds.length === 0) return { error: null };
+        // Resolve / create shift_report
+        let reportId: string | null = null;
+        const { data: existing } = await supabase
+            .from('shift_reports')
+            .select('id')
+            .eq('date', date)
+            .eq('shift', shift)
+            .maybeSingle();
+        if (existing && (existing as Record<string, unknown>).id) {
+            reportId = (existing as Record<string, unknown>).id as string;
+        } else {
+            const { data: created, error: cErr } = await supabase
+                .from('shift_reports')
+                .insert({ date, shift, group_name: '', supervisor: '', status: 'draft' } as Record<string, unknown>)
+                .select('id')
+                .single();
+            if (cErr || !created) return { error: cErr?.message ?? 'Gagal create shift report' };
+            reportId = (created as Record<string, unknown>).id as string;
+        }
+        const rows = maintenanceIds.map(mid => ({ maintenance_id: mid, shift_report_id: reportId, assigned_by: actor ?? null }));
+        const { error: insErr } = await supabase
+            .from('maintenance_shift_assignments')
+            .upsert(rows, { onConflict: 'maintenance_id,shift_report_id', ignoreDuplicates: true });
+        if (insErr) return { error: insErr.message };
+        return { error: null };
+    }, [supabase]);
+
+    /**
+     * Unassign maintenance dari shift report (date+shift). Hapus row di pivot.
+     * Tidak menghapus shift_report itu sendiri (tetap ada untuk maintenance lain).
+     */
+    const unassignMaintenanceFromShift = useCallback(async (
+        maintenanceIds: string[],
+        date: string,
+        shift: 'pagi' | 'sore' | 'malam',
+    ): Promise<{ error: string | null }> => {
+        if (maintenanceIds.length === 0) return { error: null };
+        const { data: rep } = await supabase
+            .from('shift_reports')
+            .select('id')
+            .eq('date', date)
+            .eq('shift', shift)
+            .maybeSingle();
+        const reportId = (rep as Record<string, unknown> | null)?.id as string | undefined;
+        if (!reportId) return { error: null }; // tidak ada laporan → tidak ada yang perlu di-unassign
+        const { error: delErr } = await supabase
+            .from('maintenance_shift_assignments')
+            .delete()
+            .eq('shift_report_id', reportId)
+            .in('maintenance_id', maintenanceIds);
+        if (delErr) return { error: delErr.message };
+        return { error: null };
+    }, [supabase]);
+
     /** Batch fetch photos for a list of maintenance IDs — returns a map of maintId → PhotoRow[] */
     const fetchPhotosForMaintList = useCallback(async (maintIds: string[]): Promise<Record<string, PhotoRow[]>> => {
         if (maintIds.length === 0) return {};
@@ -611,6 +676,8 @@ export function useCriticalMaintenance() {
         moveMaintenanceStatus,
         moveCriticalStatus,
         konfirmasiShift,
+        assignMaintenanceToShift,
+        unassignMaintenanceFromShift,
         addActivityNote,
         fetchPhotos,
         deletePhoto,

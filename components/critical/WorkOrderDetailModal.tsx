@@ -128,6 +128,22 @@ export default function WorkOrderDetailModal({
         const res = await deletePhoto(id);
         if (!res.error) setPhotos(prev => prev.filter(p => p.id !== id));
     }
+    async function handleCaptionUpdated(id: string, caption: string) {
+        setPhotos(prev => prev.map(p => p.id === id ? { ...p, caption } : p));
+        try {
+            const res = await fetch(`/api/upload/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ caption }),
+            });
+            if (!res.ok) throw new Error('failed');
+        } catch {
+            if (fetchPhotos) {
+                const fresh = await fetchPhotos(workOrder.id);
+                setPhotos(fresh);
+            }
+        }
+    }
 
     function handleEditNote(m: MaintenanceLogRow) {
         setEditingNoteId(m.id);
@@ -194,8 +210,9 @@ export default function WorkOrderDetailModal({
                         </div>
                     </div>
                     <button onClick={onClose}
-                        className="flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-slate-100 text-slate-500 transition-colors shadow-sm">
-                        <span className="material-symbols-outlined" style={{ fontSize: 24 }}>close</span>
+                        className="group flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-rose-500 hover:border-rose-400 hover:scale-110 hover:shadow-rose-500/30 text-slate-500 hover:text-white transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
+                        title="Tutup">
+                        <span className="material-symbols-outlined transition-transform group-hover:rotate-90" style={{ fontSize: 24 }}>close</span>
                     </button>
                 </div>
 
@@ -369,7 +386,7 @@ export default function WorkOrderDetailModal({
                                                 <p className="text-xs font-medium">Belum ada foto</p>
                                             </div>
                                         ) : (
-                                            <PhotoGallery photos={photos} onDelete={deletePhoto ? handlePhotoDeleted : undefined} />
+                                            <PhotoGallery photos={photos} onDelete={deletePhoto ? handlePhotoDeleted : undefined} onCaptionUpdate={handleCaptionUpdated} />
                                         )}
                                     </div>
                                 </div>

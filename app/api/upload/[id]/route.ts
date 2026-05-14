@@ -43,3 +43,33 @@ export async function DELETE(
 
   return NextResponse.json({ success: true });
 }
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+
+  const { id } = await params;
+  let body: { caption?: string | null } = {};
+  try { body = await req.json(); } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  if (typeof body.caption !== 'string' && body.caption !== null) {
+    return NextResponse.json({ error: 'caption must be string or null' }, { status: 400 });
+  }
+
+  const { data, error: dbErr } = await supabaseAdmin
+    .from('photos')
+    .update({ caption: body.caption })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+  return NextResponse.json({ photo: data });
+}

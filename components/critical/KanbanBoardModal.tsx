@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SHIFT_OPTIONS, getShiftWindow } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
 import type { MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 
@@ -17,6 +18,11 @@ interface KanbanBoardModalProps {
     onKonfirmasiShift: (id: string) => Promise<{ error: string | null }>;
     photosByMaintId?: Record<string, PhotoRow[]>;
     statusTimeByMaintId?: Record<string, string>;
+    /** Auto-assign ke shift report saat status berubah / user klik "Lanjut Kerja". */
+    onAssignToShift?: (maintenanceIds: string[], date: string, shift: 'pagi' | 'sore' | 'malam') => Promise<{ error: string | null }>;
+    /** Hapus assignment dari shift report (kalau user salah klik Lanjut Kerja). */
+    onUnassignFromShift?: (maintenanceIds: string[], date: string, shift: 'pagi' | 'sore' | 'malam') => Promise<{ error: string | null }>;
+    actor?: string | null;
 }
 
 export default function KanbanBoardModal({
@@ -25,8 +31,59 @@ export default function KanbanBoardModal({
     boardDate, boardShift, onChangeBoardDate, onChangeBoardShift,
     onMoveStatus, onKonfirmasiShift,
     photosByMaintId, statusTimeByMaintId,
+    onAssignToShift, onUnassignFromShift,
 }: KanbanBoardModalProps) {
+    // Wrap onMoveStatus: setelah status change, auto-assign ke shift yang sedang dilihat
+    const handleMoveStatus = async (id: string, newStatus: MaintenanceStatus) => {
+        const res = await onMoveStatus(id, newStatus);
+        if (!res.error && (newStatus === 'IP' || newStatus === 'OK') && onAssignToShift) {
+            await onAssignToShift([id], boardDate, boardShift);
+            setAssignmentsRefreshKey(k => k + 1);
+        }
+        return res;
+    };
+
+    // Wrap konfirmasi: pindah maintenance dari shift sebelumnya ke shift sekarang via pivot
+    const handleKonfirmasi = async (id: string) => {
+        if (onAssignToShift) {
+            await onAssignToShift([id], boardDate, boardShift);
+            setAssignmentsRefreshKey(k => k + 1);
+        }
+        return await onKonfirmasiShift(id);
+    };
+
+    // Batalkan: hapus assignment maintenance dari shift sekarang (kalau salah klik / tidak jadi kerja)
+    const handleUnassign = async (id: string): Promise<{ error: string | null }> => {
+        if (!onUnassignFromShift) return { error: 'Unassign handler tidak tersedia' };
+        const res = await onUnassignFromShift([id], boardDate, boardShift);
+        if (!res.error) setAssignmentsRefreshKey(k => k + 1);
+        return res;
+    };
+
     const [search, setSearch] = useState('');
+    const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
+    const [assignmentsRefreshKey, setAssignmentsRefreshKey] = useState(0);
+
+    // Fetch assignments untuk (boardDate, boardShift) — supaya bisa tahu maintenance mana yang sudah ter-assign
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        async function fetchAssignments() {
+            const supabase = createClient();
+            const { data: rep } = await supabase
+                .from('shift_reports')
+                .select('id, maintenance_shift_assignments(maintenance_id)')
+                .eq('date', boardDate)
+                .eq('shift', boardShift)
+                .maybeSingle();
+            if (cancelled) return;
+            const ids = ((rep as Record<string, unknown> | null)?.maintenance_shift_assignments as Array<{ maintenance_id: string }> | undefined ?? [])
+                .map(a => a.maintenance_id);
+            setAssignedIds(new Set(ids));
+        }
+        fetchAssignments();
+        return () => { cancelled = true; };
+    }, [open, boardDate, boardShift, assignmentsRefreshKey]);
 
     if (!open) return null;
 
@@ -81,10 +138,12 @@ export default function KanbanBoardModal({
                         boardDate={search.trim() ? undefined : boardDate}
                         openSearch={search}
                         onOpenSearchChange={setSearch}
-                        onMoveStatus={onMoveStatus}
-                        onKonfirmasiShift={onKonfirmasiShift}
+                        onMoveStatus={handleMoveStatus}
+                        onKonfirmasiShift={handleKonfirmasi}
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
+                        assignedToCurrentShiftIds={assignedIds}
+                        onUnassignCurrentShift={onUnassignFromShift ? handleUnassign : undefined}
                     />
                 </div>
 

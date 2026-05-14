@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import type { PhotoRow } from '@/lib/supabase/types';
+import { compressImage } from '@/lib/image-compression';
 
 interface PhotoUploadButtonProps {
   criticalId?:     string;
@@ -28,8 +29,11 @@ export default function PhotoUploadButton({
     setUploading(true);
 
     for (const file of Array.from(files)) {
+      // Compress dulu di browser — kurangi storage di R2 + transfer faster
+      const compressed = await compressImage(file).catch(() => file);
+
       const form = new FormData();
-      form.append('file', file);
+      form.append('file', compressed);
       if (criticalId)    form.append('critical_id',    criticalId);
       if (maintenanceId) form.append('maintenance_id', maintenanceId);
       if (workOrderId)   form.append('work_order_id',  workOrderId);

@@ -18,6 +18,8 @@ interface KanbanColumnProps {
     statusTimeByMaintId?: Record<string, string>;
     /** Optional slot dirender di bawah column header (mis. search input). */
     headerExtra?: React.ReactNode;
+    /** Handler batalkan assignment dari shift sekarang (akan ditampilkan untuk card di items kolom IP/OK). */
+    onUnassignCurrentShift?: (id: string) => Promise<{ error: string | null }>;
 }
 
 function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string }) {
@@ -29,23 +31,78 @@ function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso }: { item: 
         setLoading(false);
     };
     return (
-        <div className="relative">
+        <div className="relative opacity-80 hover:opacity-100 transition-opacity">
             <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} />
             <button
                 onClick={handleKonfirmasi}
                 disabled={loading}
-                className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-extrabold transition-colors cursor-pointer disabled:opacity-50"
+                className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200 transition-colors cursor-pointer disabled:opacity-50"
+                title="Tandai ada pekerjaan di shift ini → maintenance masuk laporan shift"
             >
-                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{loading ? 'progress_activity' : 'arrow_upward'}</span>
-                {loading ? 'Memproses...' : 'Konfirmasi ke Shift Ini'}
+                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{loading ? 'progress_activity' : 'add_task'}</span>
+                {loading ? 'Memproses…' : '+ Lanjut Kerja di Shift Ini'}
             </button>
         </div>
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, headerExtra }: KanbanColumnProps) {
+function AssignedItemWrapper({ item, photos, statusTimeIso, onUnassign }: { item: MaintenanceWithCritical; photos?: PhotoRow[]; statusTimeIso?: string; onUnassign: (id: string) => Promise<{ error: string | null }> }) {
+    const [loading, setLoading] = useState(false);
+    return (
+        <div>
+            <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} />
+            <button
+                onClick={async () => {
+                    if (!confirm('Batalkan "Lanjut Kerja" — maintenance ini akan dihapus dari laporan shift sekarang. Lanjut?')) return;
+                    setLoading(true);
+                    await onUnassign(item.id);
+                    setLoading(false);
+                }}
+                disabled={loading}
+                className="mt-1 w-full flex items-center justify-center gap-1 py-0.5 rounded text-rose-600 hover:bg-rose-50 text-[9px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+                title="Batalkan: hapus dari laporan shift sekarang"
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: 11 }}>{loading ? 'progress_activity' : 'undo'}</span>
+                {loading ? 'Memproses…' : 'Batalkan dari shift ini'}
+            </button>
+        </div>
+    );
+}
+
+export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, headerExtra, onUnassignCurrentShift }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
+
+    // Tombol Batalkan ditampilkan untuk card di items kolom IP/OK (yang ter-assign ke shift sekarang)
+    const showUnassignFor = (status === 'IP' || status === 'OK') && !!onUnassignCurrentShift;
+
+    function renderCardOrWrapper(item: MaintenanceWithCritical, flatIdx: number, totalLen: number, withControls: boolean) {
+        if (showUnassignFor && onUnassignCurrentShift) {
+            return (
+                <AssignedItemWrapper
+                    key={item.id}
+                    item={item}
+                    photos={photosByMaintId?.[item.id]}
+                    statusTimeIso={statusTimeByMaintId?.[item.id]}
+                    onUnassign={onUnassignCurrentShift}
+                />
+            );
+        }
+        return (
+            <div key={item.id}>
+                <KanbanCard
+                    item={item}
+                    photos={photosByMaintId?.[item.id]}
+                    statusTimeIso={statusTimeByMaintId?.[item.id]}
+                    index={flatIdx + 1}
+                    isFirst={flatIdx === 0}
+                    isLast={flatIdx === totalLen - 1}
+                    onMoveUp={withControls ? () => onMoveInColumn?.(item.id, 'up') : undefined}
+                    onMoveDown={withControls ? () => onMoveInColumn?.(item.id, 'down') : undefined}
+                />
+            </div>
+        );
+    }
 
     function renderGroups(list: MaintenanceWithCritical[], keyPrefix = '', withControls = false) {
         const groups: { isGroup: boolean; criticalId: string | null; itemName: string | null; cards: MaintenanceWithCritical[] }[] = [];
@@ -77,50 +134,27 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                 </div>
                 {g.cards.map(item => {
                     const flatIdx = flatIndexMap.get(item.id) ?? 0;
-                    return (
-                        <KanbanCard
-                            key={item.id}
-                            item={item}
-                            photos={photosByMaintId?.[item.id]}
-                            statusTimeIso={statusTimeByMaintId?.[item.id]}
-                            index={flatIdx + 1}
-                            isFirst={flatIdx === 0}
-                            isLast={flatIdx === list.length - 1}
-                            onMoveUp={withControls ? () => onMoveInColumn?.(item.id, 'up') : undefined}
-                            onMoveDown={withControls ? () => onMoveInColumn?.(item.id, 'down') : undefined}
-                        />
-                    );
+                    return renderCardOrWrapper(item, flatIdx, list.length, withControls);
                 })}
             </div>
         ) : (
             (() => {
                 const item = g.cards[0];
                 const flatIdx = flatIndexMap.get(item.id) ?? 0;
-                return (
-                    <KanbanCard
-                        key={item.id}
-                        item={item}
-                        photos={photosByMaintId?.[item.id]}
-                        index={flatIdx + 1}
-                        isFirst={flatIdx === 0}
-                        isLast={flatIdx === list.length - 1}
-                        onMoveUp={withControls ? () => onMoveInColumn?.(item.id, 'up') : undefined}
-                        onMoveDown={withControls ? () => onMoveInColumn?.(item.id, 'down') : undefined}
-                    />
-                );
+                return renderCardOrWrapper(item, flatIdx, list.length, withControls);
             })()
         ));
     }
 
     return (
-        <div className={`flex flex-col min-w-[300px] md:min-w-0 md:flex-1 rounded-2xl border-2 transition-all
-            ${isOver ? `${config.borderColor} shadow-lg scale-[1.01]` : 'border-gray-200'}
+        <div className={`flex flex-col min-w-[260px] md:min-w-0 md:flex-1 rounded-xl border transition-all
+            ${isOver ? `${config.borderColor} shadow-md scale-[1.01]` : 'border-gray-200'}
             ${config.bgColor}`}
         >
             {/* Column header */}
-            <div className={`${config.headerBg} rounded-t-xl px-4 py-3 flex items-center justify-between`}>
-                <h3 className="text-sm font-bold text-white">{config.label}</h3>
-                <span className="bg-white/30 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+            <div className={`${config.headerBg} rounded-t-lg px-3 py-2 flex items-center justify-between`}>
+                <h3 className="text-xs font-bold text-white">{config.label}</h3>
+                <span className="bg-white/30 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
                     {items.length + prevItems.length}
                 </span>
             </div>
@@ -130,7 +164,7 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
             {/* Cards container */}
             <div
                 ref={setNodeRef}
-                className="flex-1 p-3 space-y-3 min-h-[200px] overflow-y-auto light-scrollbar"
+                className="flex-1 p-2 space-y-1.5 min-h-[160px] overflow-y-auto light-scrollbar"
             >
                 <SortableContext items={[...items, ...prevItems].map(i => i.id)} strategy={verticalListSortingStrategy}>
                     {renderGroups(items, '', true)}

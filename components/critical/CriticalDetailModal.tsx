@@ -231,6 +231,25 @@ export default function CriticalDetailModal({
         }
     }
 
+    async function handleCaptionUpdated(photoId: string, caption: string) {
+        // Optimistic
+        setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, caption } : p));
+        try {
+            const res = await fetch(`/api/upload/${photoId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ caption }),
+            });
+            if (!res.ok) throw new Error('failed');
+        } catch {
+            // rollback by refetch (best effort)
+            if (fetchPhotos) {
+                const fresh = await fetchPhotos('critical', critical.id);
+                setPhotos(fresh);
+            }
+        }
+    }
+
     function handleDragStart(e: React.DragEvent, idx: number) {
         setDraggedIdx(idx);
         e.dataTransfer.effectAllowed = 'move';
@@ -292,9 +311,10 @@ export default function CriticalDetailModal({
                     </div>
                     <button
                         onClick={handleClose}
-                        className="flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-slate-100 text-slate-500 transition-colors shadow-sm"
+                        className="group flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-rose-500 hover:border-rose-400 hover:scale-110 hover:shadow-rose-500/30 text-slate-500 hover:text-white transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
+                        title="Tutup"
                     >
-                        <span className="material-symbols-outlined" style={{ fontSize: 24 }}>close</span>
+                        <span className="material-symbols-outlined transition-transform group-hover:rotate-90" style={{ fontSize: 24 }}>close</span>
                     </button>
                 </div>
 
@@ -509,7 +529,7 @@ export default function CriticalDetailModal({
                                             <p className="text-xs font-medium">Belum ada foto</p>
                                         </div>
                                     ) : (
-                                        <PhotoGallery photos={photos} onDelete={deletePhoto ? handlePhotoDeleted : undefined} />
+                                        <PhotoGallery photos={photos} onDelete={deletePhoto ? handlePhotoDeleted : undefined} onCaptionUpdate={handleCaptionUpdated} />
                                     )}
                                 </div>
                             </div>

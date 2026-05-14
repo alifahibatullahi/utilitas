@@ -237,6 +237,7 @@ export default function CriticalPage() {
                                     onEditCritical={(c) => setEditingCritical(c)}
                                     onDeleteCritical={async (id) => { await cm.deleteCritical(id); }}
                                     onAddCritical={() => setShowCriticalForm(true)}
+                                    onOpenBoard={() => setShowBoardModal(true)}
                                     onEditMaintenance={(m) => setEditingMaintenance({ ...m, critical_equipment: null })}
                                     onDeleteMaintenance={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
                                     onAddMaintenance={(critical) => {
@@ -288,7 +289,7 @@ export default function CriticalPage() {
                         {view === 'maintenance' && (
                             <div className="w-full flex-1 flex flex-col transition-all animate-in fade-in zoom-in-95 duration-300">
                                 {/* Action buttons */}
-                                <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
+                                <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
                                     <button
                                         onClick={() => setShowBoardModal(true)}
                                         className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-blue-600 border-2 border-blue-200 text-sm font-black hover:bg-blue-50 transition-all shadow-sm cursor-pointer whitespace-nowrap"

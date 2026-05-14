@@ -51,7 +51,13 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
 
     if (!open) return null;
 
-    const activeCriticalList = activeCriticals.filter(c => c.status !== 'CLOSED');
+    // Hanya tampilkan critical OPEN dan dengan item yang sama dengan yang dipilih di form
+    const activeCriticalList = activeCriticals.filter(c => {
+        if (c.status === 'CLOSED') return false;
+        if (!item) return true; // belum pilih item → tampilkan semua
+        const itemMatch = c.item === item || (item.includes(' - ') && c.item === item.split(' - ')[0]);
+        return itemMatch;
+    });
     const selectedCritical = criticalId ? activeCriticals.find(c => c.id === criticalId) ?? null : null;
 
     const handleCriticalChange = (val: string) => {
@@ -213,27 +219,37 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                     </div>
 
                     {!isWOMode && !isPreventifModifikasiMode && (
-                        <div>
+                        <div className="min-w-0">
                             <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Critical Terkait (ops)</label>
-                            <div className="relative">
+                            <div className="relative w-full">
                                 <select
                                     value={criticalId}
                                     onChange={e => handleCriticalChange(e.target.value)}
-                                    className="appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none cursor-pointer transition-all shadow-sm"
+                                    className="appearance-none w-full max-w-full px-3 py-2.5 pr-9 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none cursor-pointer transition-all shadow-sm truncate"
+                                    style={{ textOverflow: 'ellipsis' }}
                                 >
                                     <option value="">— Tanpa Critical —</option>
-                                    {activeCriticalList.map(c => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.item} — {c.deskripsi.length > 40 ? c.deskripsi.slice(0, 40) + '...' : c.deskripsi}
-                                        </option>
-                                    ))}
+                                    {activeCriticalList.length === 0 && item && (
+                                        <option value="" disabled>(Tidak ada critical OPEN untuk item ini)</option>
+                                    )}
+                                    {activeCriticalList.map(c => {
+                                        const desc = c.deskripsi.length > 30 ? c.deskripsi.slice(0, 30) + '…' : c.deskripsi;
+                                        return (
+                                            <option key={c.id} value={c.id}>
+                                                {c.item} — {desc}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                                 <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
                             </div>
                             {selectedCritical && (
-                                <p className="text-[11px] text-black mt-1.5 leading-snug">
+                                <p className="text-[11px] text-black mt-1.5 leading-snug break-words">
                                     <span className="font-bold">Critical: </span>{selectedCritical.deskripsi}
                                 </p>
+                            )}
+                            {item && activeCriticalList.length === 0 && !selectedCritical && (
+                                <p className="text-[11px] text-gray-500 italic mt-1.5">Tidak ada critical OPEN untuk item ini.</p>
                             )}
                         </div>
                     )}

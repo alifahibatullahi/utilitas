@@ -17,6 +17,16 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
     const [draftCaption, setDraftCaption] = useState('');
     const [savingCaption, setSavingCaption] = useState(false);
     const touchStartX = useRef<number | null>(null);
+    // Zoom + pan state untuk lightbox — toggle sederhana 100% ↔ 200%
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
+    const ZOOM_IN_LEVEL = 2;
+    const resetZoom = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+    const toggleZoom = () => {
+        setZoom(z => (z === 1 ? ZOOM_IN_LEVEL : 1));
+        setPan({ x: 0, y: 0 });
+    };
 
     // Auto-save current draft caption (silent, no UI feedback). Returns when done.
     const flushCaption = useCallback(async () => {
@@ -34,15 +44,18 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
         // Auto-save draft caption sebelum tutup (silent)
         await flushCaption();
         setLightboxIdx(null);
+        resetZoom();
     }, [flushCaption]);
 
     const goPrev = useCallback(async () => {
         await flushCaption();
+        resetZoom();
         setLightboxIdx(idx => (idx == null ? idx : (idx - 1 + photos.length) % photos.length));
     }, [photos.length, flushCaption]);
 
     const goNext = useCallback(async () => {
         await flushCaption();
+        resetZoom();
         setLightboxIdx(idx => (idx == null ? idx : (idx + 1) % photos.length));
     }, [photos.length, flushCaption]);
 
@@ -171,39 +184,105 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                         </button>
                     )}
 
-                    {/* Photo + caption overlay — clean composition */}
+                    {/* Content stack: foto (zoomable) + caption box terpisah */}
                     <div
-                        className="relative inline-flex flex-col items-center max-w-[92vw] max-h-[92vh]"
+                        className="relative flex flex-col items-center gap-3 w-full max-w-5xl max-h-[92vh]"
                         onClick={e => e.stopPropagation()}
                     >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            key={photos[lightboxIdx].id}
-                            src={photos[lightboxIdx].url}
-                            alt={photos[lightboxIdx].caption || photos[lightboxIdx].filename}
-                            className="max-w-[92vw] max-h-[92vh] object-contain rounded-xl shadow-2xl ring-1 ring-white/10"
-                        />
+                        {/* Photo container — overflow hidden untuk clip pan */}
+                        <div
+                            className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black/40 flex items-center justify-center w-full select-none"
+                            style={{
+                                height: 'min(70vh, calc(92vh - 180px))',
+                                cursor: zoom > 1 ? (dragRef.current ? 'grabbing' : 'grab') : 'zoom-in',
+                                touchAction: zoom > 1 ? 'none' : 'auto',
+                            }}
+                            onPointerDown={(e) => {
+                                if (zoom <= 1) return;
+                                e.currentTarget.setPointerCapture(e.pointerId);
+                                dragRef.current = { startX: e.clientX, startY: e.clientY, baseX: pan.x, baseY: pan.y };
+                            }}
+                            onPointerMove={(e) => {
+                                if (!dragRef.current) return;
+                                setPan({
+                                    x: dragRef.current.baseX + (e.clientX - dragRef.current.startX),
+                                    y: dragRef.current.baseY + (e.clientY - dragRef.current.startY),
+                                });
+                            }}
+                            onPointerUp={(e) => {
+                                if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                                    e.currentTarget.releasePointerCapture(e.pointerId);
+                                }
+                                dragRef.current = null;
+                            }}
+                            onPointerCancel={() => { dragRef.current = null; }}
+                            onDoubleClick={toggleZoom}
+                        >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                key={photos[lightboxIdx].id}
+                                src={photos[lightboxIdx].url}
+                                alt={photos[lightboxIdx].caption || photos[lightboxIdx].filename}
+                                draggable={false}
+                                className="max-w-full max-h-full object-contain select-none pointer-events-none transition-transform duration-100"
+                                style={{
+                                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                                }}
+                            />
 
-                        {/* Caption box — overlay di pojok bawah foto, satu-satunya elemen di atas foto */}
-                        <div className="absolute left-3 right-3 bottom-3 bg-black/60 backdrop-blur-md rounded-lg shadow-xl border border-white/10 px-3 py-2">
-                            {onCaptionUpdate ? (
-                                <textarea
-                                    value={draftCaption}
-                                    onChange={e => setDraftCaption(e.target.value)}
-                                    onBlur={flushCaption}
-                                    placeholder="Tambahkan keterangan foto…"
-                                    rows={2}
-                                    className="w-full resize-none text-sm font-medium text-white placeholder-white/50 outline-none bg-transparent border-0 focus:ring-0"
-                                    aria-label="Keterangan foto"
-                                />
-                            ) : (
-                                <p className="text-sm text-white/90 italic">{photos[lightboxIdx].caption || 'Tidak ada keterangan'}</p>
-                            )}
-                            {savingCaption && (
-                                <div className="absolute top-1 right-2 text-[9px] text-white/70 flex items-center gap-1">
-                                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 11 }}>progress_activity</span>
-                                    Menyimpan…
+                            {/* Zoom indicator + reset (hanya muncul saat zoomed) */}
+                            {zoom !== 1 && (
+                                <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/55 backdrop-blur-sm rounded-lg px-2 py-1 shadow-lg">
+                                    <span className="text-[10px] font-bold text-white tabular-nums">{Math.round(zoom * 100)}%</span>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+                                        className="ml-1 w-6 h-6 rounded text-white/90 hover:bg-white/20 cursor-pointer flex items-center justify-center transition-colors"
+                                        title="Reset zoom"
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>restart_alt</span>
+                                    </button>
                                 </div>
+                            )}
+
+                            {/* Hint kecil di bottom — fade saat hover supaya tidak ganggu */}
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-sm text-[10px] text-white/80 font-semibold pointer-events-none opacity-70">
+                                {zoom === 1 ? 'Klik 2× untuk zoom in' : 'Geser untuk pan · Klik 2× untuk normal'}
+                            </div>
+                        </div>
+
+                        {/* Caption box — terpisah di bawah foto, panel putih biar text terlihat jelas */}
+                        <div className="w-full max-w-3xl bg-white rounded-xl shadow-xl px-4 py-3 relative">
+                            {onCaptionUpdate ? (
+                                <>
+                                    <div className="flex items-start gap-2">
+                                        <span className="material-symbols-outlined text-gray-400 mt-1" style={{ fontSize: 16 }}>edit_note</span>
+                                        <textarea
+                                            value={draftCaption}
+                                            onChange={e => setDraftCaption(e.target.value)}
+                                            onBlur={flushCaption}
+                                            placeholder="Tambahkan keterangan foto…"
+                                            rows={2}
+                                            className="flex-1 resize-none text-sm font-medium text-gray-900 placeholder-gray-400 outline-none bg-transparent border-0 focus:ring-0"
+                                            aria-label="Keterangan foto"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between mt-1 text-[10px]">
+                                        <span className="text-gray-400 truncate max-w-[60%]" title={photos[lightboxIdx].filename}>{photos[lightboxIdx].filename}</span>
+                                        {savingCaption ? (
+                                            <span className="flex items-center gap-1 font-bold text-blue-600">
+                                                <span className="material-symbols-outlined animate-spin" style={{ fontSize: 11 }}>progress_activity</span>
+                                                Menyimpan…
+                                            </span>
+                                        ) : (
+                                            <span className="font-bold text-emerald-600">Auto-save aktif</span>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-gray-800">{photos[lightboxIdx].caption || <span className="italic text-gray-400">Tidak ada keterangan</span>}</p>
+                                    <p className="mt-1 text-[10px] text-gray-400 truncate">{photos[lightboxIdx].filename}</p>
+                                </>
                             )}
                         </div>
                     </div>

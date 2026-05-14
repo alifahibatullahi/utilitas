@@ -21,6 +21,7 @@ interface CriticalTableViewProps {
     onEditCritical?: (c: CriticalWithMaintenance) => void;
     onDeleteCritical?: (id: string) => Promise<void>;
     onAddCritical?: () => void;
+    onOpenBoard?: () => void;
     onEditMaintenance?: (m: MaintenanceLogRow) => void;
     onDeleteMaintenance?: (id: string) => Promise<void>;
     onAddMaintenance?: (critical?: CriticalWithMaintenance) => void;
@@ -495,7 +496,7 @@ function TableBody({
 }
 
 // ─── Main Export ───
-export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus, addActivityNote, addWOActivityNote, fetchWOPhotos, onChangeMaintenanceStatus }: CriticalTableViewProps) {
+export default function CriticalTableView({ criticals, workOrders = [], onEditCritical, onDeleteCritical, onAddCritical, onOpenBoard, onEditMaintenance, onDeleteMaintenance, onAddMaintenance, onEditWorkOrder, onDeleteWorkOrder, onAddWorkOrder, onAddPekerjaanToWO, onRefresh, fetchPhotos, deletePhoto, operatorName, expandedId: expandedIdProp, onSetExpandedId, expandedWOId: expandedWOIdProp, onSetExpandedWOId, onChangeCriticalStatus, onChangeWorkOrderStatus, addActivityNote, addWOActivityNote, fetchWOPhotos, onChangeMaintenanceStatus }: CriticalTableViewProps) {
     const { items: equipmentItems } = useEquipmentItems();
     const { scopes: harScopes } = useHarScopes();
     
@@ -635,6 +636,15 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
 
             {/* ── Action Buttons ── */}
             <div className="flex items-center justify-center gap-3 py-2 flex-wrap">
+                {onOpenBoard && (
+                    <button
+                        onClick={onOpenBoard}
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-blue-600 border-2 border-blue-200 text-sm font-black hover:bg-blue-50 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>view_kanban</span>
+                        Buka Board
+                    </button>
+                )}
                 <button
                     onClick={onAddCritical}
                     className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-rose-50 text-rose-600 border-2 border-rose-200 text-sm font-black hover:bg-rose-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"

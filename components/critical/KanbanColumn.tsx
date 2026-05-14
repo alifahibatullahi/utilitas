@@ -16,6 +16,7 @@ interface KanbanColumnProps {
     photosByMaintId?: Record<string, PhotoRow[]>;
     onMoveInColumn?: (id: string, direction: 'up' | 'down') => void;
     statusTimeByMaintId?: Record<string, string>;
+    statusActorByMaintId?: Record<string, { ip?: string; ok?: string }>;
     /** Optional slot dirender di bawah column header (mis. search input). */
     headerExtra?: React.ReactNode;
     /** Handler batalkan assignment dari shift sekarang (akan ditampilkan untuk card di items kolom IP/OK). */
@@ -24,7 +25,7 @@ interface KanbanColumnProps {
     boardShift?: 'pagi' | 'sore' | 'malam';
 }
 
-function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
+function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, statusActors, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
     const [loading, setLoading] = useState(false);
     const handleKonfirmasi = async () => {
         if (!onKonfirmasi) return;
@@ -34,7 +35,7 @@ function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, boardDate,
     };
     return (
         <div className="relative opacity-80 hover:opacity-100 transition-opacity">
-            <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} boardDate={boardDate} boardShift={boardShift} />
+            <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} statusActors={statusActors} boardDate={boardDate} boardShift={boardShift} />
             <button
                 onClick={handleKonfirmasi}
                 disabled={loading}
@@ -48,11 +49,11 @@ function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, boardDate,
     );
 }
 
-function AssignedItemWrapper({ item, photos, statusTimeIso, onUnassign, boardDate, boardShift }: { item: MaintenanceWithCritical; photos?: PhotoRow[]; statusTimeIso?: string; onUnassign: (id: string) => Promise<{ error: string | null }>; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
+function AssignedItemWrapper({ item, photos, statusTimeIso, statusActors, onUnassign, boardDate, boardShift }: { item: MaintenanceWithCritical; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; onUnassign: (id: string) => Promise<{ error: string | null }>; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
     const [loading, setLoading] = useState(false);
     return (
         <div>
-            <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} boardDate={boardDate} boardShift={boardShift} />
+            <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} statusActors={statusActors} boardDate={boardDate} boardShift={boardShift} />
             <button
                 onClick={async () => {
                     if (!confirm('Batalkan "Lanjut Kerja" — maintenance ini akan dihapus dari laporan shift sekarang. Lanjut?')) return;
@@ -71,7 +72,7 @@ function AssignedItemWrapper({ item, photos, statusTimeIso, onUnassign, boardDat
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift }: KanbanColumnProps) {
+export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, statusActorByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
@@ -86,6 +87,7 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                     item={item}
                     photos={photosByMaintId?.[item.id]}
                     statusTimeIso={statusTimeByMaintId?.[item.id]}
+                    statusActors={statusActorByMaintId?.[item.id]}
                     onUnassign={onUnassignCurrentShift}
                     boardDate={boardDate}
                     boardShift={boardShift}
@@ -98,6 +100,7 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                     item={item}
                     photos={photosByMaintId?.[item.id]}
                     statusTimeIso={statusTimeByMaintId?.[item.id]}
+                    statusActors={statusActorByMaintId?.[item.id]}
                     boardDate={boardDate}
                     boardShift={boardShift}
                     index={flatIdx + 1}
@@ -185,7 +188,7 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                             </div>
                             <div className="opacity-60 flex flex-col gap-3">
                                 {prevItems.map(item => (
-                                    <PrevItemWrapper key={item.id} item={item} onKonfirmasi={onKonfirmasiShift} photos={photosByMaintId?.[item.id]} statusTimeIso={statusTimeByMaintId?.[item.id]} boardDate={boardDate} boardShift={boardShift} />
+                                    <PrevItemWrapper key={item.id} item={item} onKonfirmasi={onKonfirmasiShift} photos={photosByMaintId?.[item.id]} statusTimeIso={statusTimeByMaintId?.[item.id]} statusActors={statusActorByMaintId?.[item.id]} boardDate={boardDate} boardShift={boardShift} />
                                 ))}
                             </div>
                         </>

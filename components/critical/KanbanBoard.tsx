@@ -23,6 +23,8 @@ interface KanbanBoardProps {
     photosByMaintId?: Record<string, PhotoRow[]>;
     /** Per-maintenance ISO timestamp of when status reached current value (sourced from activity logs). */
     statusTimeByMaintId?: Record<string, string>;
+    /** Per-maintenance actor untuk status IP & OK (sourced from activity logs). */
+    statusActorByMaintId?: Record<string, { ip?: string; ok?: string }>;
     /** Date string (YYYY-MM-DD) — OPEN dengan date > boardDate akan dihide (future, belum relevan). */
     boardDate?: string;
     /** Shift yang dilihat sekarang — untuk deteksi status "dari shift sebelumnya" pada card. */
@@ -38,7 +40,7 @@ interface KanbanBoardProps {
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
     const [columnOrders, setColumnOrders] = useState<Record<string, string[]>>({});
 
@@ -188,6 +190,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         onKonfirmasiShift={onKonfirmasiShift}
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
+                        statusActorByMaintId={statusActorByMaintId}
                         onMoveInColumn={(id, dir) => handleMoveInColumn(col.status, id, dir)}
                         onUnassignCurrentShift={onUnassignCurrentShift}
                         boardDate={boardDate}

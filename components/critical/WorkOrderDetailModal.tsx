@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { capitalizeFirst } from '@/lib/utils';
 import type { WorkOrderWithPekerjaan, MaintenanceLogRow, PhotoRow } from '@/lib/supabase/types';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
@@ -338,7 +339,7 @@ export default function WorkOrderDetailModal({
                                                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>sticky_note_2</span>
                                                             </div>
                                                             <div className="flex-1 min-w-0">
-                                                                <span className="text-[15px] font-black text-slate-800 break-words">{m.uraian}</span>
+                                                                <span className="text-[15px] font-black text-slate-800 break-words">{capitalizeFirst(m.uraian)}</span>
                                                                 {m.reported_by && (
                                                                     <span className="text-[10px] text-slate-500 block font-black tracking-wide uppercase mt-0.5">— {m.reported_by}</span>
                                                                 )}
@@ -372,7 +373,7 @@ export default function WorkOrderDetailModal({
                                                                     m.scope === 'instrumen' ? 'text-purple-600 bg-purple-50 border-purple-200' :
                                                                     'text-teal-600 bg-teal-50 border-teal-200'
                                                                 } px-2 py-0.5 rounded shadow-sm border`}>{m.scope}</span>
-                                                                <span className={`text-lg font-black flex-1 ${isOk ? 'text-slate-400' : 'text-slate-800'}`}>{m.uraian}</span>
+                                                                <span className={`text-lg font-black flex-1 ${isOk ? 'text-slate-400' : 'text-slate-800'}`}>{capitalizeFirst(m.uraian)}</span>
                                                                 
                                                                 {/* Status Dropdown */}
                                                                 <div className="relative flex-shrink-0">

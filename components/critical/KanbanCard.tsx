@@ -27,6 +27,8 @@ interface KanbanCardProps {
     /** Konteks shift yang sedang dilihat — untuk deteksi "dari shift sebelumnya". */
     boardDate?: string;
     boardShift?: 'pagi' | 'sore' | 'malam';
+    /** Operator yang memindahkan status ke IP / OK (sourced from activity log). */
+    statusActors?: { ip?: string; ok?: string };
 }
 
 function formatStatusTime(iso?: string) {
@@ -63,7 +65,7 @@ function shortDateLabel(date: string) {
 }
 
 
-export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown, statusTimeIso, boardDate, boardShift }: KanbanCardProps) {
+export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown, statusTimeIso, boardDate, boardShift, statusActors }: KanbanCardProps) {
     const {
         attributes,
         listeners,
@@ -119,11 +121,11 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             )}
 
             {/* Uraian — kapital pada huruf pertama, langsung tempel ke critical desc */}
-            <p className="text-sm text-black font-bold mt-1 mb-2 line-clamp-3 leading-snug">
+            <p className="text-base text-black font-bold mt-1 mb-2 line-clamp-3 leading-snug">
                 {capitalizeFirst(item.uraian)}
             </p>
 
-            {/* Badges row: scope + tipe */}
+            {/* Badges row: scope + tipe + actor IP/OK */}
             <div className="flex items-center gap-1 flex-wrap mb-1">
                 <ScopeBadge scope={item.scope} light className="!text-[9px] !px-1.5 !py-0.5 uppercase font-bold tracking-wider" />
                 {item.tipe === 'preventif' && (
@@ -131,6 +133,18 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
                 )}
                 {item.tipe === 'modifikasi' && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-100 text-violet-800">Modifikasi</span>
+                )}
+                {statusActors?.ip && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300" title={`Status IP oleh: ${statusActors.ip}`}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 10 }}>person</span>
+                        IP: <span className="font-extrabold">{statusActors.ip}</span>
+                    </span>
+                )}
+                {statusActors?.ok && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300" title={`Status OK oleh: ${statusActors.ok}`}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 10 }}>person</span>
+                        OK: <span className="font-extrabold">{statusActors.ok}</span>
+                    </span>
                 )}
             </div>
 

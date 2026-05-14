@@ -18,6 +18,7 @@ interface KanbanBoardModalProps {
     onKonfirmasiShift: (id: string) => Promise<{ error: string | null }>;
     photosByMaintId?: Record<string, PhotoRow[]>;
     statusTimeByMaintId?: Record<string, string>;
+    statusActorByMaintId?: Record<string, { ip?: string; ok?: string }>;
     /** Auto-assign ke shift report saat status berubah / user klik "Lanjut Kerja". */
     onAssignToShift?: (maintenanceIds: string[], date: string, shift: 'pagi' | 'sore' | 'malam') => Promise<{ error: string | null }>;
     /** Hapus assignment dari shift report (kalau user salah klik Lanjut Kerja). */
@@ -30,7 +31,7 @@ export default function KanbanBoardModal({
     maintenances,
     boardDate, boardShift, onChangeBoardDate, onChangeBoardShift,
     onMoveStatus, onKonfirmasiShift,
-    photosByMaintId, statusTimeByMaintId,
+    photosByMaintId, statusTimeByMaintId, statusActorByMaintId,
     onAssignToShift, onUnassignFromShift,
 }: KanbanBoardModalProps) {
     // Wrap onMoveStatus: setelah status change, auto-assign ke shift yang sedang dilihat
@@ -143,6 +144,7 @@ export default function KanbanBoardModal({
                         onKonfirmasiShift={handleKonfirmasi}
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
+                        statusActorByMaintId={statusActorByMaintId}
                         assignedToCurrentShiftIds={assignedIds}
                         onUnassignCurrentShift={onUnassignFromShift ? handleUnassign : undefined}
                     />

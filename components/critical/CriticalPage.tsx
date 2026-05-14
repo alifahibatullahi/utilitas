@@ -82,6 +82,28 @@ export default function CriticalPage() {
     // Sumber: activity logs (critical_activity_logs + work_order_activity_logs).
     // Untuk OPEN: pakai waktu maintenance_added (fallback ke created_at maintenance).
     // Untuk IP/OK: cari activity log terbaru dengan metadata.maintenance_id == m.id dan metadata.new_status == m.status.
+    /** Map: maintenance_id → { ip?: actor_name, ok?: actor_name } — siapa yang memindahkan ke status IP/OK. */
+    const statusActorByMaintId = useMemo(() => {
+        const map: Record<string, { ip?: string; ok?: string }> = {};
+        const allLogs = [
+            ...cm.criticals.flatMap(c => c.critical_activity_logs ?? []),
+            ...cm.workOrders.flatMap(w => w.work_order_activity_logs ?? []),
+        ];
+        // Walk semua status_changed events, simpan latest actor for each (maintId, status)
+        for (const l of allLogs) {
+            const meta = l.metadata as Record<string, unknown> | null | undefined;
+            if (l.action_type !== 'maintenance_updated') continue;
+            const mid = meta?.maintenance_id as string | undefined;
+            const newS = meta?.new_status as string | undefined;
+            const actor = l.actor;
+            if (!mid || !actor) continue;
+            if (!map[mid]) map[mid] = {};
+            if (newS === 'IP') map[mid].ip = actor;
+            if (newS === 'OK') map[mid].ok = actor;
+        }
+        return map;
+    }, [cm.criticals, cm.workOrders]);
+
     const statusTimeByMaintId = useMemo(() => {
         const map: Record<string, string> = {};
         // Walk all activity logs from criticals + workOrders
@@ -444,6 +466,7 @@ export default function CriticalPage() {
                 actor={operator?.name}
                 photosByMaintId={photosByMaintId}
                 statusTimeByMaintId={statusTimeByMaintId}
+                statusActorByMaintId={statusActorByMaintId}
             />
 
             {/* Modals — create */}

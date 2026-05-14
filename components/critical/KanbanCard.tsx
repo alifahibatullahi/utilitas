@@ -23,6 +23,9 @@ interface KanbanCardProps {
     onMoveDown?: () => void;
     /** ISO timestamp of when current status was reached (sourced from activity log). */
     statusTimeIso?: string;
+    /** Konteks shift yang sedang dilihat — untuk deteksi "dari shift sebelumnya". */
+    boardDate?: string;
+    boardShift?: 'pagi' | 'sore' | 'malam';
 }
 
 function formatStatusTime(iso?: string) {
@@ -31,7 +34,34 @@ function formatStatusTime(iso?: string) {
     return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown, statusTimeIso }: KanbanCardProps) {
+/** Derive (date, shift) WIB dari ISO timestamp. */
+function deriveShiftFromIso(iso: string): { date: string; shift: 'pagi' | 'sore' | 'malam' } {
+    const d = new Date(iso);
+    // Convert to WIB (+7 offset). Pakai toLocaleString trick ke Asia/Jakarta.
+    const wib = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const h = wib.getHours();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmtDate = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+    if (h >= 7 && h < 15) return { shift: 'pagi', date: fmtDate(wib) };
+    if (h >= 15 && h < 23) return { shift: 'sore', date: fmtDate(wib) };
+    if (h < 7) {
+        const prev = new Date(wib); prev.setDate(prev.getDate() - 1);
+        return { shift: 'malam', date: fmtDate(prev) };
+    }
+    return { shift: 'malam', date: fmtDate(wib) };
+}
+
+function shiftLabel(s: 'pagi' | 'sore' | 'malam') {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function shortDateLabel(date: string) {
+    const [y, m, d] = date.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+}
+
+export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown, statusTimeIso, boardDate, boardShift }: KanbanCardProps) {
     const {
         attributes,
         listeners,
@@ -46,6 +76,13 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
         transition,
         opacity: isDragging ? 0.4 : 1,
     };
+
+    // Detect kalau status maintenance "berasal" dari shift sebelumnya (statusTime tidak di shift sekarang)
+    const originShift = statusTimeIso ? deriveShiftFromIso(statusTimeIso) : null;
+    const isFromPreviousShift = !!(
+        originShift && boardDate && boardShift &&
+        (originShift.date !== boardDate || originShift.shift !== boardShift)
+    );
 
     const scopeAccent: Record<string, string> = {
         mekanik: 'border-l-blue-500',
@@ -81,6 +118,13 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
                     {statusTimeIso && (
                         <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200 whitespace-nowrap" title={`Status ${item.status} sejak ${new Date(statusTimeIso).toLocaleString('id-ID')}`}>
                             {formatStatusTime(statusTimeIso)}
+                        </span>
+                    )}
+                    {isFromPreviousShift && originShift && (
+                        <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200 whitespace-nowrap flex items-center gap-0.5"
+                            title={`Status ${item.status} pertama kali pada shift ${shiftLabel(originShift.shift)} ${shortDateLabel(originShift.date)}`}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 9 }}>history</span>
+                            dari {shiftLabel(originShift.shift)} {shortDateLabel(originShift.date)}
                         </span>
                     )}
                 </div>

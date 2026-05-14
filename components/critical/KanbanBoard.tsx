@@ -25,6 +25,8 @@ interface KanbanBoardProps {
     statusTimeByMaintId?: Record<string, string>;
     /** Date string (YYYY-MM-DD) — OPEN dengan date > boardDate akan dihide (future, belum relevan). */
     boardDate?: string;
+    /** Shift yang dilihat sekarang — untuk deteksi status "dari shift sebelumnya" pada card. */
+    boardShift?: 'pagi' | 'sore' | 'malam';
     /** Search query, hanya difilter pada kolom OPEN. */
     openSearch?: string;
     onOpenSearchChange?: (q: string) => void;
@@ -36,7 +38,7 @@ interface KanbanBoardProps {
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, boardDate, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
     const [columnOrders, setColumnOrders] = useState<Record<string, string[]>>({});
 
@@ -175,6 +177,8 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         statusTimeByMaintId={statusTimeByMaintId}
                         onMoveInColumn={(id, dir) => handleMoveInColumn(col.status, id, dir)}
                         onUnassignCurrentShift={onUnassignCurrentShift}
+                        boardDate={boardDate}
+                        boardShift={boardShift}
                         headerExtra={col.status === 'OPEN' && onOpenSearchChange ? (
                             <div className="px-3 pt-2">
                                 <div className="relative">

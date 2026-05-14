@@ -106,6 +106,22 @@ export default function CriticalDetailModal({
     const [isSubmittingNote, setIsSubmittingNote] = useState(false);
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
 
+    // Dirty tracking — set true tiap kali user bikin perubahan, di-clear oleh tombol Simpan / refetch
+    const [dirty, setDirty] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [savedFlash, setSavedFlash] = useState(false);
+    const markDirty = () => setDirty(true);
+
+    async function handleSaveAll() {
+        setSaving(true);
+        // Semua action sudah auto-save ke DB; Save di sini = refetch supaya tampilan sinkron + clear dirty
+        if (onRefresh) await onRefresh();
+        setDirty(false);
+        setSaving(false);
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 1500);
+    }
+
     function handleEditNote(m: MaintenanceLogRow) {
         setEditingNoteId(m.id);
         const text = m.uraian.startsWith('Note: ') ? m.uraian.substring(6) : m.uraian.startsWith('Note:') ? m.uraian.substring(5) : m.uraian;
@@ -184,6 +200,8 @@ export default function CriticalDetailModal({
             if (result.error) {
                 alert('Gagal mengubah status');
                 setMLogs(applySavedOrder(critical.maintenance_logs));
+            } else {
+                markDirty();
             }
         } else {
             // Fallback: direct Supabase update (no activity log)
@@ -221,6 +239,7 @@ export default function CriticalDetailModal({
 
     function handlePhotoUploaded(photo: PhotoRow) {
         setPhotos(prev => [...prev, photo]);
+        markDirty();
     }
 
     async function handlePhotoDeleted(photoId: string) {
@@ -228,6 +247,7 @@ export default function CriticalDetailModal({
         const result = await deletePhoto(photoId);
         if (!result.error) {
             setPhotos(prev => prev.filter(p => p.id !== photoId));
+            markDirty();
         }
     }
 
@@ -241,6 +261,7 @@ export default function CriticalDetailModal({
                 body: JSON.stringify({ caption }),
             });
             if (!res.ok) throw new Error('failed');
+            markDirty();
         } catch {
             // rollback by refetch (best effort)
             if (fetchPhotos) {
@@ -271,9 +292,14 @@ export default function CriticalDetailModal({
         setDraggedIdx(null);
         // Save order immediately after drag
         saveOrder(mLogs);
+        markDirty();
     }
 
     function handleClose() {
+        if (dirty) {
+            const ok = confirm('Ada perubahan terbaru di sesi ini. Tutup tanpa Simpan ulang?\n\n(Catatan: perubahan kamu sudah otomatis tersimpan ke database. Tombol Simpan hanya untuk refresh tampilan.)');
+            if (!ok) return;
+        }
         saveOrder(mLogs);
         onClose();
     }
@@ -309,13 +335,44 @@ export default function CriticalDetailModal({
                             ))}
                         </div>
                     </div>
-                    <button
-                        onClick={handleClose}
-                        className="group flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-rose-500 hover:border-rose-400 hover:scale-110 hover:shadow-rose-500/30 text-slate-500 hover:text-white transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
-                        title="Tutup"
-                    >
-                        <span className="material-symbols-outlined transition-transform group-hover:rotate-90" style={{ fontSize: 24 }}>close</span>
-                    </button>
+                    <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                        <button
+                            onClick={handleSaveAll}
+                            disabled={saving}
+                            className={`px-4 h-10 flex items-center gap-1.5 rounded-xl text-sm font-bold border transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 ${
+                                savedFlash
+                                    ? 'bg-emerald-500 border-emerald-400 text-white'
+                                    : dirty
+                                    ? 'bg-blue-600 border-blue-500 text-white hover:bg-blue-500 hover:shadow-md hover:shadow-blue-500/30'
+                                    : 'bg-white border-[#D8E2ED] text-slate-500 hover:bg-slate-100'
+                            }`}
+                            title={dirty ? 'Refresh tampilan & tandai sudah disimpan' : 'Tidak ada perubahan'}
+                        >
+                            {saving ? (
+                                <>
+                                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 18 }}>progress_activity</span>
+                                    Menyimpan…
+                                </>
+                            ) : savedFlash ? (
+                                <>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
+                                    Tersimpan
+                                </>
+                            ) : (
+                                <>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>save</span>
+                                    {dirty ? 'Simpan' : 'Tersimpan'}
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={handleClose}
+                            className="group w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-rose-500 hover:border-rose-400 hover:scale-110 hover:shadow-rose-500/30 text-slate-500 hover:text-white transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
+                            title={dirty ? 'Tutup (ada perubahan terbaru)' : 'Tutup'}
+                        >
+                            <span className="material-symbols-outlined transition-transform group-hover:rotate-90" style={{ fontSize: 24 }}>close</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Body container -> 3 cols / 2 rows */}
@@ -544,8 +601,10 @@ export default function CriticalDetailModal({
                                     <ActivityTimelineImproved
                                         logs={critical.critical_activity_logs ?? []}
                                         onAddNote={async (note, actor) => {
-                                            if (addActivityNote) return addActivityNote(critical.id, note, actor);
-                                            return { error: 'Handler tidak tersedia' };
+                                            if (!addActivityNote) return { error: 'Handler tidak tersedia' };
+                                            const r = await addActivityNote(critical.id, note, actor);
+                                            if (!r.error) markDirty();
+                                            return r;
                                         }}
                                         operatorName={operatorName}
                                     />

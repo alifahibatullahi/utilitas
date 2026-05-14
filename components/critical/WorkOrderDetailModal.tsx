@@ -63,6 +63,29 @@ export default function WorkOrderDetailModal({
     const [isSubmittingNote, setIsSubmittingNote] = useState(false);
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
 
+    // Dirty tracking — set true tiap kali user bikin perubahan, di-clear oleh tombol Simpan
+    const [dirty, setDirty] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [savedFlash, setSavedFlash] = useState(false);
+    const markDirty = () => setDirty(true);
+
+    async function handleSaveAll() {
+        setSaving(true);
+        if (onRefresh) await onRefresh();
+        setDirty(false);
+        setSaving(false);
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 1500);
+    }
+
+    function handleClose() {
+        if (dirty) {
+            const ok = confirm('Ada perubahan terbaru di sesi ini. Tutup tanpa Simpan ulang?\n\n(Catatan: perubahan kamu sudah otomatis tersimpan ke database. Tombol Simpan hanya untuk refresh tampilan.)');
+            if (!ok) return;
+        }
+        onClose();
+    }
+
     useEffect(() => {
         setPekerjaan([...workOrder.maintenance_logs].sort(
             (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -98,6 +121,8 @@ export default function WorkOrderDetailModal({
                 setPekerjaan([...workOrder.maintenance_logs].sort(
                     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
                 ));
+            } else {
+                markDirty();
             }
         } else {
             // Fallback: direct Supabase update (no activity log)
@@ -122,11 +147,11 @@ export default function WorkOrderDetailModal({
         if (confirm(message)) onDeletePekerjaan?.(m.id);
     }
 
-    function handlePhotoUploaded(p: PhotoRow) { setPhotos(prev => [p, ...prev]); }
+    function handlePhotoUploaded(p: PhotoRow) { setPhotos(prev => [p, ...prev]); markDirty(); }
     async function handlePhotoDeleted(id: string) {
         if (!deletePhoto) return;
         const res = await deletePhoto(id);
-        if (!res.error) setPhotos(prev => prev.filter(p => p.id !== id));
+        if (!res.error) { setPhotos(prev => prev.filter(p => p.id !== id)); markDirty(); }
     }
     async function handleCaptionUpdated(id: string, caption: string) {
         setPhotos(prev => prev.map(p => p.id === id ? { ...p, caption } : p));
@@ -137,6 +162,7 @@ export default function WorkOrderDetailModal({
                 body: JSON.stringify({ caption }),
             });
             if (!res.ok) throw new Error('failed');
+            markDirty();
         } catch {
             if (fetchPhotos) {
                 const fresh = await fetchPhotos(workOrder.id);
@@ -185,7 +211,7 @@ export default function WorkOrderDetailModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={handleClose}>
             <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" />
             <div
                 className="relative bg-white w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
@@ -209,11 +235,42 @@ export default function WorkOrderDetailModal({
                             <ScopeBadge scope={workOrder.scope} solid className="px-6 py-2 text-xl font-black shadow-sm" />
                         </div>
                     </div>
-                    <button onClick={onClose}
-                        className="group flex-shrink-0 ml-4 w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-rose-500 hover:border-rose-400 hover:scale-110 hover:shadow-rose-500/30 text-slate-500 hover:text-white transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
-                        title="Tutup">
-                        <span className="material-symbols-outlined transition-transform group-hover:rotate-90" style={{ fontSize: 24 }}>close</span>
-                    </button>
+                    <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                        <button
+                            onClick={handleSaveAll}
+                            disabled={saving}
+                            className={`px-4 h-10 flex items-center gap-1.5 rounded-xl text-sm font-bold border transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 ${
+                                savedFlash
+                                    ? 'bg-emerald-500 border-emerald-400 text-white'
+                                    : dirty
+                                    ? `${accentBg} border-transparent text-white ${accentHover} hover:shadow-md ${accentShadow}`
+                                    : 'bg-white border-[#D8E2ED] text-slate-500 hover:bg-slate-100'
+                            }`}
+                            title={dirty ? 'Refresh tampilan & tandai sudah disimpan' : 'Tidak ada perubahan'}
+                        >
+                            {saving ? (
+                                <>
+                                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 18 }}>progress_activity</span>
+                                    Menyimpan…
+                                </>
+                            ) : savedFlash ? (
+                                <>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
+                                    Tersimpan
+                                </>
+                            ) : (
+                                <>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>save</span>
+                                    {dirty ? 'Simpan' : 'Tersimpan'}
+                                </>
+                            )}
+                        </button>
+                        <button onClick={handleClose}
+                            className="group w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-rose-500 hover:border-rose-400 hover:scale-110 hover:shadow-rose-500/30 text-slate-500 hover:text-white transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
+                            title={dirty ? 'Tutup (ada perubahan terbaru)' : 'Tutup'}>
+                            <span className="material-symbols-outlined transition-transform group-hover:rotate-90" style={{ fontSize: 24 }}>close</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Body — 3 kolom seperti critical */}
@@ -401,8 +458,10 @@ export default function WorkOrderDetailModal({
                                         <ActivityTimelineImproved
                                             logs={workOrder.work_order_activity_logs ?? []}
                                             onAddNote={async (note, actor) => {
-                                                if (addActivityNote) return addActivityNote(workOrder.id, note, actor);
-                                                return { error: 'Handler tidak tersedia' };
+                                                if (!addActivityNote) return { error: 'Handler tidak tersedia' };
+                                                const r = await addActivityNote(workOrder.id, note, actor);
+                                                if (!r.error) markDirty();
+                                                return r;
                                             }}
                                             operatorName={operatorName}
                                         />

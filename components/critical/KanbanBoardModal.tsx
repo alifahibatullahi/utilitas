@@ -136,6 +136,7 @@ export default function KanbanBoardModal({
                         shiftWindow={shiftWindow}
                         // Saat user search OPEN, jangan hide future-dated OPEN — user explicitly mencari
                         boardDate={search.trim() ? undefined : boardDate}
+                        boardShift={boardShift}
                         openSearch={search}
                         onOpenSearchChange={setSearch}
                         onMoveStatus={handleMoveStatus}

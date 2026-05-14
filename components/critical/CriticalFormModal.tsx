@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
+import { capitalizeFirst } from '@/lib/utils';
 import ScopeCombobox from './ScopeCombobox';
 import type { HarScope, ForemanType, CriticalEquipmentRow } from '@/lib/supabase/types';
 import ItemCombobox from './ItemCombobox';
@@ -49,7 +50,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
             shift_report_id: initial?.shift_report_id ?? null,
             date: initial?.date ?? today,
             item: item.trim(),
-            deskripsi: deskripsi.trim(),
+            deskripsi: capitalizeFirst(deskripsi.trim()),
             scope: scope as HarScope,
             foreman: foreman as ForemanType,
             status: initial?.status ?? 'OPEN',

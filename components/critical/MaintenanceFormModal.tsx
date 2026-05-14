@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
+import { capitalizeFirst } from '@/lib/utils';
 import type { HarScope, ForemanType, MaintenanceLogRow, CriticalWithMaintenance, WorkOrderWithPekerjaan, MaintenanceType, WorkOrderRow } from '@/lib/supabase/types';
 import ItemCombobox from './ItemCombobox';
 import OperatorCombobox from './OperatorCombobox';
@@ -100,7 +101,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
             const woData: WorkOrderFormData = {
                 date: initial?.date ?? today,
                 item: item.trim(),
-                deskripsi: uraian.trim(),
+                deskripsi: capitalizeFirst(uraian.trim()),
                 tipe: tipeSelected as 'preventif' | 'modifikasi',
                 scope,
                 foreman,
@@ -108,7 +109,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                 notif: notif.trim() || null,
                 reported_by: reportedBy.trim() || null,
             };
-            const res = await onSubmitPreventifModifikasi(woData, uraian.trim());
+            const res = await onSubmitPreventifModifikasi(woData, capitalizeFirst(uraian.trim()));
             setSaving(false);
             if (res.error) { setErr(res.error); return; }
             onClose();
@@ -128,7 +129,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
             work_order_id: workOrderContext?.id ?? initial?.work_order_id ?? null,
             date: initial?.date ?? today,
             item: item.trim(),
-            uraian: uraian.trim(),
+            uraian: capitalizeFirst(uraian.trim()),
             scope,
             foreman,
             tipe,

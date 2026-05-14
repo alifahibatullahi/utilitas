@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { HAR_SCOPES, FOREMAN_OPTIONS } from '@/lib/constants';
+import { capitalizeFirst } from '@/lib/utils';
 import type { HarScope, ForemanType, WorkOrderRow, WorkOrderType } from '@/lib/supabase/types';
 import ItemCombobox from './ItemCombobox';
 import OperatorCombobox from './OperatorCombobox';
@@ -52,7 +53,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
             tipe,
             date: initial?.date ?? today,
             item: item.trim(),
-            deskripsi: deskripsi.trim(),
+            deskripsi: capitalizeFirst(deskripsi.trim()),
             scope: scope as HarScope,
             foreman: foreman as ForemanType,
             status: initial?.status ?? 'OPEN',

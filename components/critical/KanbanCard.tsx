@@ -4,6 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { MaintenanceWithCritical, PhotoRow } from '@/lib/supabase/types';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
+import { capitalizeFirst } from '@/lib/utils';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
 import PhotoGallery from './PhotoGallery';
@@ -61,10 +62,6 @@ function shortDateLabel(date: string) {
     return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 }
 
-function capitalizeFirst(s: string | null | undefined): string {
-    if (!s) return '';
-    return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown, statusTimeIso, boardDate, boardShift }: KanbanCardProps) {
     const {
@@ -122,7 +119,7 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             )}
 
             {/* Uraian — kapital pada huruf pertama, langsung tempel ke critical desc */}
-            <p className="text-[11px] text-black font-semibold mt-0.5 mb-1.5 line-clamp-2 leading-snug">
+            <p className="text-sm text-black font-bold mt-1 mb-2 line-clamp-3 leading-snug">
                 {capitalizeFirst(item.uraian)}
             </p>
 

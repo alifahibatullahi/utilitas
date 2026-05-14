@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope, PhotoRow, MaintenanceType, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
 import { FOREMAN_OPTIONS } from '@/lib/constants';
+import { capitalizeFirst } from '@/lib/utils';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
 import CriticalDetailModal from './CriticalDetailModal';
@@ -181,10 +182,10 @@ function CriticalRow({
                 {/* Tanggal */}
                 <td className="px-5 py-5 whitespace-nowrap text-lg font-bold text-black">{formatDate(critical.date)}</td>
                 {/* Item */}
-                <td className="px-5 py-5 text-lg font-black text-black whitespace-nowrap">{displayItem}</td>
+                <td className="px-5 py-5 text-lg font-medium text-black whitespace-nowrap">{displayItem}</td>
                 {/* Deskripsi */}
-                <td className="px-5 py-5 text-lg font-medium text-black max-w-3xl leading-relaxed">
-                    <span className="line-clamp-3 whitespace-pre-wrap">{critical.deskripsi}</span>
+                <td className="px-5 py-5 text-lg font-bold text-black max-w-3xl leading-relaxed">
+                    <span className="line-clamp-3 whitespace-pre-wrap">{capitalizeFirst(critical.deskripsi)}</span>
                 </td>
                 {/* Scope */}
                 <td className="px-5 py-5">
@@ -312,10 +313,10 @@ function WorkOrderRow({
             {/* Tanggal */}
             <td className="px-5 py-4 whitespace-nowrap text-base font-bold text-black">{formatDate(wo.date)}</td>
             {/* Item */}
-            <td className="px-5 py-4 text-base font-black text-black whitespace-nowrap">{displayItem}</td>
+            <td className="px-5 py-4 text-base font-medium text-black whitespace-nowrap">{displayItem}</td>
             {/* Deskripsi */}
-            <td className="px-5 py-4 text-base font-medium text-black max-w-3xl leading-relaxed">
-                <span className="line-clamp-3 whitespace-pre-wrap">{wo.deskripsi}</span>
+            <td className="px-5 py-4 text-base font-bold text-black max-w-3xl leading-relaxed">
+                <span className="line-clamp-3 whitespace-pre-wrap">{capitalizeFirst(wo.deskripsi)}</span>
             </td>
             {/* Scope */}
             <td className="px-5 py-4">

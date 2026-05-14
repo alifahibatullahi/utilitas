@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import type { MaintenanceWithCritical, WorkOrderWithPekerjaan, MaintenanceStatus, MaintenanceType } from '@/lib/supabase/types';
+import { capitalizeFirst } from '@/lib/utils';
 import ScopeBadge from './ScopeBadge';
 import ClickableStatusDropdown from './ClickableStatusDropdown';
 
@@ -169,8 +170,8 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                 return (
                                     <tr key={m.id} className="border-b border-gray-100 transition-colors hover:bg-blue-50 bg-white">
                                         <td className="px-4 py-4 whitespace-nowrap text-lg font-bold text-black">{new Date(m.date + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                                        <td className="px-4 py-4 text-lg font-black text-black whitespace-nowrap">{m.item}</td>
-                                        <td className="px-4 py-4 text-lg font-medium text-black"><span className="line-clamp-3 whitespace-pre-wrap">{m.uraian}</span></td>
+                                        <td className="px-4 py-4 text-lg font-medium text-black whitespace-nowrap">{m.item}</td>
+                                        <td className="px-4 py-4 text-lg font-bold text-black"><span className="line-clamp-3 whitespace-pre-wrap">{capitalizeFirst(m.uraian)}</span></td>
                                         <td className="px-4 py-4">
                                             <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${TIPE_BADGE[m.tipe]}`}>
                                                 {m.tipe === 'corrective' ? 'Critical' : TIPE_LABEL[m.tipe]}

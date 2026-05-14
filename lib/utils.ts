@@ -38,6 +38,14 @@ export function getAlertConfig(level: number) {
     return ALERT_COLORS[status];
 }
 
+// Capitalize first letter (untuk display deskripsi/uraian yang konsisten)
+export function capitalizeFirst(s: string | null | undefined): string {
+    if (!s) return '';
+    const trimmed = s.trimStart();
+    if (!trimmed) return '';
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
 // Format relative time (e.g., "2 menit lalu")
 export function formatRelativeTime(date: Date | string): string {
     const now = nowWIB();

@@ -11,12 +11,14 @@ interface KanbanColumnProps {
     status: CriticalStatus;
     items: MaintenanceWithCritical[];
     prevItems?: MaintenanceWithCritical[];
+    hiddenFuture?: number;
     onKonfirmasiShift?: (id: string) => Promise<{ error: string | null }>;
     photosByMaintId?: Record<string, PhotoRow[]>;
     onMoveInColumn?: (id: string, direction: 'up' | 'down') => void;
+    statusTimeByMaintId?: Record<string, string>;
 }
 
-function PrevItemWrapper({ item, onKonfirmasi, photos }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[] }) {
+function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string }) {
     const [loading, setLoading] = useState(false);
     const handleKonfirmasi = async () => {
         if (!onKonfirmasi) return;
@@ -26,7 +28,7 @@ function PrevItemWrapper({ item, onKonfirmasi, photos }: { item: MaintenanceWith
     };
     return (
         <div className="relative">
-            <KanbanCard item={item} photos={photos} />
+            <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} />
             <button
                 onClick={handleKonfirmasi}
                 disabled={loading}
@@ -39,7 +41,7 @@ function PrevItemWrapper({ item, onKonfirmasi, photos }: { item: MaintenanceWith
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], onKonfirmasiShift, photosByMaintId, onMoveInColumn }: KanbanColumnProps) {
+export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
@@ -78,6 +80,7 @@ export default function KanbanColumn({ status, items, prevItems = [], onKonfirma
                             key={item.id}
                             item={item}
                             photos={photosByMaintId?.[item.id]}
+                            statusTimeIso={statusTimeByMaintId?.[item.id]}
                             index={flatIdx + 1}
                             isFirst={flatIdx === 0}
                             isLast={flatIdx === list.length - 1}
@@ -138,7 +141,7 @@ export default function KanbanColumn({ status, items, prevItems = [], onKonfirma
                             </div>
                             <div className="opacity-60 flex flex-col gap-3">
                                 {prevItems.map(item => (
-                                    <PrevItemWrapper key={item.id} item={item} onKonfirmasi={onKonfirmasiShift} photos={photosByMaintId?.[item.id]} />
+                                    <PrevItemWrapper key={item.id} item={item} onKonfirmasi={onKonfirmasiShift} photos={photosByMaintId?.[item.id]} statusTimeIso={statusTimeByMaintId?.[item.id]} />
                                 ))}
                             </div>
                         </>
@@ -149,6 +152,13 @@ export default function KanbanColumn({ status, items, prevItems = [], onKonfirma
                     <div className={`flex flex-col items-center justify-center py-8 ${config.textColor} opacity-50`}>
                         <span className="material-symbols-outlined text-3xl">inbox</span>
                         <span className="text-xs mt-1">Kosong</span>
+                    </div>
+                )}
+
+                {hiddenFuture > 0 && (
+                    <div className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-slate-100 border border-dashed border-slate-300 text-[11px] font-bold text-slate-500" title="Maintenance dengan tanggal di masa depan tidak ditampilkan untuk fokus pada backlog & hari ini">
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
+                        +{hiddenFuture} dijadwalkan untuk tanggal mendatang
                     </div>
                 )}
             </div>

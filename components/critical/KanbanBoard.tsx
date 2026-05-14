@@ -21,11 +21,15 @@ interface KanbanBoardProps {
     onMoveStatus: (id: string, newStatus: MaintenanceStatus) => Promise<{ error: string | null }>;
     onKonfirmasiShift: (id: string) => Promise<{ error: string | null }>;
     photosByMaintId?: Record<string, PhotoRow[]>;
+    /** Per-maintenance ISO timestamp of when status reached current value (sourced from activity logs). */
+    statusTimeByMaintId?: Record<string, string>;
+    /** Date string (YYYY-MM-DD) — OPEN dengan date > boardDate akan dihide (future, belum relevan). */
+    boardDate?: string;
 }
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, boardDate }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
     const [columnOrders, setColumnOrders] = useState<Record<string, string[]>>({});
 
@@ -90,9 +94,13 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
         await onMoveStatus(active.id as string, targetStatus);
     }, [maintenances, onMoveStatus]);
 
-    function inWindow(updatedAt: string) {
+    function timeFor(m: MaintenanceWithCritical) {
+        return statusTimeByMaintId?.[m.id] ?? m.updated_at;
+    }
+
+    function inWindow(iso: string) {
         if (!shiftWindow) return true;
-        const t = new Date(updatedAt).getTime();
+        const t = new Date(iso).getTime();
         return t >= shiftWindow.start.getTime() && t <= shiftWindow.end.getTime();
     }
 
@@ -107,16 +115,20 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
         ];
 
         if (status === 'OK') {
-            return { status, items: sortedAll.filter(m => inWindow(m.updated_at)), prevItems: [] };
+            return { status, items: sortedAll.filter(m => inWindow(timeFor(m))), prevItems: [], hiddenFuture: 0 };
         }
         if (status === 'IP') {
             return {
                 status,
-                items: sortedAll.filter(m => inWindow(m.updated_at)),
-                prevItems: sortedAll.filter(m => !inWindow(m.updated_at)),
+                items: sortedAll.filter(m => inWindow(timeFor(m))),
+                prevItems: sortedAll.filter(m => !inWindow(timeFor(m))),
+                hiddenFuture: 0,
             };
         }
-        return { status, items: sortedAll, prevItems: [] };
+        // OPEN: filter out future-dated (m.date > boardDate) untuk reduce noise
+        const visibleOpen = boardDate ? sortedAll.filter(m => m.date <= boardDate) : sortedAll;
+        const hiddenFuture = sortedAll.length - visibleOpen.length;
+        return { status, items: visibleOpen, prevItems: [], hiddenFuture };
     });
 
     return (
@@ -132,8 +144,10 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         status={col.status}
                         items={col.items}
                         prevItems={col.prevItems}
+                        hiddenFuture={col.hiddenFuture}
                         onKonfirmasiShift={onKonfirmasiShift}
                         photosByMaintId={photosByMaintId}
+                        statusTimeByMaintId={statusTimeByMaintId}
                         onMoveInColumn={(id, dir) => handleMoveInColumn(col.status, id, dir)}
                     />
                 ))}

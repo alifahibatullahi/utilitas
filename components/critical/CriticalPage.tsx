@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCriticalMaintenance } from '@/hooks/useCriticalMaintenance';
 import { useOperator } from '@/hooks/useOperator';
-import { SHIFT_OPTIONS, getShiftWindow, detectCurrentShift } from '@/lib/constants';
+import { detectCurrentShift } from '@/lib/constants';
 import type { CriticalWithMaintenance, MaintenanceWithCritical, MaintenanceLogRow, PhotoRow, WorkOrderWithPekerjaan, WorkOrderRow } from '@/lib/supabase/types';
-import KanbanBoard from './KanbanBoard';
+import KanbanBoardModal from './KanbanBoardModal';
 import CriticalTableView from './CriticalTableView';
 import MaintenanceTableView from './MaintenanceTableView';
 import CriticalFormModal from './CriticalFormModal';
 import MaintenanceFormModal from './MaintenanceFormModal';
 import WorkOrderFormModal from './WorkOrderFormModal';
 import CloseCriticalModal from './CloseCriticalModal';
+import CloseWorkOrderModal from './CloseWorkOrderModal';
 import CriticalDetailModal from './CriticalDetailModal';
 import WorkOrderDetailModal from './WorkOrderDetailModal';
 
@@ -47,13 +48,12 @@ export default function CriticalPage() {
     const cm = useCriticalMaintenance();
 
     const [view, setView] = useState<'critical' | 'maintenance'>('critical');
-    const [maintSubView, setMaintSubView] = useState<'table' | 'board'>('table');
+    const [showBoardModal, setShowBoardModal] = useState(false);
 
     // Shift selector for board view
     const defaultShift = detectCurrentShift();
     const [boardDate, setBoardDate] = useState(defaultShift.date);
     const [boardShift, setBoardShift] = useState<'pagi' | 'sore' | 'malam'>(defaultShift.shift);
-    const shiftWindow = getShiftWindow(boardDate, boardShift);
 
     // Modal state
     const [showCriticalForm, setShowCriticalForm] = useState(false);
@@ -74,18 +74,57 @@ export default function CriticalPage() {
     // Close confirmation modal state
     const [closingCritical, setClosingCritical] = useState<CriticalWithMaintenance | null>(null);
     const [closingWorkOrder, setClosingWorkOrder] = useState<WorkOrderWithPekerjaan | null>(null);
-    const [closingWOSaving, setClosingWOSaving] = useState(false);
 
     // Apply basic Kanban filters — exclude notes (they only appear in detail modal)
     const filteredKanban = cm.maintenances.filter(m => m.keterangan !== 'IS_NOTE' && m.item !== 'NOTE');
 
+    // Build map: maintenance_id → ISO timestamp of when its status reached its current value
+    // Sumber: activity logs (critical_activity_logs + work_order_activity_logs).
+    // Untuk OPEN: pakai waktu maintenance_added (fallback ke created_at maintenance).
+    // Untuk IP/OK: cari activity log terbaru dengan metadata.maintenance_id == m.id dan metadata.new_status == m.status.
+    const statusTimeByMaintId = useMemo(() => {
+        const map: Record<string, string> = {};
+        // Walk all activity logs from criticals + workOrders
+        const allLogs = [
+            ...cm.criticals.flatMap(c => c.critical_activity_logs ?? []),
+            ...cm.workOrders.flatMap(w => w.work_order_activity_logs ?? []),
+        ];
+        // For each maintenance, scan logs
+        for (const m of cm.maintenances) {
+            let bestIso: string | null = null;
+            if (m.status === 'OPEN') {
+                // Find maintenance_added with this maintenance_id
+                for (const l of allLogs) {
+                    const meta = l.metadata as Record<string, unknown> | null | undefined;
+                    if (l.action_type === 'maintenance_added' && meta?.maintenance_id === m.id) {
+                        if (!bestIso || new Date(l.created_at).getTime() > new Date(bestIso).getTime()) {
+                            bestIso = l.created_at;
+                        }
+                    }
+                }
+            } else {
+                // Find latest maintenance_updated where new_status == current status
+                for (const l of allLogs) {
+                    const meta = l.metadata as Record<string, unknown> | null | undefined;
+                    if (l.action_type === 'maintenance_updated' && meta?.maintenance_id === m.id && meta?.new_status === m.status) {
+                        if (!bestIso || new Date(l.created_at).getTime() > new Date(bestIso).getTime()) {
+                            bestIso = l.created_at;
+                        }
+                    }
+                }
+            }
+            map[m.id] = bestIso ?? m.updated_at ?? m.created_at;
+        }
+        return map;
+    }, [cm.maintenances, cm.criticals, cm.workOrders]);
+
     // Photos for Kanban board
     const [photosByMaintId, setPhotosByMaintId] = useState<Record<string, PhotoRow[]>>({});
     useEffect(() => {
-        if (view !== 'maintenance' || maintSubView !== 'board') return;
+        if (!showBoardModal) return;
         const ids = cm.maintenances.map(m => m.id);
         cm.fetchPhotosForMaintList(ids).then(setPhotosByMaintId);
-    }, [view, maintSubView, cm.maintenances]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [showBoardModal, cm.maintenances]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const today = new Date();
     const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -248,104 +287,41 @@ export default function CriticalPage() {
 
                         {view === 'maintenance' && (
                             <div className="w-full flex-1 flex flex-col transition-all animate-in fade-in zoom-in-95 duration-300">
-                                {/* Sub-view toggle + Action buttons */}
-                                <div className="flex flex-wrap items-center justify-center gap-3 mb-4 relative">
-                                    <div className="absolute left-0 flex bg-gray-100/80 p-1 rounded-lg border border-gray-200/60 shadow-inner">
-                                        <button
-                                            onClick={() => setMaintSubView('table')}
-                                            className={`flex items-center px-4 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${maintSubView === 'table' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
-                                        >
-                                            <span className="material-symbols-outlined mr-1.5" style={{ fontSize: 14 }}>table_view</span>
-                                            Tabel
-                                        </button>
-                                        <button
-                                            onClick={() => setMaintSubView('board')}
-                                            className={`flex items-center px-4 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${maintSubView === 'board' ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
-                                        >
-                                            <span className="material-symbols-outlined mr-1.5" style={{ fontSize: 14 }}>view_kanban</span>
-                                            Board
-                                        </button>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 z-10">
-                                        <button
-                                            onClick={() => {
-                                                setMaintenanceInitial({ date: new Date().toISOString().split('T')[0] });
-                                                setMaintenanceRestrictTipe(undefined);
-                                                setShowMaintenanceForm(true);
-                                            }}
-                                            className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-blue-50 text-blue-600 border-2 border-blue-200 text-sm font-black hover:bg-blue-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>add_circle</span>
-                                            + Tambah Maintenance
-                                        </button>
-                                    </div>
+                                {/* Action buttons */}
+                                <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
+                                    <button
+                                        onClick={() => setShowBoardModal(true)}
+                                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-blue-600 border-2 border-blue-200 text-sm font-black hover:bg-blue-50 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>view_kanban</span>
+                                        Buka Board
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setMaintenanceInitial({ date: new Date().toISOString().split('T')[0] });
+                                            setMaintenanceRestrictTipe(undefined);
+                                            setShowMaintenanceForm(true);
+                                        }}
+                                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-blue-50 text-blue-600 border-2 border-blue-200 text-sm font-black hover:bg-blue-100 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>add_circle</span>
+                                        + Tambah Maintenance
+                                    </button>
                                 </div>
 
-                                {maintSubView === 'table' && (
-                                    <MaintenanceTableView
-                                        maintenances={cm.maintenances}
-                                        workOrders={cm.workOrders}
-                                        onEdit={(m) => setEditingMaintenance(m)}
-                                        onDelete={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
-                                        onChangeStatus={async (id, newStatus) => {
-                                            await cm.moveMaintenanceStatus(id, newStatus, operator?.name);
-                                        }}
-                                        onToggleExpand={(id, type) => {
-                                            if (type === 'critical') setExpandedCriticalId(id);
-                                            else setExpandedWOId(id);
-                                        }}
-                                    />
-                                )}
-
-                                {maintSubView === 'board' && (
-                                    <>
-                                        {/* Shift selector */}
-                                        <div className="flex flex-wrap items-center justify-center gap-4 mb-5">
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="date"
-                                                    value={boardDate}
-                                                    onChange={e => setBoardDate(e.target.value)}
-                                                    className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium outline-none cursor-pointer shadow-sm"
-                                                />
-                                                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
-                                                    {SHIFT_OPTIONS.map(s => (
-                                                        <button
-                                                            key={s.value}
-                                                            onClick={() => setBoardShift(s.value)}
-                                                            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${boardShift === s.value ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
-                                                        >
-                                                            {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <KanbanBoard
-                                            maintenances={filteredKanban}
-                                            shiftWindow={shiftWindow}
-                                            onMoveStatus={cm.moveMaintenanceStatus}
-                                            onKonfirmasiShift={cm.konfirmasiShift}
-                                            photosByMaintId={photosByMaintId}
-                                        />
-                                        {/* Summary footer */}
-                                        <div className="mt-8 flex items-center justify-center gap-6 text-xs text-gray-500 bg-white py-2 px-6 rounded-full shadow-sm w-fit mx-auto border border-gray-200">
-                                            <span className="flex items-center gap-2 font-bold">
-                                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/30" />
-                                                Open: {filteredKanban.filter(m => m.status === 'OPEN').length}
-                                            </span>
-                                            <span className="flex items-center gap-2 font-bold">
-                                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/30" />
-                                                In Progress: {filteredKanban.filter(m => m.status === 'IP').length}
-                                            </span>
-                                            <span className="flex items-center gap-2 font-bold">
-                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/30" />
-                                                Selesai: {filteredKanban.filter(m => m.status === 'OK').length}
-                                            </span>
-                                        </div>
-                                    </>
-                                )}
+                                <MaintenanceTableView
+                                    maintenances={cm.maintenances}
+                                    workOrders={cm.workOrders}
+                                    onEdit={(m) => setEditingMaintenance(m)}
+                                    onDelete={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
+                                    onChangeStatus={async (id, newStatus) => {
+                                        await cm.moveMaintenanceStatus(id, newStatus, operator?.name);
+                                    }}
+                                    onToggleExpand={(id, type) => {
+                                        if (type === 'critical') setExpandedCriticalId(id);
+                                        else setExpandedWOId(id);
+                                    }}
+                                />
 
                                 {/* Detail Modals for Maintenance View */}
                                 {expandedCriticalId && cm.criticals.find(c => c.id === expandedCriticalId) && (() => {
@@ -438,59 +414,33 @@ export default function CriticalPage() {
 
             {/* Close Work Order confirmation popup */}
             {closingWorkOrder && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <div className={`flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r ${closingWorkOrder.tipe === 'preventif' ? 'from-emerald-500 to-emerald-600' : 'from-violet-500 to-violet-600'}`}>
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>lock</span>
-                                <div>
-                                    <h2 className="text-sm font-extrabold text-white">Tutup {closingWorkOrder.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'}</h2>
-                                    <p className="text-xs text-white/70 font-medium truncate max-w-[200px]">{closingWorkOrder.item}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setClosingWorkOrder(null)} className="text-white/70 hover:text-white cursor-pointer bg-white/10 hover:bg-white/20 p-1 rounded-lg">
-                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
-                            </button>
-                        </div>
-                        <div className="px-6 py-5">
-                            <p className="text-sm font-bold text-gray-700 leading-relaxed">
-                                Yakin ingin menutup pekerjaan <span className="font-black text-black">{closingWorkOrder.item}</span>?
-                            </p>
-                            <p className="text-xs text-gray-500 mt-2">{closingWorkOrder.deskripsi}</p>
-                        </div>
-                        <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-2xl">
-                            <button
-                                onClick={() => setClosingWorkOrder(null)}
-                                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-black bg-white text-sm font-bold hover:bg-gray-50 transition-colors cursor-pointer shadow-sm"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    setClosingWOSaving(true);
-                                    await cm.moveWorkOrderStatus(closingWorkOrder.id, 'OK', operator?.name);
-                                    setClosingWOSaving(false);
-                                    setClosingWorkOrder(null);
-                                }}
-                                disabled={closingWOSaving}
-                                className={`flex-1 py-2.5 rounded-xl bg-gradient-to-r ${closingWorkOrder.tipe === 'preventif' ? 'from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20' : 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20'} text-white text-sm font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2`}
-                            >
-                                {closingWOSaving ? (
-                                    <>
-                                        <span className="material-symbols-outlined animate-spin" style={{ fontSize: 16 }}>progress_activity</span>
-                                        Menutup...
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>lock</span>
-                                        Tutup {closingWorkOrder.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'}
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <CloseWorkOrderModal
+                    open={true}
+                    workOrder={closingWorkOrder}
+                    operatorName={operator?.name}
+                    onClose={() => setClosingWorkOrder(null)}
+                    onConfirm={async (actor) => {
+                        const res = await cm.moveWorkOrderStatus(closingWorkOrder.id, 'OK', actor);
+                        setClosingWorkOrder(null);
+                        return { error: res?.error ?? null };
+                    }}
+                />
             )}
+
+            {/* Kanban Board pop-up */}
+            <KanbanBoardModal
+                open={showBoardModal}
+                onClose={() => setShowBoardModal(false)}
+                maintenances={filteredKanban}
+                boardDate={boardDate}
+                boardShift={boardShift}
+                onChangeBoardDate={setBoardDate}
+                onChangeBoardShift={setBoardShift}
+                onMoveStatus={cm.moveMaintenanceStatus}
+                onKonfirmasiShift={cm.konfirmasiShift}
+                photosByMaintId={photosByMaintId}
+                statusTimeByMaintId={statusTimeByMaintId}
+            />
 
             {/* Modals — create */}
             <CriticalFormModal

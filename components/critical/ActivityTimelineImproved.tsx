@@ -235,21 +235,19 @@ function MaintenanceGroupCard({ group }: { group: MaintenanceGroup }) {
                     )}
                 </div>
 
-                {/* Inner timeline */}
+                {/* Subheader: dibuat — replaces standalone "Ditambahkan" event for compactness */}
+                {added && (
+                    <div className="px-3 py-1.5 bg-emerald-50/30 border-b border-emerald-100 flex items-center gap-2 text-[10px] text-gray-500">
+                        <span className="material-symbols-outlined text-emerald-500" style={{ fontSize: 12 }}>add_circle</span>
+                        <span className="font-bold text-gray-600">Dibuat</span>
+                        {added.actor && <span className="font-semibold text-gray-500">· {added.actor}</span>}
+                        <span>· {formatDateTime(added.created_at)}</span>
+                    </div>
+                )}
+
+                {/* Inner timeline — hide if no events to show (only "added" event present) */}
+                {(statusEvents.length > 0 || deleted) && (
                 <div className="p-3 space-y-2">
-                    {added && (
-                        <div className="flex items-start gap-2">
-                            <span className="material-symbols-outlined text-emerald-500 mt-0.5" style={{ fontSize: 14 }}>add_circle</span>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[11px] font-bold text-gray-700">Ditambahkan</p>
-                                <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-400">
-                                    {added.actor && <span className="font-semibold text-gray-500">{added.actor}</span>}
-                                    {added.actor && <span>·</span>}
-                                    <span>{formatDateTime(added.created_at)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                     {statusEvents.map(ev => {
                         const meta = ev.metadata ?? {};
                         const oldS = meta.old_status as string | undefined;
@@ -293,6 +291,7 @@ function MaintenanceGroupCard({ group }: { group: MaintenanceGroup }) {
                         </div>
                     )}
                 </div>
+                )}
             </div>
         </div>
     );
@@ -343,7 +342,10 @@ export default function ActivityTimelineImproved({ logs, compact = false, groupB
                     if (log.action_type === 'maintenance_deleted') g.isDeleted = true;
                     continue;
                 }
-                // Fallback: maintenance event without maintenance_id → keep as single
+                // Fallback: maintenance event without maintenance_id (data lama).
+                // Skip maintenance_added agar tidak tampil sebagai single yang redundan
+                // (group card sudah merepresentasikan pembuatan maintenance).
+                if (log.action_type === 'maintenance_added') continue;
             }
             singles.push({ type: 'single' as const, log, anchorTime: new Date(log.created_at).getTime() });
         }

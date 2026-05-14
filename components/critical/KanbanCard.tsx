@@ -21,9 +21,17 @@ interface KanbanCardProps {
     isLast?: boolean;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
+    /** ISO timestamp of when current status was reached (sourced from activity log). */
+    statusTimeIso?: string;
 }
 
-export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown }: KanbanCardProps) {
+function formatStatusTime(iso?: string) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+export default function KanbanCard({ item, photos, overlay = false, index, isFirst, isLast, onMoveUp, onMoveDown, statusTimeIso }: KanbanCardProps) {
     const {
         attributes,
         listeners,
@@ -70,6 +78,11 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
                 </div>
                 <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <StatusBadge status={item.status} light />
+                    {statusTimeIso && (
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title={`Status ${item.status} sejak ${new Date(statusTimeIso).toLocaleString('id-ID')}`}>
+                            {formatStatusTime(statusTimeIso)}
+                        </span>
+                    )}
                 </div>
             </div>
 

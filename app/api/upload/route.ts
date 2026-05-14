@@ -75,6 +75,14 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error('[upload/POST]', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    // Surface specific error so client can show it (and we can debug)
+    return NextResponse.json({
+      error: message || 'Internal server error',
+      // In dev, also include stack to speed debugging
+      ...(process.env.NODE_ENV !== 'production' && err instanceof Error
+        ? { stack: err.stack }
+        : {}),
+    }, { status: 500 });
   }
 }

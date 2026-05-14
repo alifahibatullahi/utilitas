@@ -10,6 +10,14 @@ interface PhotoGalleryProps {
     compact?: boolean;
 }
 
+/**
+ * Build src URL untuk foto. Pakai proxy `/api/photos/[id]/file` instead of R2 langsung,
+ * supaya bekerja di network yang memblokir domain `*.r2.dev`.
+ */
+function photoSrc(photo: PhotoRow): string {
+    return `/api/photos/${photo.id}/file`;
+}
+
 export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compact = false }: PhotoGalleryProps) {
     const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -117,7 +125,7 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                                src={photo.url}
+                                src={photoSrc(photo)}
                                 alt={photo.caption || photo.filename}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
@@ -238,7 +246,7 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 key={photos[lightboxIdx].id}
-                                src={photos[lightboxIdx].url}
+                                src={photoSrc(photos[lightboxIdx])}
                                 alt={photos[lightboxIdx].caption || photos[lightboxIdx].filename}
                                 draggable={false}
                                 referrerPolicy="no-referrer"

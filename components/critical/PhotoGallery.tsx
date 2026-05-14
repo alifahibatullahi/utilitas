@@ -112,11 +112,28 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                     <div key={photo.id} className={`relative group ${compact ? 'shrink-0 w-16 h-16' : 'w-full aspect-square'}`}>
                         <button
                             onClick={() => setLightboxIdx(idx)}
-                            className="block w-full h-full rounded-xl overflow-hidden border-2 border-slate-100 hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="block w-full h-full rounded-xl overflow-hidden border-2 border-slate-100 hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 bg-slate-50 relative"
                             title={photo.caption || photo.filename}
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={photo.url} alt={photo.caption || photo.filename} className="w-full h-full object-cover" loading="lazy" />
+                            <img
+                                src={photo.url}
+                                alt={photo.caption || photo.filename}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                    const img = e.currentTarget;
+                                    img.style.display = 'none';
+                                    const parent = img.parentElement;
+                                    if (parent && !parent.querySelector('.img-fallback')) {
+                                        const fallback = document.createElement('div');
+                                        fallback.className = 'img-fallback absolute inset-0 flex flex-col items-center justify-center bg-slate-100 text-slate-400 p-1';
+                                        fallback.innerHTML = `<span class="material-symbols-outlined" style="font-size: ${compact ? 16 : 28}px">broken_image</span><span class="text-[8px] mt-0.5 font-bold">Gagal load</span>`;
+                                        parent.appendChild(fallback);
+                                    }
+                                }}
+                            />
                         </button>
                         {photo.caption && !compact && (
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-[10px] font-semibold px-2 py-1 line-clamp-2 rounded-b-xl">
@@ -224,9 +241,26 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                                 src={photos[lightboxIdx].url}
                                 alt={photos[lightboxIdx].caption || photos[lightboxIdx].filename}
                                 draggable={false}
+                                referrerPolicy="no-referrer"
                                 className="max-w-full max-h-full object-contain select-none pointer-events-none transition-transform duration-100"
                                 style={{
                                     transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                                }}
+                                onError={(e) => {
+                                    const img = e.currentTarget;
+                                    img.style.display = 'none';
+                                    const parent = img.parentElement;
+                                    if (parent && !parent.querySelector('.img-fallback-lightbox')) {
+                                        const fallback = document.createElement('div');
+                                        fallback.className = 'img-fallback-lightbox absolute inset-0 flex flex-col items-center justify-center text-white/70 gap-2 p-4';
+                                        fallback.innerHTML = `
+                                            <span class="material-symbols-outlined" style="font-size: 64px">broken_image</span>
+                                            <p class="text-sm font-bold">Foto gagal dimuat</p>
+                                            <p class="text-[10px] text-white/50 break-all max-w-md text-center">${photos[lightboxIdx]?.url ?? ''}</p>
+                                            <p class="text-[10px] text-white/50 max-w-md text-center mt-2">Cek koneksi atau buka URL di tab baru untuk verifikasi</p>
+                                        `;
+                                        parent.appendChild(fallback);
+                                    }
                                 }}
                             />
 

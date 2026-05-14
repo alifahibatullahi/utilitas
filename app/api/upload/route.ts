@@ -3,6 +3,21 @@ import { createClient } from '@supabase/supabase-js';
 import { uploadToR2, deleteFromR2, keyFromUrl, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
 
 export async function POST(req: NextRequest) {
+  // ── Early env validation: surface missing config dengan pesan yang jelas ──
+  const missing: string[] = [];
+  if (!process.env.R2_ACCOUNT_ID) missing.push('R2_ACCOUNT_ID');
+  if (!process.env.R2_ACCESS_KEY_ID) missing.push('R2_ACCESS_KEY_ID');
+  if (!process.env.R2_SECRET_ACCESS_KEY) missing.push('R2_SECRET_ACCESS_KEY');
+  if (!process.env.R2_BUCKET_NAME) missing.push('R2_BUCKET_NAME');
+  if (!process.env.R2_PUBLIC_URL) missing.push('R2_PUBLIC_URL');
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missing.length > 0) {
+    return NextResponse.json({
+      error: `Konfigurasi server belum lengkap. Env hilang: ${missing.join(', ')}. Hubungi admin untuk set env di Vercel/deployment.`,
+    }, { status: 500 });
+  }
+
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

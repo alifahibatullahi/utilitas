@@ -25,11 +25,14 @@ interface KanbanBoardProps {
     statusTimeByMaintId?: Record<string, string>;
     /** Date string (YYYY-MM-DD) — OPEN dengan date > boardDate akan dihide (future, belum relevan). */
     boardDate?: string;
+    /** Search query, hanya difilter pada kolom OPEN. */
+    openSearch?: string;
+    onOpenSearchChange?: (q: string) => void;
 }
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, boardDate }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, boardDate, openSearch, onOpenSearchChange }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
     const [columnOrders, setColumnOrders] = useState<Record<string, string[]>>({});
 
@@ -125,9 +128,17 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                 hiddenFuture: 0,
             };
         }
-        // OPEN: filter out future-dated (m.date > boardDate) untuk reduce noise
-        const visibleOpen = boardDate ? sortedAll.filter(m => m.date <= boardDate) : sortedAll;
-        const hiddenFuture = sortedAll.length - visibleOpen.length;
+        // OPEN: filter berdasarkan search query (jika ada) + date <= boardDate (kalau search kosong)
+        const q = (openSearch ?? '').trim().toLowerCase();
+        const searchedOpen = q
+            ? sortedAll.filter(m =>
+                m.item.toLowerCase().includes(q)
+                || m.uraian.toLowerCase().includes(q)
+                || (m.notif ?? '').toLowerCase().includes(q),
+            )
+            : sortedAll;
+        const visibleOpen = boardDate ? searchedOpen.filter(m => m.date <= boardDate) : searchedOpen;
+        const hiddenFuture = searchedOpen.length - visibleOpen.length;
         return { status, items: visibleOpen, prevItems: [], hiddenFuture };
     });
 
@@ -149,6 +160,20 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
                         onMoveInColumn={(id, dir) => handleMoveInColumn(col.status, id, dir)}
+                        headerExtra={col.status === 'OPEN' && onOpenSearchChange ? (
+                            <div className="px-3 pt-2">
+                                <div className="relative">
+                                    <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" style={{ fontSize: 14 }}>search</span>
+                                    <input
+                                        type="text"
+                                        value={openSearch ?? ''}
+                                        onChange={e => onOpenSearchChange(e.target.value)}
+                                        placeholder="Cari di Open…"
+                                        className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                </div>
+                            </div>
+                        ) : null}
                     />
                 ))}
             </div>

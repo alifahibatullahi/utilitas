@@ -16,6 +16,8 @@ interface KanbanColumnProps {
     photosByMaintId?: Record<string, PhotoRow[]>;
     onMoveInColumn?: (id: string, direction: 'up' | 'down') => void;
     statusTimeByMaintId?: Record<string, string>;
+    /** Optional slot dirender di bawah column header (mis. search input). */
+    headerExtra?: React.ReactNode;
 }
 
 function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string }) {
@@ -41,7 +43,7 @@ function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso }: { item: 
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId }: KanbanColumnProps) {
+export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, headerExtra }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
@@ -122,6 +124,8 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                     {items.length + prevItems.length}
                 </span>
             </div>
+
+            {headerExtra}
 
             {/* Cards container */}
             <div

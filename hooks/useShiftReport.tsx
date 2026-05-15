@@ -577,7 +577,13 @@ export function useShiftReport(date: string, shift: ShiftType) {
             setLoading(true);
             setError(null);
 
-            // Fetch via maintenance_shift_assignments pivot — only maintenance ter-attach ke shift report (date,shift) ini
+            // Hitung shift window untuk filter timestamp
+            const { getShiftWindow } = await import('@/lib/constants');
+            const win = getShiftWindow(date, shift as 'pagi' | 'sore' | 'malam');
+            const winStart = win.start.toISOString();
+            const winEnd = win.end.toISOString();
+
+            // Filter timestamp-based: maintenance status IP/OK dengan updated_at di dalam window shift
             const [{ data, error: fetchError }, maintRes, critRes] = await Promise.all([
                 supabase
                     .from('shift_reports')
@@ -604,9 +610,10 @@ export function useShiftReport(date: string, shift: ShiftType) {
                     .maybeSingle(),
                 supabase
                     .from('maintenance_logs')
-                    .select('*, critical_equipment(item, deskripsi), maintenance_shift_assignments!inner(shift_reports!inner(date, shift))')
-                    .eq('maintenance_shift_assignments.shift_reports.date', date)
-                    .eq('maintenance_shift_assignments.shift_reports.shift', shift)
+                    .select('*, critical_equipment(item, deskripsi)')
+                    .in('status', ['IP', 'OK'])
+                    .gte('updated_at', winStart)
+                    .lte('updated_at', winEnd)
                     .order('created_at', { ascending: true }),
                 supabase
                     .from('critical_equipment')

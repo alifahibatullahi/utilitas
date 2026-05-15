@@ -38,6 +38,23 @@ export function getAlertConfig(level: number) {
     return ALERT_COLORS[status];
 }
 
+// Derive (date, shift) WIB dari ISO timestamp — dipakai untuk deteksi shift origin
+export function deriveShiftKeyFromIso(iso: string): { date: string; shift: 'pagi' | 'sore' | 'malam' } {
+    const d = new Date(iso);
+    const wib = new Date(d.toLocaleString('en-US', { timeZone: WIB_TZ }));
+    const h = wib.getHours();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmt = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+    if (h >= 7 && h < 15) return { shift: 'pagi', date: fmt(wib) };
+    if (h >= 15 && h < 23) return { shift: 'sore', date: fmt(wib) };
+    if (h < 7) {
+        const prev = new Date(wib);
+        prev.setDate(prev.getDate() - 1);
+        return { shift: 'malam', date: fmt(prev) };
+    }
+    return { shift: 'malam', date: fmt(wib) };
+}
+
 // Capitalize first letter (untuk display deskripsi/uraian yang konsisten)
 export function capitalizeFirst(s: string | null | undefined): string {
     if (!s) return '';

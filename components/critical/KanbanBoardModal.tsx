@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { SHIFT_OPTIONS, getShiftWindow } from '@/lib/constants';
-import { createClient } from '@/lib/supabase/client';
 import type { MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 
@@ -19,11 +18,6 @@ interface KanbanBoardModalProps {
     photosByMaintId?: Record<string, PhotoRow[]>;
     statusTimeByMaintId?: Record<string, string>;
     statusActorByMaintId?: Record<string, { ip?: string; ok?: string }>;
-    /** Auto-assign ke shift report saat status berubah / user klik "Lanjut Kerja". */
-    onAssignToShift?: (maintenanceIds: string[], date: string, shift: 'pagi' | 'sore' | 'malam') => Promise<{ error: string | null }>;
-    /** Hapus assignment dari shift report (kalau user salah klik Lanjut Kerja). */
-    onUnassignFromShift?: (maintenanceIds: string[], date: string, shift: 'pagi' | 'sore' | 'malam') => Promise<{ error: string | null }>;
-    actor?: string | null;
 }
 
 export default function KanbanBoardModal({
@@ -32,63 +26,25 @@ export default function KanbanBoardModal({
     boardDate, boardShift, onChangeBoardDate, onChangeBoardShift,
     onMoveStatus, onKonfirmasiShift,
     photosByMaintId, statusTimeByMaintId, statusActorByMaintId,
-    onAssignToShift, onUnassignFromShift,
 }: KanbanBoardModalProps) {
-    // Wrap onMoveStatus: setelah status change, auto-assign ke shift yang sedang dilihat
+    // Status change langsung — board sync via updated_at timestamp, no manual assignment.
+    // Block kalau shift sudah lewat (laporan shift sudah final).
     const handleMoveStatus = async (id: string, newStatus: MaintenanceStatus) => {
-        const res = await onMoveStatus(id, newStatus);
-        if (!res.error && (newStatus === 'IP' || newStatus === 'OK') && onAssignToShift) {
-            await onAssignToShift([id], boardDate, boardShift);
-            setAssignmentsRefreshKey(k => k + 1);
-        }
-        return res;
+        if (isPastShift) return { error: 'Shift sudah selesai — board dikunci' };
+        return await onMoveStatus(id, newStatus);
     };
-
-    // Wrap konfirmasi: pindah maintenance dari shift sebelumnya ke shift sekarang via pivot
     const handleKonfirmasi = async (id: string) => {
-        if (onAssignToShift) {
-            await onAssignToShift([id], boardDate, boardShift);
-            setAssignmentsRefreshKey(k => k + 1);
-        }
-        return await onKonfirmasiShift(id);
-    };
-
-    // Batalkan: hapus assignment maintenance dari shift sekarang (kalau salah klik / tidak jadi kerja)
-    const handleUnassign = async (id: string): Promise<{ error: string | null }> => {
-        if (!onUnassignFromShift) return { error: 'Unassign handler tidak tersedia' };
-        const res = await onUnassignFromShift([id], boardDate, boardShift);
-        if (!res.error) setAssignmentsRefreshKey(k => k + 1);
-        return res;
+        if (isPastShift) return { error: 'Shift sudah selesai — board dikunci' };
+        return onKonfirmasiShift(id);
     };
 
     const [search, setSearch] = useState('');
-    const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
-    const [assignmentsRefreshKey, setAssignmentsRefreshKey] = useState(0);
-
-    // Fetch assignments untuk (boardDate, boardShift) — supaya bisa tahu maintenance mana yang sudah ter-assign
-    useEffect(() => {
-        if (!open) return;
-        let cancelled = false;
-        async function fetchAssignments() {
-            const supabase = createClient();
-            const { data: rep } = await supabase
-                .from('shift_reports')
-                .select('id, maintenance_shift_assignments(maintenance_id)')
-                .eq('date', boardDate)
-                .eq('shift', boardShift)
-                .maybeSingle();
-            if (cancelled) return;
-            const ids = ((rep as Record<string, unknown> | null)?.maintenance_shift_assignments as Array<{ maintenance_id: string }> | undefined ?? [])
-                .map(a => a.maintenance_id);
-            setAssignedIds(new Set(ids));
-        }
-        fetchAssignments();
-        return () => { cancelled = true; };
-    }, [open, boardDate, boardShift, assignmentsRefreshKey]);
 
     if (!open) return null;
 
     const shiftWindow = getShiftWindow(boardDate, boardShift);
+    // Shift sudah selesai → board read-only (laporan shift sudah final, isi locked)
+    const isPastShift = Date.now() > shiftWindow.end.getTime();
     const counts = {
         open: maintenances.filter(m => m.status === 'OPEN').length,
         ip: maintenances.filter(m => m.status === 'IP').length,
@@ -130,6 +86,14 @@ export default function KanbanBoardModal({
                     </div>
                 </div>
 
+                {/* Banner readonly kalau shift sudah lewat */}
+                {isPastShift && (
+                    <div className="flex items-center justify-center gap-2 px-6 py-2 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-bold">
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>lock</span>
+                        Shift sudah selesai — board dikunci. Laporan shift sudah final dengan isi yang sama.
+                    </div>
+                )}
+
                 {/* Board */}
                 <div className="flex-1 overflow-auto p-4 light-scrollbar">
                     <KanbanBoard
@@ -145,8 +109,7 @@ export default function KanbanBoardModal({
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
                         statusActorByMaintId={statusActorByMaintId}
-                        assignedToCurrentShiftIds={assignedIds}
-                        onUnassignCurrentShift={onUnassignFromShift ? handleUnassign : undefined}
+                        readOnly={isPastShift}
                     />
                 </div>
 

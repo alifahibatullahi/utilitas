@@ -36,11 +36,13 @@ interface KanbanBoardProps {
     assignedToCurrentShiftIds?: Set<string>;
     /** Handler untuk batal Lanjut Kerja: hapus assignment dari shift sekarang. */
     onUnassignCurrentShift?: (id: string) => Promise<{ error: string | null }>;
+    /** Read-only mode (mis. shift sudah lewat) — disable DnD + Lanjut Kerja button. */
+    readOnly?: boolean;
 }
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift, readOnly = false }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
     const [columnOrders, setColumnOrders] = useState<Record<string, string[]>>({});
 
@@ -99,6 +101,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
 
     const handleDragEnd = useCallback(async (event: DragEndEvent) => {
         setActiveItem(null);
+        if (readOnly) return; // shift sudah lewat → tidak boleh ubah status
         const { active, over } = event;
         if (!over) return;
 
@@ -118,10 +121,6 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
         await onMoveStatus(active.id as string, targetStatus);
     }, [maintenances, onMoveStatus]);
 
-    function timeFor(m: MaintenanceWithCritical) {
-        return statusTimeByMaintId?.[m.id] ?? m.updated_at;
-    }
-
     function inWindow(iso: string) {
         if (!shiftWindow) return true;
         const t = new Date(iso).getTime();
@@ -138,25 +137,17 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
             ...allStatusItems.filter(m => !order.includes(m.id)),
         ];
 
-        // Helper: maintenance ter-assign ke shift sekarang (via pivot)
-        const isAssigned = (m: MaintenanceWithCritical) => assignedToCurrentShiftIds?.has(m.id) ?? false;
-
+        // IP/OK items = updated_at di window shift sekarang → match dengan laporan shift.
+        // Untuk IP, juga tampilkan prevItems (IP yang updated_at di luar window) sebagai carry-forward —
+        // visible dengan tombol "Lanjut Kerja" untuk dimasukkan ke laporan shift kalau dikerjakan di shift ini.
+        // OK tidak punya prevItems (sudah selesai, tidak perlu carry-forward).
         if (status === 'OK') {
-            // OK di shift sekarang = OK yang ter-assign. Yang tidak ter-assign disembunyikan.
-            // Fallback (kalau assignment data belum tersedia): pakai window berdasarkan statusTime
-            const items = assignedToCurrentShiftIds
-                ? sortedAll.filter(isAssigned)
-                : sortedAll.filter(m => inWindow(timeFor(m)));
+            const items = sortedAll.filter(m => inWindow(m.updated_at));
             return { status, items, prevItems: [], hiddenFuture: 0 };
         }
         if (status === 'IP') {
-            // IP di shift sekarang = ter-assign. prevItems = IP yang belum ter-assign (kandidat Lanjut Kerja).
-            const items = assignedToCurrentShiftIds
-                ? sortedAll.filter(isAssigned)
-                : sortedAll.filter(m => inWindow(timeFor(m)));
-            const prevItems = assignedToCurrentShiftIds
-                ? sortedAll.filter(m => !isAssigned(m))
-                : sortedAll.filter(m => !inWindow(timeFor(m)));
+            const items = sortedAll.filter(m => inWindow(m.updated_at));
+            const prevItems = sortedAll.filter(m => !inWindow(m.updated_at));
             return { status, items, prevItems, hiddenFuture: 0 };
         }
         // OPEN: filter berdasarkan search query (jika ada) + date <= boardDate (kalau search kosong)
@@ -187,7 +178,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         items={col.items}
                         prevItems={col.prevItems}
                         hiddenFuture={col.hiddenFuture}
-                        onKonfirmasiShift={onKonfirmasiShift}
+                        onKonfirmasiShift={readOnly ? undefined : onKonfirmasiShift}
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
                         statusActorByMaintId={statusActorByMaintId}
@@ -195,6 +186,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         onUnassignCurrentShift={onUnassignCurrentShift}
                         boardDate={boardDate}
                         boardShift={boardShift}
+                        readOnly={readOnly}
                         headerExtra={col.status === 'OPEN' && onOpenSearchChange ? (
                             <div className="px-3 pt-2">
                                 <div className="relative">

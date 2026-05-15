@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { deriveShiftKeyFromIso } from '@/lib/utils';
 import type {
     CriticalEquipmentRow,
     MaintenanceLogRow,
@@ -270,25 +271,35 @@ export function useCriticalMaintenance() {
 
     const updateMaintenance = useCallback(async (id: string, data: Partial<MaintenanceLogRow>, actor?: string | null) => {
         const oldMaint = maintenances.find(m => m.id === id);
+        const nowIso = new Date().toISOString();
+        const dataWithTs = { ...data, updated_at: nowIso };
         // Optimistic update
-        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
+        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, ...dataWithTs } : m));
         setCriticals(prev => prev.map(c => ({
             ...c,
-            maintenance_logs: c.maintenance_logs.map(m => m.id === id ? { ...m, ...data } : m),
+            maintenance_logs: c.maintenance_logs.map(m => m.id === id ? { ...m, ...dataWithTs } : m),
         })));
-        const { error: err } = await supabase.from('maintenance_logs').update(data).eq('id', id);
+        const { error: err } = await supabase.from('maintenance_logs').update(dataWithTs).eq('id', id);
         if (err) {
             await fetchData(); // rollback
             return { error: err.message };
         }
         if (data.status && oldMaint?.critical_id && data.status !== oldMaint.status) {
-            if (isForwardTransition(oldMaint.status, data.status)) {
-                await deleteMilestoneLog(supabase, oldMaint.critical_id, data.status, id);
+            const isForward = isForwardTransition(oldMaint.status, data.status);
+            const prevShiftKey = deriveShiftKeyFromIso(oldMaint.updated_at);
+            const currShiftKey = deriveShiftKeyFromIso(nowIso);
+            const isSameShift = prevShiftKey.date === currShiftKey.date && prevShiftKey.shift === currShiftKey.shift;
+            // Cross-shift: log all. Same-shift: log only forward; backward silent cleanup.
+            const shouldLog = isForward || !isSameShift;
+            if (shouldLog) {
+                if (isForward) {
+                    await deleteMilestoneLog(supabase, oldMaint.critical_id, data.status, id);
+                }
                 await insertActivityLog(
                     supabase, oldMaint.critical_id, 'maintenance_updated',
                     `(Tim ${oldMaint.scope.charAt(0).toUpperCase() + oldMaint.scope.slice(1)}) ${oldMaint.uraian}`,
                     actor ?? null,
-                    { old_status: oldMaint.status, new_status: data.status, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope }
+                    { old_status: oldMaint.status, new_status: data.status, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope, cross_shift: !isSameShift }
                 );
             } else {
                 await deleteForwardMilestonesAbove(supabase, oldMaint.critical_id, data.status, id);
@@ -334,28 +345,41 @@ export function useCriticalMaintenance() {
     // ─── Kanban move (optimistic update) ───
     const moveMaintenanceStatus = useCallback(async (id: string, newStatus: MaintenanceStatus, actor?: string | null) => {
         const oldMaint = maintenances.find(m => m.id === id);
-        // Optimistic update
-        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
+        // Optimistic update — set updated_at jadi sekarang biar card langsung pindah ke shift sekarang di board
+        const nowIso = new Date().toISOString();
+        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, status: newStatus, updated_at: nowIso } : m));
         setCriticals(prev => prev.map(c => ({
             ...c,
-            maintenance_logs: c.maintenance_logs.map(m => m.id === id ? { ...m, status: newStatus } : m),
+            maintenance_logs: c.maintenance_logs.map(m => m.id === id ? { ...m, status: newStatus, updated_at: nowIso } : m),
         })));
 
-        const { error: err } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
+        const { error: err } = await supabase.from('maintenance_logs').update({ status: newStatus, updated_at: nowIso }).eq('id', id);
         if (err) {
             await fetchData(); // rollback
             return { error: err.message };
         }
         if (oldMaint?.critical_id && oldMaint.status !== newStatus) {
-            if (isForwardTransition(oldMaint.status, newStatus)) {
-                await deleteMilestoneLog(supabase, oldMaint.critical_id, newStatus, id);
+            const isForward = isForwardTransition(oldMaint.status, newStatus);
+            // Tentukan apakah perubahan ini terjadi di shift yang sama dengan terakhir status berubah
+            const prevShiftKey = deriveShiftKeyFromIso(oldMaint.updated_at);
+            const currShiftKey = deriveShiftKeyFromIso(nowIso);
+            const isSameShift = prevShiftKey.date === currShiftKey.date && prevShiftKey.shift === currShiftKey.shift;
+            // Aturan log:
+            // - Cross-shift (beda shift): SEMUA perubahan dicatat (forward & backward)
+            // - Same-shift: hanya forward (OPEN→IP→OK) yang dicatat; backward silent (cleanup)
+            const shouldLog = isForward || !isSameShift;
+            if (shouldLog) {
+                if (isForward) {
+                    await deleteMilestoneLog(supabase, oldMaint.critical_id, newStatus, id);
+                }
                 await insertActivityLog(
                     supabase, oldMaint.critical_id, 'maintenance_updated',
                     `(Tim ${oldMaint.scope.charAt(0).toUpperCase() + oldMaint.scope.slice(1)}) ${oldMaint.uraian}`,
                     actor ?? null,
-                    { old_status: oldMaint.status, new_status: newStatus, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope }
+                    { old_status: oldMaint.status, new_status: newStatus, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope, cross_shift: !isSameShift }
                 );
             } else {
+                // Same-shift backward: silent cleanup (e.g., user accidentally clicked OK lalu balik IP)
                 await deleteForwardMilestonesAbove(supabase, oldMaint.critical_id, newStatus, id);
             }
             await silentFetch();
@@ -389,15 +413,15 @@ export function useCriticalMaintenance() {
         return { error: null };
     }, [supabase, fetchData, silentFetch, criticals]);
 
-    // ─── Konfirmasi maintenance ke shift ini (touch updated_at) ───
+    // ─── Konfirmasi maintenance ke shift ini (set updated_at = now) ───
     const konfirmasiShift = useCallback(async (id: string) => {
         const maint = maintenances.find(m => m.id === id);
         if (!maint) return { error: 'Tidak ditemukan' };
         // Optimistic: update updated_at locally so card moves to "Shift ini"
         const now = new Date().toISOString();
         setMaintenances(prev => prev.map(m => m.id === id ? { ...m, updated_at: now } : m));
-        // Touch the record in DB — triggers updated_at via DB trigger
-        const { error: err } = await supabase.from('maintenance_logs').update({ status: maint.status }).eq('id', id);
+        // Set explicit di DB karena tidak ada trigger auto-update updated_at
+        const { error: err } = await supabase.from('maintenance_logs').update({ updated_at: now }).eq('id', id);
         if (err) {
             await fetchData();
             return { error: err.message };

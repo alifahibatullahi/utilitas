@@ -6,6 +6,7 @@ import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { useAppSettings, useStreamDays } from '@/hooks/useAppSettings';
 import { todayWIB } from '@/lib/utils';
+import { ShareToWAButton } from '@/components/ui/ShareToWAButton';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -360,9 +361,16 @@ export default function LaporanHarianPage() {
             </div>
 
             {/* Header */}
-            <header className="text-center">
+            <header className="text-center relative">
                 <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Laporan Harian</h2>
                 <p className="text-primary font-bold text-sm tracking-widest uppercase mt-1">Utilitas Batubara</p>
+                {report?.id && (
+                    <ShareToWAButton
+                        kind="daily"
+                        reportId={report.id as string}
+                        className="absolute right-0 top-1"
+                    />
+                )}
             </header>
 
             {/* Info Bar - Full Width */}

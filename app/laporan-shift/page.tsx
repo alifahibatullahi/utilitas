@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useShiftReport, ShiftReportData } from '@/hooks/useShiftReport';
 import { todayWIB } from '@/lib/utils';
+import { ShareToWAButton } from '@/components/ui/ShareToWAButton';
 
 // ─── Data Interfaces ───
 interface BoilerData {
@@ -350,9 +351,16 @@ export default function LaporanShiftPage() {
             </div>
 
             {/* Header */}
-            <header className="text-center">
+            <header className="text-center relative">
                 <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Laporan Akhir Shift {SHIFT_LABELS[activeShift]}</h2>
                 <p className="text-primary font-bold text-sm tracking-widest uppercase mt-1">Utilitas Batubara</p>
+                {supaReport && (
+                    <ShareToWAButton
+                        kind="shift"
+                        reportId={supaReport.id}
+                        className="absolute right-0 top-1"
+                    />
+                )}
             </header>
 
             {/* Loading State */}

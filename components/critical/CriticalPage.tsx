@@ -78,6 +78,18 @@ export default function CriticalPage() {
     // Apply basic Kanban filters — exclude notes (they only appear in detail modal)
     const filteredKanban = cm.maintenances.filter(m => m.keterangan !== 'IS_NOTE' && m.item !== 'NOTE');
 
+    // Activity logs gabungan (critical + work order) — dipakai KanbanBoardModal
+    // untuk hitung snapshot beku saat board dikunci.
+    const allMaintActivityLogs = useMemo(() => [
+        ...cm.criticals.flatMap(c => c.critical_activity_logs ?? []),
+        ...cm.workOrders.flatMap(w => w.work_order_activity_logs ?? []),
+    ].map(l => ({
+        created_at: l.created_at,
+        action_type: l.action_type,
+        actor: l.actor,
+        metadata: l.metadata,
+    })), [cm.criticals, cm.workOrders]);
+
     // Build map: maintenance_id → ISO timestamp of when its status reached its current value
     // Sumber: activity logs (critical_activity_logs + work_order_activity_logs).
     // Untuk OPEN: pakai waktu maintenance_added (fallback ke created_at maintenance).
@@ -464,6 +476,7 @@ export default function CriticalPage() {
                 photosByMaintId={photosByMaintId}
                 statusTimeByMaintId={statusTimeByMaintId}
                 statusActorByMaintId={statusActorByMaintId}
+                activityLogs={allMaintActivityLogs}
             />
 
             {/* Modals — create */}

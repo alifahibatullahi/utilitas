@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { uploadToR2, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
+import { createAdminClient, sendFonnteText } from '@/lib/whatsapp';
 
 // ─── POST — Fonnte webhook (incoming message) ───
 // Fonnte mengirim POST ke URL ini setiap ada pesan masuk
 export async function POST(req: NextRequest) {
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const supabaseAdmin = createAdminClient();
   let body: FonnteWebhookBody;
   try {
     body = await req.json();
@@ -147,19 +144,6 @@ async function downloadFonnteMedia(fileUrl: string): Promise<{ buffer: Buffer; m
   const buffer      = Buffer.from(await res.arrayBuffer());
 
   return { buffer, mimeType };
-}
-
-async function sendFonnteText(to: string, message: string): Promise<void> {
-  const token = process.env.FONNTE_TOKEN!;
-
-  await fetch('https://api.fonnte.com/send', {
-    method:  'POST',
-    headers: {
-      Authorization:  token,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ target: to, message }),
-  }).catch(err => console.warn('[fonnte] Send failed:', err));
 }
 
 // ─── Fonnte webhook payload type ───

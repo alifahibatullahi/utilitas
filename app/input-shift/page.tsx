@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import TabBoiler from '@/components/input-shift/TabBoiler';
 import TabTurbin from '@/components/input-shift/TabTurbin';
 import TabGenerator from '@/components/input-shift/TabGenerator';
@@ -97,6 +97,20 @@ export default function InputShiftPage() {
     const [initialDataReady, setInitialDataReady] = useState(false);
 
     useEffect(() => { setMounted(true); }, []);
+
+    // Deep-link prefill from WhatsApp reminder: ?shift=pagi|sore|malam&date=YYYY-MM-DD
+    const searchParams = useSearchParams();
+    useEffect(() => {
+        const qShift = searchParams?.get('shift');
+        const qDate = searchParams?.get('date');
+        if (qShift) {
+            const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
+            const target = map[qShift.toLowerCase()];
+            if (target) setSelectedShift(target);
+        }
+        if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) setSelectedDate(qDate);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Pre-warm: saat halaman pertama kali dibuka, fetch report 3 hari terakhir
     // untuk memastikan koneksi Supabase siap dan data sudah di-cache browser

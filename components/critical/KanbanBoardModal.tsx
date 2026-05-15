@@ -1,9 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { SHIFT_OPTIONS, getShiftWindow } from '@/lib/constants';
-import type { MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
+import type { ActivityActionType, MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
+
+export interface BoardActivityLog {
+    created_at: string;
+    action_type: ActivityActionType;
+    actor: string | null;
+    metadata: Record<string, unknown> | null;
+}
 
 interface KanbanBoardModalProps {
     open: boolean;
@@ -18,6 +25,9 @@ interface KanbanBoardModalProps {
     photosByMaintId?: Record<string, PhotoRow[]>;
     statusTimeByMaintId?: Record<string, string>;
     statusActorByMaintId?: Record<string, { ip?: string; ok?: string }>;
+    /** All maintenance-related activity logs (critical_activity_logs + work_order_activity_logs).
+     *  Used to compute snapshot saat board dikunci. */
+    activityLogs?: BoardActivityLog[];
 }
 
 export default function KanbanBoardModal({
@@ -26,6 +36,7 @@ export default function KanbanBoardModal({
     boardDate, boardShift, onChangeBoardDate, onChangeBoardShift,
     onMoveStatus, onKonfirmasiShift,
     photosByMaintId, statusTimeByMaintId, statusActorByMaintId,
+    activityLogs,
 }: KanbanBoardModalProps) {
     // Status change langsung — board sync via updated_at timestamp, no manual assignment.
     // Block kalau shift sudah lewat (laporan shift sudah final).
@@ -40,15 +51,74 @@ export default function KanbanBoardModal({
 
     const [search, setSearch] = useState('');
 
+    const shiftWindow = getShiftWindow(boardDate, boardShift);
+    // Shift sudah selesai → board read-only + snapshot beku.
+    const isPastShift = Date.now() > shiftWindow.end.getTime();
+
+    // Snapshot beku: kalau shift sudah lewat, tampilkan status & updated_at masing-masing
+    // maintenance SEPERTI di akhir shift window — bukan state sekarang. Status change setelah
+    // shift berakhir tidak boleh mempengaruhi tampilan locked board.
+    const snapshot = useMemo(() => {
+        if (!isPastShift) return null;
+        const endMs = shiftWindow.end.getTime();
+        const logs = activityLogs ?? [];
+
+        const byMaint: Record<string, BoardActivityLog[]> = {};
+        for (const l of logs) {
+            const mid = l.metadata?.maintenance_id as string | undefined;
+            if (!mid) continue;
+            if (new Date(l.created_at).getTime() > endMs) continue;
+            (byMaint[mid] ??= []).push(l);
+        }
+
+        const snapMaint: MaintenanceWithCritical[] = [];
+        const snapStatusTime: Record<string, string> = {};
+        const snapStatusActor: Record<string, { ip?: string; ok?: string }> = {};
+
+        for (const m of maintenances) {
+            const ml = (byMaint[m.id] ?? []).slice().sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+            if (ml.length === 0) continue; // maintenance belum ada saat shift berakhir → exclude
+
+            let snapStatus: MaintenanceStatus | null = null;
+            let snapTime = '';
+            const actors: { ip?: string; ok?: string } = {};
+
+            for (const l of ml) {
+                if (l.action_type === 'maintenance_added') {
+                    snapStatus = 'OPEN';
+                    snapTime = l.created_at;
+                } else if (l.action_type === 'maintenance_updated') {
+                    const ns = l.metadata?.new_status as MaintenanceStatus | undefined;
+                    if (ns === 'OPEN' || ns === 'IP' || ns === 'OK') {
+                        snapStatus = ns;
+                        snapTime = l.created_at;
+                        if (ns === 'IP' && l.actor) actors.ip = l.actor;
+                        if (ns === 'OK' && l.actor) actors.ok = l.actor;
+                    }
+                }
+            }
+
+            if (!snapStatus) continue;
+            snapMaint.push({ ...m, status: snapStatus, updated_at: snapTime });
+            snapStatusTime[m.id] = snapTime;
+            snapStatusActor[m.id] = actors;
+        }
+
+        return { maintenances: snapMaint, statusTime: snapStatusTime, statusActor: snapStatusActor };
+    }, [isPastShift, shiftWindow.end, activityLogs, maintenances]);
+
     if (!open) return null;
 
-    const shiftWindow = getShiftWindow(boardDate, boardShift);
-    // Shift sudah selesai → board read-only (laporan shift sudah final, isi locked)
-    const isPastShift = Date.now() > shiftWindow.end.getTime();
+    const effectiveMaintenances = snapshot?.maintenances ?? maintenances;
+    const effectiveStatusTime = snapshot?.statusTime ?? statusTimeByMaintId;
+    const effectiveStatusActor = snapshot?.statusActor ?? statusActorByMaintId;
+
     const counts = {
-        open: maintenances.filter(m => m.status === 'OPEN').length,
-        ip: maintenances.filter(m => m.status === 'IP').length,
-        ok: maintenances.filter(m => m.status === 'OK').length,
+        open: effectiveMaintenances.filter(m => m.status === 'OPEN').length,
+        ip: effectiveMaintenances.filter(m => m.status === 'IP').length,
+        ok: effectiveMaintenances.filter(m => m.status === 'OK').length,
     };
 
     return (
@@ -97,7 +167,7 @@ export default function KanbanBoardModal({
                 {/* Board */}
                 <div className="flex-1 overflow-auto p-4 light-scrollbar">
                     <KanbanBoard
-                        maintenances={maintenances}
+                        maintenances={effectiveMaintenances}
                         shiftWindow={shiftWindow}
                         // Saat user search OPEN, jangan hide future-dated OPEN — user explicitly mencari
                         boardDate={search.trim() ? undefined : boardDate}
@@ -107,8 +177,8 @@ export default function KanbanBoardModal({
                         onMoveStatus={handleMoveStatus}
                         onKonfirmasiShift={handleKonfirmasi}
                         photosByMaintId={photosByMaintId}
-                        statusTimeByMaintId={statusTimeByMaintId}
-                        statusActorByMaintId={statusActorByMaintId}
+                        statusTimeByMaintId={effectiveStatusTime}
+                        statusActorByMaintId={effectiveStatusActor}
                         readOnly={isPastShift}
                     />
                 </div>

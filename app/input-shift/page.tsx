@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TabBoiler from '@/components/input-shift/TabBoiler';
 import TabTurbin from '@/components/input-shift/TabTurbin';
@@ -53,6 +53,14 @@ const TAB_STYLES: Record<string, { active: string; inactive: string; icon: strin
 };
 
 export default function InputShiftPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 text-sm font-bold">Memuat...</div>}>
+            <InputShiftPageInner />
+        </Suspense>
+    );
+}
+
+function InputShiftPageInner() {
     const [activeTab, setActiveTab] = useState<TabId>('Boiler A');
     const [inputMode, setInputMode] = useState<'shift' | 'harian'>('shift');
     const [selectedShift, setSelectedShift] = useState<1 | 2 | 3>(() => {

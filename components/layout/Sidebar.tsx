@@ -14,6 +14,10 @@ const ICON_MAP: Record<string, string> = {
     daily: 'calendar_month',
     trend: 'history',
     users: 'group',
+    forum: 'forum',
+    campaign: 'campaign',
+    history: 'history',
+    draft: 'draft',
 };
 
 interface SidebarProps {
@@ -40,7 +44,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     // Group nav items
     const mainNav = filteredNav.filter(item => ['dashboard', 'tank-level', 'input-shift', 'critical'].includes(item.id));
     const reportNav = filteredNav.filter(item => ['laporan-shift', 'laporan-harian'].includes(item.id));
-    const systemNav = filteredNav.filter(item => ['history', 'admin-users'].includes(item.id));
+    const systemNav = filteredNav.filter(item => ['history', 'admin-users', 'admin-wa-hub', 'maintenance-broadcast'].includes(item.id));
 
     const handleNav = (item: any) => {
         if (item.id === 'history') {

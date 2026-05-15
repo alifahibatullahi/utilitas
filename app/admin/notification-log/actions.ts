@@ -14,15 +14,6 @@ export interface LogRow {
     target_label: string;  // resolved from whatsapp_groups, fallback to sent_to
 }
 
-export const KINDS = [
-    { value: '',                       label: 'Semua' },
-    { value: 'shift_reminder',         label: 'Reminder Shift' },
-    { value: 'daily_reminder',         label: 'Reminder Harian' },
-    { value: 'shift_share',            label: 'Share Laporan Shift' },
-    { value: 'daily_share',            label: 'Share Laporan Harian' },
-    { value: 'maintenance_broadcast',  label: 'Broadcast Maintenance' },
-];
-
 export async function listNotifications(opts: { kind?: string; limit?: number } = {}) {
     const supabase = createAdminClient();
     const { kind = '', limit = 100 } = opts;

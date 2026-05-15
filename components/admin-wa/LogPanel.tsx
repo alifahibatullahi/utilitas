@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { listNotifications, KINDS, LogRow } from '@/app/admin/notification-log/actions';
+import { listNotifications, LogRow } from '@/app/admin/notification-log/actions';
+import { KINDS } from '@/app/admin/notification-log/constants';
 
 const KIND_BADGE: Record<string, string> = {
     shift_reminder:        'bg-amber-500/20 text-amber-300 border-amber-500/30',

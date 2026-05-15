@@ -48,7 +48,7 @@ Grup {{group}} — {{date}}
 Mohon segera mengisi laporan shift.
 👉 {{link}}
 
-Reminder ini berulang setiap 5 menit hingga laporan dikirim.'),
+Reminder ini berulang setiap 15 menit hingga laporan dikirim.'),
 ('daily_reminder', 'Reminder Laporan Harian (LHUBB)',
 '🔔 *Reminder Laporan Harian (LHUBB)*
 Tanggal: {{date}}
@@ -56,7 +56,7 @@ Tanggal: {{date}}
 Mohon segera mengisi laporan harian.
 👉 {{link}}
 
-Reminder ini berulang setiap 5 menit hingga laporan dikirim.'),
+Reminder ini berulang setiap 15 menit hingga laporan dikirim.'),
 ('shift_share', 'Share Hasil Laporan Shift',
 '📋 *Laporan Shift {{shift}} — {{date}}*
 Grup {{group}}

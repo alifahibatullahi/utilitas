@@ -151,6 +151,8 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
             return { status, items, prevItems, hiddenFuture: 0 };
         }
         // OPEN: filter berdasarkan search query (jika ada) + date <= boardDate (kalau search kosong)
+        // Saat board dikunci (readOnly = past shift): tampilkan SEMUA OPEN tanpa filter date —
+        // user perlu lihat semua context backlog, tidak ada lagi yang bisa diubah.
         const q = (openSearch ?? '').trim().toLowerCase();
         const searchedOpen = q
             ? sortedAll.filter(m =>
@@ -159,7 +161,8 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                 || (m.notif ?? '').toLowerCase().includes(q),
             )
             : sortedAll;
-        const visibleOpen = boardDate ? searchedOpen.filter(m => m.date <= boardDate) : searchedOpen;
+        const applyDateFilter = boardDate && !readOnly;
+        const visibleOpen = applyDateFilter ? searchedOpen.filter(m => m.date <= boardDate) : searchedOpen;
         const hiddenFuture = searchedOpen.length - visibleOpen.length;
         return { status, items: visibleOpen, prevItems: [], hiddenFuture };
     });

@@ -330,9 +330,7 @@ export const NAV_ITEMS: NavItem[] = [
     { id: 'laporan-shift', label: 'Laporan Shift', icon: 'report', path: '/laporan-shift', roles: 'all' },
     { id: 'laporan-harian', label: 'Laporan Harian', icon: 'daily', path: '/laporan-harian', roles: 'all' },
     { id: 'history', label: 'History Data', icon: 'trend', path: '/history', roles: 'all' },
-    { id: 'admin-users', label: 'Kelola User', icon: 'users', path: '/admin/users', roles: ['admin'] },
-    { id: 'admin-wa-groups', label: 'WhatsApp Groups', icon: 'forum', path: '/admin/whatsapp-groups', roles: ['admin'] },
-    { id: 'admin-wa-templates', label: 'Template Notifikasi', icon: 'draft', path: '/admin/notification-templates', roles: ['admin'] },
+    { id: 'admin-wa-hub', label: 'WhatsApp Hub', icon: 'forum', path: '/admin/notification-log', roles: ['admin'] },
     { id: 'maintenance-broadcast', label: 'Broadcast Maintenance', icon: 'campaign', path: '/critical/broadcast', roles: ['admin', 'supervisor', 'foreman_boiler', 'foreman_turbin'] },
 ];
 

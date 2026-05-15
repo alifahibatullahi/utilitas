@@ -11,78 +11,59 @@ import {
 } from '@/lib/whatsapp';
 import { getGroupForShift } from '@/lib/constants';
 
-// Reminders run as a single endpoint hit by an external cron every ~5 minutes.
-// Throttle is enforced via notification_log (5-min window).
+// Reminders run as a single endpoint hit by an external cron every ~15 minutes.
+// Schedule (start/end/throttle per kind) is loaded from `notification_schedule` table — admin-editable.
 
-interface ReminderJob {
-    kind: 'shift_reminder' | 'daily_reminder';
-    shift?: 'pagi' | 'sore' | 'malam';
-    date: string;          // logical report date (yesterday for malam/daily-after-midnight)
-    startMinutes: number;  // minutes-of-day when window opens (WIB)
-    endMinutes: number;    // when window closes (no more reminders)
-    nowMinutes: number;
+interface ScheduleRow {
+    id: string;
+    label: string;
+    kind: string;             // 'shift_reminder' | 'daily_reminder'
+    shift: string | null;     // 'pagi'|'sore'|'malam'|null
+    start_hour: number;
+    start_minute: number;
+    end_hour: number;         // may exceed 24 to mean next-day (e.g. 26 = 02:00 next day)
+    end_minute: number;
+    throttle_minutes: number;
+    enabled: boolean;
 }
 
-function determineActiveJobs(): ReminderJob[] {
+interface ReminderJob {
+    schedule: ScheduleRow;
+    date: string;             // logical report date (yesterday for malam shift / late LHUBB tick)
+    nowMinutesShifted: number;// minutes-of-day in WIB; +24*60 if we treated current time as belonging to "yesterday's window"
+}
+
+function rowsToActiveJobs(rows: ScheduleRow[]): ReminderJob[] {
     const { hour, minute, date } = nowWIB();
     const nowMinutes = hour * 60 + minute;
     const yesterday = shiftYesterdayWIB();
     const jobs: ReminderJob[] = [];
 
-    // Pagi shift report (07:00–15:00) → reminder 12:30 → 15:00
-    if (nowMinutes >= 12 * 60 + 30 && nowMinutes < 15 * 60) {
-        jobs.push({
-            kind: 'shift_reminder',
-            shift: 'pagi',
-            date,
-            startMinutes: 12 * 60 + 30,
-            endMinutes: 15 * 60,
-            nowMinutes,
-        });
-    }
+    for (const row of rows) {
+        if (!row.enabled) continue;
+        const start = row.start_hour * 60 + row.start_minute;
+        const end = row.end_hour * 60 + row.end_minute;
 
-    // Sore shift report (15:00–23:00) → reminder 20:30 → 23:00
-    if (nowMinutes >= 20 * 60 + 30 && nowMinutes < 23 * 60) {
-        jobs.push({
-            kind: 'shift_reminder',
-            shift: 'sore',
-            date,
-            startMinutes: 20 * 60 + 30,
-            endMinutes: 23 * 60,
-            nowMinutes,
-        });
-    }
-
-    // Malam shift report (23:00 prev → 07:00 today) → reminder 04:30 → 07:00
-    // Logical report date = yesterday.
-    if (nowMinutes >= 4 * 60 + 30 && nowMinutes < 7 * 60) {
-        jobs.push({
-            kind: 'shift_reminder',
-            shift: 'malam',
-            date: yesterday,
-            startMinutes: 4 * 60 + 30,
-            endMinutes: 7 * 60,
-            nowMinutes,
-        });
-    }
-
-    // Daily LHUBB → reminder 23:00 today → 02:00 next day
-    if (nowMinutes >= 23 * 60) {
-        jobs.push({
-            kind: 'daily_reminder',
-            date,
-            startMinutes: 23 * 60,
-            endMinutes: 26 * 60, // 02:00 next day
-            nowMinutes,
-        });
-    } else if (nowMinutes < 2 * 60) {
-        jobs.push({
-            kind: 'daily_reminder',
-            date: yesterday,
-            startMinutes: 23 * 60,
-            endMinutes: 26 * 60,
-            nowMinutes: nowMinutes + 24 * 60,
-        });
+        // Same-day window (start < end)
+        if (start <= end) {
+            // Pagi/sore variants: window is in today's date.
+            if (nowMinutes >= start && nowMinutes < end) {
+                // Malam shift: report date = yesterday (shift ran 23:00 prev → 07:00 today).
+                const reportDate = row.shift === 'malam' ? yesterday : date;
+                jobs.push({ schedule: row, date: reportDate, nowMinutesShifted: nowMinutes });
+            }
+        } else {
+            // Wrap window (e.g. 23:00 → 26:00 = 02:00 next day).
+            // Two cases for "now is inside":
+            //   case A: nowMinutes >= start (still same day, before midnight)
+            //   case B: nowMinutes + 24*60 < end (after midnight, before wrap-end)
+            if (nowMinutes >= start) {
+                jobs.push({ schedule: row, date, nowMinutesShifted: nowMinutes });
+            } else if (nowMinutes + 24 * 60 < end) {
+                // After midnight: logical report date = yesterday for daily LHUBB.
+                jobs.push({ schedule: row, date: yesterday, nowMinutesShifted: nowMinutes + 24 * 60 });
+            }
+        }
     }
 
     return jobs;
@@ -96,7 +77,14 @@ export async function GET(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
-    const jobs = determineActiveJobs();
+    const { data: schedules, error } = await supabase
+        .from('notification_schedule')
+        .select('*');
+    if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const jobs = rowsToActiveJobs((schedules ?? []) as ScheduleRow[]);
     const results: unknown[] = [];
 
     for (const job of jobs) {
@@ -107,73 +95,75 @@ export async function GET(req: NextRequest) {
 }
 
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {
+    const { schedule, date } = job;
+
     // 1. Already submitted? → skip
-    if (job.kind === 'shift_reminder' && job.shift) {
+    if (schedule.kind === 'shift_reminder' && schedule.shift) {
         const { data } = await supabase
             .from('shift_reports')
             .select('id')
-            .eq('date', job.date)
-            .eq('shift', job.shift)
+            .eq('date', date)
+            .eq('shift', schedule.shift)
             .limit(1);
-        if (data && data.length > 0) return { job, skipped: 'already_submitted' };
-    } else if (job.kind === 'daily_reminder') {
+        if (data && data.length > 0) return { schedule: schedule.id, skipped: 'already_submitted' };
+    } else if (schedule.kind === 'daily_reminder') {
         const { data } = await supabase
             .from('daily_reports')
             .select('id')
-            .eq('date', job.date)
+            .eq('date', date)
             .limit(1);
-        if (data && data.length > 0) return { job, skipped: 'already_submitted' };
+        if (data && data.length > 0) return { schedule: schedule.id, skipped: 'already_submitted' };
     }
 
-    // 2. Throttle: was a reminder of this kind/date/shift sent in the last 5 minutes?
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    // 2. Throttle: was a reminder of this kind/date/shift sent in the last N minutes?
+    const throttleMs = schedule.throttle_minutes * 60 * 1000;
+    const sinceIso = new Date(Date.now() - throttleMs).toISOString();
     let throttleQuery = supabase
         .from('notification_log')
         .select('id')
-        .eq('kind', job.kind)
-        .eq('target_date', job.date)
-        .gte('sent_at', fiveMinAgo);
-    if (job.shift) throttleQuery = throttleQuery.eq('target_shift', job.shift);
+        .eq('kind', schedule.kind)
+        .eq('target_date', date)
+        .gte('sent_at', sinceIso);
+    if (schedule.shift) throttleQuery = throttleQuery.eq('target_shift', schedule.shift);
     const { data: recent } = await throttleQuery.limit(1);
-    if (recent && recent.length > 0) return { job, skipped: 'throttled' };
+    if (recent && recent.length > 0) return { schedule: schedule.id, skipped: 'throttled' };
 
     // 3. Build target group + message
     let groupKey: string;
     let groupLetter: string | null = null;
-    if (job.kind === 'shift_reminder' && job.shift) {
-        groupLetter = getGroupForShift(job.date, job.shift);
-        if (!groupLetter) return { job, skipped: 'no_group_assignment' };
+    if (schedule.kind === 'shift_reminder' && schedule.shift) {
+        groupLetter = getGroupForShift(date, schedule.shift as 'pagi' | 'sore' | 'malam');
+        if (!groupLetter) return { schedule: schedule.id, skipped: 'no_group_assignment' };
         groupKey = `shift_${groupLetter.toLowerCase()}`;
     } else {
-        // For daily LHUBB, use the management group (or fall back to current shift group).
         groupKey = 'management';
     }
 
     const group = await getWhatsappGroup(supabase, groupKey);
-    if (!group) return { job, skipped: 'no_group_configured', groupKey };
+    if (!group) return { schedule: schedule.id, skipped: 'no_group_configured', groupKey };
 
     const link =
-        job.kind === 'shift_reminder' && job.shift
-            ? buildDeepLink('/input-shift', { shift: job.shift, date: job.date })
-            : buildDeepLink('/laporan-harian', { date: job.date });
+        schedule.kind === 'shift_reminder' && schedule.shift
+            ? buildDeepLink('/input-shift', { shift: schedule.shift, date })
+            : buildDeepLink('/laporan-harian', { date });
 
-    const message = await renderTemplate(supabase, job.kind, {
-        shift: job.shift ? job.shift.charAt(0).toUpperCase() + job.shift.slice(1) : '',
+    const message = await renderTemplate(supabase, schedule.kind, {
+        shift: schedule.shift ? schedule.shift.charAt(0).toUpperCase() + schedule.shift.slice(1) : '',
         group: groupLetter ?? '',
-        date: job.date,
+        date,
         link,
     });
 
     // 4. Send + log
     const send = await sendFonnteGroup(group.fonnte_target, message);
     await logNotification(supabase, {
-        kind: job.kind,
-        target_date: job.date,
-        target_shift: job.shift ?? null,
+        kind: schedule.kind,
+        target_date: date,
+        target_shift: schedule.shift ?? null,
         target_group: groupLetter,
         sent_to: group.fonnte_target,
         payload: message,
     });
 
-    return { job, sent: send.ok, status: send.status };
+    return { schedule: schedule.id, sent: send.ok, status: send.status };
 }

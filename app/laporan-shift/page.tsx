@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useShiftReport, ShiftReportData } from '@/hooks/useShiftReport';
 import { todayWIB } from '@/lib/utils';
-import { ShareToWAButton } from '@/components/ui/ShareToWAButton';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
 
 // ─── Data Interfaces ───
@@ -357,11 +356,14 @@ export default function LaporanShiftPage() {
                 <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Laporan Akhir Shift {SHIFT_LABELS[activeShift]}</h2>
                 <p className="text-primary font-bold text-sm tracking-widest uppercase mt-1">Utilitas Batubara</p>
                 {supaReport && (
-                    <ShareToWAButton
-                        kind="shift"
-                        reportId={supaReport.id}
-                        className="absolute right-0 top-1"
-                    />
+                    <button
+                        onClick={() => window.open('/laporan-shift/preview', '_blank')}
+                        className="absolute right-0 top-1 flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all"
+                        title="Lihat preview laporan (untuk print)"
+                    >
+                        <span className="material-symbols-outlined text-sm">visibility</span>
+                        Lihat Preview
+                    </button>
                 )}
             </header>
 

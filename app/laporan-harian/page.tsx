@@ -6,7 +6,6 @@ import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { useAppSettings, useStreamDays } from '@/hooks/useAppSettings';
 import { todayWIB } from '@/lib/utils';
-import { ShareToWAButton } from '@/components/ui/ShareToWAButton';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
@@ -367,11 +366,14 @@ export default function LaporanHarianPage() {
                 <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Laporan Harian</h2>
                 <p className="text-primary font-bold text-sm tracking-widest uppercase mt-1">Utilitas Batubara</p>
                 {report?.id && (
-                    <ShareToWAButton
-                        kind="daily"
-                        reportId={report.id as string}
-                        className="absolute right-0 top-1"
-                    />
+                    <button
+                        onClick={() => window.open('/laporan-harian/preview', '_blank')}
+                        className="absolute right-0 top-1 flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all"
+                        title="Lihat preview laporan (untuk print)"
+                    >
+                        <span className="material-symbols-outlined text-sm">visibility</span>
+                        Lihat Preview
+                    </button>
                 )}
             </header>
 

@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
         .select('item, uraian, scope, status, tipe')
-        .eq('date', report.date as string);
+        .eq('date', report.date as string)
+        .order('item', { ascending: true });
 
     const text = buildDailyTextBody(report, maintenance ?? []);
     return NextResponse.json({ text });
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
         .select('item, uraian, scope, foreman, tipe, status, notif')
-        .eq('date', report.date as string);
+        .eq('date', report.date as string)
+        .order('item', { ascending: true });
 
     const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey);
     const textResult = sendText(supabase, washiftMessage, washiftTarget, washiftIsGroupKey ?? false, report);
@@ -247,7 +249,7 @@ function buildDailyReportHtml(report: any, maintenance: any[]): string {
     <tbody>${maintRows}</tbody>
   </table>
 
-  ${report.notes ? `<h2>Catatan Operasional</h2><div class="catatan">${escapeHtml(report.notes)}</div>` : ''}
+  ${report.notes ? `<h2>Catatan Harian</h2><div class="catatan">${escapeHtml(report.notes)}</div>` : ''}
 
   <div class="footer">PowerOps — Laporan Harian (LHUBB) ${report.date}</div>
 </body></html>`;
@@ -293,14 +295,15 @@ function buildDailyTextBody(report: any, maintenance: any[]): string {
     if (maintenance.length === 0) {
         lines.push('  (tidak ada item)');
     } else {
-        maintenance.forEach((m, i) => {
-            lines.push(`${i + 1}. [${m.status}] ${m.item} — ${m.uraian} (${m.scope}, ${m.tipe})`);
+        const sorted = [...maintenance].sort((a, b) => String(a.item ?? '').localeCompare(String(b.item ?? '')));
+        sorted.forEach((m, i) => {
+            lines.push(`${i + 1} - ${m.item ?? '-'} + ${m.scope ?? '-'} + ${m.uraian ?? '-'} + ${m.status ?? '-'}`);
         });
     }
 
     if (report.notes) {
         lines.push('');
-        lines.push('━━━ *CATATAN OPERASIONAL* ━━━');
+        lines.push('━━━ *CATATAN HARIAN* ━━━');
         lines.push(report.notes);
     }
 

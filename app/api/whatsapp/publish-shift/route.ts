@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
         .select('item, uraian, scope, status, tipe')
-        .eq('date', report.date as string);
+        .eq('shift_report_id', reportId)
+        .order('item', { ascending: true });
 
     const text = buildShiftTextBody(report, maintenance ?? []);
     return NextResponse.json({ text });
@@ -74,11 +75,12 @@ export async function POST(req: NextRequest) {
         .single();
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
-    // ── Maintenance + critical for this date ──
+    // ── Maintenance for THIS shift report only ──
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
         .select('item, uraian, scope, foreman, tipe, status, notif')
-        .eq('date', report.date as string);
+        .eq('shift_report_id', reportId)
+        .order('item', { ascending: true });
 
     // ────────── Run both sends in parallel ──────────
     const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey);
@@ -311,7 +313,7 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
     <tbody>${maintRows}</tbody>
   </table>
 
-  ${report.catatan ? `<h2>Catatan Operasional</h2><div class="catatan">${escapeHtml(report.catatan)}</div>` : ''}
+  ${report.catatan ? `<h2>Catatan Shift</h2><div class="catatan">${escapeHtml(report.catatan)}</div>` : ''}
 
   <div class="footer">PowerOps — Laporan Shift ${shiftLabel} ${report.date} · Grup ${report.group_name}</div>
 </body>
@@ -353,14 +355,16 @@ function buildShiftTextBody(report: any, maintenance: any[]): string {
     if (maintenance.length === 0) {
         lines.push('  (tidak ada item)');
     } else {
-        maintenance.forEach((m, i) => {
-            lines.push(`${i + 1}. [${m.status}] ${m.item} — ${m.uraian} (${m.scope}, ${m.tipe})`);
+        // Sort by item ascending, then number sequentially.
+        const sorted = [...maintenance].sort((a, b) => String(a.item ?? '').localeCompare(String(b.item ?? '')));
+        sorted.forEach((m, i) => {
+            lines.push(`${i + 1} - ${m.item ?? '-'} + ${m.scope ?? '-'} + ${m.uraian ?? '-'} + ${m.status ?? '-'}`);
         });
     }
 
     if (report.catatan) {
         lines.push('');
-        lines.push('━━━ *CATATAN OPERASIONAL* ━━━');
+        lines.push('━━━ *CATATAN SHIFT* ━━━');
         lines.push(report.catatan);
     }
 

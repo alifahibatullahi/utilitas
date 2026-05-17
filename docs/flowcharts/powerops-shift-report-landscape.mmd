@@ -6,71 +6,73 @@ flowchart LR
 %% ============== SEBELUM ==============
 subgraph BEFORE["🔴 SEBELUM PowerOps"]
     direction TB
-    OP1B["Operator 1"]
-    OP2B["Operator 2"]
-    OPNB["Operator N"]
+    OP_B["Operator 1, 2, … N"]
     HT(["Komunikasi via HT<br/>(satu per satu)"])
-    CCRB["CCR<br/>catat di Logbook"]
-    LOG[("Logbook<br/>(tulis tangan)")]
-    FOREB["Foreman<br/>tulis ke Spreadsheet"]
-    SS[("Spreadsheet")]
-    SUPB["Supervisor"]
-    TEL(["Telepon ke Washift"])
+    CCRB["CCR catat di Logbook"]
+    FOREB["Foreman tulis ulang<br/>ke Spreadsheet<br/>⚠️ double input"]
+    SUPB["Supervisor<br/>review laporan"]
+    TEL(["Telepon ke Washift<br/>(manual)"])
     WAB["Washift"]
-    WAG1["WhatsApp Group<br/>(share manual)"]
 
-    OP1B --> HT
-    OP2B --> HT
-    OPNB --> HT
-    HT --> CCRB
-    CCRB --> LOG
-    CCRB -.->|"laporan diteruskan"| FOREB
-    LOG -.->|"double input"| FOREB
-    FOREB --> SS
-    SS --> SUPB
-    SUPB --> TEL --> WAB
-    SUPB -->|"copy paste manual"| WAG1
+    OP_B --> HT --> CCRB --> FOREB --> SUPB --> TEL --> WAB
+end
+
+%% ============== TAHAPAN (kolom tengah, label per stage) ==============
+subgraph STAGES["📋 Tahapan"]
+    direction TB
+    T1["1. Input Operator"]
+    T2["2. Channel Komunikasi"]
+    T3["3. Pencatatan"]
+    T4["4. Konsolidasi Data"]
+    T5["5. Review &amp; Approval"]
+    T6["6. Distribusi"]
+    T7["7. Penerima Laporan"]
+
+    T1 ~~~ T2 ~~~ T3 ~~~ T4 ~~~ T5 ~~~ T6 ~~~ T7
 end
 
 %% ============== SESUDAH ==============
 subgraph AFTER["🟢 SESUDAH PowerOps"]
     direction TB
-    OP1A["Operator 1"]
-    OP2A["Operator 2"]
-    OPNA["Operator N"]
-    PO[/"PowerOps<br/>Form Laporan"/]
+    OP_A["Operator 1, 2, … N"]
+    PO[/"Input langsung ke<br/>Form PowerOps"/]
     DB[("Database PowerOps<br/>(single source of truth)")]
-    REVIEW{"Foreman / Supervisor<br/>Review laporan"}
-    REVISI["Revisi oleh Operator"]
+    SKIP["✨ Otomatis<br/>(tidak perlu input ulang)"]
+    REVIEW{"Foreman / Supervisor<br/>ACC laporan"}
     AUTO(["Auto-distribute"])
-    WAGA["WhatsApp Group"]
-    WAA["Washift"]
+    RECV["Washift &nbsp;+&nbsp; WhatsApp Group"]
 
-    OP1A --> PO
-    OP2A --> PO
-    OPNA --> PO
-    PO --> DB
-    DB --> REVIEW
-    REVIEW -- "Tolak" --> REVISI --> PO
-    REVIEW -- "ACC" --> AUTO
-    AUTO --> WAGA
-    AUTO --> WAA
+    OP_A --> PO --> DB --> SKIP --> REVIEW --> AUTO --> RECV
 end
 
-BEFORE ==>|"Implementasi PowerOps"| AFTER
+%% ============== ALIGN per tahap (invisible links) ==============
+OP_A ~~~ T1 ~~~ OP_B
+PO   ~~~ T2 ~~~ HT
+DB   ~~~ T3 ~~~ CCRB
+SKIP ~~~ T4 ~~~ FOREB
+REVIEW ~~~ T5 ~~~ SUPB
+AUTO ~~~ T6 ~~~ TEL
+RECV ~~~ T7 ~~~ WAB
 
 %% ============== STYLING ==============
+classDef stageNode fill:#ECEFF1,stroke:#37474F,color:#263238,font-weight:bold;
 classDef opNode fill:#E3F2FD,stroke:#1976D2,color:#0D47A1;
 classDef sysNode fill:#FFF3E0,stroke:#EF6C00,color:#E65100;
 classDef storeNode fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C;
 classDef reviewNode fill:#FFFDE7,stroke:#F9A825,color:#F57F17;
 classDef commNode fill:#ECEFF1,stroke:#455A64,color:#263238;
+classDef autoNode fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20;
+classDef warnNode fill:#FFEBEE,stroke:#C62828,color:#B71C1C;
 
-class OP1B,OP2B,OPNB,OP1A,OP2A,OPNA opNode;
-class CCRB,FOREB,SUPB,WAB,WAA,WAGA,WAG1 sysNode;
-class LOG,SS,DB storeNode;
-class REVIEW,REVISI reviewNode;
-class HT,TEL,AUTO,PO commNode;
+class T1,T2,T3,T4,T5,T6,T7 stageNode;
+class OP_B,OP_A opNode;
+class CCRB,SUPB,WAB,RECV sysNode;
+class FOREB warnNode;
+class DB storeNode;
+class REVIEW reviewNode;
+class HT,TEL commNode;
+class PO,AUTO,SKIP autoNode;
 
 style BEFORE fill:#FFF8F8,stroke:#C62828,stroke-width:2px;
 style AFTER fill:#F8FFF8,stroke:#2E7D32,stroke-width:2px;
+style STAGES fill:#FAFAFA,stroke:#9E9E9E,stroke-width:1px;

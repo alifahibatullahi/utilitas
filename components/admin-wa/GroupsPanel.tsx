@@ -10,12 +10,7 @@ import {
 } from '@/app/admin/whatsapp-groups/actions';
 
 const PRESET_KEYS = [
-    { value: 'shift_a', label: 'Shift Grup A' },
-    { value: 'shift_b', label: 'Shift Grup B' },
-    { value: 'shift_c', label: 'Shift Grup C' },
-    { value: 'shift_d', label: 'Shift Grup D' },
-    { value: 'management', label: 'Management' },
-    { value: 'maintenance', label: 'Maintenance' },
+    'shift_a', 'shift_b', 'shift_c', 'shift_d', 'management', 'maintenance',
 ];
 
 const emptyForm = { id: undefined as string | undefined, key: '', label: '', fonnte_target: '', is_group: true, active: true };
@@ -124,12 +119,17 @@ export default function GroupsPanel() {
 
                     <div>
                         <label className="block text-xs text-text-secondary uppercase mb-1.5">Key</label>
-                        <select value={form.key}
-                            onChange={e => setForm({ ...form, key: e.target.value, label: form.label || (PRESET_KEYS.find(p => p.value === e.target.value)?.label ?? '') })}
-                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary">
-                            <option value="">— pilih —</option>
-                            {PRESET_KEYS.map(k => <option key={k.value} value={k.value}>{k.value}</option>)}
-                        </select>
+                        <input
+                            value={form.key}
+                            onChange={e => setForm({ ...form, key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
+                            list="preset-keys"
+                            placeholder="contoh: shift_a, washift, custom_xyz"
+                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary"
+                        />
+                        <datalist id="preset-keys">
+                            {PRESET_KEYS.map(k => <option key={k} value={k} />)}
+                        </datalist>
+                        <p className="text-xs text-text-secondary mt-1">Boleh apa saja (huruf kecil, angka, underscore). Preset: {PRESET_KEYS.join(', ')}.</p>
                     </div>
 
                     <div>

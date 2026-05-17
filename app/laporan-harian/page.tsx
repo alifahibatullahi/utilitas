@@ -7,6 +7,7 @@ import { useDailyReport } from '@/hooks/useDailyReport';
 import { useAppSettings, useStreamDays } from '@/hooks/useAppSettings';
 import { todayWIB } from '@/lib/utils';
 import { ShareToWAButton } from '@/components/ui/ShareToWAButton';
+import { PublishReportModal } from '@/components/ui/PublishReportModal';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -124,6 +125,7 @@ export default function LaporanHarianPage() {
     const { operator } = useOperator();
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState('2026-03-15');
+    const [publishOpen, setPublishOpen] = useState(false);
     const { report, prevReport, loading, error } = useDailyReport(selectedDate);
     const { rkap } = useAppSettings();
     const { streamDaysA, streamDaysB } = useStreamDays(selectedDate);
@@ -847,14 +849,17 @@ export default function LaporanHarianPage() {
                 </div>
             </div>
 
-            {/* Floating Print PDF Button */}
-            <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30">
-                <button onClick={() => window.open('/laporan-harian/preview', '_blank')}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(43,124,238,0.5)] hover:shadow-[0_4px_32px_rgba(43,124,238,0.7)] hover:scale-105">
-                    <span className="material-symbols-outlined text-lg">print</span>
-                    Print PDF
-                </button>
-            </div>
+            {/* Floating Publish Button */}
+            {report?.id && (
+                <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30">
+                    <button onClick={() => setPublishOpen(true)}
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(16,185,129,0.5)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.7)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">publish</span>
+                        Publish Laporan Harian
+                    </button>
+                </div>
+            )}
+            <PublishReportModal kind="daily" reportId={(report?.id as string) ?? ''} open={publishOpen} onClose={() => setPublishOpen(false)} />
         </div>
     );
 }

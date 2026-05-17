@@ -6,6 +6,7 @@ import { useOperator } from '@/hooks/useOperator';
 import { useShiftReport, ShiftReportData } from '@/hooks/useShiftReport';
 import { todayWIB } from '@/lib/utils';
 import { ShareToWAButton } from '@/components/ui/ShareToWAButton';
+import { PublishReportModal } from '@/components/ui/PublishReportModal';
 
 // ─── Data Interfaces ───
 interface BoilerData {
@@ -269,6 +270,7 @@ export default function LaporanShiftPage() {
     const router = useRouter();
     const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
     const [selectedDate, setSelectedDate] = useState(todayWIB);
+    const [publishOpen, setPublishOpen] = useState(false);
 
     const { report: supaReport, activeMaintenance, openCriticals, loading, error } = useShiftReport(selectedDate, activeShift);
 
@@ -662,14 +664,17 @@ export default function LaporanShiftPage() {
                 <p className="text-slate-500 text-[10px]">&copy; 2026 PowerOps Control Systems. Generated from Shift {report.group} Terminal.</p>
             </footer>
 
-            {/* Floating Print PDF Button */}
-            <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30">
-                <button onClick={() => window.open('/laporan-shift/preview', '_blank')}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(43,124,238,0.5)] hover:shadow-[0_4px_32px_rgba(43,124,238,0.7)] hover:scale-105">
-                    <span className="material-symbols-outlined text-lg">print</span>
-                    Print PDF
-                </button>
-            </div>
+            {/* Floating Publish Button */}
+            {supaReport && (
+                <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30">
+                    <button onClick={() => setPublishOpen(true)}
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(16,185,129,0.5)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.7)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">publish</span>
+                        Publish Laporan Shift
+                    </button>
+                </div>
+            )}
+            <PublishReportModal kind="shift" reportId={supaReport?.id ?? ''} open={publishOpen} onClose={() => setPublishOpen(false)} />
             </>)}
 
         </div>

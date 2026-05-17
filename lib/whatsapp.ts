@@ -36,6 +36,35 @@ export async function sendFonnteText(to: string, message: string): Promise<{ ok:
 // Fonnte uses the same `target` parameter for personal numbers and group JIDs.
 export const sendFonnteGroup = sendFonnteText;
 
+// Send a file (PDF/image/doc) by passing a public URL. Fonnte fetches the URL server-side.
+export async function sendFonnteFile(to: string, fileUrl: string, caption?: string, filename?: string): Promise<{ ok: boolean; status?: number; body?: unknown }> {
+    const token = process.env.FONNTE_TOKEN;
+    if (!token) {
+        console.warn('[whatsapp] FONNTE_TOKEN not set');
+        return { ok: false };
+    }
+
+    try {
+        const payload: Record<string, string> = { target: to, url: fileUrl };
+        if (caption) payload.message = caption;
+        if (filename) payload.filename = filename;
+
+        const res = await fetch('https://api.fonnte.com/send', {
+            method: 'POST',
+            headers: {
+                Authorization: token,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+        const body = await res.json().catch(() => null);
+        return { ok: res.ok, status: res.status, body };
+    } catch (err) {
+        console.warn('[whatsapp] File send failed:', err);
+        return { ok: false };
+    }
+}
+
 // ─── DB helpers ───
 
 export async function getWhatsappGroup(supabase: SupabaseClient, key: string) {

@@ -1,0 +1,312 @@
+import { NextRequest, NextResponse } from 'next/server';
+import {
+    createAdminClient,
+    sendFonnteText,
+    sendFonnteFile,
+    sendFonnteGroup,
+    getWhatsappGroup,
+    logNotification,
+} from '@/lib/whatsapp';
+import { htmlToPdf } from '@/lib/pdf';
+import { uploadToR2 } from '@/lib/r2';
+
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
+export async function GET(req: NextRequest) {
+    const reportId = req.nextUrl.searchParams.get('reportId');
+    if (!reportId) return NextResponse.json({ error: 'reportId required' }, { status: 400 });
+
+    const supabase = createAdminClient();
+    const { data: report, error } = await supabase
+        .from('daily_reports')
+        .select(`
+            id, date, notes,
+            daily_report_steam (prod_boiler_a_24, prod_boiler_b_24, prod_total_24, inlet_turbine_24),
+            daily_report_power (gen_24, internal_bus1_24, exsport_24),
+            daily_report_coal (coal_a_24, coal_b_24, coal_c_24, coal_d_24, coal_e_24, coal_f_24),
+            daily_report_stock_tank (stock_batubara, bfw_total, solar_tank_a, solar_tank_b)
+        `)
+        .eq('id', reportId)
+        .single();
+    if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+
+    const { data: maintenance } = await supabase
+        .from('maintenance_logs')
+        .select('item, uraian, scope, status, tipe')
+        .eq('date', report.date as string);
+
+    const text = buildDailyTextBody(report, maintenance ?? []);
+    return NextResponse.json({ text });
+}
+
+interface PublishBody {
+    reportId: string;
+    washiftMessage: string;
+    washiftTarget: string;
+    washiftIsGroupKey?: boolean;
+    pdfGroupKey?: string;
+}
+
+export async function POST(req: NextRequest) {
+    let body: PublishBody;
+    try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
+    const { reportId, washiftMessage, washiftTarget, washiftIsGroupKey, pdfGroupKey = 'management' } = body;
+    if (!reportId) return NextResponse.json({ error: 'reportId required' }, { status: 400 });
+
+    const supabase = createAdminClient();
+
+    const { data: report, error } = await supabase
+        .from('daily_reports')
+        .select(`
+            id, date, notes,
+            daily_report_steam (*),
+            daily_report_power (*),
+            daily_report_coal (*),
+            daily_report_turbine_misc (*),
+            daily_report_stock_tank (*),
+            daily_report_totalizer (*)
+        `)
+        .eq('id', reportId)
+        .single();
+    if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+
+    const { data: maintenance } = await supabase
+        .from('maintenance_logs')
+        .select('item, uraian, scope, foreman, tipe, status, notif')
+        .eq('date', report.date as string);
+
+    const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey);
+    const textResult = sendText(supabase, washiftMessage, washiftTarget, washiftIsGroupKey ?? false, report);
+
+    const [pdf, text] = await Promise.allSettled([pdfResult, textResult]);
+
+    return NextResponse.json({
+        pdf: pdf.status === 'fulfilled' ? pdf.value : { ok: false, error: String(pdf.reason) },
+        text: text.status === 'fulfilled' ? text.value : { ok: false, error: String(text.reason) },
+    });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function sendPdf(supabase: ReturnType<typeof createAdminClient>, report: any, maintenance: any[], pdfGroupKey: string) {
+    const group = await getWhatsappGroup(supabase, pdfGroupKey);
+    if (!group) return { ok: false, error: `Group "${pdfGroupKey}" tidak ditemukan` };
+
+    const html = buildDailyReportHtml(report, maintenance);
+    let pdfBuf: Buffer;
+    try { pdfBuf = await htmlToPdf(html); }
+    catch (err) { return { ok: false, error: `PDF render gagal: ${err instanceof Error ? err.message : String(err)}` }; }
+
+    const filename = `laporan-harian-${report.date}.pdf`;
+    const r2Key = `reports/daily/${report.id}/${Date.now()}-${filename}`;
+    let pdfUrl: string;
+    try { pdfUrl = await uploadToR2(r2Key, pdfBuf, 'application/pdf'); }
+    catch (err) { return { ok: false, error: `R2 upload gagal: ${err instanceof Error ? err.message : String(err)}` }; }
+
+    const send = await sendFonnteFile(group.fonnte_target, pdfUrl, undefined, filename);
+    await logNotification(supabase, {
+        kind: 'daily_share',
+        target_date: report.date,
+        sent_to: group.fonnte_target,
+        payload: `[PDF] ${pdfUrl}`,
+    });
+
+    return { ok: send.ok, status: send.status, pdfUrl };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function sendText(supabase: ReturnType<typeof createAdminClient>, message: string, target: string, isGroupKey: boolean, report: any) {
+    if (!message?.trim()) return { ok: false, error: 'Pesan kosong' };
+
+    let fonnteTarget = target;
+    if (isGroupKey) {
+        const group = await getWhatsappGroup(supabase, target);
+        if (!group) return { ok: false, error: `Group "${target}" tidak ditemukan` };
+        fonnteTarget = group.fonnte_target;
+    }
+    if (!fonnteTarget) return { ok: false, error: 'Target kosong' };
+
+    const send = isGroupKey
+        ? await sendFonnteGroup(fonnteTarget, message)
+        : await sendFonnteText(fonnteTarget, message);
+    await logNotification(supabase, {
+        kind: 'daily_share',
+        target_date: report.date,
+        sent_to: fonnteTarget,
+        payload: message,
+    });
+    return { ok: send.ok, status: send.status };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildDailyReportHtml(report: any, maintenance: any[]): string {
+    const stm = report.daily_report_steam?.[0];
+    const pwr = report.daily_report_power?.[0];
+    const coal = report.daily_report_coal?.[0];
+    const turb = report.daily_report_turbine_misc?.[0];
+    const tank = report.daily_report_stock_tank?.[0];
+    const tot = report.daily_report_totalizer?.[0];
+    const cell = (v: unknown) => v == null || v === '' ? '—' : String(v);
+
+    const maintRows = maintenance.length === 0
+        ? '<tr><td colspan="6" style="text-align:center;color:#666">— Tidak ada item maintenance —</td></tr>'
+        : maintenance.map((m, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><b>${cell(m.item)}</b></td>
+                <td>${cell(m.uraian)}</td>
+                <td>${cell(m.scope)}</td>
+                <td>${cell(m.tipe)}</td>
+                <td>${cell(m.status)}</td>
+            </tr>
+        `).join('');
+
+    return `<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<title>Laporan Harian LHUBB — ${report.date}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 13px; margin: 16px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #2b7cee; color: #2b7cee; }
+  .meta { font-size: 11px; color: #475569; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  th, td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; }
+  th { background: #f1f5f9; font-weight: 600; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .catatan { padding: 8px; background: #f8fafc; border-left: 3px solid #2b7cee; white-space: pre-wrap; }
+  .footer { margin-top: 24px; padding-top: 8px; border-top: 1px solid #cbd5e1; text-align: center; color: #94a3b8; font-size: 9px; }
+</style></head><body>
+  <h1>Laporan Harian (LHUBB)</h1>
+  <div class="meta"><b>Tanggal:</b> ${report.date}</div>
+
+  <div class="two-col">
+    <div>
+      <h2>Produksi Steam 24 Jam</h2>
+      <table>
+        <tr><td>Boiler A</td><td>${cell(stm?.prod_boiler_a_24)} t</td></tr>
+        <tr><td>Boiler B</td><td>${cell(stm?.prod_boiler_b_24)} t</td></tr>
+        <tr><td>Total</td><td><b>${cell(stm?.prod_total_24)} t</b></td></tr>
+        <tr><td>Inlet Turbine</td><td>${cell(stm?.inlet_turbine_24)} t</td></tr>
+        <tr><td>Fully Condens</td><td>${cell(stm?.fully_condens_24)} t</td></tr>
+        <tr><td>MPS Pabrik 1B</td><td>${cell(stm?.mps_i_24)} t</td></tr>
+        <tr><td>MPS Pabrik 3A</td><td>${cell(stm?.mps_3a_24)} t</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>Power 24 Jam</h2>
+      <table>
+        <tr><td>Generator</td><td>${cell(pwr?.gen_24)} MWh</td></tr>
+        <tr><td>Internal Bus 1</td><td>${cell(pwr?.internal_bus1_24)} MWh</td></tr>
+        <tr><td>Export</td><td>${cell(pwr?.exsport_24)} MWh</td></tr>
+        <tr><td>Distribusi II</td><td>${cell(pwr?.dist_ii_24)} MWh</td></tr>
+        <tr><td>Distribusi 3A</td><td>${cell(pwr?.dist_3a_24)} MWh</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <h2>Konsumsi Coal</h2>
+      <table>
+        <tr><th>Feeder</th><th>24h</th></tr>
+        <tr><td>A</td><td>${cell(coal?.coal_a_24)} t</td></tr>
+        <tr><td>B</td><td>${cell(coal?.coal_b_24)} t</td></tr>
+        <tr><td>C</td><td>${cell(coal?.coal_c_24)} t</td></tr>
+        <tr><td>D</td><td>${cell(coal?.coal_d_24)} t</td></tr>
+        <tr><td>E</td><td>${cell(coal?.coal_e_24)} t</td></tr>
+        <tr><td>F</td><td>${cell(coal?.coal_f_24)} t</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>Stock Tank</h2>
+      <table>
+        <tr><td>RCW Level</td><td>${cell(tank?.rcw_level_00)}</td></tr>
+        <tr><td>Demin Level</td><td>${cell(tank?.demin_level_00)}</td></tr>
+        <tr><td>Solar Tank A</td><td>${cell(tank?.solar_tank_a)}</td></tr>
+        <tr><td>Solar Tank B</td><td>${cell(tank?.solar_tank_b)}</td></tr>
+        <tr><td>BFW Total</td><td>${cell(tank?.bfw_total)} m³</td></tr>
+        <tr><td>Phosphat</td><td>${cell(tank?.chemical_phosphat)} L</td></tr>
+        <tr><td>Amin</td><td>${cell(tank?.chemical_amin)} L</td></tr>
+        <tr><td>Hydrasin</td><td>${cell(tank?.chemical_hydrasin)} L</td></tr>
+      </table>
+    </div>
+  </div>
+
+  ${turb || tot ? `
+  <h2>Turbin & Totalizer</h2>
+  <table>
+    <tr><td>Steam Inlet Press</td><td>${cell(turb?.steam_inlet_press)} bar</td><td>Totalizer Export</td><td>${cell(turb?.totalizer_export)} kWh</td></tr>
+    <tr><td>Steam Inlet Temp</td><td>${cell(turb?.steam_inlet_temp)} °C</td><td>Totalizer Import</td><td>${cell(turb?.totalizer_import)} kWh</td></tr>
+    <tr><td>Axial Displacement</td><td>${cell(turb?.axial_displacement)}</td><td>Stock Batubara</td><td>${cell(tank?.stock_batubara)} t</td></tr>
+  </table>` : ''}
+
+  <h2>Critical &amp; Maintenance</h2>
+  <table>
+    <thead><tr><th>No</th><th>Item</th><th>Uraian</th><th>Scope</th><th>Tipe</th><th>Status</th></tr></thead>
+    <tbody>${maintRows}</tbody>
+  </table>
+
+  ${report.notes ? `<h2>Catatan Operasional</h2><div class="catatan">${escapeHtml(report.notes)}</div>` : ''}
+
+  <div class="footer">PowerOps — Laporan Harian (LHUBB) ${report.date}</div>
+</body></html>`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildDailyTextBody(report: any, maintenance: any[]): string {
+    const stm = report.daily_report_steam?.[0];
+    const pwr = report.daily_report_power?.[0];
+    const coal = report.daily_report_coal?.[0];
+    const tank = report.daily_report_stock_tank?.[0];
+
+    const lines: string[] = [];
+    lines.push(`📋 *Laporan Harian (LHUBB) — ${report.date}*`);
+    lines.push('');
+    lines.push('━━━ *PARAMETER OPERASI* ━━━');
+    if (stm) {
+        lines.push('');
+        lines.push('*Produksi Steam 24h*');
+        lines.push(`  Boiler A: ${stm.prod_boiler_a_24 ?? '-'} t`);
+        lines.push(`  Boiler B: ${stm.prod_boiler_b_24 ?? '-'} t`);
+        lines.push(`  Total:    ${stm.prod_total_24 ?? '-'} t`);
+        lines.push(`  Inlet Turbine: ${stm.inlet_turbine_24 ?? '-'} t`);
+    }
+    if (pwr) {
+        lines.push('');
+        lines.push('*Power 24h*');
+        lines.push(`  Gen: ${pwr.gen_24 ?? '-'} MWh · Internal: ${pwr.internal_bus1_24 ?? '-'} MWh · Export: ${pwr.exsport_24 ?? '-'} MWh`);
+    }
+    if (coal) {
+        lines.push('');
+        lines.push('*Coal 24h (per feeder, ton)*');
+        lines.push(`  A:${coal.coal_a_24 ?? '-'} B:${coal.coal_b_24 ?? '-'} C:${coal.coal_c_24 ?? '-'} D:${coal.coal_d_24 ?? '-'} E:${coal.coal_e_24 ?? '-'} F:${coal.coal_f_24 ?? '-'}`);
+    }
+    if (tank) {
+        lines.push('');
+        lines.push('*Stock*');
+        lines.push(`  Batubara: ${tank.stock_batubara ?? '-'} t · BFW: ${tank.bfw_total ?? '-'} m³ · Solar A/B: ${tank.solar_tank_a ?? '-'} / ${tank.solar_tank_b ?? '-'}`);
+    }
+
+    lines.push('');
+    lines.push('━━━ *MAINTENANCE* ━━━');
+    if (maintenance.length === 0) {
+        lines.push('  (tidak ada item)');
+    } else {
+        maintenance.forEach((m, i) => {
+            lines.push(`${i + 1}. [${m.status}] ${m.item} — ${m.uraian} (${m.scope}, ${m.tipe})`);
+        });
+    }
+
+    if (report.notes) {
+        lines.push('');
+        lines.push('━━━ *CATATAN OPERASIONAL* ━━━');
+        lines.push(report.notes);
+    }
+
+    return lines.join('\n');
+}
+
+function escapeHtml(s: string): string {
+    return s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]!));
+}

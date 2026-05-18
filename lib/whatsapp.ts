@@ -17,7 +17,7 @@ export interface SendResult {
 }
 
 export async function sendFonnteText(to: string, message: string): Promise<SendResult> {
-    const token = process.env.FONNTE_TOKEN;
+    const token = process.env.FONNTE_TOKEN?.trim();
     if (!token) {
         console.warn('[whatsapp] FONNTE_TOKEN not set');
         return { ok: false, error: 'FONNTE_TOKEN belum diset di environment server' };
@@ -54,7 +54,7 @@ export const sendFonnteGroup = sendFonnteText;
 
 // Send a file (PDF/image/doc) by passing a public URL. Fonnte fetches the URL server-side.
 export async function sendFonnteFile(to: string, fileUrl: string, caption?: string, filename?: string): Promise<SendResult> {
-    const token = process.env.FONNTE_TOKEN;
+    const token = process.env.FONNTE_TOKEN?.trim();
     if (!token) {
         console.warn('[whatsapp] FONNTE_TOKEN not set');
         return { ok: false, error: 'FONNTE_TOKEN belum diset di environment server' };

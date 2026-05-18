@@ -362,19 +362,9 @@ export default function LaporanHarianPage() {
             </div>
 
             {/* Header */}
-            <header className="text-center relative">
+            <header className="text-center">
                 <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Laporan Harian</h2>
                 <p className="text-primary font-bold text-sm tracking-widest uppercase mt-1">Utilitas Batubara</p>
-                {report?.id && (
-                    <button
-                        onClick={() => window.open('/laporan-harian/preview', '_blank')}
-                        className="absolute right-0 top-1 flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all"
-                        title="Lihat preview laporan (untuk print)"
-                    >
-                        <span className="material-symbols-outlined text-sm">visibility</span>
-                        Lihat Preview
-                    </button>
-                )}
             </header>
 
             {/* Info Bar - Full Width */}
@@ -851,9 +841,14 @@ export default function LaporanHarianPage() {
                 </div>
             </div>
 
-            {/* Floating Publish Button */}
+            {/* Floating Action Buttons */}
             {report?.id && (
-                <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30">
+                <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3">
+                    <button onClick={() => window.open('/laporan-harian/preview', '_blank')}
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(37,99,235,0.5)] hover:shadow-[0_4px_32px_rgba(37,99,235,0.7)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">visibility</span>
+                        Lihat Preview
+                    </button>
                     <button onClick={() => setPublishOpen(true)}
                         className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(16,185,129,0.5)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.7)] hover:scale-105">
                         <span className="material-symbols-outlined text-lg">publish</span>

@@ -54,7 +54,12 @@ export default function GroupsPanel() {
 
     const testRow = async (target: string) => {
         const res = await testSend(target);
-        setMsg(res.ok ? `✓ Test send terkirim (status ${res.status}).` : `✗ Test gagal (status ${res.status}).`);
+        if (res.ok) {
+            setMsg(`✓ Test send terkirim (status ${res.status}).`);
+        } else {
+            const reason = res.error ?? (res.body ? JSON.stringify(res.body) : `status ${res.status ?? '?'}`);
+            setMsg(`✗ Test gagal: ${reason}`);
+        }
     };
 
     return (

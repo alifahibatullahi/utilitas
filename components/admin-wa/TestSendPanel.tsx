@@ -20,11 +20,17 @@ export default function TestSendPanel() {
 
     const effectiveTarget = mode === 'group' ? target : manualTarget.trim();
 
+    const fmtErr = (res: { error?: string; status?: number; body?: unknown }) => {
+        if (res.error) return res.error;
+        if (res.body) return JSON.stringify(res.body);
+        return `status ${res.status ?? '?'}`;
+    };
+
     const sendDefault = async () => {
         if (!effectiveTarget) { setMsg('Target kosong.'); return; }
         setBusy(true); setMsg(null);
         const res = await testSend(effectiveTarget);
-        setMsg(res.ok ? `✓ Test send terkirim (status ${res.status})` : `✗ Gagal (status ${res.status})`);
+        setMsg(res.ok ? `✓ Test send terkirim (status ${res.status})` : `✗ Gagal: ${fmtErr(res)}`);
         setBusy(false);
     };
 
@@ -32,7 +38,7 @@ export default function TestSendPanel() {
         if (!effectiveTarget || !message.trim()) { setMsg('Target & isi pesan wajib.'); return; }
         setBusy(true); setMsg(null);
         const res = await sendCustomMessage(effectiveTarget, message);
-        setMsg(res.ok ? `✓ Pesan custom terkirim (status ${res.status})` : `✗ Gagal: ${res.error ?? res.status}`);
+        setMsg(res.ok ? `✓ Pesan custom terkirim (status ${res.status})` : `✗ Gagal: ${fmtErr(res)}`);
         setBusy(false);
     };
 

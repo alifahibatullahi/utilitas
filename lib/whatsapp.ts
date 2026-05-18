@@ -9,11 +9,18 @@ export function createAdminClient(): SupabaseClient {
 
 // ─── Fonnte send helpers ───
 
-export async function sendFonnteText(to: string, message: string): Promise<{ ok: boolean; status?: number; body?: unknown }> {
+export interface SendResult {
+    ok: boolean;
+    status?: number;
+    body?: unknown;
+    error?: string;   // human-readable reason when ok=false
+}
+
+export async function sendFonnteText(to: string, message: string): Promise<SendResult> {
     const token = process.env.FONNTE_TOKEN;
     if (!token) {
         console.warn('[whatsapp] FONNTE_TOKEN not set');
-        return { ok: false };
+        return { ok: false, error: 'FONNTE_TOKEN belum diset di environment server' };
     }
 
     try {
@@ -26,10 +33,19 @@ export async function sendFonnteText(to: string, message: string): Promise<{ ok:
             body: JSON.stringify({ target: to, message }),
         });
         const body = await res.json().catch(() => null);
-        return { ok: res.ok, status: res.status, body };
+        // Fonnte returns HTTP 200 even on logical failure; check body.status as the source of truth.
+        const fonnteOk = body && typeof body === 'object' && (body as { status?: boolean }).status === true;
+        const reason = (body && typeof body === 'object' && (body as { reason?: string }).reason) || undefined;
+        const ok = res.ok && fonnteOk !== false;  // if body has explicit false, fail
+        return {
+            ok,
+            status: res.status,
+            body,
+            error: ok ? undefined : (reason ?? `HTTP ${res.status}${body ? ' · ' + JSON.stringify(body) : ''}`),
+        };
     } catch (err) {
         console.warn('[whatsapp] Send failed:', err);
-        return { ok: false };
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 
@@ -37,11 +53,11 @@ export async function sendFonnteText(to: string, message: string): Promise<{ ok:
 export const sendFonnteGroup = sendFonnteText;
 
 // Send a file (PDF/image/doc) by passing a public URL. Fonnte fetches the URL server-side.
-export async function sendFonnteFile(to: string, fileUrl: string, caption?: string, filename?: string): Promise<{ ok: boolean; status?: number; body?: unknown }> {
+export async function sendFonnteFile(to: string, fileUrl: string, caption?: string, filename?: string): Promise<SendResult> {
     const token = process.env.FONNTE_TOKEN;
     if (!token) {
         console.warn('[whatsapp] FONNTE_TOKEN not set');
-        return { ok: false };
+        return { ok: false, error: 'FONNTE_TOKEN belum diset di environment server' };
     }
 
     try {
@@ -58,10 +74,18 @@ export async function sendFonnteFile(to: string, fileUrl: string, caption?: stri
             body: JSON.stringify(payload),
         });
         const body = await res.json().catch(() => null);
-        return { ok: res.ok, status: res.status, body };
+        const fonnteOk = body && typeof body === 'object' && (body as { status?: boolean }).status === true;
+        const reason = (body && typeof body === 'object' && (body as { reason?: string }).reason) || undefined;
+        const ok = res.ok && fonnteOk !== false;
+        return {
+            ok,
+            status: res.status,
+            body,
+            error: ok ? undefined : (reason ?? `HTTP ${res.status}${body ? ' · ' + JSON.stringify(body) : ''}`),
+        };
     } catch (err) {
         console.warn('[whatsapp] File send failed:', err);
-        return { ok: false };
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 

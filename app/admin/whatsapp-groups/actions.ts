@@ -58,7 +58,7 @@ export async function deleteGroup(id: string) {
 export async function testSend(target: string) {
     if (!target) return { ok: false, error: 'target kosong' };
     const send = await sendFonnteGroup(target, '✅ Test PowerOps WhatsApp — koneksi OK.');
-    return { ok: send.ok, status: send.status, body: send.body };
+    return { ok: send.ok, status: send.status, body: send.body, error: send.error };
 }
 
 // Generic send — for the Test Send hub panel, supports raw number/JID + custom message.
@@ -66,5 +66,5 @@ export async function sendCustomMessage(target: string, message: string) {
     if (!target) return { ok: false, error: 'target kosong' };
     if (!message?.trim()) return { ok: false, error: 'pesan kosong' };
     const send = await sendFonnteGroup(target, message);
-    return { ok: send.ok, status: send.status, body: send.body };
+    return { ok: send.ok, status: send.status, body: send.body, error: send.error };
 }

@@ -743,7 +743,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                     {hasActiveFilter && (
                         <button
                             onClick={clearFilters}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold hover:bg-rose-100 transition-colors"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600 text-white border border-rose-700 text-xs font-bold hover:bg-rose-700 shadow-sm cursor-pointer transition-colors"
                         >
                             <span className="material-symbols-outlined" style={{ fontSize: 13 }}>filter_list_off</span>
                             Reset

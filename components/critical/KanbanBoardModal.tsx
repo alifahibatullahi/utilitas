@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { SHIFT_OPTIONS, getShiftWindow } from '@/lib/constants';
+import { SHIFT_OPTIONS, getShiftWindow, detectCurrentShift } from '@/lib/constants';
 import type { ActivityActionType, MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 
@@ -54,6 +54,10 @@ export default function KanbanBoardModal({
     const shiftWindow = getShiftWindow(boardDate, boardShift);
     // Shift sudah selesai → board read-only + snapshot beku.
     const isPastShift = Date.now() > shiftWindow.end.getTime();
+    // Real-time current shift/date — untuk indicator visual ("● Sekarang")
+    const nowShift = detectCurrentShift();
+    const isViewingTodayDate = boardDate === nowShift.date;
+    const isViewingCurrentShift = isViewingTodayDate && boardShift === nowShift.shift;
 
     // Snapshot beku: kalau shift sudah lewat, tampilkan status & updated_at masing-masing
     // maintenance SEPERTI di akhir shift window — bukan state sekarang. Status change setelah
@@ -169,6 +173,12 @@ export default function KanbanBoardModal({
                                     return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                                 })()}
                             </span>
+                            {isViewingTodayDate && (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-extrabold uppercase tracking-wide border border-emerald-300" title="Tanggal hari ini">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Hari ini
+                                </span>
+                            )}
                             <input
                                 type="date"
                                 value={boardDate}
@@ -191,21 +201,15 @@ export default function KanbanBoardModal({
                         </button>
                     </div>
 
-                    {/* Hari Ini */}
-                    {(() => {
+                    {/* Hari Ini — hanya tampil kalau user TIDAK sedang lihat tanggal hari ini */}
+                    {!isViewingTodayDate && (() => {
                         const now = new Date();
                         const pad = (n: number) => String(n).padStart(2, '0');
                         const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-                        const isToday = boardDate === todayStr;
                         return (
                             <button
                                 onClick={() => onChangeBoardDate(todayStr)}
-                                disabled={isToday}
-                                className={`px-3 h-9 rounded-xl border text-xs font-bold transition-colors shadow-sm ${
-                                    isToday
-                                        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-default'
-                                        : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer'
-                                }`}
+                                className="px-3 h-9 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer text-xs font-bold transition-colors shadow-sm"
                                 title="Lompat ke hari ini"
                             >
                                 Hari Ini
@@ -214,17 +218,25 @@ export default function KanbanBoardModal({
                     })()}
                     </div>
 
-                    {/* Shift tabs — baris bawah */}
+                    {/* Shift tabs — baris bawah. Shift yang sedang berlangsung (real-time) dapat penanda hijau pulse. */}
                     <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
-                        {SHIFT_OPTIONS.map(s => (
-                            <button
-                                key={s.value}
-                                onClick={() => onChangeBoardShift(s.value)}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${boardShift === s.value ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
-                            </button>
-                        ))}
+                        {SHIFT_OPTIONS.map(s => {
+                            const isCurrentRealShift = isViewingTodayDate && s.value === nowShift.shift;
+                            const active = boardShift === s.value;
+                            return (
+                                <button
+                                    key={s.value}
+                                    onClick={() => onChangeBoardShift(s.value)}
+                                    className={`relative flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${active ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                                    title={isCurrentRealShift ? 'Shift yang sedang berlangsung' : undefined}
+                                >
+                                    {isCurrentRealShift && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+                                    )}
+                                    {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 

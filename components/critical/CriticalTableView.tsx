@@ -718,17 +718,6 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             </button>
                         ))}
                     </div>
-                    {/* Scope */}
-                    <select
-                        value={filterScope}
-                        onChange={e => { setFilterScope(e.target.value as HarScope | ''); setExpandedId(null); setCurrentPage(1); }}
-                        className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
-                    >
-                        <option value="">Semua Scope</option>
-                        {harScopes.map(s => (
-                            <option key={s.value} value={s.value}>{s.label}</option>
-                        ))}
-                    </select>
                     {/* Date preset tabs */}
                     <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
                         {([
@@ -760,7 +749,18 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             Reset
                         </button>
                     )}
-                    <span className="ml-auto text-[10px] text-black font-semibold">
+                    {/* Scope — pinggir kanan */}
+                    <select
+                        value={filterScope}
+                        onChange={e => { setFilterScope(e.target.value as HarScope | ''); setExpandedId(null); setCurrentPage(1); }}
+                        className="ml-auto text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
+                    >
+                        <option value="">Semua Scope</option>
+                        {harScopes.map(s => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                    </select>
+                    <span className="text-[10px] text-black font-semibold">
                         {allFilteredItems} item
                     </span>
                 </div>

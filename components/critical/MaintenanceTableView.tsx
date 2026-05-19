@@ -38,7 +38,6 @@ interface MaintenanceTableViewProps {
 
 export default function MaintenanceTableView({ maintenances, workOrders, onEdit, onDelete, onChangeStatus, onToggleExpand }: MaintenanceTableViewProps) {
     const [search, setSearch] = useState('');
-    const [filterTipe, setFilterTipe] = useState<MaintenanceType | 'all'>('all');
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'done'>('all');
     const [filterScope, setFilterScope] = useState<string>('all');
     const [filterForeman, setFilterForeman] = useState<string>('all');
@@ -87,7 +86,6 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
         const q = search.trim().toLowerCase();
         return maintenances
             .filter(m => m.keterangan !== 'IS_NOTE' && m.item !== 'NOTE')
-            .filter(m => filterTipe === 'all' || m.tipe === filterTipe)
             .filter(m => filterStatus === 'all' || (filterStatus === 'active' ? m.status !== 'OK' : m.status === 'OK'))
             .filter(m => filterScope === 'all' || m.scope === filterScope)
             .filter(m => filterForeman === 'all' || m.foreman === filterForeman)
@@ -95,7 +93,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             .filter(m => !q || m.item.toLowerCase().includes(q) || m.uraian.toLowerCase().includes(q) || (m.notif ?? '').toLowerCase().includes(q))
             .sort((a, b) => b.date.localeCompare(a.date));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [maintenances, search, filterTipe, filterStatus, filterScope, filterForeman, dateFilter]);
+    }, [maintenances, search, filterStatus, filterScope, filterForeman, dateFilter]);
 
     const counts = useMemo(() => ({
         total: filtered.length,
@@ -118,13 +116,6 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                     />
                 </div>
 
-                <select value={filterTipe} onChange={e => setFilterTipe(e.target.value as MaintenanceType | 'all')} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
-                    <option value="all">Semua Tipe</option>
-                    <option value="corrective">Corrective</option>
-                    <option value="preventif">Preventif</option>
-                    <option value="modifikasi">Modifikasi</option>
-                </select>
-
                 <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
                     {([
                         { key: 'all' as const, label: 'Semua', count: counts.total, color: 'text-blue-600' },
@@ -144,16 +135,6 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                         </button>
                     ))}
                 </div>
-
-                <select value={filterScope} onChange={e => setFilterScope(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
-                    <option value="all">Semua Scope</option>
-                    {scopes.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-
-                <select value={filterForeman} onChange={e => setFilterForeman(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
-                    <option value="all">Semua Foreman</option>
-                    {foremen.map(f => <option key={f} value={f}>{f === 'foreman_turbin' ? 'Turbin' : f === 'foreman_boiler' ? 'Boiler' : f}</option>)}
-                </select>
 
                 <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
                     {([
@@ -176,14 +157,24 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                     ))}
                 </div>
 
-                {(search || filterTipe !== 'all' || filterStatus !== 'all' || filterScope !== 'all' || filterForeman !== 'all' || dateMode !== 'all') && (
+                {(search || filterStatus !== 'all' || filterScope !== 'all' || filterForeman !== 'all' || dateMode !== 'all') && (
                     <button
-                        onClick={() => { setSearch(''); setFilterTipe('all'); setFilterStatus('all'); setFilterScope('all'); setFilterForeman('all'); setDateMode('all'); }}
+                        onClick={() => { setSearch(''); setFilterStatus('all'); setFilterScope('all'); setFilterForeman('all'); setDateMode('all'); }}
                         className="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold cursor-pointer transition-colors"
                     >
                         Reset
                     </button>
                 )}
+
+                {/* Scope + Foreman — pinggir kanan */}
+                <select value={filterScope} onChange={e => setFilterScope(e.target.value)} className="ml-auto px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
+                    <option value="all">Semua Scope</option>
+                    {scopes.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select value={filterForeman} onChange={e => setFilterForeman(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
+                    <option value="all">Semua Foreman</option>
+                    {foremen.map(f => <option key={f} value={f}>{f === 'foreman_turbin' ? 'Turbin' : f === 'foreman_boiler' ? 'Boiler' : f}</option>)}
+                </select>
             </div>
 
             {/* Table */}

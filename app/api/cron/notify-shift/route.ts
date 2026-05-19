@@ -115,18 +115,16 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
         if (data && data.length > 0) return { schedule: schedule.id, skipped: 'already_submitted' };
     }
 
-    // 2. Throttle: was a reminder of this kind/date/shift sent in the last N minutes?
-    const throttleMs = schedule.throttle_minutes * 60 * 1000;
-    const sinceIso = new Date(Date.now() - throttleMs).toISOString();
-    let throttleQuery = supabase
+    // 2. One-shot: kalau notif jenis ini untuk tanggal+shift ini SUDAH PERNAH dikirim, skip.
+    //    (User minta reminder cuma 1x per shift, bukan ulang tiap 15 menit.)
+    let dedupQuery = supabase
         .from('notification_log')
         .select('id')
         .eq('kind', schedule.kind)
-        .eq('target_date', date)
-        .gte('sent_at', sinceIso);
-    if (schedule.shift) throttleQuery = throttleQuery.eq('target_shift', schedule.shift);
-    const { data: recent } = await throttleQuery.limit(1);
-    if (recent && recent.length > 0) return { schedule: schedule.id, skipped: 'throttled' };
+        .eq('target_date', date);
+    if (schedule.shift) dedupQuery = dedupQuery.eq('target_shift', schedule.shift);
+    const { data: existing } = await dedupQuery.limit(1);
+    if (existing && existing.length > 0) return { schedule: schedule.id, skipped: 'already_sent_once' };
 
     // 3. Build target group + message
     let groupKey: string;

@@ -46,17 +46,13 @@ INSERT INTO notification_templates (key, label, body) VALUES
 Grup {{group}} — {{date}}
 
 Mohon segera mengisi laporan shift.
-👉 {{link}}
-
-Reminder ini berulang setiap 15 menit hingga laporan dikirim.'),
+👉 {{link}}'),
 ('daily_reminder', 'Reminder Laporan Harian (LHUBB)',
 '🔔 *Reminder Laporan Harian (LHUBB)*
 Tanggal: {{date}}
 
 Mohon segera mengisi laporan harian.
-👉 {{link}}
-
-Reminder ini berulang setiap 15 menit hingga laporan dikirim.'),
+👉 {{link}}'),
 ('shift_share', 'Share Hasil Laporan Shift',
 '📋 *Laporan Shift {{shift}} — {{date}}*
 Grup {{group}}

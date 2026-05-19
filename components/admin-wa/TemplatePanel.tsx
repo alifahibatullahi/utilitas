@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { listTemplates, updateTemplate, TemplateRow } from '@/app/admin/notification-templates/actions';
 
 const PLACEHOLDERS: Record<string, string[]> = {
-    shift_reminder:        ['{{shift}}', '{{group}}', '{{date}}', '{{link}}'],
-    daily_reminder:        ['{{date}}', '{{link}}'],
+    shift_reminder:        ['{{shift}}', '{{group}}', '{{date}}', '{{link}}', '{{links}}'],
+    daily_reminder:        ['{{date}}', '{{link}}', '{{links}}'],
     shift_share:           ['{{shift}}', '{{group}}', '{{date}}', '{{summary}}'],
     daily_share:           ['{{date}}', '{{summary}}'],
     maintenance_broadcast: ['{{date}}', '{{summary}}'],

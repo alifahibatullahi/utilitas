@@ -322,6 +322,67 @@ export interface NavItem {
 // Which roles can input shift data
 export const SHIFT_INPUT_ROLES: OperatorRole[] = ['group_a', 'group_b', 'group_c', 'group_d', 'foreman_boiler', 'foreman_turbin'];
 
+// ─── Operator Stations ────────────────────────────────────────────────────────
+// Setiap shift, tugas pengisian laporan dibagi per "station". Link reminder WA
+// membawa operator langsung ke tab(s) yang sesuai station-nya via query param
+// ?station=<id>.
+export type OperatorStation =
+    | 'panel_boiler'
+    | 'panel_turbin'
+    | 'handling'
+    | 'esp'
+    | 'bunker'
+    | 'lapangan_boiler'
+    | 'lapangan_turbin';
+
+export const STATION_LABELS: Record<OperatorStation, string> = {
+    panel_boiler: 'Panel Boiler',
+    panel_turbin: 'Panel Turbin',
+    handling: 'Handling',
+    esp: 'ESP',
+    bunker: 'Bunker',
+    lapangan_boiler: 'Lapangan Boiler',
+    lapangan_turbin: 'Lapangan Turbin',
+};
+
+// Tab IDs harus match dengan TabId di app/input-shift/page.tsx.
+export const STATION_SHIFT_TABS: Record<OperatorStation, string[]> = {
+    panel_boiler: ['Boiler A', 'Boiler B'],
+    panel_turbin: ['Turbin', 'Distribusi Steam', 'Generator'],
+    handling: ['Handling'],
+    esp: ['ESP'],
+    bunker: ['Coal Bunker'],
+    lapangan_boiler: ['Lab'],
+    lapangan_turbin: [],
+};
+
+// Tab IDs harus match dengan HarianTabId di components/input-harian/InputHarianForm.tsx.
+export const STATION_HARIAN_TABS: Record<OperatorStation, string[]> = {
+    panel_boiler: ['Boiler'],
+    panel_turbin: ['Turbin', 'Power'],
+    handling: ['Handling'],
+    esp: ['Silo & Fly Ash'],
+    bunker: [],
+    lapangan_boiler: [],
+    lapangan_turbin: ['PIU'],
+};
+
+export function isValidStation(s: string | null | undefined): s is OperatorStation {
+    if (!s) return false;
+    return s in STATION_LABELS;
+}
+
+// Urutan station untuk render link block reminder WA.
+export const STATION_ORDER: OperatorStation[] = [
+    'panel_boiler',
+    'panel_turbin',
+    'handling',
+    'esp',
+    'bunker',
+    'lapangan_boiler',
+    'lapangan_turbin',
+];
+
 export const NAV_ITEMS: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/dashboard', roles: 'all' },
     { id: 'tank-level', label: 'Tank Level', icon: 'tank', path: '/tank-level', roles: 'all' },

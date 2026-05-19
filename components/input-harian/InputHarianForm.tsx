@@ -1,8 +1,10 @@
 'use client';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { createClient } from '@/lib/supabase/client';
 import type { Operator } from '@/lib/constants';
+import { isValidStation, STATION_HARIAN_TABS, STATION_LABELS, type OperatorStation } from '@/lib/constants';
 import TabBoiler from './TabBoiler';
 import TabTurbin from './TabTurbin';
 import TabPower from './TabPower';
@@ -45,7 +47,25 @@ interface InputHarianFormProps {
 }
 
 export default function InputHarianForm({ date, operator, groupName, supervisorName }: InputHarianFormProps) {
-    const [activeTab, setActiveTab] = useState<HarianTabId>('Boiler');
+    // Station-based view filter via ?station=<id>
+    const searchParams = useSearchParams();
+    const stationParam = searchParams?.get('station') ?? null;
+    const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
+
+    const visibleTabs = useMemo(() => {
+        if (!station) return HARIAN_TABS;
+        const allowed = STATION_HARIAN_TABS[station];
+        return HARIAN_TABS.filter(t => allowed.includes(t.id));
+    }, [station]);
+
+    const [activeTab, setActiveTab] = useState<HarianTabId>(() => {
+        if (station) {
+            const allowed = STATION_HARIAN_TABS[station];
+            const firstAllowed = HARIAN_TABS.find(t => allowed.includes(t.id));
+            if (firstAllowed) return firstAllowed.id;
+        }
+        return 'Boiler';
+    });
     const [visitedTabs, setVisitedTabs] = useState<Set<HarianTabId>>(new Set());
     const [submitting, setSubmitting] = useState(false);
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
@@ -609,9 +629,17 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         </button>
                     </div>
 
+                    {station && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0f1721]/80 border border-slate-700/50 shadow-lg">
+                            <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 18 }}>badge</span>
+                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Station</span>
+                            <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
+                        </div>
+                    )}
+
                     {/* Desktop Tab List */}
                     <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg hidden lg:flex flex-col gap-1">
-                        {HARIAN_TABS.map((tab) => {
+                        {visibleTabs.map((tab) => {
                             const isActive = activeTab === tab.id;
                             const isComplete = isTabLengkap(tab.id);
                             const styles = TAB_STYLES[tab.colorClass];
@@ -639,7 +667,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     {/* Mobile Tab List */}
                     <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg lg:hidden overflow-x-auto">
                         <div className="flex gap-2 w-max pb-1">
-                            {HARIAN_TABS.map((tab) => {
+                            {visibleTabs.map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 const isComplete = isTabLengkap(tab.id);
                                 const styles = TAB_STYLES[tab.colorClass];
@@ -670,7 +698,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     {/* Active Tab Header */}
                     <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-5 py-4 flex items-center gap-4 shadow-lg">
                         {(() => {
-                            const tab = HARIAN_TABS.find(t => t.id === activeTab);
+                            const tab = visibleTabs.find(t => t.id === activeTab);
                             const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
                             return (
                                 <>
@@ -694,6 +722,12 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 <h3 className="text-white font-bold text-base mb-1">Memuat data dari Supabase</h3>
                                 <p className="text-slate-400 text-sm">Mengambil data laporan harian...</p>
                             </div>
+                        </div>
+                    ) : visibleTabs.length === 0 && station ? (
+                        <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl text-center px-6">
+                            <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 56 }}>info</span>
+                            <h3 className="text-white font-bold text-base">Station <span className="text-emerald-400">{STATION_LABELS[station]}</span> tidak punya tab di laporan harian.</h3>
+                            <p className="text-slate-400 text-sm max-w-md">Station ini hanya mengisi data di laporan shift. Buka link yang sesuai dari grup WA.</p>
                         </div>
                     ) : (
                         <div className={`pb-6${activeTab === 'Power' ? ' flex flex-row gap-4 items-start' : ''}`}>

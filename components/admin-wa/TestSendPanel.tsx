@@ -1,7 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { listGroups, testSend, sendCustomMessage, WhatsappGroupRow } from '@/app/admin/whatsapp-groups/actions';
+import {
+    listTemplates,
+    renderTemplatePreview,
+    sendTemplatePreview,
+    TemplateRow,
+    PreviewVars,
+} from '@/app/admin/notification-templates/actions';
 
 type Mode = 'group' | 'manual';
 
@@ -14,9 +21,44 @@ export default function TestSendPanel() {
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
 
+    // ─── Template preview state ──────────────────────────────────────────────
+    const [templates, setTemplates] = useState<TemplateRow[]>([]);
+    const [selectedKey, setSelectedKey] = useState<string>('shift_reminder');
+    const [previewShift, setPreviewShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
+    const [previewGroup, setPreviewGroup] = useState<string>('A');
+    const [previewDate, setPreviewDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+    const [previewBody, setPreviewBody] = useState<string>('');
+    const [previewLoading, setPreviewLoading] = useState(false);
+
     useEffect(() => {
         listGroups().then(r => { if (r.ok) setGroups(r.data); });
+        listTemplates().then(r => { if (r.ok) setTemplates(r.data); });
     }, []);
+
+    const overrides: PreviewVars = {
+        shift: previewShift,
+        group: previewGroup,
+        date: previewDate,
+    };
+
+    const buildOverrides = useCallback((): PreviewVars => ({
+        shift: previewShift,
+        group: previewGroup,
+        date: previewDate,
+    }), [previewShift, previewGroup, previewDate]);
+
+    const refreshPreview = useCallback(async () => {
+        if (!selectedKey) return;
+        setPreviewLoading(true);
+        const res = await renderTemplatePreview(selectedKey, buildOverrides());
+        if (res.ok) setPreviewBody(res.body);
+        else setPreviewBody('(gagal render)');
+        setPreviewLoading(false);
+    }, [selectedKey, buildOverrides]);
+
+    useEffect(() => {
+        refreshPreview();
+    }, [refreshPreview]);
 
     const effectiveTarget = mode === 'group' ? target : manualTarget.trim();
 
@@ -39,6 +81,14 @@ export default function TestSendPanel() {
         setBusy(true); setMsg(null);
         const res = await sendCustomMessage(effectiveTarget, message);
         setMsg(res.ok ? `✓ Pesan custom terkirim (status ${res.status})` : `✗ Gagal: ${fmtErr(res)}`);
+        setBusy(false);
+    };
+
+    const sendTemplate = async () => {
+        if (!effectiveTarget || !selectedKey) { setMsg('Target & template wajib.'); return; }
+        setBusy(true); setMsg(null);
+        const res = await sendTemplatePreview(effectiveTarget, selectedKey, overrides);
+        setMsg(res.ok ? `✓ Template "${selectedKey}" terkirim (status ${res.status})` : `✗ Gagal: ${fmtErr(res)}`);
         setBusy(false);
     };
 
@@ -98,6 +148,67 @@ export default function TestSendPanel() {
                         className="flex items-center gap-1.5 px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg cursor-pointer">
                         <span className="material-symbols-outlined text-sm">send</span>
                         Kirim Pesan Custom
+                    </button>
+                </div>
+            </div>
+
+            {/* ─── Template Preview ─────────────────────────────────────── */}
+            <div className="bg-surface-dark rounded-xl border border-slate-800 p-5 space-y-4 max-w-2xl">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h4 className="text-sm font-bold text-white">Preview Template</h4>
+                        <p className="text-xs text-text-secondary mt-1">Lihat hasil render template dengan variable ({'{{links}}'}, {'{{shift}}'}, dll) terisi. Opsional kirim ke target di atas.</p>
+                    </div>
+                    <button onClick={refreshPreview} disabled={previewLoading}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white rounded-lg cursor-pointer">
+                        <span className="material-symbols-outlined text-sm">refresh</span>
+                        Refresh
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="sm:col-span-2">
+                        <label className="block text-xs text-text-secondary uppercase mb-1.5">Template</label>
+                        <select value={selectedKey} onChange={e => setSelectedKey(e.target.value)}
+                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary">
+                            {templates.map(t => <option key={t.key} value={t.key}>{t.label} ({t.key})</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs text-text-secondary uppercase mb-1.5">Shift</label>
+                        <select value={previewShift} onChange={e => setPreviewShift(e.target.value as 'pagi' | 'sore' | 'malam')}
+                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary">
+                            <option value="pagi">Pagi</option>
+                            <option value="sore">Sore</option>
+                            <option value="malam">Malam</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs text-text-secondary uppercase mb-1.5">Group</label>
+                        <select value={previewGroup} onChange={e => setPreviewGroup(e.target.value)}
+                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary">
+                            {['A', 'B', 'C', 'D'].map(g => <option key={g} value={g}>Group {g}</option>)}
+                        </select>
+                    </div>
+                    <div className="sm:col-span-4">
+                        <label className="block text-xs text-text-secondary uppercase mb-1.5">Tanggal</label>
+                        <input type="date" value={previewDate} onChange={e => setPreviewDate(e.target.value)}
+                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary" />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-xs text-text-secondary uppercase mb-1.5">Hasil Render</label>
+                    <pre className="w-full bg-black/40 border border-slate-700 rounded-lg px-3 py-3 text-emerald-200 text-xs font-mono whitespace-pre-wrap break-words max-h-96 overflow-auto">
+{previewLoading ? '(memuat…)' : (previewBody || '(kosong)')}
+                    </pre>
+                </div>
+
+                <div className="flex justify-end">
+                    <button onClick={sendTemplate} disabled={busy || !effectiveTarget || !selectedKey}
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg cursor-pointer">
+                        <span className="material-symbols-outlined text-sm">forward_to_inbox</span>
+                        Kirim Template ke Target
                     </button>
                 </div>
             </div>

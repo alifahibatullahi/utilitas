@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { STATION_ORDER, STATION_LABELS, STATION_SHIFT_TABS, STATION_HARIAN_TABS } from './constants';
 
 export function createAdminClient(): SupabaseClient {
     return createClient(
@@ -137,6 +138,32 @@ export function buildDeepLink(path: string, params: Record<string, string>): str
     const base = process.env.NEXT_PUBLIC_APP_URL ?? '';
     const q = new URLSearchParams(params).toString();
     return `${base}${path}${q ? `?${q}` : ''}`;
+}
+
+// ─── Station-based deep link block for WA reminder ────────────────────────────
+// Membangun block multi-baris berisi link per-station, masing-masing membawa
+// operator ke tab yang sesuai tugasnya. Dipakai di template via {{links}}.
+export function buildStationLinksBlock(
+    mode: 'shift' | 'harian',
+    date: string,
+    shift?: 'pagi' | 'sore' | 'malam',
+): string {
+    const tabsMap = mode === 'shift' ? STATION_SHIFT_TABS : STATION_HARIAN_TABS;
+    // Form harian dimount di halaman /input-shift via mode toggle, jadi link harian
+    // tetap pakai path /input-shift dengan param ?mode=harian.
+    const path = '/input-shift';
+    const modeLabel = mode === 'shift' ? 'Laporan shift' : 'Laporan harian';
+
+    const lines: string[] = [];
+    for (const st of STATION_ORDER) {
+        if (tabsMap[st].length === 0) continue; // station tidak punya tab di mode ini
+        const params: Record<string, string> = { station: st, date };
+        if (mode === 'shift' && shift) params.shift = shift;
+        if (mode === 'harian') params.mode = 'harian';
+        const link = buildDeepLink(path, params);
+        lines.push(`${modeLabel} operator ${STATION_LABELS[st].toLowerCase()}: ${link}`);
+    }
+    return lines.join('\n');
 }
 
 // Returns the current date+time in WIB (UTC+7), regardless of server TZ.

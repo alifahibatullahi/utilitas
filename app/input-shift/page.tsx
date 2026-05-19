@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState, useEffect, useRef, useCallback } from 'react';
+import React, { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TabBoiler from '@/components/input-shift/TabBoiler';
 import TabTurbin from '@/components/input-shift/TabTurbin';
@@ -17,7 +17,7 @@ import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import { nowWIB, todayWIB } from '@/lib/utils';
-import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
+import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, type OperatorStation } from '@/lib/constants';
 
 function getGroupMalamOnDate(dateStr: string): string {
     for (const g of ['A', 'B', 'C', 'D'] as const) {
@@ -106,19 +106,42 @@ function InputShiftPageInner() {
 
     useEffect(() => { setMounted(true); }, []);
 
-    // Deep-link prefill from WhatsApp reminder: ?shift=pagi|sore|malam&date=YYYY-MM-DD
+    // Deep-link prefill from WhatsApp reminder: ?shift=pagi|sore|malam&date=YYYY-MM-DD&station=<id>
     const searchParams = useSearchParams();
+    const stationParam = searchParams?.get('station') ?? null;
+    const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
+
     useEffect(() => {
         const qShift = searchParams?.get('shift');
         const qDate = searchParams?.get('date');
+        const qMode = searchParams?.get('mode');
         if (qShift) {
             const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
             const target = map[qShift.toLowerCase()];
             if (target) setSelectedShift(target);
         }
         if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) setSelectedDate(qDate);
+        if (qMode === 'harian') setInputMode('harian');
+        else if (qMode === 'shift') setInputMode('shift');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Tabs yang visible berdasarkan station (kalau ada). Tanpa station → semua tab.
+    const visibleTabs = useMemo(() => {
+        if (!station) return TABS;
+        const allowed = STATION_SHIFT_TABS[station];
+        return TABS.filter(t => allowed.includes(t.id));
+    }, [station]);
+
+    // Auto-pick tab pertama yang visible saat mount kalau activeTab default ('Boiler A')
+    // tidak ada di visibleTabs (mis. station=esp).
+    useEffect(() => {
+        if (visibleTabs.length === 0) return;
+        if (!visibleTabs.some(t => t.id === activeTab)) {
+            setActiveTab(visibleTabs[0].id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [station]);
 
     // Pre-warm: saat halaman pertama kali dibuka, fetch report 3 hari terakhir
     // untuk memastikan koneksi Supabase siap dan data sudah di-cache browser
@@ -968,20 +991,29 @@ function InputShiftPageInner() {
 
                 {/* Mode & Shift Controls */}
                 <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-auto">
-                    <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
-                        <button
-                            onClick={() => setInputMode('shift')}
-                            className={`flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${inputMode === 'shift' ? 'bg-[#2b7cee] text-white shadow-[0_0_15px_rgba(43,124,238,0.4)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
-                        >
-                            Shift
-                        </button>
-                        <button
-                            onClick={() => setInputMode('harian')}
-                            className={`flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${inputMode === 'harian' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
-                        >
-                            Harian
-                        </button>
-                    </div>
+                    {!station && (
+                        <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
+                            <button
+                                onClick={() => setInputMode('shift')}
+                                className={`flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${inputMode === 'shift' ? 'bg-[#2b7cee] text-white shadow-[0_0_15px_rgba(43,124,238,0.4)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+                            >
+                                Shift
+                            </button>
+                            <button
+                                onClick={() => setInputMode('harian')}
+                                className={`flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${inputMode === 'harian' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+                            >
+                                Harian
+                            </button>
+                        </div>
+                    )}
+                    {station && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0f1721]/80 border border-slate-700/50">
+                            <span className="material-symbols-outlined text-blue-400" style={{ fontSize: 18 }}>badge</span>
+                            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Station</span>
+                            <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
+                        </div>
+                    )}
 
                     {inputMode === 'shift' && (
                         <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
@@ -1027,7 +1059,7 @@ function InputShiftPageInner() {
 
                         {/* Desktop Tab List */}
                         <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg hidden lg:flex flex-col gap-1">
-                            {TABS.map((tab) => {
+                            {visibleTabs.map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 const isComplete = isTabLengkap(tab.id);
                                 const styles = TAB_STYLES[tab.colorClass];
@@ -1055,7 +1087,7 @@ function InputShiftPageInner() {
                         {/* Mobile Tab List */}
                         <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg lg:hidden overflow-x-auto">
                             <div className="flex gap-2 w-max pb-1">
-                                {TABS.map((tab) => {
+                                {visibleTabs.map((tab) => {
                                     const isActive = activeTab === tab.id;
                                     const isComplete = isTabLengkap(tab.id);
                                     const styles = TAB_STYLES[tab.colorClass];
@@ -1086,7 +1118,7 @@ function InputShiftPageInner() {
                         {/* Active Tab Header */}
                         <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                             {(() => {
-                                const tab = TABS.find(t => t.id === activeTab);
+                                const tab = visibleTabs.find(t => t.id === activeTab);
                                 const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
                                 const isBoilerTab = activeTab === 'Boiler A' || activeTab === 'Boiler B';
                                 const currentBoilerState = activeTab === 'Boiler A' ? boilerA : boilerB;
@@ -1136,7 +1168,16 @@ function InputShiftPageInner() {
                             </div>
                         ) : (
                             <>
+                                {/* Empty state — station tidak punya tab di mode shift (mis. lapangan_turbin) */}
+                                {visibleTabs.length === 0 && station && (
+                                    <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl text-center px-6">
+                                        <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 56 }}>info</span>
+                                        <h3 className="text-white font-bold text-base">Station <span className="text-blue-400">{STATION_LABELS[station]}</span> tidak punya tab di laporan shift.</h3>
+                                        <p className="text-slate-400 text-sm max-w-md">Station ini hanya mengisi data di laporan harian. Buka link yang sesuai dari grup WA.</p>
+                                    </div>
+                                )}
                                 {/* Shift Tab Content */}
+                                {visibleTabs.length > 0 && (
                                 <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
                                     {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
                                     {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
@@ -1148,6 +1189,7 @@ function InputShiftPageInner() {
                                     {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
                                     {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} />}
                                 </div>
+                                )}
                             </>
                         )}
                     </div>

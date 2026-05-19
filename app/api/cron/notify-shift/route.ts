@@ -6,6 +6,7 @@ import {
     renderTemplate,
     logNotification,
     buildDeepLink,
+    buildStationLinksBlock,
     nowWIB,
     shiftYesterdayWIB,
 } from '@/lib/whatsapp';
@@ -140,16 +141,25 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
     const group = await getWhatsappGroup(supabase, groupKey);
     if (!group) return { schedule: schedule.id, skipped: 'no_group_configured', groupKey };
 
-    const link =
-        schedule.kind === 'shift_reminder' && schedule.shift
-            ? buildDeepLink('/input-shift', { shift: schedule.shift, date })
-            : buildDeepLink('/laporan-harian', { date });
+    const isShift = schedule.kind === 'shift_reminder' && !!schedule.shift;
+    // Single general link (back-compat untuk template lama yang masih pakai {{link}})
+    const link = isShift
+        ? buildDeepLink('/input-shift', { shift: schedule.shift!, date })
+        : buildDeepLink('/laporan-harian', { date });
+    // Multi-station links block — template baru pakai {{links}} untuk menampilkan
+    // 1 link per operator station.
+    const links = buildStationLinksBlock(
+        isShift ? 'shift' : 'harian',
+        date,
+        isShift ? (schedule.shift as 'pagi' | 'sore' | 'malam') : undefined,
+    );
 
     const message = await renderTemplate(supabase, schedule.kind, {
         shift: schedule.shift ? schedule.shift.charAt(0).toUpperCase() + schedule.shift.slice(1) : '',
         group: groupLetter ?? '',
         date,
         link,
+        links,
     });
 
     // 4. Send + log

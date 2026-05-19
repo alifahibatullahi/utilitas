@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { CriticalWithMaintenance, CriticalActivityLogRow, MaintenanceLogRow, HarScope, PhotoRow, MaintenanceType, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
-import { FOREMAN_OPTIONS } from '@/lib/constants';
-import { capitalizeFirst } from '@/lib/utils';
+import { FOREMAN_OPTIONS, detectCurrentShift, getShiftWindow } from '@/lib/constants';
+import { capitalizeFirst, todayWIB } from '@/lib/utils';
+
+type DateMode = 'shift_now' | 'today' | 'last_1_day' | 'all';
 import StatusBadge from './StatusBadge';
 import ScopeBadge from './ScopeBadge';
 import CriticalDetailModal from './CriticalDetailModal';
@@ -551,18 +553,46 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
 
     const [filterItem, setFilterItem]         = useState('');
     const [filterScope, setFilterScope]       = useState<HarScope | ''>('');
-    const [filterDateFrom, setFilterDateFrom] = useState('');
-    const [filterDateTo, setFilterDateTo]     = useState('');
+    const [dateMode, setDateMode]             = useState<DateMode>('all');
 
-    const hasActiveFilter = filterItem || filterScope || filterDateFrom || filterDateTo;
+    const hasActiveFilter = !!(filterItem || filterScope || dateMode !== 'all');
 
     function clearFilters() {
         setFilterItem('');
         setFilterScope('');
-        setFilterDateFrom('');
-        setFilterDateTo('');
+        setDateMode('all');
         setCurrentPage(1);
     }
+
+    // Compute filter window/range untuk dateMode
+    const dateFilter = (() => {
+        if (dateMode === 'all') return null;
+        if (dateMode === 'shift_now') {
+            const cur = detectCurrentShift();
+            const w = getShiftWindow(cur.date, cur.shift);
+            return { mode: 'window' as const, startMs: w.start.getTime(), endMs: w.end.getTime() };
+        }
+        if (dateMode === 'today') {
+            const t = todayWIB();
+            return { mode: 'date' as const, from: t, to: t };
+        }
+        // last_1_day: kemarin + hari ini
+        const today = todayWIB();
+        const [y, m, d] = today.split('-').map(Number);
+        const yesterday = new Date(y, m - 1, d - 1);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const yStr = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
+        return { mode: 'date' as const, from: yStr, to: today };
+    })();
+
+    const matchesDateFilter = (row: { date: string; updated_at: string }): boolean => {
+        if (!dateFilter) return true;
+        if (dateFilter.mode === 'window') {
+            const t = new Date(row.updated_at).getTime();
+            return t >= dateFilter.startMs && t <= dateFilter.endMs;
+        }
+        return row.date >= dateFilter.from && row.date <= dateFilter.to;
+    };
 
     const tabCounts = {
         ALL:    criticals.length + workOrders.length,
@@ -574,8 +604,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
     const filteredCriticals = filterByTab(criticals, activeTab).filter(c => {
         if (filterItem && !c.item.toLowerCase().includes(filterItem.toLowerCase())) return false;
         if (filterScope && c.scope !== filterScope) return false;
-        if (filterDateFrom && c.date < filterDateFrom) return false;
-        if (filterDateTo   && c.date > filterDateTo)   return false;
+        if (!matchesDateFilter(c)) return false;
         return true;
     });
 
@@ -585,8 +614,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
         // ALL => no status filter
         if (filterItem && !w.item.toLowerCase().includes(filterItem.toLowerCase())) return false;
         if (filterScope && w.scope !== filterScope) return false;
-        if (filterDateFrom && w.date < filterDateFrom) return false;
-        if (filterDateTo   && w.date > filterDateTo)   return false;
+        if (!matchesDateFilter(w)) return false;
         return true;
     });
 
@@ -701,23 +729,26 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             <option key={s.value} value={s.value}>{s.label}</option>
                         ))}
                     </select>
-                    {/* Date range */}
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="date"
-                            value={filterDateFrom}
-                            onChange={e => { setFilterDateFrom(e.target.value); setExpandedId(null); setCurrentPage(1); }}
-                            className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
-                            title="Dari tanggal"
-                        />
-                        <span className="text-sm font-bold text-gray-400">–</span>
-                        <input
-                            type="date"
-                            value={filterDateTo}
-                            onChange={e => { setFilterDateTo(e.target.value); setExpandedId(null); setCurrentPage(1); }}
-                            className="text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
-                            title="Sampai tanggal"
-                        />
+                    {/* Date preset tabs */}
+                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                        {([
+                            { key: 'shift_now' as const, label: 'Shift Sekarang' },
+                            { key: 'today' as const, label: 'Hari Ini' },
+                            { key: 'last_1_day' as const, label: '1 Hari' },
+                            { key: 'all' as const, label: 'Semua' },
+                        ]).map(t => (
+                            <button
+                                key={t.key}
+                                onClick={() => { setDateMode(t.key); setExpandedId(null); setCurrentPage(1); }}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                    dateMode === t.key
+                                        ? 'bg-white shadow-sm border border-gray-200/50 text-blue-600'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
                     </div>
                     {/* Clear */}
                     {hasActiveFilter && (

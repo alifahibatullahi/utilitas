@@ -128,21 +128,82 @@ export default function KanbanBoardModal({
                 <div className="flex items-center justify-between gap-4 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 rounded-t-2xl">
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-white" style={{ fontSize: 22 }}>view_kanban</span>
-                        <h2 className="text-base font-extrabold text-white tracking-wide">Board Pekerjaan Maintenance</h2>
+                        <div>
+                            <h2 className="text-base font-extrabold text-white tracking-wide leading-tight">Board &amp; Review Pekerjaan Maintenance per Shift</h2>
+                            <p className="text-[11px] font-medium text-blue-100 leading-tight">Pantau pekerjaan aktif di shift ini, atau review pekerjaan di shift sebelumnya</p>
+                        </div>
                     </div>
                     <button onClick={onClose} className="text-blue-100 hover:text-white cursor-pointer transition-colors bg-white/10 hover:bg-white/20 p-1 rounded-lg">
                         <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
                     </button>
                 </div>
 
-                {/* Toolbar: date + shift centered */}
-                <div className="flex items-center justify-center gap-3 px-6 py-3 border-b border-gray-100 bg-gray-50">
-                    <input
-                        type="date"
-                        value={boardDate}
-                        onChange={e => onChangeBoardDate(e.target.value)}
-                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium outline-none cursor-pointer shadow-sm"
-                    />
+                {/* Toolbar: date navigator + shift tabs */}
+                <div className="flex flex-col items-center gap-2 px-6 py-3 border-b border-gray-100 bg-gray-50">
+                    {/* Date navigator: prev | picker + display | next | hari ini */}
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                const [y, m, d] = boardDate.split('-').map(Number);
+                                const prev = new Date(y, m - 1, d - 1);
+                                const pad = (n: number) => String(n).padStart(2, '0');
+                                onChangeBoardDate(`${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`);
+                            }}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 cursor-pointer transition-colors shadow-sm"
+                            title="Tanggal sebelumnya"
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
+                        </button>
+                        <div className="flex flex-col items-center min-w-[200px]">
+                            <input
+                                type="date"
+                                value={boardDate}
+                                onChange={e => onChangeBoardDate(e.target.value)}
+                                className="px-3 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-bold outline-none cursor-pointer shadow-sm text-center"
+                            />
+                            <span className="text-[11px] font-bold text-blue-700 mt-0.5">
+                                {(() => {
+                                    const [y, m, d] = boardDate.split('-').map(Number);
+                                    const dt = new Date(y, m - 1, d);
+                                    return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                                })()}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => {
+                                const [y, m, d] = boardDate.split('-').map(Number);
+                                const next = new Date(y, m - 1, d + 1);
+                                const pad = (n: number) => String(n).padStart(2, '0');
+                                onChangeBoardDate(`${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`);
+                            }}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 cursor-pointer transition-colors shadow-sm"
+                            title="Tanggal berikutnya"
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
+                        </button>
+                        {(() => {
+                            const now = new Date();
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                            const isToday = boardDate === todayStr;
+                            return (
+                                <button
+                                    onClick={() => onChangeBoardDate(todayStr)}
+                                    disabled={isToday}
+                                    className={`px-3 h-8 rounded-lg border text-xs font-bold transition-colors shadow-sm ${
+                                        isToday
+                                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-default'
+                                            : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer'
+                                    }`}
+                                    title="Lompat ke hari ini"
+                                >
+                                    Hari Ini
+                                </button>
+                            );
+                        })()}
+                    </div>
+
+                    {/* Shift tabs */}
                     <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
                         {SHIFT_OPTIONS.map(s => (
                             <button

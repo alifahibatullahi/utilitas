@@ -2,9 +2,12 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import type { MaintenanceWithCritical, WorkOrderWithPekerjaan, MaintenanceStatus, MaintenanceType } from '@/lib/supabase/types';
-import { capitalizeFirst } from '@/lib/utils';
+import { capitalizeFirst, todayWIB } from '@/lib/utils';
+import { detectCurrentShift, getShiftWindow } from '@/lib/constants';
 import ScopeBadge from './ScopeBadge';
 import ClickableStatusDropdown from './ClickableStatusDropdown';
+
+type DateMode = 'shift_now' | 'today' | 'last_1_day' | 'all';
 
 const TIPE_LABEL: Record<MaintenanceType, string> = {
     corrective: 'Corrective',
@@ -39,8 +42,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'done'>('all');
     const [filterScope, setFilterScope] = useState<string>('all');
     const [filterForeman, setFilterForeman] = useState<string>('all');
-    const [dateFrom, setDateFrom] = useState<string>('');
-    const [dateTo, setDateTo] = useState<string>('');
+    const [dateMode, setDateMode] = useState<DateMode>('all');
 
     const woById = useMemo(() => {
         const map: Record<string, WorkOrderWithPekerjaan> = {};
@@ -51,6 +53,36 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
     const scopes = useMemo(() => Array.from(new Set(maintenances.map(m => m.scope))).sort(), [maintenances]);
     const foremen = useMemo(() => Array.from(new Set(maintenances.map(m => m.foreman))).sort(), [maintenances]);
 
+    // Pre-compute window untuk preset tanggal
+    const dateFilter = useMemo(() => {
+        if (dateMode === 'all') return null;
+        if (dateMode === 'shift_now') {
+            const cur = detectCurrentShift();
+            const w = getShiftWindow(cur.date, cur.shift);
+            return { mode: 'window' as const, startMs: w.start.getTime(), endMs: w.end.getTime() };
+        }
+        if (dateMode === 'today') {
+            const today = todayWIB();
+            return { mode: 'date' as const, from: today, to: today };
+        }
+        // last_1_day: kemarin + hari ini
+        const today = todayWIB();
+        const [y, m, d] = today.split('-').map(Number);
+        const yesterday = new Date(y, m - 1, d - 1);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const yStr = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
+        return { mode: 'date' as const, from: yStr, to: today };
+    }, [dateMode]);
+
+    const matchesDate = (m: MaintenanceWithCritical): boolean => {
+        if (!dateFilter) return true;
+        if (dateFilter.mode === 'window') {
+            const t = new Date(m.updated_at).getTime();
+            return t >= dateFilter.startMs && t <= dateFilter.endMs;
+        }
+        return m.date >= dateFilter.from && m.date <= dateFilter.to;
+    };
+
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return maintenances
@@ -59,11 +91,11 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             .filter(m => filterStatus === 'all' || (filterStatus === 'active' ? m.status !== 'OK' : m.status === 'OK'))
             .filter(m => filterScope === 'all' || m.scope === filterScope)
             .filter(m => filterForeman === 'all' || m.foreman === filterForeman)
-            .filter(m => !dateFrom || m.date >= dateFrom)
-            .filter(m => !dateTo || m.date <= dateTo)
+            .filter(matchesDate)
             .filter(m => !q || m.item.toLowerCase().includes(q) || m.uraian.toLowerCase().includes(q) || (m.notif ?? '').toLowerCase().includes(q))
             .sort((a, b) => b.date.localeCompare(a.date));
-    }, [maintenances, search, filterTipe, filterStatus, filterScope, filterForeman, dateFrom, dateTo]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [maintenances, search, filterTipe, filterStatus, filterScope, filterForeman, dateFilter]);
 
     const counts = useMemo(() => ({
         total: filtered.length,
@@ -93,11 +125,25 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                     <option value="modifikasi">Modifikasi</option>
                 </select>
 
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as 'all' | 'active' | 'done')} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
-                    <option value="all">Semua Status</option>
-                    <option value="active">Belum Selesai</option>
-                    <option value="done">Selesai</option>
-                </select>
+                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                    {([
+                        { key: 'all' as const, label: 'Semua', count: counts.total, color: 'text-blue-600' },
+                        { key: 'active' as const, label: 'Belum Selesai', count: counts.active, color: 'text-amber-600' },
+                        { key: 'done' as const, label: 'Selesai', count: counts.done, color: 'text-emerald-600' },
+                    ]).map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => setFilterStatus(t.key)}
+                            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                filterStatus === t.key
+                                    ? `bg-white shadow-sm border border-gray-200/50 ${t.color}`
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            {t.label} ({t.count})
+                        </button>
+                    ))}
+                </div>
 
                 <select value={filterScope} onChange={e => setFilterScope(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
                     <option value="all">Semua Scope</option>
@@ -109,29 +155,35 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                     {foremen.map(f => <option key={f} value={f}>{f === 'foreman_turbin' ? 'Turbin' : f === 'foreman_boiler' ? 'Boiler' : f}</option>)}
                 </select>
 
-                <div className="flex items-center gap-1.5">
-                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 outline-none cursor-pointer" />
-                    <span className="text-gray-400 text-xs font-bold">→</span>
-                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 outline-none cursor-pointer" />
+                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                    {([
+                        { key: 'shift_now' as const, label: 'Shift Sekarang' },
+                        { key: 'today' as const, label: 'Hari Ini' },
+                        { key: 'last_1_day' as const, label: '1 Hari' },
+                        { key: 'all' as const, label: 'Semua' },
+                    ]).map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => setDateMode(t.key)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                dateMode === t.key
+                                    ? 'bg-white shadow-sm border border-gray-200/50 text-blue-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
                 </div>
 
-                {(search || filterTipe !== 'all' || filterStatus !== 'all' || filterScope !== 'all' || filterForeman !== 'all' || dateFrom || dateTo) && (
+                {(search || filterTipe !== 'all' || filterStatus !== 'all' || filterScope !== 'all' || filterForeman !== 'all' || dateMode !== 'all') && (
                     <button
-                        onClick={() => { setSearch(''); setFilterTipe('all'); setFilterStatus('all'); setFilterScope('all'); setFilterForeman('all'); setDateFrom(''); setDateTo(''); }}
+                        onClick={() => { setSearch(''); setFilterTipe('all'); setFilterStatus('all'); setFilterScope('all'); setFilterForeman('all'); setDateMode('all'); }}
                         className="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold cursor-pointer transition-colors"
                     >
                         Reset
                     </button>
                 )}
-            </div>
-
-            {/* Summary chips */}
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-white text-xs font-bold text-gray-500">
-                <span>Total: <span className="text-gray-800">{counts.total}</span></span>
-                <span className="text-gray-300">·</span>
-                <span className="text-amber-600">Belum Selesai: {counts.active}</span>
-                <span className="text-gray-300">·</span>
-                <span className="text-emerald-600">Selesai: {counts.done}</span>
             </div>
 
             {/* Table */}

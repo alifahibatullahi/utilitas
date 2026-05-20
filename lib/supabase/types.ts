@@ -297,6 +297,15 @@ export interface DailyReportSteamRow {
     lps_3a_00: number | null;
     fully_condens_00: number | null;
     internal_ubb_00: number | null;
+    // Selisih (today_raw − yesterday_raw) — di-precompute saat submit.
+    selisih_prod_boiler_a: number | null;
+    selisih_prod_boiler_b: number | null;
+    selisih_inlet_turbine: number | null;
+    selisih_mps_i: number | null;
+    selisih_mps_3a: number | null;
+    selisih_lps_ii: number | null;
+    selisih_lps_3a: number | null;
+    selisih_fully_condens: number | null;
     created_at: string;
 }
 
@@ -342,6 +351,13 @@ export interface DailyReportPowerRow {
     power_pie_totalizer: number | null;
     power_pie: number | null;
     power_stg_ubb_totalizer: number | null;
+    // Selisih totalizer (today − yesterday) MWh — di-precompute saat submit.
+    selisih_ubb: number | null;
+    selisih_pabrik2: number | null;
+    selisih_pabrik3a: number | null;
+    selisih_revamping: number | null;
+    selisih_pie: number | null;
+    selisih_stg_ubb: number | null;
     created_at: string;
 }
 
@@ -366,6 +382,13 @@ export interface DailyReportCoalRow {
     coal_f_00: number | null;
     total_boiler_b_00: number | null;
     grand_total_00: number | null;
+    // Selisih totalizer feeder (today − yesterday) ton — di-precompute saat submit.
+    selisih_coal_a: number | null;
+    selisih_coal_b: number | null;
+    selisih_coal_c: number | null;
+    selisih_coal_d: number | null;
+    selisih_coal_e: number | null;
+    selisih_coal_f: number | null;
     created_at: string;
 }
 

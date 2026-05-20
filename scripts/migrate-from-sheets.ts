@@ -521,13 +521,20 @@ async function saveDailyRow(f: string[], date: string): Promise<boolean> {
     const did = (report as { id: string }).id;
 
     const ops = [
-        // Steam — field _24 di sheet = SELISIH (today − yesterday). Form harian simpan RAW
-        // totalizer. Skip _24 fields supaya tidak mengkorup data raw di Supabase. User
-        // input raw via form; sheets sync hitung selisih ulang.
+        // Steam — sheet's _24 columns = SELISIH (today − yesterday). Simpan ke
+        // selisih_* di Supabase. Field RAW (*_24) tetap di-skip; user fill via form.
         supabase.from('daily_report_steam').upsert({
             daily_report_id: did,
-            // SKIP: prod_boiler_a_24, prod_boiler_b_24, prod_total_24, inlet_turbine_24,
-            //       mps_i_24, mps_3a_24, lps_ii_24, lps_3a_24, fully_condens_24, internal_ubb_24
+            // Selisih (dari sheets)
+            selisih_prod_boiler_a: parseNum(f[DC.prod_boiler_a_24]),
+            selisih_prod_boiler_b: parseNum(f[DC.prod_boiler_b_24]),
+            selisih_inlet_turbine: parseNum(f[DC.inlet_turbine_24]),
+            selisih_mps_i:         parseNum(f[DC.mps_i_24]),
+            selisih_mps_3a:        parseNum(f[DC.mps_3a_24]),
+            selisih_lps_ii:        parseNum(f[DC.lps_ii_24]),
+            selisih_lps_3a:        parseNum(f[DC.lps_3a_24]),
+            selisih_fully_condens: parseNum(f[DC.fully_condens_24]),
+            // Snapshot 00:00 — raw
             prod_boiler_a_00:  parseNum(f[DC.prod_boiler_a_00]),
             prod_boiler_b_00:  parseNum(f[DC.prod_boiler_b_00]),
             inlet_turbine_00:  parseNum(f[DC.inlet_turbine_00]),
@@ -540,13 +547,24 @@ async function saveDailyRow(f: string[], date: string): Promise<boolean> {
             internal_ubb_00:   parseNum(f[DC.internal_ubb_00]),
         }, { onConflict: 'daily_report_id' }),
 
-        // Power — *_mwh / dist_*_24 / gen_24 di sheet = SELISIH totalizer MWh. Skip;
-        // form simpan RAW totalizer.
+        // Power — sheet's *_mwh columns = SELISIH MWh totalizer. Simpan ke selisih_*.
+        // Field RAW totalizer (power_*_totalizer) tetap di-skip; user fill via form.
         supabase.from('daily_report_power').upsert({
             daily_report_id: did,
-            // SKIP: gen_24, internal_bus1/2_24, dist_ii_24, dist_3a_24 (semua selisih)
-            gen_00:              parseNum(f[DC.gen_00]),              // AL — MW aktual snapshot
-            power_pabrik2:       parseNum(f[DC.power_pabrik2_mw]),   // AN → MW aktual
+            // Selisih (dari sheets MWh selisih)
+            selisih_stg_ubb:   parseNum(f[DC.power_stg_ubb_mwh]),
+            selisih_pabrik2:   parseNum(f[DC.power_pabrik2_mwh]),
+            selisih_pabrik3a:  parseNum(f[DC.power_pabrik3a_mwh]),
+            // selisih_ubb dari bb1+bb2 mwh (sheet pisah jadi 2)
+            selisih_ubb: ((): number | null => {
+                const a = parseNum(f[DC.power_bb1_mwh]);
+                const b = parseNum(f[DC.power_bb2_mwh]);
+                if (a === null && b === null) return null;
+                return (a ?? 0) + (b ?? 0);
+            })(),
+            // Snapshot 00:00 + MW aktual
+            gen_00:              parseNum(f[DC.gen_00]),              // AL
+            power_pabrik2:       parseNum(f[DC.power_pabrik2_mw]),   // AN
             power_pabrik3a:      parseNum(f[DC.power_pabrik3a_mw]),  // AO
             internal_bus1_00:    parseNum(f[DC.power_bb1_mw]),       // AQ
             internal_bus2_00:    parseNum(f[DC.power_bb2_mw]),       // AR
@@ -554,10 +572,16 @@ async function saveDailyRow(f: string[], date: string): Promise<boolean> {
             power_pie:           parseNum(f[DC.power_piu_mw]),       // AV
         }, { onConflict: 'daily_report_id' }),
 
-        // Coal — coal_*_24 di sheet = SELISIH totalizer feeder. Skip.
+        // Coal — sheet's coal_*_24 = SELISIH feeder. Simpan ke selisih_*.
         supabase.from('daily_report_coal').upsert({
             daily_report_id: did,
-            // SKIP: coal_a..f_24, total_boiler_a/b_24, grand_total_24 (semua selisih/sum-of-selisih)
+            selisih_coal_a:    parseNum(f[DC.coal_a_24]),
+            selisih_coal_b:    parseNum(f[DC.coal_b_24]),
+            selisih_coal_c:    parseNum(f[DC.coal_c_24]),
+            selisih_coal_d:    parseNum(f[DC.coal_d_24]),
+            selisih_coal_e:    parseNum(f[DC.coal_e_24]),
+            selisih_coal_f:    parseNum(f[DC.coal_f_24]),
+            // Snapshot 00:00 — raw
             coal_a_00:         parseNum(f[DC.coal_a_00]),
             coal_b_00:         parseNum(f[DC.coal_b_00]),
             coal_c_00:         parseNum(f[DC.coal_c_00]),

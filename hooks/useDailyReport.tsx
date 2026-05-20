@@ -47,6 +47,10 @@ const VALID_COLS: Record<string, string[]> = {
         'prod_boiler_a_00', 'prod_boiler_b_00', 'prod_total_00',
         'inlet_turbine_00', 'co_gen_00', 'mps_i_00', 'mps_3a_00',
         'lps_ii_00', 'lps_3a_00', 'fully_condens_00', 'internal_ubb_00',
+        // Selisih (today_raw − yesterday_raw), di-precompute saat submit.
+        'selisih_prod_boiler_a', 'selisih_prod_boiler_b',
+        'selisih_inlet_turbine', 'selisih_mps_i', 'selisih_mps_3a',
+        'selisih_lps_ii', 'selisih_lps_3a', 'selisih_fully_condens',
     ],
     daily_report_power: [
         'gen_24', 'dist_ib_24', 'dist_ii_24', 'dist_3a_24', 'dist_3b_24',
@@ -61,12 +65,18 @@ const VALID_COLS: Record<string, string[]> = {
         'power_revamping_totalizer', 'power_revamping',
         'power_pie_totalizer', 'power_pie',
         'power_stg_ubb_totalizer',
+        // Selisih totalizer MWh, di-precompute saat submit.
+        'selisih_ubb', 'selisih_pabrik2', 'selisih_pabrik3a',
+        'selisih_revamping', 'selisih_pie', 'selisih_stg_ubb',
     ],
     daily_report_coal: [
         'coal_a_24', 'coal_b_24', 'coal_c_24', 'total_boiler_a_24',
         'coal_d_24', 'coal_e_24', 'coal_f_24', 'total_boiler_b_24', 'grand_total_24',
         'coal_a_00', 'coal_b_00', 'coal_c_00', 'total_boiler_a_00',
         'coal_d_00', 'coal_e_00', 'coal_f_00', 'total_boiler_b_00', 'grand_total_00',
+        // Selisih totalizer feeder, di-precompute saat submit.
+        'selisih_coal_a', 'selisih_coal_b', 'selisih_coal_c',
+        'selisih_coal_d', 'selisih_coal_e', 'selisih_coal_f',
     ],
     daily_report_turbine_misc: [
         'temp_furnace_a', 'temp_furnace_b',

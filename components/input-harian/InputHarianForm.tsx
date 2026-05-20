@@ -439,6 +439,15 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             const prodA24 = prevA24 > 0 ? N(steam.prod_boiler_a_24) - prevA24 : N(steam.prod_boiler_a_24);
             const prodB24 = prevB24 > 0 ? N(steam.prod_boiler_b_24) - prevB24 : N(steam.prod_boiler_b_24);
 
+            // Helper hitung selisih (today_raw − yesterday_raw). Return null kalau salah
+            // satu missing/0 (mirror perilaku daily-sheets-mapper.sel()).
+            const selD = (cur: number | string | null | undefined, prev: number | null | undefined): number | null => {
+                const c = cur != null ? Number(cur) : null;
+                const p = prev != null ? Number(prev) : null;
+                if (c === null || p === null || p === 0) return null;
+                return c - p;
+            };
+
             const steamWithCalcs = {
                 ...steam,
                 prod_total_24: prodA24 + prodB24,
@@ -449,6 +458,15 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 lps_3a_24: 0,
                 lps_ii_00: 0,
                 lps_3a_00: 0,
+                // Selisih raw totalizer
+                selisih_prod_boiler_a: selD(steam.prod_boiler_a_24, prevSteam?.prod_boiler_a_24),
+                selisih_prod_boiler_b: selD(steam.prod_boiler_b_24, prevSteam?.prod_boiler_b_24),
+                selisih_inlet_turbine: selD(steam.inlet_turbine_24, prevSteam?.inlet_turbine_24),
+                selisih_mps_i:         selD(steam.mps_i_24,         prevSteam?.mps_i_24),
+                selisih_mps_3a:        selD(steam.mps_3a_24,        prevSteam?.mps_3a_24),
+                selisih_lps_ii:        selD(steam.lps_ii_24,        prevSteam?.lps_ii_24),
+                selisih_lps_3a:        selD(steam.lps_3a_24,        prevSteam?.lps_3a_24),
+                selisih_fully_condens: selD(steam.fully_condens_24, prevSteam?.fully_condens_24),
             };
 
             const selC = (key: string) => { const p = prevCoal ? N(prevCoal[key]) : 0; return p > 0 ? N(coal[key]) - p : N(coal[key]); };
@@ -464,6 +482,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 total_boiler_a_00: totalA00,
                 total_boiler_b_00: totalB00,
                 grand_total_00: totalA00 + totalB00,
+                // Selisih totalizer feeder (today − yesterday)
+                selisih_coal_a: selD(coal.coal_a_24, prevCoal?.coal_a_24),
+                selisih_coal_b: selD(coal.coal_b_24, prevCoal?.coal_b_24),
+                selisih_coal_c: selD(coal.coal_c_24, prevCoal?.coal_c_24),
+                selisih_coal_d: selD(coal.coal_d_24, prevCoal?.coal_d_24),
+                selisih_coal_e: selD(coal.coal_e_24, prevCoal?.coal_e_24),
+                selisih_coal_f: selD(coal.coal_f_24, prevCoal?.coal_f_24),
             };
 
             const calcCrA = steamProdA > 0 ? coalTotalA / steamProdA : 0;
@@ -534,9 +559,19 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             // 24h totals dan raw totalizer (totalizer_gi/export/import) TETAP editable
             // karena harian = akumulasi (turbin bisa running di shift lain hari itu).
             const isTurbinShutdown = turbineMisc.status_turbin === 'shutdown';
+            // Precompute selisih totalizer MWh untuk power.
+            const powerWithSelisih: Record<string, number | null> = {
+                ...power,
+                selisih_ubb:       selD(power.power_ubb_totalizer,       prevPower?.power_ubb_totalizer),
+                selisih_pabrik2:   selD(power.power_pabrik2_totalizer,   prevPower?.power_pabrik2_totalizer),
+                selisih_pabrik3a:  selD(power.power_pabrik3a_totalizer,  prevPower?.power_pabrik3a_totalizer),
+                selisih_revamping: selD(power.power_revamping_totalizer, prevPower?.power_revamping_totalizer),
+                selisih_pie:       selD(power.power_pie_totalizer,       prevPower?.power_pie_totalizer),
+                selisih_stg_ubb:   selD(power.power_stg_ubb_totalizer,   prevPower?.power_stg_ubb_totalizer),
+            };
             const powerForSubmit: Record<string, number | null> = isTurbinShutdown
-                ? { ...power, gen_00: 0 }
-                : power;
+                ? { ...powerWithSelisih, gen_00: 0 }
+                : powerWithSelisih;
             if (isTurbinShutdown) {
                 sw.inlet_turbine_00 = 0;
                 sw.co_gen_00 = 0;

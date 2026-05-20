@@ -33,7 +33,8 @@ if (fs.existsSync(envPath)) {
 
 // ─── CLI Args ─────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
-const dryRun  = args.includes('--dry-run');
+const dryRun    = args.includes('--dry-run');
+const dailyOnly = args.includes('--daily-only');
 const fromArg = args[args.indexOf('--from') + 1];
 const toArg   = args[args.indexOf('--to')   + 1];
 const daysIdx = args.indexOf('--days');
@@ -520,19 +521,13 @@ async function saveDailyRow(f: string[], date: string): Promise<boolean> {
     const did = (report as { id: string }).id;
 
     const ops = [
-        // Steam
+        // Steam — field _24 di sheet = SELISIH (today − yesterday). Form harian simpan RAW
+        // totalizer. Skip _24 fields supaya tidak mengkorup data raw di Supabase. User
+        // input raw via form; sheets sync hitung selisih ulang.
         supabase.from('daily_report_steam').upsert({
             daily_report_id: did,
-            prod_boiler_a_24:  parseNum(f[DC.prod_boiler_a_24]),
-            prod_boiler_b_24:  parseNum(f[DC.prod_boiler_b_24]),
-            prod_total_24:     parseNum(f[DC.prod_total_24]),      // formula, simpan ke Supabase
-            inlet_turbine_24:  parseNum(f[DC.inlet_turbine_24]),
-            mps_i_24:          parseNum(f[DC.mps_i_24]),
-            mps_3a_24:         parseNum(f[DC.mps_3a_24]),
-            lps_ii_24:         parseNum(f[DC.lps_ii_24]),
-            lps_3a_24:         parseNum(f[DC.lps_3a_24]),
-            fully_condens_24:  parseNum(f[DC.fully_condens_24]),
-            internal_ubb_24:   parseNum(f[DC.internal_ubb_24]),    // formula, simpan ke Supabase
+            // SKIP: prod_boiler_a_24, prod_boiler_b_24, prod_total_24, inlet_turbine_24,
+            //       mps_i_24, mps_3a_24, lps_ii_24, lps_3a_24, fully_condens_24, internal_ubb_24
             prod_boiler_a_00:  parseNum(f[DC.prod_boiler_a_00]),
             prod_boiler_b_00:  parseNum(f[DC.prod_boiler_b_00]),
             inlet_turbine_00:  parseNum(f[DC.inlet_turbine_00]),
@@ -545,15 +540,12 @@ async function saveDailyRow(f: string[], date: string): Promise<boolean> {
             internal_ubb_00:   parseNum(f[DC.internal_ubb_00]),
         }, { onConflict: 'daily_report_id' }),
 
-        // Power
+        // Power — *_mwh / dist_*_24 / gen_24 di sheet = SELISIH totalizer MWh. Skip;
+        // form simpan RAW totalizer.
         supabase.from('daily_report_power').upsert({
             daily_report_id: did,
-            gen_24:              parseNum(f[DC.power_stg_ubb_mwh]),  // Y → total STG UBB MWh
-            internal_bus1_24:    parseNum(f[DC.power_bb1_mwh]),      // AD
-            internal_bus2_24:    parseNum(f[DC.power_bb2_mwh]),      // AE
-            dist_ii_24:          parseNum(f[DC.power_pabrik2_mwh]),  // AA → pabrik 2 MWh
-            dist_3a_24:          parseNum(f[DC.power_pabrik3a_mwh]), // AB → pabrik 3A MWh
-            gen_00:              parseNum(f[DC.gen_00]),              // AL
+            // SKIP: gen_24, internal_bus1/2_24, dist_ii_24, dist_3a_24 (semua selisih)
+            gen_00:              parseNum(f[DC.gen_00]),              // AL — MW aktual snapshot
             power_pabrik2:       parseNum(f[DC.power_pabrik2_mw]),   // AN → MW aktual
             power_pabrik3a:      parseNum(f[DC.power_pabrik3a_mw]),  // AO
             internal_bus1_00:    parseNum(f[DC.power_bb1_mw]),       // AQ
@@ -562,18 +554,10 @@ async function saveDailyRow(f: string[], date: string): Promise<boolean> {
             power_pie:           parseNum(f[DC.power_piu_mw]),       // AV
         }, { onConflict: 'daily_report_id' }),
 
-        // Coal
+        // Coal — coal_*_24 di sheet = SELISIH totalizer feeder. Skip.
         supabase.from('daily_report_coal').upsert({
             daily_report_id: did,
-            coal_a_24:         parseNum(f[DC.coal_a_24]),
-            coal_b_24:         parseNum(f[DC.coal_b_24]),
-            coal_c_24:         parseNum(f[DC.coal_c_24]),
-            total_boiler_a_24: parseNum(f[DC.total_boiler_a_24]),
-            coal_d_24:         parseNum(f[DC.coal_d_24]),
-            coal_e_24:         parseNum(f[DC.coal_e_24]),
-            coal_f_24:         parseNum(f[DC.coal_f_24]),
-            total_boiler_b_24: parseNum(f[DC.total_boiler_b_24]),
-            grand_total_24:    parseNum(f[DC.grand_total_24]),
+            // SKIP: coal_a..f_24, total_boiler_a/b_24, grand_total_24 (semua selisih/sum-of-selisih)
             coal_a_00:         parseNum(f[DC.coal_a_00]),
             coal_b_00:         parseNum(f[DC.coal_b_00]),
             coal_c_00:         parseNum(f[DC.coal_c_00]),
@@ -609,9 +593,7 @@ async function saveDailyRow(f: string[], date: string): Promise<boolean> {
             solar_boiler:        parseNum(f[DC.solar_boiler]),
             solar_bengkel:       parseNum(f[DC.solar_bengkel]),
             solar_3b:            parseNum(f[DC.solar_3b]),
-            bfw_boiler_a:        parseNum(f[DC.bfw_boiler_a]),
-            bfw_boiler_b:        parseNum(f[DC.bfw_boiler_b]),
-            bfw_total:           parseNum(f[DC.bfw_total]),
+            // SKIP: bfw_boiler_a, bfw_boiler_b, bfw_total — semua selisih totalizer BFW 24h di sheet
             chemical_phosphat:   parseNum(f[DC.chemical_phosphat]),
             chemical_amin:       parseNum(f[DC.chemical_amin]),
             chemical_hydrasin:   parseNum(f[DC.chemical_hydrasin]),
@@ -646,8 +628,9 @@ async function saveDailyRow(f: string[], date: string): Promise<boolean> {
         supabase.from('daily_report_totalizer').upsert({
             daily_report_id: did,
             keterangan:           parseStr(f[DC.keterangan]),
-            konsumsi_demin:       parseNum(f[DC.konsumsi_demin]),
-            konsumsi_rcw:         parseNum(f[DC.konsumsi_rcw]),
+            // SKIP: konsumsi_demin, konsumsi_rcw — selisih totalizer di sheet
+            // konsumsi_demin:       parseNum(f[DC.konsumsi_demin]),
+            // konsumsi_rcw:         parseNum(f[DC.konsumsi_rcw]),
             penerimaan_demin_3a:  parseNum(f[DC.penerimaan_demin_3a]),
             penerimaan_demin_1b:  parseNum(f[DC.penerimaan_demin_1b]),
             penerimaan_rcw_1a:    parseNum(f[DC.penerimaan_rcw_1a]),
@@ -725,18 +708,21 @@ async function main() {
     console.log('  Migrate Google Sheets → Supabase');
     console.log(`  Range : ${from} → ${to}`);
     console.log(`  Mode  : ${dryRun ? 'DRY RUN (no writes)' : 'LIVE'}`);
+    console.log(`  Tabs  : ${dailyOnly ? 'LHUBB only' : 'Pagi + Sore + Malam + LHUBB'}`);
     console.log('════════════════════════════════════════════════');
 
     let totalSaved = 0, totalErrors = 0;
 
-    for (const { tab, shift } of [
-        { tab: 'Pagi',  shift: 'pagi'  as const },
-        { tab: 'Sore',  shift: 'sore'  as const },
-        { tab: 'Malam', shift: 'malam' as const },
-    ]) {
-        const r = await processShiftTab(tab, shift, from, to);
-        totalSaved  += r.saved;
-        totalErrors += r.errors;
+    if (!dailyOnly) {
+        for (const { tab, shift } of [
+            { tab: 'Pagi',  shift: 'pagi'  as const },
+            { tab: 'Sore',  shift: 'sore'  as const },
+            { tab: 'Malam', shift: 'malam' as const },
+        ]) {
+            const r = await processShiftTab(tab, shift, from, to);
+            totalSaved  += r.saved;
+            totalErrors += r.errors;
+        }
     }
 
     const rd = await processDailyTab(from, to);

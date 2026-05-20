@@ -770,6 +770,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         {(() => {
                             const tab = visibleTabs.find(t => t.id === activeTab);
                             const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
+                            const turbinStatus = (turbineMisc.status_turbin as string) ?? '';
+                            const tBorder = turbinStatus === 'running' ? 'border-emerald-500/50' : turbinStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
+                            const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                             return (
                                 <>
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner`}>
@@ -779,6 +782,24 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                         <h2 className="text-white font-bold text-xl leading-tight">{tab?.label}</h2>
                                         <p className="text-slate-400 text-xs mt-0.5">Input data operasional harian {tab?.label}</p>
                                     </div>
+                                    {/* Status chip turbin — hanya di tab Turbin & Distribusi Steam */}
+                                    {activeTab === 'Turbin' && (
+                                        <div className={`inline-flex items-center gap-2 bg-[#101822]/60 border ${tBorder} rounded-lg pl-3 pr-2 py-1.5 transition-colors ml-auto`}>
+                                            <span className={`w-3 h-3 rounded-full ${tDot} shrink-0`} />
+                                            <select
+                                                className="bg-transparent appearance-none text-sm text-white font-semibold pr-4 cursor-pointer outline-none"
+                                                value={turbinStatus}
+                                                onChange={e => {
+                                                    const v = e.target.value === '' ? null : e.target.value;
+                                                    setTurbineMisc(prev => ({ ...prev, status_turbin: v }));
+                                                }}
+                                            >
+                                                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                                                <option value="running" className="bg-[#101822] text-white">Running</option>
+                                                <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                            </select>
+                                        </div>
+                                    )}
                                 </>
                             );
                         })()}

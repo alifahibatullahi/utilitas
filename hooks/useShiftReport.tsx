@@ -635,6 +635,12 @@ export function useShiftReport(date: string, shift: ShiftType) {
             return;
         }
 
+        // Reset report saat date/shift berubah — kalau tidak, populate-from-report di
+        // app/input-shift/page.tsx akan jalankan dengan data STALE dari shift sebelumnya
+        // dan mengisi form state dengan nilai lama, membuat inherit useEffect ke-skip
+        // (karena prev.status_boiler/turbin sudah terisi).
+        setReport(null);
+
         let stale = false;
         const supabase = createClient();
 

@@ -3,29 +3,8 @@ import React, { useEffect } from 'react';
 import { InputField, Card, CalculatedField, SelisihInfo } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 
-/** Status chip turbin — saat shutdown, cascade ke field operasional + gen output di harian.
- *  Pattern mirror BoilerStatusChip di TabBoiler.tsx. */
-function TurbinStatusChip({ value, onChange }: {
-    value: string;
-    onChange: (name: string, v: string | null) => void;
-}) {
-    const dot = value === 'running' ? 'bg-emerald-500' : value === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
-    const border = value === 'running' ? 'border-emerald-500/50' : value === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
-    return (
-        <div className={`inline-flex items-center gap-2 bg-[#101822]/60 border ${border} rounded-lg pl-3 pr-2 py-1.5 transition-colors`}>
-            <span className={`w-3 h-3 rounded-full ${dot} shrink-0`} />
-            <select
-                className="bg-transparent appearance-none text-sm text-white font-semibold pr-4 cursor-pointer outline-none"
-                value={value}
-                onChange={e => onChange('status_turbin', e.target.value === '' ? null : e.target.value)}
-            >
-                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                <option value="running" className="bg-[#101822] text-white">Running</option>
-                <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
-            </select>
-        </div>
-    );
-}
+// Status chip turbin dipindah ke header utama tab di InputHarianForm.tsx (commit kebijakan
+// "status di header bukan di kartu"). Komponen lokal tidak dipakai lagi.
 
 // Distribution items — urutan: Inlet Turbin, Pabrik 1, Pabrik 3, Condensate
 const DIST_ITEMS = [
@@ -126,17 +105,7 @@ export default function TabTurbin({
             </Card>
 
             {/* ═══ Turbine Generator — kanan (mobile: row 2) ═══ */}
-            <Card
-                title="Turbine Generator"
-                icon="mode_fan"
-                color="sky"
-                headerRight={
-                    <TurbinStatusChip
-                        value={(turbineMisc.status_turbin as string) ?? ''}
-                        onChange={onTurbineMiscChange}
-                    />
-                }
-            >
+            <Card title="Turbine Generator" icon="mode_fan" color="sky">
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Steam Inlet Press"   name="steam_inlet_press"   value={turbineMisc.steam_inlet_press}   onChange={onTurbineMiscChange} unit="MPa" color="sky" readOnly={isTurbinShutdown} />
                     <InputField label="Steam Inlet Temp"    name="steam_inlet_temp"    value={turbineMisc.steam_inlet_temp}    onChange={onTurbineMiscChange} unit="°C"  color="sky" readOnly={isTurbinShutdown} />

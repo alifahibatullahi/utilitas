@@ -275,7 +275,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 const STEAM_TOT = ['prod_boiler_a_24','prod_boiler_b_24','inlet_turbine_24','mps_i_24','mps_3a_24','fully_condens_24'];
                 const COAL_TOT  = ['coal_a_24','coal_b_24','coal_c_24','coal_d_24','coal_e_24','coal_f_24'];
                 const POWER_TOT = ['power_ubb_totalizer','power_pabrik2_totalizer','power_pabrik3a_totalizer','power_revamping_totalizer','power_pie_totalizer','power_stg_ubb_totalizer'];
-                const TURB_TOT  = ['totalizer_gi','totalizer_export','totalizer_import'];
+                // status_turbin diikutsertakan supaya inheritance shutdown bekerja: kalau
+                // turbin shutdown kemarin, default hari ini juga shutdown (operator tinggal toggle ke running).
+                const TURB_TOT  = ['totalizer_gi','totalizer_export','totalizer_import','status_turbin'];
                 const TANK_TOT  = ['bfw_boiler_a','bfw_boiler_b'];
 
                 const pickKeys = (obj: Record<string, number | string | null>, keys: string[]): Record<string, number | null> => {

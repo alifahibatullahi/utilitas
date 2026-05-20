@@ -23,7 +23,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
     const [prevBoilerA, setPrevBoilerA] = useState<Record<string, number | string | null>>({});
     const [prevBoilerB, setPrevBoilerB] = useState<Record<string, number | string | null>>({});
     const [prevCoalBunker, setPrevCoalBunker] = useState<Record<string, number | string | null>>({});
-    const [prevTurbin, setPrevTurbin] = useState<Record<string, number | null>>({});
+    const [prevTurbin, setPrevTurbin] = useState<Record<string, number | string | null>>({});
     const [prevSteamDist, setPrevSteamDist] = useState<Record<string, number | null>>({});
     const [prevPowerDist, setPrevPowerDist] = useState<Record<string, number | null>>({});
 
@@ -46,7 +46,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
         async function fetchPrev() {
             const { data } = await supabase
                 .from('shift_reports')
-                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw, status_boiler), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f, status_feeder_a, status_feeder_b, status_feeder_c, status_feeder_d, status_feeder_e, status_feeder_f), shift_turbin(totalizer_steam_inlet, totalizer_condensate), shift_steam_dist(pabrik1_totalizer, pabrik2_totalizer, pabrik3a_totalizer), shift_power_dist(power_ubb_totalizer, power_pabrik2_totalizer, power_pabrik3a_totalizer, power_revamping_totalizer, power_pie_totalizer, power_stg_ubb_totalizer)')
+                .select('shift_boiler(boiler, totalizer_steam, totalizer_bfw, status_boiler), shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f, status_feeder_a, status_feeder_b, status_feeder_c, status_feeder_d, status_feeder_e, status_feeder_f), shift_turbin(totalizer_steam_inlet, totalizer_condensate, status_turbin), shift_steam_dist(pabrik1_totalizer, pabrik2_totalizer, pabrik3a_totalizer), shift_power_dist(power_ubb_totalizer, power_pabrik2_totalizer, power_pabrik3a_totalizer, power_revamping_totalizer, power_pie_totalizer, power_stg_ubb_totalizer)')
                 .eq('date', prevDate)
                 .eq('shift', prevShift)
                 .maybeSingle();
@@ -93,6 +93,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
                     setPrevTurbin({
                         totalizer_steam_inlet: tb.totalizer_steam_inlet,
                         totalizer_condensate: tb.totalizer_condensate,
+                        status_turbin: tb.status_turbin,
                     });
                 } else {
                     setPrevTurbin({});

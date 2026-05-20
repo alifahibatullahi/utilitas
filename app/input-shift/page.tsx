@@ -539,6 +539,37 @@ function InputShiftPageInner() {
         _boilerAStatus, _boilerBStatus, _feederSig,
     ]);
 
+    // Inherit status turbin dari shift sebelumnya — kalau prev shutdown, current default shutdown
+    // + pre-fill raw totalizer (steam_inlet, condensate, power_stg_ubb) dengan nilai prev shift
+    // supaya operator tidak perlu input ulang (saat shutdown nilai stagnant).
+    // Mirror pattern boiler inherit. Hanya berlaku saat shift baru (belum ada report) & user belum modifikasi.
+    const _prevTurbinStatus = prevTurbin.status_turbin as string | null | undefined;
+    const _turbinStatus = turbin.status_turbin;
+    useEffect(() => {
+        if (userModifiedRef.current || report) return;
+        if (_prevTurbinStatus !== 'shutdown' || _turbinStatus) return;
+        // Inherit status + auto-fill raw totalizer turbin.
+        setTurbin(prev => {
+            if (prev.status_turbin) return prev;
+            const next: Record<string, number | string | null> = { ...prev, status_turbin: 'shutdown' };
+            if (prev.totalizer_steam_inlet == null && prevTurbin.totalizer_steam_inlet != null) {
+                next.totalizer_steam_inlet = prevTurbin.totalizer_steam_inlet;
+            }
+            if (prev.totalizer_condensate == null && prevTurbin.totalizer_condensate != null) {
+                next.totalizer_condensate = prevTurbin.totalizer_condensate;
+            }
+            return next;
+        });
+        // Auto-fill STG UBB totalizer di shift_power_dist.
+        const prevStgTot = prevPowerDist.power_stg_ubb_totalizer;
+        if (prevStgTot != null) {
+            setPowerDist(prev => prev.power_stg_ubb_totalizer != null
+                ? prev
+                : { ...prev, power_stg_ubb_totalizer: prevStgTot });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [_prevTurbinStatus, _turbinStatus, report]);
+
     // Generic change handlers
     const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>
         (name: string, value: number | string | null) => {
@@ -1280,7 +1311,7 @@ function InputShiftPageInner() {
                                 <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
                                     {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
                                     {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
-                                    {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
+                                    {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet as number | null} prevTotalizerCondensate={prevTurbin.totalizer_condensate as number | null} />}
                                     {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} isTurbinShutdown={turbin.status_turbin === 'shutdown'} />}
                                     {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
                                     {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} onDeleteSavedSolar={handleDeleteSavedSolar} onDeleteSavedOutSolar={handleDeleteSavedOutSolar} />}

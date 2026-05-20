@@ -29,9 +29,17 @@ export default function TabPower({
     const isTurbinShutdown = gv.status_turbin === 'shutdown';
 
     // Auto-zero kartu Generator Output saat turbin shutdown.
+    // Raw totalizer STG UBB (power_stg_ubb_totalizer) di-auto-fill dari prev day kalau kosong —
+    // STG tidak generate power saat shutdown, jadi totalizer stagnant.
     useEffect(() => {
         if (!isTurbinShutdown) return;
-        if (onPowerChange && pv.gen_00 != null && Number(pv.gen_00) !== 0) onPowerChange('gen_00', 0);
+        if (onPowerChange) {
+            if (pv.gen_00 != null && Number(pv.gen_00) !== 0) onPowerChange('gen_00', 0);
+            const prevStgTot = prevPD?.power_stg_ubb_totalizer;
+            if (prevStgTot != null && pv.power_stg_ubb_totalizer == null) {
+                onPowerChange('power_stg_ubb_totalizer', prevStgTot);
+            }
+        }
         if (onTurbineMiscChange) {
             GEN_OUTPUT_FIELDS_HARIAN.forEach(k => {
                 if (gv[k] != null && Number(gv[k]) !== 0) onTurbineMiscChange(k, 0);

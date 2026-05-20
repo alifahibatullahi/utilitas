@@ -408,6 +408,9 @@ function InputShiftPageInner() {
             return;
         }
         setUserModified(false);
+        // Reset ref segera (synchronous) supaya inherit useEffect di commit yang sama tidak
+        // ke-skip karena ref masih nilai lama. setUserModified hanya queue state update async.
+        userModifiedRef.current = false;
         setBoilerA({});
         setBoilerB({});
         setTurbin({});

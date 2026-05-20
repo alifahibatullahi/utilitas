@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { InputField, Card, CalculatedField, SelisihInfo } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 
@@ -43,6 +43,20 @@ export default function TabTurbin({
     const n = (v: number | null | undefined) => Number(v) || 0;
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
     const isTurbinShutdown = turbineMisc.status_turbin === 'shutdown';
+
+    // Auto-zero field instantaneous + parameter operasional saat turbin shutdown.
+    // 24h totals tidak di-zero (harian = akumulasi 24 jam, turbin bisa running di shift lain).
+    useEffect(() => {
+        if (!isTurbinShutdown) return;
+        if (onSteamChange && n(steam.inlet_turbine_00) !== 0) onSteamChange('inlet_turbine_00', 0);
+        if (onTurbineMiscChange) {
+            (['steam_inlet_press', 'steam_inlet_temp', 'thrust_bearing_temp', 'axial_displacement'] as const).forEach(k => {
+                const v = turbineMisc[k];
+                if (v != null && Number(v) !== 0) onTurbineMiscChange(k, 0);
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isTurbinShutdown]);
 
     // Selisih per distribusi steam item
     const selisih = (key: typeof DIST_ITEMS[number]['totKey']) => {

@@ -1,6 +1,9 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, InputField, SelisihInfo, CalculatedField } from './SharedComponents';
+
+const GEN_OUTPUT_FIELDS = ['gen_load', 'gen_ampere', 'gen_tegangan',
+    'gen_amp_react', 'gen_frequensi', 'gen_cos_phi'];
 
 interface TabGeneratorProps {
     generatorValues?: Record<string, number | string | null>;
@@ -27,6 +30,22 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
     const pv = powerValues;
     const gv = generatorValues;
     const fmt = (v: number | string | null | undefined) => (Number(v) || 0).toFixed(2);
+
+    // Saat turbin shutdown: auto-fill power_stg_ubb_totalizer dari prev (kalau kosong) +
+    // auto-zero kartu Generator Output. Mirror pattern boiler shutdown.
+    useEffect(() => {
+        if (!isTurbinShutdown) return;
+        const prevStgTot = prevPowerDist?.power_stg_ubb_totalizer;
+        if (onPowerChange && prevStgTot != null && pv.power_stg_ubb_totalizer == null) {
+            onPowerChange('power_stg_ubb_totalizer', prevStgTot);
+        }
+        if (onGeneratorChange) {
+            GEN_OUTPUT_FIELDS.forEach(k => {
+                if (gv[k] != null && gv[k] !== 0) onGeneratorChange(k, 0);
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isTurbinShutdown]);
 
     return (
         <>

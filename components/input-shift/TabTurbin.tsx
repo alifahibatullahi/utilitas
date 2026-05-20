@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, InputField, CalculatedField, SelisihInfo } from './SharedComponents';
 
 interface TabTurbinProps {
@@ -8,6 +8,15 @@ interface TabTurbinProps {
     prevTotalizerSteamInlet?: number | null;
     prevTotalizerCondensate?: number | null;
 }
+
+// Field operasional turbin yang di-auto-zero saat shutdown.
+// TIDAK termasuk: deaerator card, raw totalizer, dan status_turbin sendiri.
+const TURBIN_NON_TOTALIZER_FIELDS = [
+    'press_steam', 'temp_steam', 'flow_steam',
+    'flow_cond', 'exh_steam', 'vacuum',
+    'hpo_durasi', 'thrust_bearing', 'metal_bearing', 'vibrasi', 'winding', 'axial_displacement',
+    'level_condenser', 'temp_cw_in', 'temp_cw_out',
+];
 
 export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSteamInlet, prevTotalizerCondensate }: TabTurbinProps) {
     const currentSteamInlet = Number(values.totalizer_steam_inlet) || 0;
@@ -21,6 +30,20 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
     // Saat turbin shutdown: kunci field operasional. Kartu Deaerator + raw totalizer
     // (steam_inlet, condensate) TETAP editable supaya operator bisa input pembacaan meter.
     const isTurbinShutdown = values.status_turbin === 'shutdown';
+
+    // Auto-fill totalizer dengan nilai shift sebelumnya saat shutdown (hanya kalau masih kosong,
+    // tetap editable) + auto-zero field operasional. Mirror pattern boiler shutdown.
+    useEffect(() => {
+        if (!isTurbinShutdown || !onFieldChange) return;
+        if (prevTotalizerSteamInlet != null && values.totalizer_steam_inlet == null)
+            onFieldChange('totalizer_steam_inlet', prevTotalizerSteamInlet);
+        if (prevTotalizerCondensate != null && values.totalizer_condensate == null)
+            onFieldChange('totalizer_condensate', prevTotalizerCondensate);
+        TURBIN_NON_TOTALIZER_FIELDS.forEach(k => {
+            if (values[k] != null && values[k] !== 0) onFieldChange(k, 0);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isTurbinShutdown]);
 
     return (
         <>

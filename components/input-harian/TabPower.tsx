@@ -1,7 +1,9 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, InputField, SelisihInfo, CalculatedField } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
+
+const GEN_OUTPUT_FIELDS_HARIAN = ['gen_ampere', 'gen_tegangan', 'gen_amp_react', 'gen_frequensi', 'gen_cos_phi'];
 
 // Sama persis dengan TabGenerator laporan shift
 const DIST_ITEMS = [
@@ -25,6 +27,18 @@ export default function TabPower({
     // Saat turbin shutdown (di turbineMisc.status_turbin), kunci kartu Generator Output.
     // GI & Distribusi Power tetap editable (PLN tetap connect lewat GI).
     const isTurbinShutdown = gv.status_turbin === 'shutdown';
+
+    // Auto-zero kartu Generator Output saat turbin shutdown.
+    useEffect(() => {
+        if (!isTurbinShutdown) return;
+        if (onPowerChange && pv.gen_00 != null && Number(pv.gen_00) !== 0) onPowerChange('gen_00', 0);
+        if (onTurbineMiscChange) {
+            GEN_OUTPUT_FIELDS_HARIAN.forEach(k => {
+                if (gv[k] != null && Number(gv[k]) !== 0) onTurbineMiscChange(k, 0);
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isTurbinShutdown]);
 
     return (
         <div className="flex-1 flex flex-col xl:flex-row gap-6 w-full overflow-y-auto">

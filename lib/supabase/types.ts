@@ -92,6 +92,11 @@ export interface ShiftTurbinRow {
     press_deaerator: number | null;
     temp_deaerator: number | null;
     stream_days: number | null;
+    /** Status turbin: 'running' | 'shutdown'. Saat shutdown, semua field operasional di-zero
+     *  di submit handler kecuali kartu deaerator (press/temp_deaerator) dan raw totalizer
+     *  (totalizer_steam_inlet, totalizer_condensate). Juga cascade: gen output di
+     *  shift_generator_gi ikut di-zero. */
+    status_turbin?: string | null;
     created_at: string;
 }
 
@@ -389,6 +394,11 @@ export interface DailyReportTurbineMiscRow {
     gi_sum_p: number | null;
     gi_sum_q: number | null;
     gi_cos_phi: number | null;
+    /** Status turbin di harian. Saat shutdown, field instantaneous (jam 00:00) di-zero:
+     *  inlet_turbine_00, co_gen_00 (di daily_report_steam), gen_00 (di daily_report_power),
+     *  + axial_displacement, thrust_bearing_temp, steam_inlet_press, steam_inlet_temp.
+     *  Field 24h totals dan raw totalizer (totalizer_gi/export/import) tetap editable. */
+    status_turbin?: string | null;
     created_at: string;
 }
 

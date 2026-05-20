@@ -676,7 +676,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
     // Valid DB columns per table (prevents unknown column errors)
     const VALID_COLS: Record<string, string[]> = {
         shift_boiler: ['press_steam','temp_steam','flow_steam','totalizer_steam','flow_bfw','temp_bfw','totalizer_bfw','bfw_press','temp_furnace','temp_flue_gas','excess_air','air_heater_ti113','batubara_ton','solar_m3','stream_days','steam_drum_press','primary_air','secondary_air','o2','feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow','status_boiler','selisih_steam','selisih_bfw'],
-        shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','stream_days','totalizer_steam_inlet','totalizer_condensate','selisih_steam_inlet','selisih_condensate'],
+        shift_turbin: ['flow_steam','flow_cond','press_steam','temp_steam','exh_steam','vacuum','hpo_durasi','thrust_bearing','metal_bearing','vibrasi','winding','axial_displacement','level_condenser','temp_cw_in','temp_cw_out','press_deaerator','temp_deaerator','stream_days','totalizer_steam_inlet','totalizer_condensate','selisih_steam_inlet','selisih_condensate','status_turbin'],
         shift_steam_dist: ['pabrik1_flow','pabrik1_temp','pabrik1_totalizer','pabrik2_flow','pabrik2_temp','pabrik2_totalizer','pabrik3a_flow','pabrik3a_temp','pabrik3a_totalizer','pabrik3b_flow','pabrik3b_temp','press_lps','selisih_pabrik1','selisih_pabrik2','selisih_pabrik3a'],
         shift_generator_gi: ['gen_load','gen_ampere','gen_amp_react','gen_cos_phi','gen_tegangan','gen_frequensi','gi_sum_p','gi_sum_q','gi_cos_phi'],
         shift_power_dist: ['power_ubb','power_ubb_totalizer','power_pabrik2','power_pabrik2_totalizer','power_pabrik3a','power_pabrik3a_totalizer','power_revamping','power_revamping_totalizer','power_pie','power_pie_totalizer','power_pabrik3b','power_stg_ubb_totalizer','selisih_ubb','selisih_pabrik2','selisih_pabrik3a','selisih_revamping','selisih_pie','selisih_stg_ubb'],
@@ -704,7 +704,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         catatan?: string;
         boilerA?: Record<string, number | string | null>;
         boilerB?: Record<string, number | string | null>;
-        turbin?: Record<string, number | null>;
+        turbin?: Record<string, number | string | null>;
         steamDist?: Record<string, number | null>;
         generatorGi?: Record<string, number | null>;
         powerDist?: Record<string, number | null>;

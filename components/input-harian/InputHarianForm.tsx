@@ -521,15 +521,33 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 cw.grand_total_00 = N(cw.total_boiler_a_00) + N(cw.total_boiler_b_00);
             }
 
+            // Turbin shutdown → zero field instantaneous (jam 00:00) + parameter operasional.
+            // 24h totals dan raw totalizer (totalizer_gi/export/import) TETAP editable
+            // karena harian = akumulasi (turbin bisa running di shift lain hari itu).
+            const isTurbinShutdown = turbineMisc.status_turbin === 'shutdown';
+            const powerForSubmit: Record<string, number | null> = isTurbinShutdown
+                ? { ...power, gen_00: 0 }
+                : power;
+            if (isTurbinShutdown) {
+                sw.inlet_turbine_00 = 0;
+                sw.co_gen_00 = 0;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const tw = turbWithCalcs as any;
+                tw.axial_displacement = 0;
+                tw.thrust_bearing_temp = 0;
+                tw.steam_inlet_press = 0;
+                tw.steam_inlet_temp = 0;
+            }
+
             const result = await submitReport({
                 created_by: operator?.supabaseId ?? undefined,
                 notes: undefined,
                 produksi_steam_a: prodA24 || null,
                 produksi_steam_b: prodB24 || null,
                 konsumsi_batubara: coalWithCalcs.grand_total_24 ?? null,
-                load_mw: power.gen_00 ?? null,
+                load_mw: powerForSubmit.gen_00 ?? null,
                 steam: steamWithCalcs,
-                power,
+                power: powerForSubmit,
                 coal: coalWithCalcs,
                 turbineMisc: turbWithCalcs,
                 stockTank: tankWithCalcs,

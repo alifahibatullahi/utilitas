@@ -202,7 +202,7 @@ function InputShiftPageInner() {
     // Form state
     const [boilerA, setBoilerA] = useState<Record<string, number | string | null>>({});
     const [boilerB, setBoilerB] = useState<Record<string, number | string | null>>({});
-    const [turbin, setTurbin] = useState<Record<string, number | null>>({});
+    const [turbin, setTurbin] = useState<Record<string, number | string | null>>({});
     const [steamDist, setSteamDist] = useState<Record<string, number | null>>({});
     const [generatorGi, setGeneratorGi] = useState<Record<string, number | null>>({});
     const [powerDist, setPowerDist] = useState<Record<string, number | null>>({});
@@ -363,6 +363,8 @@ function InputShiftPageInner() {
         const personnel = (report as any).shift_personnel?.[0];
         if (personnel?.turbin_karu) setForemanTurbin(personnel.turbin_karu);
         if (personnel?.boiler_karu) setForemanBoiler(personnel.boiler_karu);
+        // status_turbin restored automatically via extractFields di useEffect lain saat
+        // report.shift_turbin di-load → setTurbin(extractFields(turbinData)).
         // Restore filler dari station_fillers[station] kalau ada — kalau belum, default
         // ke operator login (saat user pertama buka station view).
         if (station) {
@@ -444,7 +446,7 @@ function InputShiftPageInner() {
 
         if (boilerAData) setBoilerA(extractFields(boilerAData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>);
         if (boilerBData) setBoilerB(extractFields(boilerBData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>);
-        if (turbinData) setTurbin(extractFields(turbinData as unknown as Record<string, unknown>) as Record<string, number | null>);
+        if (turbinData) setTurbin(extractFields(turbinData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
         if (steamDistData) setSteamDist(extractFields(steamDistData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (genData) setGeneratorGi(extractFields(genData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (powerData) setPowerDist(extractFields(powerData as unknown as Record<string, unknown>) as Record<string, number | null>);
@@ -647,15 +649,41 @@ function InputShiftPageInner() {
             const finalBoilerA = boilerA.status_boiler === 'shutdown' ? applyShutdownZeros(boilerA) : boilerA;
             const finalBoilerB = boilerB.status_boiler === 'shutdown' ? applyShutdownZeros(boilerB) : boilerB;
 
+            // Turbin shutdown → zero semua field operasional KECUALI kartu deaerator + raw totalizer.
+            // Selisih steam_inlet/condensate diabaikan (kalau totalizer tidak berubah, selisih=0 alami).
+            const TURBIN_KEEP_ON_SHUTDOWN = new Set([
+                'press_deaerator', 'temp_deaerator',
+                'totalizer_steam_inlet', 'totalizer_condensate',
+                'selisih_steam_inlet', 'selisih_condensate',
+                'status_turbin',
+            ]);
+            const isTurbinShutdown = turbin.status_turbin === 'shutdown';
+            const turbinMerged = { ...turbin, ...selisihTurbin };
+            const finalTurbin: Record<string, number | string | null> = isTurbinShutdown
+                ? Object.fromEntries(
+                    Object.entries(turbinMerged).map(([k, v]) =>
+                        TURBIN_KEEP_ON_SHUTDOWN.has(k) ? [k, v] : [k, 0]
+                    )
+                )
+                : turbinMerged;
+
+            // Generator output → zero hanya kalau turbin shutdown (cascade).
+            // GI & power dist tidak terpengaruh (PLN tetap bisa import lewat GI).
+            const GEN_OUTPUT_FIELDS = ['gen_load', 'gen_ampere', 'gen_tegangan',
+                'gen_amp_react', 'gen_frequensi', 'gen_cos_phi'];
+            const finalGeneratorGi = isTurbinShutdown
+                ? { ...generatorGi, ...Object.fromEntries(GEN_OUTPUT_FIELDS.map(k => [k, 0])) }
+                : generatorGi;
+
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
                 supervisor: supervisor || operator?.name || 'Operator',
                 created_by: operator?.supabaseId || '',
                 boilerA: { ...finalBoilerA, batubara_ton: batubaraA, selisih_steam: selisihSteamA, selisih_bfw: selisihBfwA },
                 boilerB: { ...finalBoilerB, batubara_ton: batubaraB, selisih_steam: selisihSteamB, selisih_bfw: selisihBfwB },
-                turbin: { ...turbin, ...selisihTurbin },
+                turbin: finalTurbin,
                 steamDist: { ...steamDist, ...selisihSteamDist },
-                generatorGi,
+                generatorGi: finalGeneratorGi,
                 powerDist: { ...powerDist, ...selisihPowerDist },
                 espHandling: { hopper: 'A', conveyor: 'AB', ...espHandling, unloading_a: totalRitA, unloading_b: totalRitB },
                 tankyard,
@@ -1198,6 +1226,31 @@ function InputShiftPageInner() {
                                                 </div>
                                             );
                                         })()}
+                                        {/* Status chip Turbin — saat shutdown, cascade: zero field operasional di turbin
+                                            (kecuali kartu deaerator + raw totalizer) dan gen output di tab Generator. */}
+                                        {activeTab === 'Turbin' && (() => {
+                                            const turbinStatus = (turbin.status_turbin as string) ?? '';
+                                            const tBorder = turbinStatus === 'running' ? 'border-emerald-500/50' : turbinStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
+                                            const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
+                                            return (
+                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                    <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
+                                                    <select
+                                                        className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                        value={turbinStatus}
+                                                        onChange={e => {
+                                                            const v = e.target.value === '' ? null : e.target.value;
+                                                            setUserModified(true);
+                                                            setTurbin(prev => ({ ...prev, status_turbin: v }));
+                                                        }}
+                                                    >
+                                                        <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                                                        <option value="running" className="bg-[#101822] text-white">Running</option>
+                                                        <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                    </select>
+                                                </div>
+                                            );
+                                        })()}
                                     </>
                                 );
                             })()}
@@ -1227,7 +1280,7 @@ function InputShiftPageInner() {
                                 <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
                                     {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
                                     {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
-                                    {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
+                                    {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet} prevTotalizerCondensate={prevTurbin.totalizer_condensate} />}
                                     {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} />}
                                     {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
                                     {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} onDeleteSavedSolar={handleDeleteSavedSolar} onDeleteSavedOutSolar={handleDeleteSavedOutSolar} />}

@@ -275,7 +275,7 @@ export default function WorkOrderDetailModal({
                 </div>
 
                 {/* Body — 3 kolom seperti critical */}
-                <div className="overflow-y-auto light-scrollbar flex-1 bg-slate-50">
+                <div className="overflow-y-auto detail-scrollbar flex-1 bg-slate-50">
                     <div className="p-8 pb-32 flex flex-col gap-8 min-h-max">
                         {/* Meta info */}
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-6">

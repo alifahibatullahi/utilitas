@@ -377,7 +377,7 @@ export default function CriticalDetailModal({
                 </div>
 
                 {/* Body container -> 3 cols / 2 rows */}
-                <div className="overflow-y-auto light-scrollbar flex-1 bg-slate-50">
+                <div className="overflow-y-auto detail-scrollbar flex-1 bg-slate-50">
                     <div className="p-8 pb-32 flex flex-col gap-8 min-h-max">
                         
                         {/* Top Row: Meta info */}

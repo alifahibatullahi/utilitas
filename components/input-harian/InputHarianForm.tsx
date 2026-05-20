@@ -817,12 +817,12 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                         <h2 className="text-white font-bold text-xl leading-tight">{tab?.label}</h2>
                                         <p className="text-slate-400 text-xs mt-0.5">Input data operasional harian {tab?.label}</p>
                                     </div>
-                                    {/* Status chip turbin — hanya di tab Turbin & Distribusi Steam */}
+                                    {/* Status chip turbin — di kanan judul, size sama seperti chip shift */}
                                     {activeTab === 'Turbin' && (
-                                        <div className={`inline-flex items-center gap-2 bg-[#101822]/60 border ${tBorder} rounded-lg pl-3 pr-2 py-1.5 transition-colors ml-auto`}>
-                                            <span className={`w-3 h-3 rounded-full ${tDot} shrink-0`} />
+                                        <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0 ml-auto`}>
+                                            <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
                                             <select
-                                                className="bg-transparent appearance-none text-sm text-white font-semibold pr-4 cursor-pointer outline-none"
+                                                className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
                                                 value={turbinStatus}
                                                 onChange={e => {
                                                     const v = e.target.value === '' ? null : e.target.value;

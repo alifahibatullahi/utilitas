@@ -539,36 +539,41 @@ function InputShiftPageInner() {
         _boilerAStatus, _boilerBStatus, _feederSig,
     ]);
 
-    // Inherit status turbin dari shift sebelumnya — kalau prev shutdown, current default shutdown
-    // + pre-fill raw totalizer (steam_inlet, condensate, power_stg_ubb) dengan nilai prev shift
-    // supaya operator tidak perlu input ulang (saat shutdown nilai stagnant).
-    // Mirror pattern boiler inherit. Hanya berlaku saat shift baru (belum ada report) & user belum modifikasi.
-    const _prevTurbinStatus = prevTurbin.status_turbin as string | null | undefined;
+    // Inherit status turbin dari latestBoilerStatus.statusTurbin (walk back ≤15 hari, termasuk
+    // harian sebagai entry terakhir per-hari). Inherit untuk SEMUA status (running/shutdown),
+    // tidak hanya shutdown. Plus pre-fill raw totalizer kalau prev shift shutdown supaya nilai
+    // stagnant tidak perlu re-input.
+    const _latestTurbinStatus = latestBoilerStatus.statusTurbin;
     const _turbinStatus = turbin.status_turbin;
     useEffect(() => {
         if (userModifiedRef.current || report) return;
-        if (_prevTurbinStatus !== 'shutdown' || _turbinStatus) return;
-        // Inherit status + auto-fill raw totalizer turbin.
-        setTurbin(prev => {
-            if (prev.status_turbin) return prev;
-            const next: Record<string, number | string | null> = { ...prev, status_turbin: 'shutdown' };
-            if (prev.totalizer_steam_inlet == null && prevTurbin.totalizer_steam_inlet != null) {
-                next.totalizer_steam_inlet = prevTurbin.totalizer_steam_inlet;
+        if (!_latestTurbinStatus || _turbinStatus) return;
+        setTurbin(prev => prev.status_turbin ? prev : { ...prev, status_turbin: _latestTurbinStatus });
+        // Pre-fill raw totalizer dari prev shift hanya kalau status sebelumnya shutdown
+        // (saat running, totalizer akumulasi, jadi nilai prev tidak relevan untuk default).
+        if (_latestTurbinStatus === 'shutdown') {
+            setTurbin(prev => {
+                const next: Record<string, number | string | null> = { ...prev };
+                let changed = false;
+                if (prev.totalizer_steam_inlet == null && prevTurbin.totalizer_steam_inlet != null) {
+                    next.totalizer_steam_inlet = prevTurbin.totalizer_steam_inlet;
+                    changed = true;
+                }
+                if (prev.totalizer_condensate == null && prevTurbin.totalizer_condensate != null) {
+                    next.totalizer_condensate = prevTurbin.totalizer_condensate;
+                    changed = true;
+                }
+                return changed ? next : prev;
+            });
+            const prevStgTot = prevPowerDist.power_stg_ubb_totalizer;
+            if (prevStgTot != null) {
+                setPowerDist(prev => prev.power_stg_ubb_totalizer != null
+                    ? prev
+                    : { ...prev, power_stg_ubb_totalizer: prevStgTot });
             }
-            if (prev.totalizer_condensate == null && prevTurbin.totalizer_condensate != null) {
-                next.totalizer_condensate = prevTurbin.totalizer_condensate;
-            }
-            return next;
-        });
-        // Auto-fill STG UBB totalizer di shift_power_dist.
-        const prevStgTot = prevPowerDist.power_stg_ubb_totalizer;
-        if (prevStgTot != null) {
-            setPowerDist(prev => prev.power_stg_ubb_totalizer != null
-                ? prev
-                : { ...prev, power_stg_ubb_totalizer: prevStgTot });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [_prevTurbinStatus, _turbinStatus, report]);
+    }, [_latestTurbinStatus, _turbinStatus, report]);
 
     // Generic change handlers
     const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>

@@ -218,58 +218,123 @@ export function useBunkerBerasapHistory(date: string, shift: ShiftType) {
 export interface LatestBoilerStatus {
     statusBoilerA: string | null;
     statusBoilerB: string | null;
+    statusTurbin: string | null;
     statusFeeders: Record<string, string | null>;
 }
 
 // Cari status boiler & feeder terbaru dengan walkback hingga 10 shift ke belakang
 // Lebih andal dari usePreviousShiftData yang hanya lihat 1 shift sebelumnya
-export function useLatestBoilerStatus(date: string, shift: ShiftType): LatestBoilerStatus {
+export function useLatestBoilerStatus(date: string, shift: ShiftType | 'harian'): LatestBoilerStatus {
     const [result, setResult] = useState<LatestBoilerStatus>({
-        statusBoilerA: null, statusBoilerB: null, statusFeeders: {},
+        statusBoilerA: null, statusBoilerB: null, statusTurbin: null, statusFeeders: {},
     });
 
     useEffect(() => {
         if (!isSupabaseConfigured() || !date) return;
         const supabase = createClient();
         let stale = false;
-        const shiftOrder: Record<string, number> = { sore: 2, pagi: 1, malam: 0 };
+        // Cycle: malam(0) → pagi(1) → sore(2) → harian(3) → malam-besok(0). Harian
+        // ditreat sebagai entry terakhir per-hari supaya inherit malam berikutnya pakai
+        // status terbaru dari LHUBB kalau ada (fallback ke sore kalau LHUBB belum diisi).
+        const shiftOrder: Record<string, number> = { malam: 0, pagi: 1, sore: 2, harian: 3 };
         const FEEDER_KEYS = ['status_feeder_a','status_feeder_b','status_feeder_c','status_feeder_d','status_feeder_e','status_feeder_f'];
 
         async function fetch() {
-            const { data } = await supabase
-                .from('shift_reports')
-                .select('date, shift, shift_boiler(boiler, status_boiler), shift_coal_bunker(status_feeder_a,status_feeder_b,status_feeder_c,status_feeder_d,status_feeder_e,status_feeder_f)')
-                .lte('date', date)
-                .order('date', { ascending: false })
-                .limit(15);
+            // Fetch dari shift_reports & daily_reports paralel.
+            const [shiftRes, dailyRes] = await Promise.all([
+                supabase
+                    .from('shift_reports')
+                    .select('date, shift, shift_boiler(boiler, status_boiler), shift_turbin(status_turbin), shift_coal_bunker(status_feeder_a,status_feeder_b,status_feeder_c,status_feeder_d,status_feeder_e,status_feeder_f)')
+                    .lte('date', date)
+                    .order('date', { ascending: false })
+                    .limit(15),
+                supabase
+                    .from('daily_reports')
+                    .select('date, daily_report_turbine_misc(status_boiler_a, status_boiler_b, status_turbin)')
+                    .lte('date', date)
+                    .order('date', { ascending: false })
+                    .limit(15),
+            ]);
 
-            if (stale || !data) return;
+            if (stale) return;
 
-            const sorted = (data as { date: string; shift: ShiftType; shift_boiler: { boiler: string; status_boiler: string | null }[]; shift_coal_bunker: Record<string, string | null>[] | Record<string, string | null> | null }[])
-                .filter(r => !(r.date === date && r.shift === shift))
+            // Gabungkan: tiap entry punya { date, shift|'harian', boilerA, boilerB, turbin, feeders }.
+            type Entry = {
+                date: string; shift: string;
+                statusBoilerA: string | null;
+                statusBoilerB: string | null;
+                statusTurbin: string | null;
+                feeders: Record<string, string | null>;
+            };
+            const entries: Entry[] = [];
+
+            for (const r of (shiftRes.data ?? []) as {
+                date: string; shift: ShiftType;
+                shift_boiler: { boiler: string; status_boiler: string | null }[];
+                shift_turbin: { status_turbin: string | null }[] | { status_turbin: string | null } | null;
+                shift_coal_bunker: Record<string, string | null>[] | Record<string, string | null> | null;
+            }[]) {
+                const boilers = Array.isArray(r.shift_boiler) ? r.shift_boiler : [];
+                const a = boilers.find(b => b.boiler === 'A');
+                const b = boilers.find(b => b.boiler === 'B');
+                const tb = Array.isArray(r.shift_turbin) ? r.shift_turbin[0] : r.shift_turbin;
+                const cb = Array.isArray(r.shift_coal_bunker) ? r.shift_coal_bunker[0] : r.shift_coal_bunker;
+                const feeders: Record<string, string | null> = {};
+                if (cb) FEEDER_KEYS.forEach(k => { feeders[k] = (cb as Record<string, string | null>)[k] ?? null; });
+                entries.push({
+                    date: r.date,
+                    shift: r.shift,
+                    statusBoilerA: a?.status_boiler ?? null,
+                    statusBoilerB: b?.status_boiler ?? null,
+                    statusTurbin: tb?.status_turbin ?? null,
+                    feeders,
+                });
+            }
+
+            for (const r of (dailyRes.data ?? []) as {
+                date: string;
+                daily_report_turbine_misc: { status_boiler_a: string | null; status_boiler_b: string | null; status_turbin: string | null }[] | { status_boiler_a: string | null; status_boiler_b: string | null; status_turbin: string | null } | null;
+            }[]) {
+                const tm = Array.isArray(r.daily_report_turbine_misc) ? r.daily_report_turbine_misc[0] : r.daily_report_turbine_misc;
+                if (!tm) continue;
+                entries.push({
+                    date: r.date,
+                    shift: 'harian',
+                    statusBoilerA: tm.status_boiler_a ?? null,
+                    statusBoilerB: tm.status_boiler_b ?? null,
+                    statusTurbin: tm.status_turbin ?? null,
+                    feeders: {}, // harian tidak punya feeder status
+                });
+            }
+
+            // Exclude current cell (kalau view sekarang sudah punya entry, jangan inherit
+            // dari dirinya sendiri).
+            const sorted = entries
+                .filter(e => !(e.date === date && e.shift === shift))
                 .sort((a, b) => {
                     if (a.date !== b.date) return b.date.localeCompare(a.date);
-                    return (shiftOrder[b.shift] || 0) - (shiftOrder[a.shift] || 0);
+                    return (shiftOrder[b.shift] ?? 0) - (shiftOrder[a.shift] ?? 0);
                 });
 
             let foundA: string | null = null;
             let foundB: string | null = null;
+            let foundT: string | null = null;
             const foundFeeders: Record<string, string | null> = {};
 
-            for (const report of sorted) {
-                const boilers = Array.isArray(report.shift_boiler) ? report.shift_boiler : [];
-                if (!foundA) { const a = boilers.find(b => b.boiler === 'A'); if (a?.status_boiler) foundA = a.status_boiler; }
-                if (!foundB) { const b = boilers.find(b => b.boiler === 'B'); if (b?.status_boiler) foundB = b.status_boiler; }
-
-                const cb = Array.isArray(report.shift_coal_bunker) ? report.shift_coal_bunker[0] : report.shift_coal_bunker;
-                if (cb) {
-                    FEEDER_KEYS.forEach(k => { if (!foundFeeders[k] && cb[k]) foundFeeders[k] = cb[k] as string; });
-                }
-
-                if (foundA && foundB && FEEDER_KEYS.every(k => foundFeeders[k])) break;
+            for (const e of sorted) {
+                if (!foundA && e.statusBoilerA) foundA = e.statusBoilerA;
+                if (!foundB && e.statusBoilerB) foundB = e.statusBoilerB;
+                if (!foundT && e.statusTurbin) foundT = e.statusTurbin;
+                FEEDER_KEYS.forEach(k => { if (!foundFeeders[k] && e.feeders[k]) foundFeeders[k] = e.feeders[k]; });
+                if (foundA && foundB && foundT && FEEDER_KEYS.every(k => foundFeeders[k])) break;
             }
 
-            if (!stale) setResult({ statusBoilerA: foundA, statusBoilerB: foundB, statusFeeders: foundFeeders });
+            if (!stale) setResult({
+                statusBoilerA: foundA,
+                statusBoilerB: foundB,
+                statusTurbin: foundT,
+                statusFeeders: foundFeeders,
+            });
         }
 
         fetch();

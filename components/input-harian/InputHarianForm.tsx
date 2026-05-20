@@ -318,19 +318,20 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report, prevReport]);
 
-    // Inherit status boiler dari shift reports hari ini atau daily reports sebelumnya
+    // Inherit status boiler & turbin dari shift reports hari ini (cycle: malam→pagi→sore→harian),
+    // atau daily reports sebelumnya kalau shift hari ini belum ada.
     useEffect(() => {
         if (report) return;
         const supabase = createClient();
         let stale = false;
 
         async function fetchStatus() {
-            let foundA: string | null = null, foundB: string | null = null;
+            let foundA: string | null = null, foundB: string | null = null, foundT: string | null = null;
 
             // 1. Cari dari shift reports hari ini (sore → pagi → malam)
             const { data: shiftData } = await supabase
                 .from('shift_reports')
-                .select('shift, shift_boiler(boiler, status_boiler)')
+                .select('shift, shift_boiler(boiler, status_boiler), shift_turbin(status_turbin)')
                 .eq('date', date)
                 .order('shift', { ascending: false });
 
@@ -345,14 +346,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 if (!foundA) { const a = boilers.find((b: any) => b.boiler === 'A'); if (a?.status_boiler) foundA = a.status_boiler; }
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!foundB) { const b = boilers.find((b: any) => b.boiler === 'B'); if (b?.status_boiler) foundB = b.status_boiler; }
-                if (foundA && foundB) break;
+                if (!foundT) {
+                    const tb = Array.isArray(r.shift_turbin) ? r.shift_turbin[0] : r.shift_turbin;
+                    if (tb?.status_turbin) foundT = tb.status_turbin;
+                }
+                if (foundA && foundB && foundT) break;
             }
 
             // 2. Fallback: cari dari daily_reports hari sebelumnya
-            if (!foundA || !foundB) {
+            if (!foundA || !foundB || !foundT) {
                 const { data: dailyData } = await supabase
                     .from('daily_reports')
-                    .select('daily_report_turbine_misc(status_boiler_a, status_boiler_b)')
+                    .select('daily_report_turbine_misc(status_boiler_a, status_boiler_b, status_turbin)')
                     .lt('date', date)
                     .order('date', { ascending: false })
                     .limit(10);
@@ -362,7 +367,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     if (!tm) continue;
                     if (!foundA && tm.status_boiler_a) foundA = tm.status_boiler_a;
                     if (!foundB && tm.status_boiler_b) foundB = tm.status_boiler_b;
-                    if (foundA && foundB) break;
+                    if (!foundT && tm.status_turbin) foundT = tm.status_turbin;
+                    if (foundA && foundB && foundT) break;
                 }
             }
 
@@ -371,6 +377,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 const next = { ...prev };
                 if (foundA && !prev.status_boiler_a) next.status_boiler_a = foundA;
                 if (foundB && !prev.status_boiler_b) next.status_boiler_b = foundB;
+                if (foundT && !prev.status_turbin) next.status_turbin = foundT;
                 return next;
             });
         }

@@ -161,9 +161,12 @@ export function buildStationLinksBlock(
         if (mode === 'shift' && shift) params.shift = shift;
         if (mode === 'harian') params.mode = 'harian';
         const link = buildDeepLink(path, params);
-        lines.push(`${modeLabel} operator ${STATION_LABELS[st].toLowerCase()}: ${link}`);
+        // Format: bold station label di baris atas, link di baris bawah →
+        // WhatsApp auto-render URL jadi tombol clickable yang jelas.
+        lines.push(`👉 *Operator ${STATION_LABELS[st]}*\n${link}`);
     }
-    return lines.join('\n');
+    void modeLabel; // dipertahankan untuk dokumentasi; konteks shift/harian sudah di template body
+    return lines.join('\n\n');
 }
 
 // Returns the current date+time in WIB (UTC+7), regardless of server TZ.

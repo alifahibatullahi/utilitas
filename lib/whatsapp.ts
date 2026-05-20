@@ -135,7 +135,9 @@ export async function logNotification(
 // ─── Deep links & WIB time helpers ───
 
 export function buildDeepLink(path: string, params: Record<string, string>): string {
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? '';
+    // Strip trailing slash di base supaya tidak hasilkan double slash kalau env-nya
+    // di-set seperti "https://app.com/" (browser tolerate tapi jelek).
+    const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
     const q = new URLSearchParams(params).toString();
     return `${base}${path}${q ? `?${q}` : ''}`;
 }

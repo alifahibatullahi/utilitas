@@ -9,6 +9,9 @@ interface TabGeneratorProps {
     onPowerChange?: (name: string, value: number | string | null) => void;
     prevPowerDist?: Record<string, number | null>;
     genLoad?: number | null;
+    /** Cascade dari status turbin — kalau shutdown, kunci kartu "Generator Output" (gen_load, gen_ampere, dst).
+     *  Kartu GI & Distribusi Power tetap editable karena PLN bisa import lewat GI. */
+    isTurbinShutdown?: boolean;
 }
 
 // Distribution items config
@@ -20,7 +23,7 @@ const DIST_ITEMS = [
     { key: 'pie', label: 'PIU' },
 ] as const;
 
-export default function TabGenerator({ generatorValues = {}, powerValues = {}, onGeneratorChange, onPowerChange, prevPowerDist = {}, genLoad }: TabGeneratorProps) {
+export default function TabGenerator({ generatorValues = {}, powerValues = {}, onGeneratorChange, onPowerChange, prevPowerDist = {}, genLoad, isTurbinShutdown = false }: TabGeneratorProps) {
     const pv = powerValues;
     const gv = generatorValues;
     const fmt = (v: number | string | null | undefined) => (Number(v) || 0).toFixed(2);
@@ -32,12 +35,12 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
 
                     <Card title="Generator Output" icon="flash_on" color="blue">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <InputField label="Load STG" unit="MW" color="blue" name="gen_load" value={gv.gen_load} onChange={onGeneratorChange} />
-                            <InputField label="Ampere" unit="A" color="blue" name="gen_ampere" value={gv.gen_ampere} onChange={onGeneratorChange} />
-                            <InputField label="Voltage" unit="kV" color="blue" name="gen_tegangan" value={gv.gen_tegangan} onChange={onGeneratorChange} />
-                            <InputField label="Reactive Power" unit="Mvar" color="blue" name="gen_amp_react" value={gv.gen_amp_react} onChange={onGeneratorChange} />
-                            <InputField label="Frekuensi" unit="Hz" color="blue" name="gen_frequensi" value={gv.gen_frequensi} onChange={onGeneratorChange} />
-                            <InputField label="Cos θ" color="blue" name="gen_cos_phi" value={gv.gen_cos_phi} onChange={onGeneratorChange} />
+                            <InputField label="Load STG" unit="MW" color="blue" name="gen_load" value={gv.gen_load} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Ampere" unit="A" color="blue" name="gen_ampere" value={gv.gen_ampere} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Voltage" unit="kV" color="blue" name="gen_tegangan" value={gv.gen_tegangan} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Reactive Power" unit="Mvar" color="blue" name="gen_amp_react" value={gv.gen_amp_react} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Frekuensi" unit="Hz" color="blue" name="gen_frequensi" value={gv.gen_frequensi} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Cos θ" color="blue" name="gen_cos_phi" value={gv.gen_cos_phi} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
                         </div>
                     </Card>
 

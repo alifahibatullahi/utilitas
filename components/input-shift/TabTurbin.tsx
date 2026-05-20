@@ -18,15 +18,19 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
     const prevCondensate = Number(prevTotalizerCondensate) || 0;
     const produksiCondensate = prevCondensate > 0 ? currentCondensate - prevCondensate : 0;
 
+    // Saat turbin shutdown: kunci field operasional. Kartu Deaerator + raw totalizer
+    // (steam_inlet, condensate) TETAP editable supaya operator bisa input pembacaan meter.
+    const isTurbinShutdown = values.status_turbin === 'shutdown';
+
     return (
         <>
             <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Steam Inlet Turbin" icon="waves" color="blue">
-                        <InputField label="Pressure Steam Inlet" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} />
-                        <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} />
-                        <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} />
+                        <InputField label="Pressure Steam Inlet" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
+                        <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
+                        <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <div>
                             <InputField label="Totalizer Steam Inlet" unit="ton" color="blue" name="totalizer_steam_inlet" value={values.totalizer_steam_inlet} onChange={onFieldChange} placeholder={prevSteamInlet > 0 ? String(prevSteamInlet) : '0.0'} />
                             <SelisihInfo prev={prevSteamInlet} current={currentSteamInlet} />
@@ -34,14 +38,14 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                     </Card>
 
                     <Card title="Condenser" icon="water_drop" color="cyan">
-                        <InputField label="Flow Condensate" unit="t/h" color="cyan" name="flow_cond" value={values.flow_cond} onChange={onFieldChange} />
+                        <InputField label="Flow Condensate" unit="t/h" color="cyan" name="flow_cond" value={values.flow_cond} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Temp Exhaust Steam" unit="°C" color="cyan" name="exh_steam" value={values.exh_steam} onChange={onFieldChange} />
-                            <InputField label="Vacuum" unit="MPa" color="cyan" name="vacuum" value={values.vacuum} onChange={onFieldChange} negative />
+                            <InputField label="Temp Exhaust Steam" unit="°C" color="cyan" name="exh_steam" value={values.exh_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Vacuum" unit="MPa" color="cyan" name="vacuum" value={values.vacuum} onChange={onFieldChange} negative readOnly={isTurbinShutdown} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Level Condenser" unit="mm" color="cyan" name="level_condenser" value={values.level_condenser} onChange={onFieldChange} />
-                            <InputField label="Durasi HPO" unit="s" color="cyan" name="hpo_durasi" value={values.hpo_durasi} onChange={onFieldChange} />
+                            <InputField label="Level Condenser" unit="mm" color="cyan" name="level_condenser" value={values.level_condenser} onChange={onFieldChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Durasi HPO" unit="s" color="cyan" name="hpo_durasi" value={values.hpo_durasi} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         </div>
                         <div>
                             <InputField label="Totalizer Condensate" unit="ton" color="cyan" name="totalizer_condensate" value={values.totalizer_condensate} onChange={onFieldChange} placeholder={prevCondensate > 0 ? String(prevCondensate) : '0.0'} />
@@ -50,14 +54,14 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                     </Card>
                     <Card title="Bearings & Mechanical" icon="settings" color="orange">
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Temp Thrust Bearing" unit="°C" color="orange" name="thrust_bearing" value={values.thrust_bearing} onChange={onFieldChange} />
-                            <InputField label="Temp Metal Bearing" unit="°C" color="orange" name="metal_bearing" value={values.metal_bearing} onChange={onFieldChange} />
+                            <InputField label="Temp Thrust Bearing" unit="°C" color="orange" name="thrust_bearing" value={values.thrust_bearing} onChange={onFieldChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Temp Metal Bearing" unit="°C" color="orange" name="metal_bearing" value={values.metal_bearing} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Vibrasi" unit="um" color="orange" name="vibrasi" value={values.vibrasi} onChange={onFieldChange} />
-                            <InputField label="Temp Winding" unit="°C" color="orange" name="winding" value={values.winding} onChange={onFieldChange} />
+                            <InputField label="Vibrasi" unit="um" color="orange" name="vibrasi" value={values.vibrasi} onChange={onFieldChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Temp Winding" unit="°C" color="orange" name="winding" value={values.winding} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         </div>
-                        <InputField label="Axial Displacement" unit="mm" color="orange" name="axial_displacement" value={values.axial_displacement} onChange={onFieldChange} textMode />
+                        <InputField label="Axial Displacement" unit="mm" color="orange" name="axial_displacement" value={values.axial_displacement} onChange={onFieldChange} textMode readOnly={isTurbinShutdown} />
                     </Card>
 
                     <Card title="Deaerator & Cooling Water" icon="opacity" color="emerald">
@@ -66,8 +70,8 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                             <InputField label="Temp Deaerator" unit="°C" color="emerald" name="temp_deaerator" value={values.temp_deaerator} onChange={onFieldChange} />
                         </div>
                         <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-700/50">
-                            <InputField label="Temp CW In" unit="°C" color="emerald" name="temp_cw_in" value={values.temp_cw_in} onChange={onFieldChange} />
-                            <InputField label="Temp CW Out" unit="°C" color="emerald" name="temp_cw_out" value={values.temp_cw_out} onChange={onFieldChange} />
+                            <InputField label="Temp CW In" unit="°C" color="emerald" name="temp_cw_in" value={values.temp_cw_in} onChange={onFieldChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Temp CW Out" unit="°C" color="emerald" name="temp_cw_out" value={values.temp_cw_out} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         </div>
                     </Card>
 

@@ -42,6 +42,7 @@ export default function TabTurbin({
 }: DailyTabProps) {
     const n = (v: number | null | undefined) => Number(v) || 0;
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
+    const isTurbinShutdown = turbineMisc.status_turbin === 'shutdown';
 
     // Selisih per distribusi steam item
     const selisih = (key: typeof DIST_ITEMS[number]['totKey']) => {
@@ -92,6 +93,7 @@ export default function TabTurbin({
                                     unit={flowUnit}
                                     color="orange"
                                     size="small"
+                                    readOnly={isTurbinShutdown && flowKey === 'inlet_turbine_00'}
                                 />
                             </div>
                         </div>
@@ -112,10 +114,10 @@ export default function TabTurbin({
                 }
             >
                 <div className="grid grid-cols-2 gap-4">
-                    <InputField label="Steam Inlet Press"   name="steam_inlet_press"   value={turbineMisc.steam_inlet_press}   onChange={onTurbineMiscChange} unit="MPa" color="sky" />
-                    <InputField label="Steam Inlet Temp"    name="steam_inlet_temp"    value={turbineMisc.steam_inlet_temp}    onChange={onTurbineMiscChange} unit="°C"  color="sky" />
-                    <InputField label="Thrust Bearing Temp" name="thrust_bearing_temp" value={turbineMisc.thrust_bearing_temp} onChange={onTurbineMiscChange} unit="°C"  color="sky" />
-                    <InputField label="Axial Displacement"  name="axial_displacement"  value={turbineMisc.axial_displacement}  onChange={onTurbineMiscChange} unit="mm"  color="sky" textMode />
+                    <InputField label="Steam Inlet Press"   name="steam_inlet_press"   value={turbineMisc.steam_inlet_press}   onChange={onTurbineMiscChange} unit="MPa" color="sky" readOnly={isTurbinShutdown} />
+                    <InputField label="Steam Inlet Temp"    name="steam_inlet_temp"    value={turbineMisc.steam_inlet_temp}    onChange={onTurbineMiscChange} unit="°C"  color="sky" readOnly={isTurbinShutdown} />
+                    <InputField label="Thrust Bearing Temp" name="thrust_bearing_temp" value={turbineMisc.thrust_bearing_temp} onChange={onTurbineMiscChange} unit="°C"  color="sky" readOnly={isTurbinShutdown} />
+                    <InputField label="Axial Displacement"  name="axial_displacement"  value={turbineMisc.axial_displacement}  onChange={onTurbineMiscChange} unit="mm"  color="sky" textMode readOnly={isTurbinShutdown} />
                 </div>
             </Card>
 

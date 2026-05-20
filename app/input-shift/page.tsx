@@ -900,7 +900,7 @@ function InputShiftPageInner() {
                                     }`}>
                                         {group ? `Group ${group}` : 'Off'}
                                     </span>
-                                    {inputMode === 'shift' && (
+                                    {inputMode === 'shift' && !station && (
                                         <>
                                             <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
                                             <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
@@ -914,12 +914,27 @@ function InputShiftPageInner() {
                                             </div>
                                         </>
                                     )}
+                                    {/* Station mode: label statis Station + Tanggal di header row 1 */}
+                                    {station && (
+                                        <>
+                                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
+                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
+                                                {STATION_LABELS[station]}
+                                            </span>
+                                            <span className="px-3 py-1 rounded-lg text-sm font-bold bg-slate-800/60 text-slate-200 border border-slate-700/50">
+                                                {mounted && selectedDate
+                                                    ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+                                                    : selectedDate}
+                                            </span>
+                                        </>
+                                    )}
                                 </>
                             );
                         })()}
                     </div>
-                    {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin (Shift) / Supervisor (Harian) */}
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
+                    {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin (Shift) / Supervisor (Harian)
+                        — disembunyikan kalau mode station aktif (sudah ada label statis di row 1). */}
+                    <div className={`flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3 ${station ? 'hidden' : ''}`}>
                         {(() => {
                             const today = mounted ? todayWIB() : '';
                             const isToday = selectedDate === today;
@@ -1007,15 +1022,9 @@ function InputShiftPageInner() {
                             </button>
                         </div>
                     )}
-                    {station && (
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0f1721]/80 border border-slate-700/50">
-                            <span className="material-symbols-outlined text-blue-400" style={{ fontSize: 18 }}>badge</span>
-                            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Station</span>
-                            <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
-                        </div>
-                    )}
+                    {/* Station badge — label statis sudah dipindah ke row 1 header */}
 
-                    {inputMode === 'shift' && (
+                    {inputMode === 'shift' && !station && (
                         <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
                             {[
                                 { id: 1, label: 'Malam (06)', color: 'indigo' },

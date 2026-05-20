@@ -699,42 +699,52 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                         onChange={val => { setFilterItem(val); setExpandedId(null); setCurrentPage(1); }}
                     />
                     {/* Status Tabs */}
-                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
-                        {STATUS_TABS.map(t => (
-                            <button
-                                key={t.key}
-                                onClick={() => { setActiveTab(t.key); setExpandedId(null); setCurrentPage(1); }}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
-                                    activeTab === t.key
-                                        ? `bg-white shadow-sm border border-gray-200/50 ${
-                                            t.key === 'ACTIVE' ? 'text-amber-600' :
-                                            t.key === 'DONE' ? 'text-emerald-600' :
-                                            'text-blue-600'
-                                          }`
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                            >
-                                {t.label} ({tabCounts[t.key]})
-                            </button>
-                        ))}
+                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner h-9 items-center">
+                        {STATUS_TABS.map(t => {
+                            const active = activeTab === t.key;
+                            const tabIcons: Record<string, string> = { ALL: 'list', ACTIVE: 'hourglass_empty', DONE: 'task_alt' };
+                            const tabColors: Record<string, string> = {
+                                ACTIVE: active ? 'text-amber-600' : 'text-gray-500',
+                                DONE: active ? 'text-emerald-600' : 'text-gray-500',
+                                ALL: active ? 'text-blue-600' : 'text-gray-500'
+                            };
+
+                            return (
+                                <button
+                                    key={t.key}
+                                    onClick={() => { setActiveTab(t.key); setExpandedId(null); setCurrentPage(1); }}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap h-full ${
+                                        active
+                                            ? 'bg-white shadow-sm border border-gray-200/50'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/30'
+                                    }`}
+                                >
+                                    <span className={`material-symbols-outlined ${tabColors[t.key]}`} style={{ fontSize: 14 }}>
+                                        {tabIcons[t.key]}
+                                    </span>
+                                    <span>{t.label} ({tabCounts[t.key]})</span>
+                                </button>
+                            );
+                        })}
                     </div>
                     {/* Date preset tabs */}
-                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner h-9 items-center">
                         {([
-                            { key: 'shift_now' as const, label: 'Shift Sekarang' },
-                            { key: 'today' as const, label: 'Hari Ini' },
-                            { key: 'last_1_day' as const, label: '1 Hari' },
-                            { key: 'all' as const, label: 'Semua' },
+                            { key: 'shift_now' as const, label: 'Shift Sekarang', icon: 'schedule' },
+                            { key: 'today' as const, label: 'Hari Ini', icon: 'today' },
+                            { key: 'last_1_day' as const, label: '1 Hari', icon: 'history' },
+                            { key: 'all' as const, label: 'Semua', icon: 'all_inclusive' },
                         ]).map(t => (
                             <button
                                 key={t.key}
                                 onClick={() => { setDateMode(t.key); setExpandedId(null); setCurrentPage(1); }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap h-full ${
                                     dateMode === t.key
                                         ? 'bg-white shadow-sm border border-gray-200/50 text-blue-600'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/30'
                                 }`}
                             >
+                                <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 13 }}>{t.icon}</span>
                                 {t.label}
                             </button>
                         ))}
@@ -743,24 +753,32 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                     {hasActiveFilter && (
                         <button
                             onClick={clearFilters}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600 text-white border border-rose-700 text-xs font-bold hover:bg-rose-700 shadow-sm cursor-pointer transition-colors"
+                            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-650 hover:bg-rose-700 text-white border border-rose-700 text-xs font-bold shadow-sm cursor-pointer transition-colors h-9"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>filter_list_off</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>filter_list_off</span>
                             Reset
                         </button>
                     )}
                     {/* Scope — pinggir kanan */}
-                    <select
-                        value={filterScope}
-                        onChange={e => { setFilterScope(e.target.value as HarScope | ''); setExpandedId(null); setCurrentPage(1); }}
-                        className="ml-auto text-sm font-bold text-black bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none shadow-sm cursor-pointer"
-                    >
-                        <option value="">Semua Scope</option>
-                        {harScopes.map(s => (
-                            <option key={s.value} value={s.value}>{s.label}</option>
-                        ))}
-                    </select>
-                    <span className="text-[10px] text-black font-semibold">
+                    <div className="ml-auto relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-3 text-slate-500 pointer-events-none" style={{ fontSize: 16 }}>
+                            handyman
+                        </span>
+                        <select
+                            value={filterScope}
+                            onChange={e => { setFilterScope(e.target.value as HarScope | ''); setExpandedId(null); setCurrentPage(1); }}
+                            className="pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-xs font-extrabold text-slate-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-all appearance-none h-9"
+                        >
+                            <option value="">Semua Scope</option>
+                            {harScopes.map(s => (
+                                <option key={s.value} value={s.value}>{s.label}</option>
+                            ))}
+                        </select>
+                        <span className="material-symbols-outlined absolute right-2.5 text-slate-400 pointer-events-none" style={{ fontSize: 16 }}>
+                            expand_more
+                        </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-extrabold bg-slate-100 px-2 py-1 rounded-lg border border-slate-200/50 shadow-inner">
                         {allFilteredItems} item
                     </span>
                 </div>

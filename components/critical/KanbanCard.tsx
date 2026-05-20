@@ -103,45 +103,45 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             style={overlay ? undefined : style}
             {...(overlay ? {} : attributes)}
             {...(overlay ? {} : listeners)}
-            className={`bg-white rounded-lg border border-gray-200 border-l-4 ${scopeAccent[item.scope] ?? 'border-l-gray-300'}
-                shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-150 p-2 cursor-grab active:cursor-grabbing active:scale-[0.97] active:shadow-inner active:translate-y-0
+            className={`bg-white rounded-xl border border-gray-200 border-l-4 ${scopeAccent[item.scope] ?? 'border-l-gray-300'}
+                shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-150 p-3 cursor-grab active:cursor-grabbing active:scale-[0.98] active:shadow-inner active:translate-y-0
                 ${overlay ? 'shadow-2xl rotate-2 scale-[1.03] ring-2 ring-emerald-400/50 opacity-95 z-50' : ''}`}
         >
             {/* Header: Item name + status badge */}
-            <div className="flex items-start justify-between gap-1.5">
-                <h4 className="text-xs font-black text-black leading-tight truncate min-w-0 flex-1">{item.item}</h4>
+            <div className="flex items-start justify-between gap-2">
+                <h4 className="text-xs font-black text-slate-800 leading-tight truncate min-w-0 flex-1">{item.item}</h4>
                 <StatusBadge status={item.status} light />
             </div>
 
             {/* Critical desc dengan prefix "Critical : " — langsung di bawah item, no gap */}
             {item.critical_equipment?.deskripsi && (
-                <p className="text-[10px] font-bold text-rose-700 leading-tight line-clamp-1">
+                <p className="text-[10px] font-bold text-rose-700 leading-tight line-clamp-1 mt-0.5">
                     Critical : {capitalizeFirst(item.critical_equipment.deskripsi)}
                 </p>
             )}
 
-            {/* Uraian — kapital pada huruf pertama, langsung tempel ke critical desc */}
-            <p className="text-base text-black font-bold mt-1 mb-2 line-clamp-3 leading-snug">
+            {/* Uraian — kapital pada huruf pertama, ukuran text-sm font-semibold agar lebih pas di layout kartu */}
+            <p className="text-sm text-slate-700 font-semibold mt-2 mb-3 line-clamp-3 leading-snug">
                 {capitalizeFirst(item.uraian)}
             </p>
 
             {/* Badges row: scope + tipe + actor IP/OK */}
-            <div className="flex items-center gap-1 flex-wrap mb-1">
+            <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
                 <ScopeBadge scope={item.scope} light className="!text-[9px] !px-1.5 !py-0.5 uppercase font-bold tracking-wider" />
                 {item.tipe === 'preventif' && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-100 text-cyan-800">Preventif</span>
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">Preventif</span>
                 )}
                 {item.tipe === 'modifikasi' && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-100 text-violet-800">Modifikasi</span>
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-50 text-violet-700 border border-violet-200">Modifikasi</span>
                 )}
                 {statusActors?.ip && (
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300" title={`Status IP oleh: ${statusActors.ip}`}>
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-250" title={`Status IP oleh: ${statusActors.ip}`}>
                         <span className="material-symbols-outlined" style={{ fontSize: 10 }}>person</span>
                         IP: <span className="font-extrabold">{statusActors.ip}</span>
                     </span>
                 )}
                 {statusActors?.ok && (
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300" title={`Status OK oleh: ${statusActors.ok}`}>
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-250" title={`Status OK oleh: ${statusActors.ok}`}>
                         <span className="material-symbols-outlined" style={{ fontSize: 10 }}>person</span>
                         OK: <span className="font-extrabold">{statusActors.ok}</span>
                     </span>
@@ -149,33 +149,41 @@ export default function KanbanCard({ item, photos, overlay = false, index, isFir
             </div>
 
             {/* Footer: foreman + tanggal + statusTime + dari-shift + notif */}
-            <div className="flex items-center justify-between gap-1 text-[9px] text-black flex-wrap">
-                <div className="flex items-center gap-1 flex-wrap">
-                    <span className="font-bold bg-gray-100 px-1.5 py-0.5 rounded text-black">{getForemanLabel(item.foreman)}</span>
-                    <span className="font-bold bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded text-black">{item.date}</span>
+            <div className="flex items-center justify-between gap-2 text-[9px] text-gray-500 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-0.5 font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/60" title="Foreman Penanggung Jawab">
+                        <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 10 }}>badge</span>
+                        {getForemanLabel(item.foreman)}
+                    </span>
+                    <span className="inline-flex items-center gap-0.5 font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/60" title="Tanggal Rencana">
+                        <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 10 }}>calendar_today</span>
+                        {item.date}
+                    </span>
                     {statusTimeIso && (
-                        <span className="font-bold text-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 whitespace-nowrap" title={`Status ${item.status} sejak ${new Date(statusTimeIso).toLocaleString('id-ID')}`}>
+                        <span className="inline-flex items-center gap-0.5 font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/60 whitespace-nowrap" title={`Status ${item.status} sejak ${new Date(statusTimeIso).toLocaleString('id-ID')}`}>
+                            <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 10 }}>schedule</span>
                             {formatStatusTime(statusTimeIso)}
                         </span>
                     )}
                     {isFromPreviousShift && originShift && (
-                        <span className="font-extrabold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex items-center gap-0.5"
+                        <span className="font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex items-center gap-0.5 shadow-sm"
                             title={`Status ${item.status} pertama kali pada shift ${shiftLabel(originShift.shift)} ${shortDateLabel(originShift.date)}`}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 9 }}>history</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 10 }}>history</span>
                             dari {shiftLabel(originShift.shift)} {shortDateLabel(originShift.date)}
                         </span>
                     )}
                 </div>
                 {item.notif && (
-                    <span className="bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold text-indigo-800" title={`Notif: ${item.notif}`}>
-                        #{item.notif}
+                    <span className="inline-flex items-center gap-0.5 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold text-indigo-750" title={`Notif: ${item.notif}`}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 10 }}>tag</span>
+                        {item.notif}
                     </span>
                 )}
             </div>
 
             {/* Photo thumbnails — compact */}
             {photos && photos.length > 0 && (
-                <div className="mt-1.5 pt-1.5 border-t border-gray-100">
+                <div className="mt-2.5 pt-2 border-t border-gray-100">
                     <PhotoGallery photos={photos} compact />
                 </div>
             )}

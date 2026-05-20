@@ -123,10 +123,13 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
         list.forEach((item, idx) => flatIndexMap.set(item.id, idx));
 
         return groups.map((g, idx) => g.isGroup ? (
-            <div key={keyPrefix + 'group-' + idx} className="bg-slate-100/70 border-2 border-slate-200/80 rounded-2xl p-2 flex flex-col gap-2 relative shadow-inner overflow-hidden">
-                <div className="px-1.5 pt-0.5 flex items-center gap-1.5 opacity-80">
-                    <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 14 }}>layers</span>
-                    <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-widest truncate">{g.itemName}</span>
+            <div key={keyPrefix + 'group-' + idx} className="bg-slate-100/40 border border-dashed border-slate-350 rounded-2xl p-2.5 flex flex-col gap-2 relative shadow-inner overflow-hidden">
+                <div className="px-1.5 pt-0.5 flex items-center gap-2 opacity-90">
+                    <span className="material-symbols-outlined text-blue-600" style={{ fontSize: 15 }}>layers</span>
+                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider truncate">{g.itemName}</span>
+                    <span className="ml-auto text-[9px] font-black text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded-md border border-slate-300/45">
+                        {g.cards.length} Item
+                    </span>
                 </div>
                 {g.cards.map(item => {
                     const flatIdx = flatIndexMap.get(item.id) ?? 0;
@@ -142,15 +145,31 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
         ));
     }
 
+    const headerGradient: Record<string, string> = {
+        OPEN: 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-sm',
+        IP: 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-sm',
+        OK: 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-sm',
+    };
+    const headerIcon: Record<string, string> = {
+        OPEN: 'info',
+        IP: 'pending',
+        OK: 'check_circle',
+    };
+
     return (
-        <div className={`flex flex-col min-w-[260px] md:min-w-0 md:flex-1 rounded-xl border transition-all
-            ${isOver ? `${config.borderColor} shadow-md scale-[1.01]` : 'border-gray-200'}
+        <div className={`flex flex-col min-w-[260px] md:min-w-0 md:flex-1 rounded-2xl border transition-all duration-200
+            ${isOver ? `${config.borderColor} shadow-md scale-[1.01]` : 'border-gray-200 shadow-sm'}
             ${config.bgColor}`}
         >
             {/* Column header */}
-            <div className={`${config.headerBg} rounded-t-lg px-3 py-2 flex items-center justify-between`}>
-                <h3 className="text-xs font-bold text-white">{config.label}</h3>
-                <span className="bg-white/30 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
+            <div className={`${headerGradient[status]} rounded-t-2xl px-4 py-2.5 flex items-center justify-between`}>
+                <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-white" style={{ fontSize: 16 }}>
+                        {headerIcon[status]}
+                    </span>
+                    <h3 className="text-sm font-extrabold text-white tracking-wider uppercase">{config.label}</h3>
+                </div>
+                <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-black px-2.5 py-0.5 rounded-full border border-white/10 shadow-inner">
                     {items.length + prevItems.length}
                 </span>
             </div>

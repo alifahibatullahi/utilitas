@@ -104,54 +104,61 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
     return (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
             {/* Filter bar */}
-            <div className="flex flex-wrap items-center gap-2 p-4 border-b border-gray-100 bg-gray-50/60">
-                <div className="relative flex-1 min-w-[200px]">
-                    <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" style={{ fontSize: 16 }}>search</span>
+            <div className="flex flex-wrap items-center gap-3 p-4 border-b border-gray-100 bg-gray-50/60">
+                <div className="relative flex-1 min-w-[200px] h-9">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" style={{ fontSize: 16 }}>search</span>
                     <input
                         type="text"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Cari item / uraian / notif…"
-                        className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                        className="w-full h-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-400 transition-all shadow-sm"
                     />
                 </div>
 
-                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner h-9 items-center">
                     {([
-                        { key: 'all' as const, label: 'Semua', count: counts.total, color: 'text-blue-600' },
-                        { key: 'active' as const, label: 'Belum Selesai', count: counts.active, color: 'text-amber-600' },
-                        { key: 'done' as const, label: 'Selesai', count: counts.done, color: 'text-emerald-600' },
-                    ]).map(t => (
-                        <button
-                            key={t.key}
-                            onClick={() => setFilterStatus(t.key)}
-                            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
-                                filterStatus === t.key
-                                    ? `bg-white shadow-sm border border-gray-200/50 ${t.color}`
-                                    : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            {t.label} ({t.count})
-                        </button>
-                    ))}
+                        { key: 'all' as const, label: 'Semua', count: counts.total, color: 'text-blue-600', icon: 'list' },
+                        { key: 'active' as const, label: 'Belum Selesai', count: counts.active, color: 'text-amber-600', icon: 'hourglass_empty' },
+                        { key: 'done' as const, label: 'Selesai', count: counts.done, color: 'text-emerald-600', icon: 'task_alt' },
+                    ]).map(t => {
+                        const active = filterStatus === t.key;
+                        return (
+                            <button
+                                key={t.key}
+                                onClick={() => setFilterStatus(t.key)}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap h-full ${
+                                    active
+                                        ? `bg-white shadow-sm border border-gray-200/50 ${t.color}`
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/30'
+                                }`}
+                            >
+                                <span className={`material-symbols-outlined ${active ? t.color : 'text-slate-500'}`} style={{ fontSize: 14 }}>
+                                    {t.icon}
+                                </span>
+                                <span>{t.label} ({t.count})</span>
+                            </button>
+                        );
+                    })}
                 </div>
 
-                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner h-9 items-center">
                     {([
-                        { key: 'shift_now' as const, label: 'Shift Sekarang' },
-                        { key: 'today' as const, label: 'Hari Ini' },
-                        { key: 'last_1_day' as const, label: '1 Hari' },
-                        { key: 'all' as const, label: 'Semua' },
+                        { key: 'shift_now' as const, label: 'Shift Sekarang', icon: 'schedule' },
+                        { key: 'today' as const, label: 'Hari Ini', icon: 'today' },
+                        { key: 'last_1_day' as const, label: '1 Hari', icon: 'history' },
+                        { key: 'all' as const, label: 'Semua', icon: 'all_inclusive' },
                     ]).map(t => (
                         <button
                             key={t.key}
                             onClick={() => setDateMode(t.key)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap h-full ${
                                 dateMode === t.key
                                     ? 'bg-white shadow-sm border border-gray-200/50 text-blue-600'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-white/30'
                             }`}
                         >
+                            <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 13 }}>{t.icon}</span>
                             {t.label}
                         </button>
                     ))}
@@ -160,22 +167,51 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                 {(search || filterStatus !== 'all' || filterScope !== 'all' || filterForeman !== 'all' || dateMode !== 'all') && (
                     <button
                         onClick={() => { setSearch(''); setFilterStatus('all'); setFilterScope('all'); setFilterForeman('all'); setDateMode('all'); }}
-                        className="flex items-center gap-1 px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white border border-rose-700 text-xs font-bold cursor-pointer transition-colors shadow-sm"
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-650 hover:bg-rose-700 text-white border border-rose-700 text-xs font-bold shadow-sm cursor-pointer transition-colors h-9"
                     >
-                        <span className="material-symbols-outlined" style={{ fontSize: 13 }}>filter_list_off</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>filter_list_off</span>
                         Reset
                     </button>
                 )}
 
-                {/* Scope + Foreman — pinggir kanan */}
-                <select value={filterScope} onChange={e => setFilterScope(e.target.value)} className="ml-auto px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
-                    <option value="all">Semua Scope</option>
-                    {scopes.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select value={filterForeman} onChange={e => setFilterForeman(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-gray-700 outline-none cursor-pointer">
-                    <option value="all">Semua Foreman</option>
-                    {foremen.map(f => <option key={f} value={f}>{f === 'foreman_turbin' ? 'Turbin' : f === 'foreman_boiler' ? 'Boiler' : f}</option>)}
-                </select>
+                {/* Scope & Foreman dropdowns */}
+                <div className="ml-auto flex items-center gap-2">
+                    {/* Scope select */}
+                    <div className="relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-3 text-slate-500 pointer-events-none" style={{ fontSize: 16 }}>
+                            handyman
+                        </span>
+                        <select
+                            value={filterScope}
+                            onChange={e => setFilterScope(e.target.value)}
+                            className="pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-xs font-extrabold text-slate-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-all appearance-none h-9"
+                        >
+                            <option value="all">Semua Scope</option>
+                            {scopes.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <span className="material-symbols-outlined absolute right-2.5 text-slate-400 pointer-events-none" style={{ fontSize: 16 }}>
+                            expand_more
+                        </span>
+                    </div>
+
+                    {/* Foreman select */}
+                    <div className="relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-3 text-slate-500 pointer-events-none" style={{ fontSize: 16 }}>
+                            supervisor_account
+                        </span>
+                        <select
+                            value={filterForeman}
+                            onChange={e => setFilterForeman(e.target.value)}
+                            className="pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-xs font-extrabold text-slate-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-all appearance-none h-9"
+                        >
+                            <option value="all">Semua Foreman</option>
+                            {foremen.map(f => <option key={f} value={f}>{f === 'foreman_turbin' ? 'Turbin' : f === 'foreman_boiler' ? 'Boiler' : f}</option>)}
+                        </select>
+                        <span className="material-symbols-outlined absolute right-2.5 text-slate-400 pointer-events-none" style={{ fontSize: 16 }}>
+                            expand_more
+                        </span>
+                    </div>
+                </div>
             </div>
 
             {/* Table */}

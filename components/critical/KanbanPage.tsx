@@ -65,26 +65,111 @@ export default function KanbanPage() {
                         </div>
 
                         {/* Right: shift selector + filters + back */}
-                        <div className="flex items-center gap-2 flex-wrap justify-end">
-                            {/* Date picker */}
-                            <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={e => setSelectedDate(e.target.value)}
-                                className="px-2 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs outline-none cursor-pointer"
-                            />
+                        <div className="flex items-center gap-3 flex-wrap justify-end">
+                            {/* Date navigator — satu pill terpadu */}
+                            <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-9">
+                                <button
+                                    onClick={() => {
+                                        const [y, m, d] = selectedDate.split('-').map(Number);
+                                        const prev = new Date(y, m - 1, d - 1);
+                                        const pad = (n: number) => String(n).padStart(2, '0');
+                                        setSelectedDate(`${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`);
+                                    }}
+                                    className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-800 cursor-pointer transition-colors border-r border-gray-150"
+                                    title="Tanggal sebelumnya"
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
+                                </button>
+                                <label className="relative flex items-center gap-1.5 px-3 h-full cursor-pointer hover:bg-gray-50/80 transition-colors">
+                                    <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 15 }}>calendar_today</span>
+                                    <span className="text-xs font-black text-gray-700">
+                                        {(() => {
+                                            const [y, m, d] = selectedDate.split('-').map(Number);
+                                            const dt = new Date(y, m - 1, d);
+                                            return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                                        })()}
+                                    </span>
+                                    {(() => {
+                                        const now = detectCurrentShift();
+                                        if (selectedDate === now.date) {
+                                            return (
+                                                <span className="flex items-center gap-0.5 px-1 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[8px] font-black uppercase tracking-wider border border-emerald-200" title="Tanggal hari ini">
+                                                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                                    Hari ini
+                                                </span>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                    <input
+                                        type="date"
+                                        value={selectedDate}
+                                        onChange={e => setSelectedDate(e.target.value)}
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        title="Pilih tanggal"
+                                    />
+                                </label>
+                                <button
+                                    onClick={() => {
+                                        const [y, m, d] = selectedDate.split('-').map(Number);
+                                        const next = new Date(y, m - 1, d + 1);
+                                        const pad = (n: number) => String(n).padStart(2, '0');
+                                        setSelectedDate(`${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`);
+                                    }}
+                                    className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-800 cursor-pointer transition-colors border-l border-gray-150"
+                                    title="Tanggal berikutnya"
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
+                                </button>
+                            </div>
+
+                            {/* Shortcut ke Hari Ini — hanya tampil jika selectedDate != today */}
+                            {(() => {
+                                const now = detectCurrentShift();
+                                if (selectedDate !== now.date) {
+                                    return (
+                                        <button
+                                            onClick={() => setSelectedDate(now.date)}
+                                            className="px-2.5 h-9 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer text-xs font-bold transition-all shadow-sm"
+                                            title="Lompat ke hari ini"
+                                        >
+                                            Hari Ini
+                                        </button>
+                                    );
+                                }
+                                return null;
+                            })()}
 
                             {/* Shift tabs */}
-                            <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-                                {SHIFT_OPTIONS.map(s => (
-                                    <button
-                                        key={s.value}
-                                        onClick={() => setSelectedShift(s.value)}
-                                        className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${selectedShift === s.value ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        {SHIFT_LABELS[s.value]}
-                                    </button>
-                                ))}
+                            <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner h-9 items-center">
+                                {SHIFT_OPTIONS.map(s => {
+                                    const now = detectCurrentShift();
+                                    const isCurrentRealShift = selectedDate === now.date && s.value === now.shift;
+                                    const active = selectedShift === s.value;
+                                    const shiftIcons: Record<string, string> = { pagi: 'light_mode', sore: 'wb_twilight', malam: 'dark_mode' };
+                                    const shiftColors: Record<string, string> = { pagi: 'text-amber-500', sore: 'text-orange-500', malam: 'text-indigo-500' };
+
+                                    return (
+                                        <button
+                                            key={s.value}
+                                            onClick={() => setSelectedShift(s.value)}
+                                            className={`relative flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap h-full ${
+                                                active
+                                                    ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50'
+                                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'
+                                            }`}
+                                            title={isCurrentRealShift ? 'Shift saat ini (berlangsung)' : undefined}
+                                        >
+                                            <span className={`material-symbols-outlined ${shiftColors[s.value]}`} style={{ fontSize: 13 }}>
+                                                {shiftIcons[s.value]}
+                                            </span>
+                                            {SHIFT_LABELS[s.value]}
+                                            {isCurrentRealShift && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50 ml-0.5" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
 
                             <div className="w-px h-5 bg-gray-300 hidden md:block" />

@@ -148,92 +148,102 @@ export default function KanbanBoardModal({
                 </div>
 
                 {/* Toolbar: date navigator (atas) + shift tabs (bawah) */}
-                <div className="flex flex-col items-center gap-2 px-6 py-3 border-b border-gray-100 bg-gray-50">
+                <div className="flex flex-col items-center gap-2.5 px-6 py-3 border-b border-gray-100 bg-gray-50">
                     <div className="flex flex-wrap items-center justify-center gap-3">
-                    {/* Date navigator — satu pill terpadu */}
-                    <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <button
-                            onClick={() => {
-                                const [y, m, d] = boardDate.split('-').map(Number);
-                                const prev = new Date(y, m - 1, d - 1);
-                                const pad = (n: number) => String(n).padStart(2, '0');
-                                onChangeBoardDate(`${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`);
-                            }}
-                            className="px-2 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-900 cursor-pointer transition-colors border-r border-gray-200"
-                            title="Tanggal sebelumnya"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_left</span>
-                        </button>
-                        <label className="relative flex items-center gap-2 px-3 h-9 cursor-pointer hover:bg-gray-50 transition-colors">
-                            <span className="material-symbols-outlined text-blue-600" style={{ fontSize: 16 }}>calendar_today</span>
-                            <span className="text-sm font-bold text-gray-800">
-                                {(() => {
-                                    const [y, m, d] = boardDate.split('-').map(Number);
-                                    const dt = new Date(y, m - 1, d);
-                                    return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-                                })()}
-                            </span>
-                            {isViewingTodayDate && (
-                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-extrabold uppercase tracking-wide border border-emerald-300" title="Tanggal hari ini">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Hari ini
-                                </span>
-                            )}
-                            <input
-                                type="date"
-                                value={boardDate}
-                                onChange={e => onChangeBoardDate(e.target.value)}
-                                className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                                title="Pilih tanggal"
-                            />
-                        </label>
-                        <button
-                            onClick={() => {
-                                const [y, m, d] = boardDate.split('-').map(Number);
-                                const next = new Date(y, m - 1, d + 1);
-                                const pad = (n: number) => String(n).padStart(2, '0');
-                                onChangeBoardDate(`${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`);
-                            }}
-                            className="px-2 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-900 cursor-pointer transition-colors border-l border-gray-200"
-                            title="Tanggal berikutnya"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_right</span>
-                        </button>
-                    </div>
-
-                    {/* Hari Ini — hanya tampil kalau user TIDAK sedang lihat tanggal hari ini */}
-                    {!isViewingTodayDate && (() => {
-                        const now = new Date();
-                        const pad = (n: number) => String(n).padStart(2, '0');
-                        const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-                        return (
+                        {/* Date navigator — satu pill terpadu */}
+                        <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-9">
                             <button
-                                onClick={() => onChangeBoardDate(todayStr)}
-                                className="px-3 h-9 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer text-xs font-bold transition-colors shadow-sm"
-                                title="Lompat ke hari ini"
+                                onClick={() => {
+                                    const [y, m, d] = boardDate.split('-').map(Number);
+                                    const prev = new Date(y, m - 1, d - 1);
+                                    const pad = (n: number) => String(n).padStart(2, '0');
+                                    onChangeBoardDate(`${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`);
+                                }}
+                                className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-850 cursor-pointer transition-colors border-r border-gray-150"
+                                title="Tanggal sebelumnya"
                             >
-                                Hari Ini
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
                             </button>
-                        );
-                    })()}
+                            <label className="relative flex items-center gap-1.5 px-3 h-full cursor-pointer hover:bg-gray-50/80 transition-colors">
+                                <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 15 }}>calendar_today</span>
+                                <span className="text-xs font-black text-gray-700">
+                                    {(() => {
+                                        const [y, m, d] = boardDate.split('-').map(Number);
+                                        const dt = new Date(y, m - 1, d);
+                                        return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                                    })()}
+                                </span>
+                                {isViewingTodayDate && (
+                                    <span className="flex items-center gap-0.5 px-1 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[8px] font-black uppercase tracking-wider border border-emerald-200" title="Tanggal hari ini">
+                                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                        Hari ini
+                                    </span>
+                                )}
+                                <input
+                                    type="date"
+                                    value={boardDate}
+                                    onChange={e => onChangeBoardDate(e.target.value)}
+                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    title="Pilih tanggal"
+                                />
+                            </label>
+                            <button
+                                onClick={() => {
+                                    const [y, m, d] = boardDate.split('-').map(Number);
+                                    const next = new Date(y, m - 1, d + 1);
+                                    const pad = (n: number) => String(n).padStart(2, '0');
+                                    onChangeBoardDate(`${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`);
+                                }}
+                                className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-850 cursor-pointer transition-colors border-l border-gray-150"
+                                title="Tanggal berikutnya"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
+                            </button>
+                        </div>
+
+                        {/* Hari Ini — hanya tampil kalau user TIDAK sedang lihat tanggal hari ini */}
+                        {!isViewingTodayDate && (() => {
+                            const now = new Date();
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                            return (
+                                <button
+                                    onClick={() => onChangeBoardDate(todayStr)}
+                                    className="px-2.5 h-9 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer text-xs font-bold transition-all shadow-sm"
+                                    title="Lompat ke hari ini"
+                                >
+                                    Hari Ini
+                                </button>
+                            );
+                        })()}
                     </div>
 
                     {/* Shift tabs — baris bawah. Shift yang sedang berlangsung (real-time) dapat penanda hijau pulse. */}
-                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner">
+                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner h-9 items-center">
                         {SHIFT_OPTIONS.map(s => {
                             const isCurrentRealShift = isViewingTodayDate && s.value === nowShift.shift;
                             const active = boardShift === s.value;
+                            const shiftIcons: Record<string, string> = { pagi: 'light_mode', sore: 'wb_twilight', malam: 'dark_mode' };
+                            const shiftColors: Record<string, string> = { pagi: 'text-amber-500', sore: 'text-orange-500', malam: 'text-indigo-500' };
+
                             return (
                                 <button
                                     key={s.value}
                                     onClick={() => onChangeBoardShift(s.value)}
-                                    className={`relative flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${active ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                                    className={`relative flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap h-full ${
+                                        active
+                                            ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'
+                                    }`}
                                     title={isCurrentRealShift ? 'Shift yang sedang berlangsung' : undefined}
                                 >
-                                    {isCurrentRealShift && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
-                                    )}
+                                    <span className={`material-symbols-outlined ${shiftColors[s.value]}`} style={{ fontSize: 13 }}>
+                                        {shiftIcons[s.value]}
+                                    </span>
                                     {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
+                                    {isCurrentRealShift && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50 ml-0.5" />
+                                    )}
                                 </button>
                             );
                         })}

@@ -167,7 +167,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                 {(search || filterStatus !== 'all' || filterScope !== 'all' || filterForeman !== 'all' || dateMode !== 'all') && (
                     <button
                         onClick={() => { setSearch(''); setFilterStatus('all'); setFilterScope('all'); setFilterForeman('all'); setDateMode('all'); }}
-                        className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-650 hover:bg-rose-700 text-white border border-rose-700 text-xs font-bold shadow-sm cursor-pointer transition-colors h-9"
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 text-xs font-bold shadow-sm cursor-pointer transition-colors h-9"
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 14 }}>filter_list_off</span>
                         Reset

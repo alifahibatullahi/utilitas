@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { SHIFT_OPTIONS, getShiftWindow, detectCurrentShift } from '@/lib/constants';
 import type { ActivityActionType, MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
+import CustomCalendarPopover from './CustomCalendarPopover';
 
 export interface BoardActivityLog {
     created_at: string;
@@ -50,6 +51,7 @@ export default function KanbanBoardModal({
     };
 
     const [search, setSearch] = useState('');
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     const shiftWindow = getShiftWindow(boardDate, boardShift);
     // Shift sudah selesai → board read-only + snapshot beku.
@@ -151,7 +153,7 @@ export default function KanbanBoardModal({
                 <div className="flex flex-col items-center gap-2.5 px-6 py-3 border-b border-gray-100 bg-gray-50">
                     <div className="flex flex-wrap items-center justify-center gap-3">
                         {/* Date navigator — satu pill terpadu */}
-                        <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-9">
+                        <div className="relative flex items-center bg-white rounded-xl border border-gray-200 shadow-sm h-9">
                             <button
                                 onClick={() => {
                                     const [y, m, d] = boardDate.split('-').map(Number);
@@ -159,12 +161,16 @@ export default function KanbanBoardModal({
                                     const pad = (n: number) => String(n).padStart(2, '0');
                                     onChangeBoardDate(`${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`);
                                 }}
-                                className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-850 cursor-pointer transition-colors border-r border-gray-150"
+                                className="px-2.5 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-855 cursor-pointer transition-colors border-r border-gray-150 rounded-l-xl"
                                 title="Tanggal sebelumnya"
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
                             </button>
-                            <label className="relative flex items-center gap-1.5 px-3 h-full cursor-pointer hover:bg-gray-50/80 transition-colors">
+                            <button
+                                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                                className="flex items-center gap-1.5 px-3 h-full cursor-pointer hover:bg-gray-50/80 transition-colors text-left"
+                                title="Pilih tanggal"
+                            >
                                 <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 15 }}>calendar_today</span>
                                 <span className="text-xs font-black text-gray-700">
                                     {(() => {
@@ -179,14 +185,7 @@ export default function KanbanBoardModal({
                                         Hari ini
                                     </span>
                                 )}
-                                <input
-                                    type="date"
-                                    value={boardDate}
-                                    onChange={e => onChangeBoardDate(e.target.value)}
-                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                    title="Pilih tanggal"
-                                />
-                            </label>
+                            </button>
                             <button
                                 onClick={() => {
                                     const [y, m, d] = boardDate.split('-').map(Number);
@@ -194,11 +193,17 @@ export default function KanbanBoardModal({
                                     const pad = (n: number) => String(n).padStart(2, '0');
                                     onChangeBoardDate(`${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`);
                                 }}
-                                className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-850 cursor-pointer transition-colors border-l border-gray-150"
+                                className="px-2.5 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-855 cursor-pointer transition-colors border-l border-gray-150 rounded-r-xl"
                                 title="Tanggal berikutnya"
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
                             </button>
+                            <CustomCalendarPopover
+                                value={boardDate}
+                                onChange={onChangeBoardDate}
+                                isOpen={isCalendarOpen}
+                                onClose={() => setIsCalendarOpen(false)}
+                            />
                         </div>
 
                         {/* Hari Ini — hanya tampil kalau user TIDAK sedang lihat tanggal hari ini */}

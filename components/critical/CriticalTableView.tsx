@@ -715,7 +715,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                                     onClick={() => { setActiveTab(t.key); setExpandedId(null); setCurrentPage(1); }}
                                     className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap h-full ${
                                         active
-                                            ? 'bg-white shadow-sm border border-gray-200/50'
+                                            ? `bg-white shadow-sm border border-gray-200/50 ${tabColors[t.key]}`
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-white/30'
                                     }`}
                                 >
@@ -753,7 +753,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                     {hasActiveFilter && (
                         <button
                             onClick={clearFilters}
-                            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-650 hover:bg-rose-700 text-white border border-rose-700 text-xs font-bold shadow-sm cursor-pointer transition-colors h-9"
+                            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 text-xs font-bold shadow-sm cursor-pointer transition-colors h-9"
                         >
                             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>filter_list_off</span>
                             Reset

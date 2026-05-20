@@ -8,6 +8,7 @@ import { HAR_SCOPES, FOREMAN_OPTIONS, SHIFT_OPTIONS, getShiftWindow, detectCurre
 import type { HarScope, ForemanType } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 import MaintenanceFormModal from './MaintenanceFormModal';
+import CustomCalendarPopover from './CustomCalendarPopover';
 
 const SHIFT_LABELS: Record<string, string> = { malam: 'Malam', pagi: 'Pagi', sore: 'Sore' };
 
@@ -24,6 +25,7 @@ export default function KanbanPage() {
     const [filterScope, setFilterScope] = useState<HarScope | ''>('');
     const [filterForeman, setFilterForeman] = useState<ForemanType | ''>('');
     const [showForm, setShowForm] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     const defaultShift = detectCurrentShift();
     const [selectedDate, setSelectedDate] = useState(defaultShift.date);
@@ -67,7 +69,7 @@ export default function KanbanPage() {
                         {/* Right: shift selector + filters + back */}
                         <div className="flex items-center gap-3 flex-wrap justify-end">
                             {/* Date navigator — satu pill terpadu */}
-                            <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-9">
+                            <div className="relative flex items-center bg-white rounded-xl border border-gray-200 shadow-sm h-9">
                                 <button
                                     onClick={() => {
                                         const [y, m, d] = selectedDate.split('-').map(Number);
@@ -75,12 +77,16 @@ export default function KanbanPage() {
                                         const pad = (n: number) => String(n).padStart(2, '0');
                                         setSelectedDate(`${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`);
                                     }}
-                                    className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-800 cursor-pointer transition-colors border-r border-gray-150"
+                                    className="px-2.5 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-850 cursor-pointer transition-colors border-r border-gray-150 rounded-l-xl"
                                     title="Tanggal sebelumnya"
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
                                 </button>
-                                <label className="relative flex items-center gap-1.5 px-3 h-full cursor-pointer hover:bg-gray-50/80 transition-colors">
+                                <button
+                                    onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                                    className="flex items-center gap-1.5 px-3 h-full cursor-pointer hover:bg-gray-50/80 transition-colors text-left"
+                                    title="Pilih tanggal"
+                                >
                                     <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 15 }}>calendar_today</span>
                                     <span className="text-xs font-black text-gray-700">
                                         {(() => {
@@ -101,14 +107,7 @@ export default function KanbanPage() {
                                         }
                                         return null;
                                     })()}
-                                    <input
-                                        type="date"
-                                        value={selectedDate}
-                                        onChange={e => setSelectedDate(e.target.value)}
-                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                        title="Pilih tanggal"
-                                    />
-                                </label>
+                                </button>
                                 <button
                                     onClick={() => {
                                         const [y, m, d] = selectedDate.split('-').map(Number);
@@ -116,11 +115,17 @@ export default function KanbanPage() {
                                         const pad = (n: number) => String(n).padStart(2, '0');
                                         setSelectedDate(`${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`);
                                     }}
-                                    className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-800 cursor-pointer transition-colors border-l border-gray-150"
+                                    className="px-2.5 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-850 cursor-pointer transition-colors border-l border-gray-150 rounded-r-xl"
                                     title="Tanggal berikutnya"
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
                                 </button>
+                                <CustomCalendarPopover
+                                    value={selectedDate}
+                                    onChange={setSelectedDate}
+                                    isOpen={isCalendarOpen}
+                                    onClose={() => setIsCalendarOpen(false)}
+                                />
                             </div>
 
                             {/* Shortcut ke Hari Ini — hanya tampil jika selectedDate != today */}

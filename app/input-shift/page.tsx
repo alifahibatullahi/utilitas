@@ -99,6 +99,12 @@ function InputShiftPageInner() {
         if (typeof window === 'undefined') return '';
         try { return localStorage.getItem('shift_foreman_turbin') || ''; } catch { return ''; }
     });
+    // Per-station filler — siapa yang mengisi station ini. Default = operator login,
+    // bisa di-override via picker untuk kasus tukar shift. Persist ke localStorage.
+    const [fillerName, setFillerName] = useState(() => {
+        if (typeof window === 'undefined') return '';
+        try { return localStorage.getItem('shift_station_filler') || ''; } catch { return ''; }
+    });
 
     const skipNextClear = useRef(false);
     const lastSubmittedReportId = useRef<string | null>(null);
@@ -183,6 +189,12 @@ function InputShiftPageInner() {
             localStorage.setItem('shift_foreman_turbin', foremanTurbin);
         } catch { /* ignore */ }
     }, [foremanTurbin]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('shift_station_filler', fillerName);
+        } catch { /* ignore */ }
+    }, [fillerName]);
 
     // NOTE: Sheets sync dihapus — alur sekarang: input form → Supabase (sumber data utama) → Sheets (fire-and-forget).
     // Data yang tampil di form selalu diambil dari Supabase melalui useShiftReport.
@@ -347,10 +359,21 @@ function InputShiftPageInner() {
     useEffect(() => {
         if (!report) return;
         if (report.supervisor) setSupervisor(report.supervisor);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const personnel = (report as any).shift_personnel?.[0];
         if (personnel?.turbin_karu) setForemanTurbin(personnel.turbin_karu);
         if (personnel?.boiler_karu) setForemanBoiler(personnel.boiler_karu);
-    }, [report]);
+        // Restore filler dari station_fillers[station] kalau ada — kalau belum, default
+        // ke operator login (saat user pertama buka station view).
+        if (station) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sf = (report as any).station_fillers as Record<string, string> | null | undefined;
+            const existing = sf?.[station];
+            if (existing) setFillerName(existing);
+            else if (!fillerName && operator?.name) setFillerName(operator.name);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [report, station]);
 
     const handleNavLeave = useCallback(() => {
         bypassNavRef.current = true;
@@ -648,6 +671,8 @@ function InputShiftPageInner() {
                 waterQuality: { ...waterQuality, ...chemicalDosing },
                 prevBoilerA: { totalizer_steam: (prevBoilerA.totalizer_steam as number | null) ?? null },
                 prevBoilerB: { totalizer_steam: (prevBoilerB.totalizer_steam as number | null) ?? null },
+                // Station-scoped fill audit: hanya di-kirim kalau operator submit dari station view.
+                ...(station && fillerName ? { station_filler: { station, name: fillerName } } : {}),
             });
             // Save solar unloadings if filled
             const validSolarEntries = solarEntries.filter(e => e.tanggal && e.jumlah && e.perusahaan);
@@ -914,7 +939,7 @@ function InputShiftPageInner() {
                                             </div>
                                         </>
                                     )}
-                                    {/* Station mode: label statis Station + Tanggal di header row 1 */}
+                                    {/* Station mode: label statis Station + Tanggal + picker "Diisi oleh" di header row 1 */}
                                     {station && (
                                         <>
                                             <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
@@ -926,6 +951,18 @@ function InputShiftPageInner() {
                                                     ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
                                                     : selectedDate}
                                             </span>
+                                            <span className="text-xs font-bold text-white uppercase tracking-wider">Diisi oleh</span>
+                                            <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
+                                                <select value={fillerName} onChange={e => setFillerName(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
+                                                    <option value="" className="bg-[#101822]">Pilih...</option>
+                                                    {operators.map(op => (
+                                                        <option key={op.id} value={op.name} className="bg-[#101822]">
+                                                            {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                            </div>
                                         </>
                                     )}
                                 </>

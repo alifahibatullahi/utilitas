@@ -227,6 +227,9 @@ export function useDailyReport(date: string) {
         stockTank?: Record<string, number | null>;
         coalTransfer?: Record<string, number | null>;
         totalizer?: Record<string, number | string | null>;
+        /** Per-station filler — kalau diisi, di-merge ke station_fillers JSONB tanpa
+         *  overwrite station lain. Dipakai saat operator submit dari station view. */
+        station_filler?: { station: string; name: string };
     }) => {
         if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
 
@@ -235,6 +238,18 @@ export function useDailyReport(date: string) {
         // Upsert daily_reports anchor
         const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const validCreatedBy = reportData.created_by && UUID_REGEX.test(reportData.created_by) ? reportData.created_by : null;
+
+        // Merge station_fillers — fetch existing dulu supaya tidak overwrite station lain.
+        let mergedStationFillers: Record<string, string> | undefined;
+        if (reportData.station_filler) {
+            const { data: existing } = await supabase
+                .from('daily_reports')
+                .select('station_fillers')
+                .eq('date', date)
+                .maybeSingle();
+            const current = (existing?.station_fillers as Record<string, string> | null) ?? {};
+            mergedStationFillers = { ...current, [reportData.station_filler.station]: reportData.station_filler.name };
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: dr, error: drError } = await supabase
@@ -248,6 +263,7 @@ export function useDailyReport(date: string) {
                 notes: reportData.notes || null,
                 status: 'draft' as ReportStatus,
                 ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
+                ...(mergedStationFillers ? { station_fillers: mergedStationFillers } : {}),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any, { onConflict: 'date' })
             .select()

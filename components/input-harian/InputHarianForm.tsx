@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useDailyReport } from '@/hooks/useDailyReport';
+import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import type { Operator } from '@/lib/constants';
 import { isValidStation, STATION_HARIAN_TABS, STATION_LABELS, type OperatorStation } from '@/lib/constants';
@@ -52,6 +53,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const stationParam = searchParams?.get('station') ?? null;
     const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
 
+    // Daftar operator lengkap untuk picker "Diisi oleh" (lintas grup)
+    const { operators } = useOperator();
+
+    // Per-station filler — default ke operator login, bisa di-override saat swap shift.
+    const [fillerName, setFillerName] = useState(() => {
+        if (typeof window === 'undefined') return '';
+        try { return localStorage.getItem('harian_station_filler') || ''; } catch { return ''; }
+    });
+    useEffect(() => {
+        try { localStorage.setItem('harian_station_filler', fillerName); } catch { /* ignore */ }
+    }, [fillerName]);
+
     const visibleTabs = useMemo(() => {
         if (!station) return HARIAN_TABS;
         const allowed = STATION_HARIAN_TABS[station];
@@ -87,6 +100,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
 
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
+
+    // Restore filler dari report.station_fillers[station] kalau ada — kalau belum, default
+    // ke operator login (saat user pertama buka station view).
+    useEffect(() => {
+        if (!report || !station) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sf = (report as any).station_fillers as Record<string, string> | null | undefined;
+        const existing = sf?.[station];
+        if (existing) setFillerName(existing);
+        else if (!fillerName && operator?.name) setFillerName(operator.name);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [report, station]);
 
         // Fetch solar & ash unloadings for the selected date
         useEffect(() => {
@@ -514,6 +539,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     group_name: groupName || totalizer.group_name || null,
                     kasi_name: supervisorName || totalizer.kasi_name || null,
                 },
+                // Station-scoped fill audit: hanya di-kirim kalau submit dari station view.
+                ...(station && fillerName ? { station_filler: { station, name: fillerName } } : {}),
             });
 
             if (result?.error) {
@@ -630,10 +657,26 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     </div>
 
                     {station && (
-                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0f1721]/80 border border-slate-700/50 shadow-lg">
-                            <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 18 }}>badge</span>
-                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Station</span>
-                            <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
+                        <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-[#0f1721]/80 border border-slate-700/50 shadow-lg">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 18 }}>badge</span>
+                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Station</span>
+                                <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
+                                <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                    <select value={fillerName} onChange={e => setFillerName(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none w-full">
+                                        <option value="" className="bg-[#101822]">Pilih...</option>
+                                        {operators.map(op => (
+                                            <option key={op.id} value={op.name} className="bg-[#101822]">
+                                                {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                </div>
+                            </div>
                         </div>
                     )}
 

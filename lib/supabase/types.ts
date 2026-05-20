@@ -48,6 +48,10 @@ export interface ShiftReportRow {
     created_by: string;
     created_at: string;
     updated_at: string;
+    /** Map station → nama operator yang mengisi tab tersebut. Mendukung kasus tukar shift
+     *  di mana pengisi bisa berasal dari grup lain. Diisi via picker "Diisi oleh" di
+     *  station view. Tidak overwrite station lain saat partial submit. */
+    station_fillers?: Record<string, string> | null;
 }
 
 export interface DailyReportRow {
@@ -61,6 +65,8 @@ export interface DailyReportRow {
     status: ReportStatus;
     created_by: string | null;
     created_at: string;
+    /** Lihat ShiftReportRow.station_fillers. */
+    station_fillers?: Record<string, string> | null;
 }
 
 // ─── Shift Tables (10 tabel) ───

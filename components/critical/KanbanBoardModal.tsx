@@ -149,11 +149,11 @@ export default function KanbanBoardModal({
                     </button>
                 </div>
 
-                {/* Toolbar: date navigator (atas) + shift tabs (bawah) */}
-                <div className="flex flex-col items-center gap-2.5 px-6 py-3 border-b border-gray-100 bg-gray-50">
-                    <div className="flex flex-wrap items-center justify-center gap-3">
-                        {/* Date navigator — satu pill terpadu */}
-                        <div className="relative flex items-center bg-white rounded-xl border border-gray-200 shadow-sm h-9">
+                {/* Unified Toolbar */}
+                <div className="flex justify-center px-6 py-3 border-b border-gray-100 bg-gray-50">
+                    <div className="flex items-center p-1.5 bg-slate-100/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-sm">
+                        {/* Date Navigator */}
+                        <div className="flex items-center h-9 bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
                             <button
                                 onClick={() => {
                                     const [y, m, d] = boardDate.split('-').map(Number);
@@ -161,30 +161,24 @@ export default function KanbanBoardModal({
                                     const pad = (n: number) => String(n).padStart(2, '0');
                                     onChangeBoardDate(`${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`);
                                 }}
-                                className="px-2.5 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-855 cursor-pointer transition-colors border-r border-gray-150 rounded-l-xl"
+                                className="px-2.5 h-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-800 cursor-pointer transition-colors border-r border-slate-100"
                                 title="Tanggal sebelumnya"
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
                             </button>
                             <button
                                 onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                                className="flex items-center gap-1.5 px-3 h-full cursor-pointer hover:bg-gray-50/80 transition-colors text-left"
+                                className="flex items-center gap-2 px-3 h-full cursor-pointer hover:bg-slate-50/80 transition-colors text-left"
                                 title="Pilih tanggal"
                             >
-                                <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 15 }}>calendar_today</span>
-                                <span className="text-xs font-black text-gray-700">
+                                <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 16 }}>calendar_month</span>
+                                <span className="text-sm font-black text-slate-700 tracking-tight">
                                     {(() => {
                                         const [y, m, d] = boardDate.split('-').map(Number);
                                         const dt = new Date(y, m - 1, d);
                                         return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
                                     })()}
                                 </span>
-                                {isViewingTodayDate && (
-                                    <span className="flex items-center gap-0.5 px-1 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[8px] font-black uppercase tracking-wider border border-emerald-200" title="Tanggal hari ini">
-                                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                                        Hari ini
-                                    </span>
-                                )}
                             </button>
                             <button
                                 onClick={() => {
@@ -193,7 +187,7 @@ export default function KanbanBoardModal({
                                     const pad = (n: number) => String(n).padStart(2, '0');
                                     onChangeBoardDate(`${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`);
                                 }}
-                                className="px-2.5 h-full flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-855 cursor-pointer transition-colors border-l border-gray-150 rounded-r-xl"
+                                className="px-2.5 h-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-800 cursor-pointer transition-colors border-l border-slate-100"
                                 title="Tanggal berikutnya"
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
@@ -206,52 +200,67 @@ export default function KanbanBoardModal({
                             />
                         </div>
 
-                        {/* Hari Ini — hanya tampil kalau user TIDAK sedang lihat tanggal hari ini */}
-                        {!isViewingTodayDate && (() => {
-                            const now = new Date();
-                            const pad = (n: number) => String(n).padStart(2, '0');
-                            const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-                            return (
-                                <button
-                                    onClick={() => onChangeBoardDate(todayStr)}
-                                    className="px-2.5 h-9 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer text-xs font-bold transition-all shadow-sm"
-                                    title="Lompat ke hari ini"
-                                >
-                                    Hari Ini
-                                </button>
-                            );
+                        {/* Hari Ini Indicator / Shortcut */}
+                        {(() => {
+                            if (!isViewingTodayDate) {
+                                const now = new Date();
+                                const pad = (n: number) => String(n).padStart(2, '0');
+                                const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                                return (
+                                    <button
+                                        onClick={() => onChangeBoardDate(todayStr)}
+                                        className="ml-2 px-3 h-9 rounded-xl border border-blue-200 bg-blue-50/80 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer text-xs font-bold transition-all shadow-sm"
+                                        title="Lompat ke hari ini"
+                                    >
+                                        Hari Ini
+                                    </button>
+                                );
+                            } else {
+                                return (
+                                    <div className="ml-2.5 mr-1 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-100/50 text-emerald-700 text-[10px] font-black uppercase tracking-wider border border-emerald-200/50" title="Tanggal hari ini">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+                                        HARI INI
+                                    </div>
+                                );
+                            }
                         })()}
-                    </div>
 
-                    {/* Shift tabs — baris bawah. Shift yang sedang berlangsung (real-time) dapat penanda hijau pulse. */}
-                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-inner h-9 items-center">
-                        {SHIFT_OPTIONS.map(s => {
-                            const isCurrentRealShift = isViewingTodayDate && s.value === nowShift.shift;
-                            const active = boardShift === s.value;
-                            const shiftIcons: Record<string, string> = { pagi: 'light_mode', sore: 'wb_twilight', malam: 'dark_mode' };
-                            const shiftColors: Record<string, string> = { pagi: 'text-amber-500', sore: 'text-orange-500', malam: 'text-indigo-500' };
+                        {/* Vertical Divider */}
+                        <div className="w-px h-6 bg-slate-300/60 mx-2.5" />
 
-                            return (
-                                <button
-                                    key={s.value}
-                                    onClick={() => onChangeBoardShift(s.value)}
-                                    className={`relative flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap h-full ${
-                                        active
-                                            ? 'bg-white text-blue-600 shadow-sm border border-gray-200/50'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'
-                                    }`}
-                                    title={isCurrentRealShift ? 'Shift yang sedang berlangsung' : undefined}
-                                >
-                                    <span className={`material-symbols-outlined ${shiftColors[s.value]}`} style={{ fontSize: 13 }}>
-                                        {shiftIcons[s.value]}
-                                    </span>
-                                    {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
-                                    {isCurrentRealShift && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50 ml-0.5" />
-                                    )}
-                                </button>
-                            );
-                        })}
+                        {/* Shift Tabs */}
+                        <div className="flex items-center gap-1 h-9">
+                            {SHIFT_OPTIONS.map(s => {
+                                const isCurrentRealShift = isViewingTodayDate && s.value === nowShift.shift;
+                                const active = boardShift === s.value;
+                                const shiftIcons: Record<string, string> = { pagi: 'light_mode', sore: 'wb_twilight', malam: 'dark_mode' };
+                                const shiftColors: Record<string, string> = { pagi: 'text-amber-500', sore: 'text-orange-500', malam: 'text-indigo-500' };
+
+                                return (
+                                    <button
+                                        key={s.value}
+                                        onClick={() => onChangeBoardShift(s.value)}
+                                        className={`relative flex items-center gap-1.5 px-3.5 h-full rounded-xl text-[13px] font-black transition-all cursor-pointer whitespace-nowrap overflow-hidden ${
+                                            active
+                                                ? 'bg-white text-slate-800 shadow-sm border border-slate-200/80'
+                                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'
+                                        }`}
+                                        title={isCurrentRealShift ? 'Shift saat ini (berlangsung)' : undefined}
+                                    >
+                                        {active && (
+                                            <span className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-500" />
+                                        )}
+                                        <span className={`material-symbols-outlined ${shiftColors[s.value]}`} style={{ fontSize: 16 }}>
+                                            {shiftIcons[s.value]}
+                                        </span>
+                                        {s.value.charAt(0).toUpperCase() + s.value.slice(1)}
+                                        {isCurrentRealShift && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50 ml-0.5" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 

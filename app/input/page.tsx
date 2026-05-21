@@ -15,6 +15,7 @@ interface TankDraft {
     flowInputs: Record<string, string>;
     outputFlowInputs: Record<string, string>;
     selectedPump: string;
+    trend: string;
 }
 
 interface SolarPendingItem {
@@ -26,7 +27,7 @@ interface SolarPendingItem {
 }
 
 function emptyDraft(): TankDraft {
-    return { levelM3: '', note: '', flowInputs: {}, outputFlowInputs: {}, selectedPump: '' };
+    return { levelM3: '', note: '', flowInputs: {}, outputFlowInputs: {}, selectedPump: '', trend: '' };
 }
 
 export default function InputPage() {
@@ -129,6 +130,7 @@ export default function InputPage() {
             const levelM3 = (tankData && tankData.operator !== '-' && tankData.level != null)
                 ? Math.round(tankData.level / 100 * capM3).toString()
                 : '';
+            const trend = tankData?.trend || '';
 
             const flowInputs: Record<string, string> = {};
             (flowRates[tankId] || []).forEach(f => { flowInputs[f.sourceLabel] = f.rate.toFixed(1); });
@@ -140,7 +142,7 @@ export default function InputPage() {
                 if (f.pump) selectedPump = f.pump;
             });
 
-            setCurrent({ levelM3, note: '', flowInputs, outputFlowInputs, selectedPump });
+            setCurrent({ levelM3, note: '', flowInputs, outputFlowInputs, selectedPump, trend });
         }
 
         setSelectedTank(tankId);
@@ -157,7 +159,7 @@ export default function InputPage() {
         if (isNaN(numM3) || numM3 < 0 || numM3 > capM3) return;
         const numLevel = (numM3 / capM3) * 100;
 
-        submitLevel(tankId, numLevel, numM3, operator.name);
+        submitLevel(tankId, numLevel, numM3, operator.name, draft.note || undefined, draft.trend || undefined);
 
         const sources = TANKS[tankId].inputSources;
         if (sources.length > 0) {
@@ -418,6 +420,30 @@ export default function InputPage() {
                                     <p className="text-xs text-teal-300/80 font-medium">
                                         {rcwSheetNote ?? 'Memuat data logsheet...'}
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Trend (Hanya untuk Demin & RCW) */}
+                            {(selectedTank === 'DEMIN' || selectedTank === 'RCW') && (
+                                <div className="mt-4 pt-4 border-t border-slate-700/50">
+                                    <label className="block text-sm font-bold text-slate-300 mb-2">Trend Level Saat Ini</label>
+                                    <div className="flex gap-2">
+                                        <button type="button"
+                                            onClick={() => setField('trend', 'naik')}
+                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${current.trend === 'naik' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300 hover:border-slate-600'}`}>
+                                            <span className="material-symbols-outlined text-[18px]">trending_up</span> Naik
+                                        </button>
+                                        <button type="button"
+                                            onClick={() => setField('trend', 'turun')}
+                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${current.trend === 'turun' ? 'bg-rose-500/20 text-rose-400 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300 hover:border-slate-600'}`}>
+                                            <span className="material-symbols-outlined text-[18px]">trending_down</span> Turun
+                                        </button>
+                                        <button type="button"
+                                            onClick={() => setField('trend', 'tetap')}
+                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${current.trend === 'tetap' ? 'bg-slate-500/20 text-slate-300 border-slate-400 shadow-[0_0_15px_rgba(148,163,184,0.2)]' : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300 hover:border-slate-600'}`}>
+                                            <span className="material-symbols-outlined text-[18px]">trending_flat</span> Stabil
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>

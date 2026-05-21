@@ -38,6 +38,7 @@ export interface TankLevel {
     operator: string;
     timestamp: string;
     note?: string;
+    trend?: 'naik' | 'turun' | 'tetap';
 }
 
 export interface TankLevelHistory {
@@ -59,7 +60,7 @@ interface TankDataContextType {
     solarUsages: SolarUsage[];
     /** ISO timestamp kapan pompa Demin Revamp mulai aktif (null = mati) */
     pumpActiveSince: string | null;
-    submitLevel: (tankId: TankId, level: number, levelM3: number, operator: string, note?: string) => void;
+    submitLevel: (tankId: TankId, level: number, levelM3: number, operator: string, note?: string, trend?: string) => void;
     submitFlowRates: (tankId: TankId, rates: FlowRate[], operatorName?: string) => void;
     submitOutputFlowRates: (tankId: TankId, rates: OutputFlowRate[], operatorName?: string) => void;
     submitSolarUnloading: (entry: SolarUnloading) => void;
@@ -189,6 +190,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                                 operator: latest.operator_name,
                                 timestamp: latest.created_at,
                                 note: latest.note || undefined,
+                                trend: latest.trend as any || undefined,
                             },
                         }));
                     }
@@ -219,19 +221,34 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             if (data) {
                 const row = data as unknown as {
                     tk_rcw: number | null;
+                    tk_rcw_trend: string | null;
                     tk_demin: number | null;
+                    tk_demin_trend: string | null;
                     tk_solar_ab: number | null;
                     created_at: string;
                 };
                 const timestamp = row.created_at;
                 setCurrentLevels(prev => {
                     const updated = { ...prev };
-                    if (prev.DEMIN.operator === '-' && row.tk_demin != null)
-                        updated.DEMIN = { tankId: 'DEMIN', level: Number(row.tk_demin), operator: 'Shift Report', timestamp };
-                    if (prev.RCW.operator === '-' && row.tk_rcw != null)
-                        updated.RCW = { tankId: 'RCW', level: Number(row.tk_rcw), operator: 'Shift Report', timestamp };
-                    if (prev.SOLAR.operator === '-' && row.tk_solar_ab != null)
-                        updated.SOLAR = { tankId: 'SOLAR', level: Number(row.tk_solar_ab), operator: 'Shift Report', timestamp };
+                    
+                    if (row.tk_demin_trend) {
+                        updated.DEMIN = { ...updated.DEMIN, trend: row.tk_demin_trend as 'naik'|'turun'|'tetap' };
+                    }
+                    if (prev.DEMIN.operator === '-' && row.tk_demin != null) {
+                        updated.DEMIN = { ...updated.DEMIN, tankId: 'DEMIN', level: Number(row.tk_demin), operator: 'Shift Report', timestamp };
+                    }
+                    
+                    if (row.tk_rcw_trend) {
+                        updated.RCW = { ...updated.RCW, trend: row.tk_rcw_trend as 'naik'|'turun'|'tetap' };
+                    }
+                    if (prev.RCW.operator === '-' && row.tk_rcw != null) {
+                        updated.RCW = { ...updated.RCW, tankId: 'RCW', level: Number(row.tk_rcw), operator: 'Shift Report', timestamp };
+                    }
+                    
+                    if (prev.SOLAR.operator === '-' && row.tk_solar_ab != null) {
+                        updated.SOLAR = { ...updated.SOLAR, tankId: 'SOLAR', level: Number(row.tk_solar_ab), operator: 'Shift Report', timestamp };
+                    }
+                    
                     return updated;
                 });
             }
@@ -404,9 +421,9 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         };
     }, [buildTrendData, applyFlowReadings]);
 
-    const submitLevel = useCallback((tankId: TankId, level: number, levelM3: number, operator: string, note?: string) => {
+    const submitLevel = useCallback((tankId: TankId, level: number, levelM3: number, operator: string, note?: string, trend?: string) => {
         const timestamp = new Date().toISOString();
-        const newEntry: TankLevel = { tankId, level, operator, timestamp, note };
+        const newEntry: TankLevel = { tankId, level, operator, timestamp, note, trend: trend as any };
 
         setCurrentLevels(prev => ({ ...prev, [tankId]: newEntry }));
         setHistory(prev => {
@@ -424,6 +441,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                 level_m3: levelM3,
                 operator_name: operator,
                 note: note || null,
+                trend: trend || null,
             } as any).then(({ error }: { error: unknown }) => {
                 if (error) console.error('Failed to insert tank level:', error);
             });

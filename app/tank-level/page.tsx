@@ -2,13 +2,33 @@
 
 import { useOperator } from '@/hooks/useOperator';
 import { useTankData } from '@/hooks/useTankData';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { TANK_IDS, TANKS, TankId, TANK_THRESHOLDS, DEFAULT_THRESHOLDS } from '@/lib/constants';
 import { getAlertStatus } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import BottomTabBar from '@/components/layout/BottomTabBar';
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        const d = new Date(Number(label));
+        const dateStr = d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+        return (
+            <div className="bg-slate-950/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-4 shadow-2xl animate-in fade-in zoom-in-95 flex flex-col gap-1.5 z-50">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-sans">{dateStr} • {timeStr} WIB</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-2xl font-black font-mono tracking-tight text-white">
+                        {Number(payload[0].value).toLocaleString('id-ID')}
+                    </span>
+                    <span className="text-xs font-bold text-slate-400 font-sans">m³</span>
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
 
 // Per-tank color themes
 const TANK_COLORS: Record<string, {
@@ -72,17 +92,25 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
         return (
             <div key={entry.id ?? idx} 
                 onClick={() => { if(entry.id) setActionSheetData({ type: 'unloading', entry }) }}
-                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-amber-500/30 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden cursor-pointer lg:cursor-default">
-                <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
-                    <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
-                    <span className="text-slate-500 shrink-0 font-bold">-</span>
-                    <span className="text-base xl:text-lg font-black text-white truncate drop-shadow-md" title={entry.supplier}>{entry.supplier}</span>
+                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-amber-500 hover:bg-surface-highlight/70 transition-all duration-300 group relative overflow-hidden cursor-pointer lg:cursor-default shadow-sm hover:shadow-md">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
+                    {/* Icon Indicator */}
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-400 shrink-0 shadow-inner">
+                        <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+                    </div>
+                    {/* Stacked Info */}
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-none mb-1">{lbl}</span>
+                        <span className="text-sm xl:text-base font-black text-white truncate leading-tight drop-shadow-md" title={entry.supplier}>
+                            {entry.supplier}
+                        </span>
+                    </div>
                 </div>
-                <div className={`flex items-baseline gap-1.5 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
-                    <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none ${tc.textClass}`}>
+                <div className={`flex items-baseline gap-1 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
+                    <span className="text-lg xl:text-xl font-black font-mono tracking-tighter leading-none text-amber-400">
                         {entry.liters.toLocaleString('id-ID')}
                     </span>
-                    <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
+                    <span className="text-[10px] xl:text-xs text-slate-500 font-bold">L</span>
                 </div>
                 {entry.id && (
                     <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
@@ -105,17 +133,25 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
         return (
             <div key={entry.id ?? idx} 
                 onClick={() => { if(entry.id) setActionSheetData({ type: 'usage', entry }) }}
-                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-4 rounded-xl xl:rounded-2xl bg-surface-highlight/40 border border-rose-500/30 hover:bg-surface-highlight/80 transition-colors group relative overflow-hidden cursor-pointer lg:cursor-default">
-                <div className="flex-1 min-w-0 pr-4 flex items-center gap-2 xl:gap-3">
-                    <span className="text-base xl:text-lg font-black text-white shrink-0 drop-shadow-md">{lbl}</span>
-                    <span className="text-slate-500 shrink-0 font-bold">-</span>
-                    <span className="text-base xl:text-lg font-black text-white truncate drop-shadow-md" title={entry.tujuan}>{entry.tujuan}</span>
+                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-rose-500 hover:bg-surface-highlight/70 transition-all duration-300 group relative overflow-hidden cursor-pointer lg:cursor-default shadow-sm hover:shadow-md">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
+                    {/* Icon Indicator */}
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0 shadow-inner">
+                        <span className="material-symbols-outlined text-[18px]">upload</span>
+                    </div>
+                    {/* Stacked Info */}
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-none mb-1">{lbl}</span>
+                        <span className="text-sm xl:text-base font-black text-white truncate leading-tight drop-shadow-md" title={entry.tujuan}>
+                            {entry.tujuan}
+                        </span>
+                    </div>
                 </div>
-                <div className={`flex items-baseline gap-1.5 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
-                    <span className={`text-xl xl:text-2xl font-black font-mono tracking-tighter leading-none text-rose-400`}>
+                <div className={`flex items-baseline gap-1 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
+                    <span className="text-lg xl:text-xl font-black font-mono tracking-tighter leading-none text-rose-400">
                         {entry.liters.toLocaleString('id-ID')}
                     </span>
-                    <span className="text-xs xl:text-sm text-slate-500 font-bold">L</span>
+                    <span className="text-[10px] xl:text-xs text-slate-500 font-bold">L</span>
                 </div>
                 {entry.id && (
                     <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
@@ -206,7 +242,9 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     {/* % label below tank */}
                     <div className="mt-6 flex flex-col items-center">
                         <span className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-black mb-1">Percentage</span>
-                        <p className="text-4xl xl:text-5xl font-black font-mono leading-none tracking-tighter" style={{ color: tc.base, textShadow: `0 0 20px ${tc.base}40` }}>{level.toFixed(1)}%</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-4xl xl:text-5xl font-black font-mono leading-none tracking-tighter" style={{ color: tc.base, textShadow: `0 0 20px ${tc.base}40` }}>{level.toFixed(1)}%</p>
+                        </div>
                     </div>
                 </div>
 
@@ -225,9 +263,34 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     textShadow: `0 0 40px ${tc.base}80, 0 0 80px ${tc.base}30` }}>
                                 {m3.toLocaleString('id-ID')}
                             </span>
-                            <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
+                            
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
+                                
+                                {data?.trend && (
+                                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-black transition-all duration-300 backdrop-blur-md shrink-0 shadow-lg ${
+                                        data.trend === 'naik' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-emerald-500/10' :
+                                        data.trend === 'turun' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-rose-500/10' :
+                                        'bg-slate-500/10 border-slate-500/30 text-slate-400 shadow-slate-500/5'
+                                    }`} title={`Trend Level: ${data.trend === 'tetap' ? 'STABIL' : data.trend.toUpperCase()}`}>
+                                        <span className={`material-symbols-outlined font-black text-lg sm:text-xl leading-none ${
+                                            (data.trend === 'naik' || data.trend === 'turun') ? 'animate-[pulse_1.5s_infinite]' : ''
+                                        }`}>
+                                            {data.trend === 'naik' ? 'trending_up' :
+                                             data.trend === 'turun' ? 'trending_down' :
+                                             'trending_flat'}
+                                        </span>
+                                        <span className="text-[10px] tracking-wider uppercase font-black font-sans leading-none">
+                                            {data.trend === 'tetap' ? 'Stabil' : data.trend}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* % on mobile (no glass tank) */}
-                            <span className="lg:hidden ml-auto text-lg font-black font-mono shrink-0" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
+                            <div className="lg:hidden ml-auto flex items-center gap-1 shrink-0">
+                                <span className="text-lg font-black font-mono" style={{ color: tc.base }}>{level.toFixed(1)}%</span>
+                            </div>
                         </div>
                         {tankId === 'SOLAR' && (
                             <div className="mt-3 bg-slate-800/50 border border-slate-700/60 px-3 py-2 rounded-xl w-full overflow-hidden">
@@ -279,7 +342,10 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     {solarUnloadings.slice(0, 3).map((entry, idx) => renderUnloadingItem(entry, idx))}
                                 </div>
                                 {solarUnloadings.length === 0 && (
-                                    <p className="text-sm text-slate-600 italic py-2">Belum ada riwayat unloading</p>
+                                    <div className="flex flex-col items-center justify-center py-6 px-4 rounded-xl bg-surface-highlight/10 border border-slate-800/40 text-center mt-1.5">
+                                        <span className="material-symbols-outlined text-slate-600 text-2xl mb-1 opacity-30">local_shipping</span>
+                                        <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider italic">Belum ada riwayat unloading</p>
+                                    </div>
                                 )}
                                 
                                 <p className="text-[11px] xl:text-xs text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2 mt-4 xl:mt-5 pt-4 border-t border-slate-800/60">
@@ -289,7 +355,10 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     {solarUsages.slice(0, 2).map((entry, idx) => renderUsageItem(entry, idx))}
                                 </div>
                                 {solarUsages.length === 0 && (
-                                    <p className="text-sm text-slate-600 italic py-2">Belum ada riwayat pemakaian</p>
+                                    <div className="flex flex-col items-center justify-center py-6 px-4 rounded-xl bg-surface-highlight/10 border border-slate-800/40 text-center mt-1.5">
+                                        <span className="material-symbols-outlined text-slate-600 text-2xl mb-1 opacity-30">upload</span>
+                                        <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider italic">Belum ada riwayat pemakaian</p>
+                                    </div>
                                 )}
                             </>
                         ) : (
@@ -524,6 +593,8 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 const filtered = (cutoff == null ? all : all.filter(d => now - new Date(d.timestamp).getTime() <= cutoff))
                                     .map(d => ({ ts: new Date(d.timestamp).getTime(), m3: Math.round(d.level / 100 * tank.capacityM3) }));
 
+
+
                                 const fmtTick = (ts: number) => {
                                     const d = new Date(ts);
                                     if (trendRange === '24h') {
@@ -543,7 +614,13 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                         </div>
                                         <div className="h-[400px] 2xl:h-[500px] w-full mt-2">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <LineChart data={filtered} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                                <AreaChart data={filtered} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                                    <defs>
+                                                        <linearGradient id={`colorTrend-${tankId}`} x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor={tc.base} stopOpacity={0.4}/>
+                                                            <stop offset="95%" stopColor={tc.base} stopOpacity={0}/>
+                                                        </linearGradient>
+                                                    </defs>
                                                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                                                     <XAxis
                                                         dataKey="ts"
@@ -568,19 +645,18 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                                         domain={[0, tank.capacityM3]}
                                                         tickFormatter={(v) => `${v.toLocaleString('id-ID')}`}
                                                     />
-                                                    <RechartsTooltip
-                                                        contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(51, 65, 85, 0.8)', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
-                                                        itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                                                        labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '4px' }}
-                                                        labelFormatter={(label) => {
-                                                            const d = new Date(Number(label));
-                                                            return d.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) + ' ' +
-                                                                   d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
-                                                        }}
-                                                        formatter={(value) => [Number(value ?? 0).toLocaleString('id-ID'), 'Level']}
+                                                    <RechartsTooltip content={<CustomTooltip />} />
+
+                                                    <Area 
+                                                        type="monotone" 
+                                                        dataKey="m3" 
+                                                        stroke={tc.base} 
+                                                        strokeWidth={3} 
+                                                        fill={`url(#colorTrend-${tankId})`}
+                                                        dot={filtered.length <= 60 ? { r: 4, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 } : false} 
+                                                        activeDot={{ r: 7, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} 
                                                     />
-                                                    <Line type="monotone" dataKey="m3" stroke={tc.base} strokeWidth={3} dot={filtered.length <= 60 ? { r: 4, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 } : false} activeDot={{ r: 7, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} />
-                                                </LineChart>
+                                                </AreaChart>
                                             </ResponsiveContainer>
                                         </div>
                                     </>

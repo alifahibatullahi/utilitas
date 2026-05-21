@@ -168,7 +168,9 @@ export interface ShiftTankyardRow {
     tk_rcw_2: number | null;
     tk_rcw_3: number | null;
     tk_rcw_4: number | null;
+    tk_rcw_trend?: string | null;
     tk_demin: number | null;
+    tk_demin_trend?: string | null;
     tk_solar_ab: number | null;
     created_at: string;
 }
@@ -670,6 +672,7 @@ export interface TankLevelRow {
     level_m3: number;
     operator_name: string;
     note: string | null;
+    trend?: string | null;
     created_at: string;
 }
 

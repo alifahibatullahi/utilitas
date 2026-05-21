@@ -38,7 +38,12 @@
       "Bash(node -e ' *)",
       "mcp__5fa8677e-dbe4-4c40-ac74-99d19317835e__list_projects",
       "mcp__5fa8677e-dbe4-4c40-ac74-99d19317835e__list_migrations",
-      "mcp__5fa8677e-dbe4-4c40-ac74-99d19317835e__apply_migration"
+      "mcp__5fa8677e-dbe4-4c40-ac74-99d19317835e__apply_migration",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=6144\" npm run build)",
+      "mcp__5fa8677e-dbe4-4c40-ac74-99d19317835e__execute_sql",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

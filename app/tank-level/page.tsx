@@ -92,10 +92,10 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
         return (
             <div key={entry.id ?? idx} 
                 onClick={() => { if(entry.id) setActionSheetData({ type: 'unloading', entry }) }}
-                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-amber-500 hover:bg-surface-highlight/70 transition-all duration-300 group relative overflow-hidden cursor-pointer lg:cursor-default shadow-sm hover:shadow-md">
+                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-amber-500 hover:border-amber-500/40 hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:shadow-[0_6px_20px_rgba(245,158,11,0.12)] hover:z-10 transition-all duration-300 group relative overflow-hidden cursor-pointer lg:cursor-default shadow-sm">
                 <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
                     {/* Icon Indicator */}
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-400 shrink-0 shadow-inner">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-400 shrink-0 shadow-inner group-hover:scale-110 group-hover:bg-amber-500/20 group-hover:border-amber-500/40 transition-all duration-300">
                         <span className="material-symbols-outlined text-[18px]">local_shipping</span>
                     </div>
                     {/* Stacked Info */}
@@ -113,13 +113,13 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     <span className="text-[10px] xl:text-xs text-slate-500 font-bold">L</span>
                 </div>
                 {entry.id && (
-                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
+                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 lg:flex items-center gap-1.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto translate-x-3 group-hover:translate-x-0 transition-all duration-300 bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20 invisible lg:visible">
                         <button onClick={(e) => { e.stopPropagation(); setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toLocaleString('id-ID')); setEditSupplier(entry.supplier); }}
-                            className="text-slate-400 hover:text-amber-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
+                            className="text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors p-1.5 rounded-md cursor-pointer flex items-center justify-center" title="Edit">
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); if (confirm('Hapus data unloading ini?')) deleteSolarUnloading(entry.id!); }}
-                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
+                            className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-md cursor-pointer flex items-center justify-center" title="Hapus">
                             <span className="material-symbols-outlined text-[16px]">delete</span>
                         </button>
                     </div>
@@ -127,16 +127,16 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
             </div>
         );
     };
-
+ 
     const renderUsageItem = (entry: any, idx: number) => {
         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
         return (
             <div key={entry.id ?? idx} 
                 onClick={() => { if(entry.id) setActionSheetData({ type: 'usage', entry }) }}
-                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-rose-500 hover:bg-surface-highlight/70 transition-all duration-300 group relative overflow-hidden cursor-pointer lg:cursor-default shadow-sm hover:shadow-md">
+                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-rose-500 hover:border-rose-500/40 hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:shadow-[0_6px_20px_rgba(244,63,94,0.12)] hover:z-10 transition-all duration-300 group relative overflow-hidden cursor-pointer lg:cursor-default shadow-sm">
                 <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
                     {/* Icon Indicator */}
-                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0 shadow-inner">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0 shadow-inner group-hover:scale-110 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 transition-all duration-300">
                         <span className="material-symbols-outlined text-[18px]">upload</span>
                     </div>
                     {/* Stacked Info */}
@@ -154,13 +154,13 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                     <span className="text-[10px] xl:text-xs text-slate-500 font-bold">L</span>
                 </div>
                 {entry.id && (
-                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20">
+                    <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 lg:flex items-center gap-1.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto translate-x-3 group-hover:translate-x-0 transition-all duration-300 bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20 invisible lg:visible">
                         <button onClick={(e) => { e.stopPropagation(); setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toLocaleString('id-ID')); setEditUsageTujuan(entry.tujuan); }}
-                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Edit">
+                            className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-md cursor-pointer flex items-center justify-center" title="Edit">
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); if (confirm('Hapus data pemakaian ini?')) deleteSolarUsage(entry.id!); }}
-                            className="text-slate-400 hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-700 cursor-pointer flex items-center justify-center" title="Hapus">
+                            className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-md cursor-pointer flex items-center justify-center" title="Hapus">
                             <span className="material-symbols-outlined text-[16px]">delete</span>
                         </button>
                     </div>

@@ -257,36 +257,37 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                             <span className="material-symbols-outlined text-sm">water</span>
                             Total Volume Available
                         </p>
-                        <div className="flex items-baseline gap-2 xl:gap-3 flex-wrap min-w-0">
-                            <span className="font-black text-white leading-none tracking-tighter"
-                                style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)',
-                                    textShadow: `0 0 40px ${tc.base}80, 0 0 80px ${tc.base}30` }}>
-                                {m3.toLocaleString('id-ID')}
-                            </span>
-                            
-                            <span className={`font-black ${tc.textClass} tracking-tighter shrink-0 mr-2`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
+                        <div className="flex items-center gap-x-3 xl:gap-x-4 flex-wrap min-w-0">
+                            <div className="flex items-baseline gap-x-1.5 min-w-0">
+                                <span className="font-black text-white leading-none tracking-tighter"
+                                    style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)',
+                                        textShadow: `0 0 40px ${tc.base}80, 0 0 80px ${tc.base}30` }}>
+                                    {m3.toLocaleString('id-ID')}
+                                </span>
+                                <span className={`font-black ${tc.textClass} tracking-tighter shrink-0`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
+                            </div>
                             
                             {data?.trend && (
-                                <div className="inline-flex shrink-0 items-center justify-center transition-all duration-300"
+                                <div className="inline-flex shrink-0 items-center justify-center transition-all duration-300 relative -top-[0.15em]"
                                      title={`Trend Level: ${data.trend === 'tetap' ? 'Stabil' : data.trend.toUpperCase()}`}>
                                     {data.trend === 'naik' && (
-                                        <div className="flex flex-col items-center justify-center shrink-0 -space-y-[0.65em] relative -top-[0.1em]">
+                                        <div className="flex flex-col items-center justify-center shrink-0 -space-y-[0.65em]">
                                             {/* Top Chevron */}
                                             <span className="material-symbols-outlined font-black leading-none text-emerald-400"
                                                   style={{ 
-                                                      animation: 'chevronUp 1.2s infinite ease-in-out', 
-                                                      animationDelay: '0.3s', 
-                                                      fontSize: 'clamp(1.2rem, 2.6vw, 2.4rem)', 
-                                                      textShadow: '0 0 30px rgba(16,185,129,0.6)' 
+                                                      animation: 'chevronUp 3s infinite ease-in-out', 
+                                                      animationDelay: '1.5s', 
+                                                      fontSize: 'clamp(1.7rem, 3.6vw, 3.5rem)', 
+                                                      textShadow: '0 0 35px rgba(16,185,129,0.7)' 
                                                   }}>
                                                 keyboard_arrow_up
                                             </span>
                                             {/* Bottom Chevron */}
                                             <span className="material-symbols-outlined font-black leading-none text-emerald-400"
                                                   style={{ 
-                                                      animation: 'chevronUp 1.2s infinite ease-in-out', 
-                                                      fontSize: 'clamp(1.2rem, 2.6vw, 2.4rem)', 
-                                                      textShadow: '0 0 30px rgba(16,185,129,0.6)' 
+                                                      animation: 'chevronUp 3s infinite ease-in-out', 
+                                                      fontSize: 'clamp(1.7rem, 3.6vw, 3.5rem)', 
+                                                      textShadow: '0 0 35px rgba(16,185,129,0.7)' 
                                                   }}>
                                                 keyboard_arrow_up
                                             </span>
@@ -294,23 +295,23 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     )}
                                     
                                     {data.trend === 'turun' && (
-                                        <div className="flex flex-col items-center justify-center shrink-0 -space-y-[0.65em] relative top-[0.1em]">
+                                        <div className="flex flex-col items-center justify-center shrink-0 -space-y-[0.65em]">
                                             {/* Top Chevron */}
                                             <span className="material-symbols-outlined font-black leading-none text-rose-400"
                                                   style={{ 
-                                                      animation: 'chevronDown 1.2s infinite ease-in-out', 
-                                                      fontSize: 'clamp(1.2rem, 2.6vw, 2.4rem)', 
-                                                      textShadow: '0 0 30px rgba(244,63,94,0.6)' 
+                                                      animation: 'chevronDown 3s infinite ease-in-out', 
+                                                      fontSize: 'clamp(1.7rem, 3.6vw, 3.5rem)', 
+                                                      textShadow: '0 0 35px rgba(244,63,94,0.7)' 
                                                   }}>
                                                 keyboard_arrow_down
                                             </span>
                                             {/* Bottom Chevron */}
                                             <span className="material-symbols-outlined font-black leading-none text-rose-400"
                                                   style={{ 
-                                                      animation: 'chevronDown 1.2s infinite ease-in-out', 
-                                                      animationDelay: '0.3s', 
-                                                      fontSize: 'clamp(1.2rem, 2.6vw, 2.4rem)', 
-                                                      textShadow: '0 0 30px rgba(244,63,94,0.6)' 
+                                                      animation: 'chevronDown 3s infinite ease-in-out', 
+                                                      animationDelay: '1.5s', 
+                                                      fontSize: 'clamp(1.7rem, 3.6vw, 3.5rem)', 
+                                                      textShadow: '0 0 35px rgba(244,63,94,0.7)' 
                                                   }}>
                                                 keyboard_arrow_down
                                             </span>
@@ -320,9 +321,9 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     {data.trend === 'tetap' && (
                                         <span className="material-symbols-outlined font-black leading-none text-slate-400 shrink-0"
                                               style={{ 
-                                                  animation: 'chevronFlat 2s infinite ease-in-out', 
-                                                  fontSize: 'clamp(1.4rem, 3vw, 2.6rem)', 
-                                                  textShadow: '0 0 30px rgba(148,163,184,0.3)' 
+                                                  animation: 'chevronFlat 3s infinite ease-in-out', 
+                                                  fontSize: 'clamp(1.8rem, 4vw, 3.8rem)', 
+                                                  textShadow: '0 0 35px rgba(148,163,184,0.4)' 
                                               }}>
                                             trending_flat
                                         </span>
@@ -909,18 +910,20 @@ export default function TankLevelPage() {
         <>
             <style dangerouslySetInnerHTML={{__html: `
                 @keyframes chevronUp {
-                    0% { opacity: 0.15; transform: translateY(4px) scale(0.9); }
-                    50% { opacity: 1; transform: translateY(0) scale(1.1); }
-                    100% { opacity: 0.15; transform: translateY(-4px) scale(0.9); }
+                    0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+                    20% { opacity: 1; transform: translateY(2px) scale(1.05); }
+                    80% { opacity: 1; transform: translateY(-2px) scale(1.05); }
+                    100% { opacity: 0; transform: translateY(-8px) scale(0.9); }
                 }
                 @keyframes chevronDown {
-                    0% { opacity: 0.15; transform: translateY(-4px) scale(0.9); }
-                    50% { opacity: 1; transform: translateY(0) scale(1.1); }
-                    100% { opacity: 0.15; transform: translateY(4px) scale(0.9); }
+                    0% { opacity: 0; transform: translateY(-8px) scale(0.9); }
+                    20% { opacity: 1; transform: translateY(-2px) scale(1.05); }
+                    80% { opacity: 1; transform: translateY(2px) scale(1.05); }
+                    100% { opacity: 0; transform: translateY(8px) scale(0.9); }
                 }
                 @keyframes chevronFlat {
-                    0%, 100% { opacity: 0.4; transform: translateX(-3px); }
-                    50% { opacity: 1; transform: translateX(3px); }
+                    0%, 100% { opacity: 0.3; transform: translateX(-4px); }
+                    50% { opacity: 1; transform: translateX(4px); }
                 }
             `}} />
             {/* ─────────────────── MOBILE layout (< lg) ─────────────────── */}

@@ -264,28 +264,33 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 {m3.toLocaleString('id-ID')}
                             </span>
                             
-                            <div className="flex items-center gap-2 shrink-0">
-                                <span className={`font-black ${tc.textClass} tracking-tighter`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
-                                
-                                {data?.trend && (
-                                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-black transition-all duration-300 backdrop-blur-md shrink-0 shadow-lg ${
-                                        data.trend === 'naik' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-emerald-500/10' :
-                                        data.trend === 'turun' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-rose-500/10' :
-                                        'bg-slate-500/10 border-slate-500/30 text-slate-400 shadow-slate-500/5'
-                                    }`} title={`Trend Level: ${data.trend === 'tetap' ? 'STABIL' : data.trend.toUpperCase()}`}>
-                                        <span className={`material-symbols-outlined font-black text-lg sm:text-xl leading-none ${
-                                            (data.trend === 'naik' || data.trend === 'turun') ? 'animate-[pulse_1.5s_infinite]' : ''
-                                        }`}>
-                                            {data.trend === 'naik' ? 'trending_up' :
-                                             data.trend === 'turun' ? 'trending_down' :
-                                             'trending_flat'}
-                                        </span>
-                                        <span className="text-[10px] tracking-wider uppercase font-black font-sans leading-none">
-                                            {data.trend === 'tetap' ? 'Stabil' : data.trend}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
+                            <span className={`font-black ${tc.textClass} tracking-tighter shrink-0 mr-2 xl:mr-4`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
+                            
+                            {data?.trend && (
+                                <div className={`inline-flex items-center gap-2 xl:gap-3 font-black tracking-tighter uppercase leading-none transition-all duration-300 shrink-0 ${
+                                    data.trend === 'naik' ? 'text-emerald-400' :
+                                    data.trend === 'turun' ? 'text-rose-400' :
+                                    'text-slate-400'
+                                }`} 
+                                style={{ 
+                                    fontSize: 'clamp(2rem, 5vw, 4.5rem)',
+                                    textShadow: data.trend === 'naik' ? '0 0 40px rgba(16,185,129,0.7), 0 0 85px rgba(16,185,129,0.3)' :
+                                                data.trend === 'turun' ? '0 0 40px rgba(244,63,94,0.7), 0 0 85px rgba(244,63,94,0.3)' :
+                                                '0 0 40px rgba(148,163,184,0.3), 0 0 85px rgba(148,163,184,0.1)'
+                                }}>
+                                    <span className={`material-symbols-outlined font-black leading-none ${
+                                        (data.trend === 'naik' || data.trend === 'turun') ? 'animate-[pulse_1.5s_infinite]' : ''
+                                    }`}
+                                    style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)' }}>
+                                        {data.trend === 'naik' ? 'trending_up' :
+                                         data.trend === 'turun' ? 'trending_down' :
+                                         'trending_flat'}
+                                    </span>
+                                    <span>
+                                        {data.trend === 'tetap' ? 'Stabil' : data.trend}
+                                    </span>
+                                </div>
+                            )}
 
                             {/* % on mobile (no glass tank) */}
                             <div className="lg:hidden ml-auto flex items-center gap-1 shrink-0">

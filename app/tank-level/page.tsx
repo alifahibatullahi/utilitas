@@ -264,32 +264,27 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                 {m3.toLocaleString('id-ID')}
                             </span>
                             
-                            <span className={`font-black ${tc.textClass} tracking-tighter shrink-0 mr-2 xl:mr-4`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
+                            <span className={`font-black ${tc.textClass} tracking-tighter shrink-0 mr-2`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>m³</span>
                             
                             {data?.trend && (
-                                <div className={`inline-flex items-center gap-2 xl:gap-3 font-black tracking-tighter uppercase leading-none transition-all duration-300 shrink-0 ${
+                                <span className={`material-symbols-outlined font-black leading-none shrink-0 transition-all duration-300 ${
+                                    (data.trend === 'naik' || data.trend === 'turun') ? 'animate-[pulse_1.5s_infinite]' : ''
+                                } ${
                                     data.trend === 'naik' ? 'text-emerald-400' :
                                     data.trend === 'turun' ? 'text-rose-400' :
                                     'text-slate-400'
-                                }`} 
+                                }`}
                                 style={{ 
-                                    fontSize: 'clamp(2rem, 5vw, 4.5rem)',
-                                    textShadow: data.trend === 'naik' ? '0 0 40px rgba(16,185,129,0.7), 0 0 85px rgba(16,185,129,0.3)' :
-                                                data.trend === 'turun' ? '0 0 40px rgba(244,63,94,0.7), 0 0 85px rgba(244,63,94,0.3)' :
-                                                '0 0 40px rgba(148,163,184,0.3), 0 0 85px rgba(148,163,184,0.1)'
-                                }}>
-                                    <span className={`material-symbols-outlined font-black leading-none ${
-                                        (data.trend === 'naik' || data.trend === 'turun') ? 'animate-[pulse_1.5s_infinite]' : ''
-                                    }`}
-                                    style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)' }}>
-                                        {data.trend === 'naik' ? 'trending_up' :
-                                         data.trend === 'turun' ? 'trending_down' :
-                                         'trending_flat'}
-                                    </span>
-                                    <span>
-                                        {data.trend === 'tetap' ? 'Stabil' : data.trend}
-                                    </span>
-                                </div>
+                                    fontSize: 'clamp(1.5rem, 3.2vw, 2.8rem)',
+                                    textShadow: data.trend === 'naik' ? '0 0 30px rgba(16,185,129,0.6)' :
+                                                data.trend === 'turun' ? '0 0 30px rgba(244,63,94,0.6)' :
+                                                '0 0 30px rgba(148,163,184,0.3)'
+                                }}
+                                title={`Trend Level: ${data.trend === 'tetap' ? 'Stabil' : data.trend.toUpperCase()}`}>
+                                    {data.trend === 'naik' ? 'trending_up' :
+                                     data.trend === 'turun' ? 'trending_down' :
+                                     'trending_flat'}
+                                </span>
                             )}
 
                             {/* % on mobile (no glass tank) */}

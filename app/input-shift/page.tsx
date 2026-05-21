@@ -125,14 +125,23 @@ function InputShiftPageInner() {
         if (qMode === 'harian') setInputMode('harian');
         else if (qMode === 'shift') setInputMode('shift');
 
-        // Saat station mode aktif: override URL shift/date dengan CURRENT shift/date saat ini.
-        // Operator pengganti yang akses link lama dari WA group → tidak salah isi shift yang
-        // sudah lewat. URL params hanya hint, default = jam sekarang.
+        // Saat station mode aktif: override URL shift/date dengan default sesuai konteks.
+        // - Shift mode: pakai current shift saat ini (jam sekarang).
+        // - Harian mode: default ke KEMARIN (laporan harian merepresentasikan hari yang baru
+        //   selesai; biasanya diisi jam 23:00 hari D atau dini hari D+1).
+        // Operator pengganti yang akses link lama dari WA group → tidak salah isi shift/hari.
         if (stationParam) {
-            const { shift: nowShift, date: nowDate } = detectCurrentShift();
-            const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
-            setSelectedShift(map[nowShift]);
-            setSelectedDate(nowDate);
+            if (qMode === 'harian') {
+                const yest = new Date();
+                yest.setDate(yest.getDate() - 1);
+                const fmtY = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                setSelectedDate(fmtY(yest));
+            } else {
+                const { shift: nowShift, date: nowDate } = detectCurrentShift();
+                const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
+                setSelectedShift(map[nowShift]);
+                setSelectedDate(nowDate);
+            }
             return;
         }
         // Non-station mode: honor URL params (deep-link dari WA reminder normal)

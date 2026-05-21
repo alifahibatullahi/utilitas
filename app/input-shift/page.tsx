@@ -17,7 +17,7 @@ import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import { nowWIB, todayWIB } from '@/lib/utils';
-import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, type OperatorStation } from '@/lib/constants';
+import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, type OperatorStation } from '@/lib/constants';
 
 function getGroupMalamOnDate(dateStr: string): string {
     for (const g of ['A', 'B', 'C', 'D'] as const) {
@@ -121,14 +121,27 @@ function InputShiftPageInner() {
         const qShift = searchParams?.get('shift');
         const qDate = searchParams?.get('date');
         const qMode = searchParams?.get('mode');
+        // Mode toggle dari URL (always honored kalau di-set)
+        if (qMode === 'harian') setInputMode('harian');
+        else if (qMode === 'shift') setInputMode('shift');
+
+        // Saat station mode aktif: override URL shift/date dengan CURRENT shift/date saat ini.
+        // Operator pengganti yang akses link lama dari WA group → tidak salah isi shift yang
+        // sudah lewat. URL params hanya hint, default = jam sekarang.
+        if (stationParam) {
+            const { shift: nowShift, date: nowDate } = detectCurrentShift();
+            const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
+            setSelectedShift(map[nowShift]);
+            setSelectedDate(nowDate);
+            return;
+        }
+        // Non-station mode: honor URL params (deep-link dari WA reminder normal)
         if (qShift) {
             const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
             const target = map[qShift.toLowerCase()];
             if (target) setSelectedShift(target);
         }
         if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) setSelectedDate(qDate);
-        if (qMode === 'harian') setInputMode('harian');
-        else if (qMode === 'shift') setInputMode('shift');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -234,6 +247,31 @@ function InputShiftPageInner() {
 
     // Auto-kalkulasi grup dari pola jadwal shift
     const currentGroup = getGroupForShift(selectedDate, shiftMap[selectedShift]);
+
+    // ─── Grace period & submit guard ─────────────────────────────────────────────
+    // Shift: submit allowed sampai shift end + 2 jam.
+    // Harian: submit allowed sampai shift malam (D+1) berakhir + 2 jam = jam 09:00 (D+2).
+    const SHIFT_GRACE_HOURS = 2;
+    const HARIAN_GRACE_HOURS = 2; // after next-day malam ends (07:00 D+2)
+    const submitDeadline = useMemo(() => {
+        if (inputMode === 'shift') {
+            const win = getShiftWindow(selectedDate, shiftMap[selectedShift]);
+            return new Date(win.end.getTime() + SHIFT_GRACE_HOURS * 60 * 60 * 1000);
+        }
+        // harian
+        const [y, m, d] = selectedDate.split('-').map(Number);
+        const nextMalamEnd = new Date(y, m - 1, d + 2, 7, 0, 0); // shift malam (D+1) ends at 07:00 (D+2)
+        return new Date(nextMalamEnd.getTime() + HARIAN_GRACE_HOURS * 60 * 60 * 1000);
+    }, [inputMode, selectedDate, selectedShift, shiftMap]);
+
+    const [nowTick, setNowTick] = useState(() => Date.now());
+    useEffect(() => {
+        const id = setInterval(() => setNowTick(Date.now()), 60_000); // tick per menit
+        return () => clearInterval(id);
+    }, []);
+    const isPastDeadline = nowTick > submitDeadline.getTime();
+    const reportStatus = (report?.status as 'draft' | 'submitted' | 'approved' | undefined) ?? null;
+    const isReportSubmitted = reportStatus === 'submitted' || reportStatus === 'approved';
 
     // Supervisor: semua yg jabatan Supervisor atau Foreman
     const supervisorOptions = operators.filter(op =>
@@ -611,6 +649,16 @@ function InputShiftPageInner() {
 
     const handleSubmit = async () => {
         if (submitting) return;
+        // Guard grace period — operator pengganti yang akses link lama tidak boleh nge-edit
+        // shift di luar window submit.
+        if (isPastDeadline) {
+            setToast({
+                type: 'error',
+                message: `Window submit sudah berakhir (deadline ${submitDeadline.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor.`,
+            });
+            setTimeout(() => setToast(null), 4000);
+            return;
+        }
         setSubmitting(true);
         setSaveProgress(5);
         // Animate progress 5→85% while saving
@@ -1006,17 +1054,12 @@ function InputShiftPageInner() {
                                             </div>
                                         </>
                                     )}
-                                    {/* Station mode: label statis Station + Tanggal + picker "Diisi oleh" di header row 1 */}
+                                    {/* Station mode: badge Station + picker "Diisi oleh" (tanggal di row 2 editable) */}
                                     {station && (
                                         <>
                                             <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
                                                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
                                                 {STATION_LABELS[station]}
-                                            </span>
-                                            <span className="px-3 py-1 rounded-lg text-sm font-bold bg-slate-800/60 text-slate-200 border border-slate-700/50">
-                                                {mounted && selectedDate
-                                                    ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-                                                    : selectedDate}
                                             </span>
                                             <span className="text-xs font-bold text-white uppercase tracking-wider">Diisi oleh</span>
                                             <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
@@ -1036,9 +1079,9 @@ function InputShiftPageInner() {
                             );
                         })()}
                     </div>
-                    {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin (Shift) / Supervisor (Harian)
-                        — disembunyikan kalau mode station aktif (sudah ada label statis di row 1). */}
-                    <div className={`flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3 ${station ? 'hidden' : ''}`}>
+                    {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin (Shift) / Supervisor (Harian).
+                        Date input TETAP tampil di station mode (untuk navigation antar tanggal). */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
                         {(() => {
                             const today = mounted ? todayWIB() : '';
                             const isToday = selectedDate === today;
@@ -1066,7 +1109,7 @@ function InputShiftPageInner() {
                         })()}
                         <span className="text-slate-600 hidden sm:inline">|</span>
 
-                        {inputMode === 'harian' && (
+                        {inputMode === 'harian' && !station && (
                             <>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
                                 <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
@@ -1081,7 +1124,7 @@ function InputShiftPageInner() {
                             </>
                         )}
 
-                        {inputMode === 'shift' && (
+                        {inputMode === 'shift' && !station && (
                             <>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Foreman Boiler</span>
                                 <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
@@ -1106,6 +1149,24 @@ function InputShiftPageInner() {
                             </>
                         )}
                     </div>
+
+                    {/* Status banner — penting untuk operator pengganti yang akses link lama */}
+                    {(isReportSubmitted || isPastDeadline) && (
+                        <div className={`mt-3 px-4 py-2.5 rounded-lg border flex items-center gap-2.5 text-sm font-bold ${
+                            isPastDeadline
+                                ? 'bg-red-500/15 border-red-500/40 text-red-300'
+                                : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                        }`}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                                {isPastDeadline ? 'lock' : 'warning'}
+                            </span>
+                            <span>
+                                {isPastDeadline
+                                    ? `Window submit ${inputMode === 'shift' ? `shift ${SHIFT_LABELS[selectedShift].toLowerCase()}` : 'laporan harian'} sudah berakhir (deadline ${submitDeadline.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
+                                    : `Laporan ini sudah disubmit. Submit ulang akan mengganti data. Deadline koreksi: ${submitDeadline.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Mode & Shift Controls */}
@@ -1128,7 +1189,7 @@ function InputShiftPageInner() {
                     )}
                     {/* Station badge — label statis sudah dipindah ke row 1 header */}
 
-                    {inputMode === 'shift' && !station && (
+                    {inputMode === 'shift' && (
                         <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
                             {[
                                 { id: 1, label: 'Malam (06)', color: 'indigo' },
@@ -1161,11 +1222,12 @@ function InputShiftPageInner() {
                             <div className="flex flex-col gap-2 mt-1">
                                 <button
                                     onClick={handleSubmit}
-                                    disabled={submitting}
-                                    className={`flex justify-center items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={submitting || isPastDeadline}
+                                    title={isPastDeadline ? 'Window submit sudah berakhir' : undefined}
+                                    className={`flex justify-center items-center gap-2 ${isPastDeadline ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting || isPastDeadline ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined text-[20px]">save</span>
-                                    {submitting ? 'Menyimpan...' : 'SIMPAN LAPORAN'}
+                                    <span className="material-symbols-outlined text-[20px]">{isPastDeadline ? 'lock' : 'save'}</span>
+                                    {submitting ? 'Menyimpan...' : isPastDeadline ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                                 </button>
                             </div>
                         </div>

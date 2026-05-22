@@ -319,27 +319,29 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                     )}
                                     
                                     {data.trend === 'tetap' && (
-                                        <div className="flex flex-col items-center justify-center shrink-0 -space-y-[0.65em]">
-                                            {/* Top Chevron */}
-                                            <span className="material-symbols-outlined font-black leading-none text-slate-400"
-                                                  style={{ 
-                                                      animation: 'chevronFlat 3s infinite ease-in-out', 
-                                                      animationDelay: '1.5s', 
-                                                      fontSize: 'clamp(1.7rem, 3.6vw, 3.5rem)', 
-                                                      textShadow: '0 0 35px rgba(148,163,184,0.5)' 
-                                                  }}>
-                                                keyboard_arrow_right
-                                            </span>
-                                            {/* Bottom Chevron */}
-                                            <span className="material-symbols-outlined font-black leading-none text-slate-400"
-                                                  style={{ 
-                                                      animation: 'chevronFlat 3s infinite ease-in-out', 
-                                                      fontSize: 'clamp(1.7rem, 3.6vw, 3.5rem)', 
-                                                      textShadow: '0 0 35px rgba(148,163,184,0.5)' 
-                                                  }}>
-                                                keyboard_arrow_right
-                                            </span>
-                                        </div>
+                                        <svg className="text-slate-400 shrink-0 select-none pointer-events-none"
+                                             viewBox="0 0 48 48"
+                                             style={{ 
+                                                 width: 'clamp(1.7rem, 3.6vw, 3.5rem)',
+                                                 height: 'clamp(1.7rem, 3.6vw, 3.5rem)',
+                                                 filter: 'drop-shadow(0 0 10px rgba(148,163,184,0.5))' 
+                                             }}
+                                             fill="none" 
+                                             stroke="currentColor" 
+                                             strokeWidth="4.5" 
+                                             strokeLinecap="round">
+                                            {/* Top Wave */}
+                                            <path d="M -24 16 Q -18 11, -12 16 T 0 16 T 12 16 T 24 16 T 36 16 T 48 16 T 60 16 T 72 16"
+                                                  style={{
+                                                      animation: 'chevronFlat 3s infinite linear'
+                                                  }} />
+                                            {/* Bottom Wave */}
+                                            <path d="M -24 32 Q -18 27, -12 32 T 0 32 T 12 32 T 24 32 T 36 32 T 48 32 T 60 32 T 72 32"
+                                                  style={{
+                                                      animation: 'chevronFlat 3s infinite linear',
+                                                      animationDelay: '0.4s'
+                                                  }} />
+                                        </svg>
                                     )}
                                 </div>
                             )}
@@ -935,10 +937,8 @@ export default function TankLevelPage() {
                     100% { opacity: 0; transform: translateY(8px) scale(0.9); }
                 }
                 @keyframes chevronFlat {
-                    0% { opacity: 0; transform: translateX(-8px) scale(0.9); }
-                    20% { opacity: 1; transform: translateX(-2px) scale(1.05); }
-                    80% { opacity: 1; transform: translateX(2px) scale(1.05); }
-                    100% { opacity: 0; transform: translateX(8px) scale(0.9); }
+                    0% { transform: translateX(0px); }
+                    100% { transform: translateX(24px); }
                 }
             `}} />
             {/* ─────────────────── MOBILE layout (< lg) ─────────────────── */}

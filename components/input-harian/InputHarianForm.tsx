@@ -45,9 +45,22 @@ interface InputHarianFormProps {
     operator: Operator | null;
     groupName?: string | null;
     supervisorName?: string;
+    /** Submit window dari parent (input-shift page) — block tombol SAVE & guard handleSubmit
+     *  saat ini di luar window submit (sebelum 23:00 D atau setelah 09:00 D+1). */
+    submitWindowStart?: Date;
+    submitWindowEnd?: Date;
 }
 
-export default function InputHarianForm({ date, operator, groupName, supervisorName }: InputHarianFormProps) {
+export default function InputHarianForm({ date, operator, groupName, supervisorName, submitWindowStart, submitWindowEnd }: InputHarianFormProps) {
+    // Lock state — disable tombol SAVE & banner kalau di luar window.
+    const [nowTickH, setNowTickH] = useState(() => Date.now());
+    useEffect(() => {
+        const id = setInterval(() => setNowTickH(Date.now()), 60_000);
+        return () => clearInterval(id);
+    }, []);
+    const isHarianBeforeStart = !!submitWindowStart && nowTickH < submitWindowStart.getTime();
+    const isHarianPastEnd     = !!submitWindowEnd   && nowTickH > submitWindowEnd.getTime();
+    const isHarianLocked      = isHarianBeforeStart || isHarianPastEnd;
     // Station-based view filter via ?station=<id>
     const searchParams = useSearchParams();
     const stationParam = searchParams?.get('station') ?? null;
@@ -425,6 +438,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // ─── Submit handler ───
     const handleSubmit = async () => {
         if (submitting) return;
+        // Guard submit window — operator pengganti yang akses link lama tidak boleh
+        // nge-edit harian di luar window (sebelum 23:00 D atau setelah 09:00 D+1).
+        if (isHarianLocked) {
+            const reason = isHarianBeforeStart && submitWindowStart
+                ? `Window submit harian belum dibuka (mulai ${submitWindowStart.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
+                : submitWindowEnd
+                  ? `Window submit harian sudah berakhir (deadline ${submitWindowEnd.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor.`
+                  : 'Window submit harian sudah ditutup.';
+            setToast({ message: reason, type: 'error' });
+            setTimeout(() => setToast(null), 4000);
+            return;
+        }
         setSubmitting(true);
         setSaveProgress(5);
         const progressInterval = setInterval(() => {
@@ -710,11 +735,14 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         </div>
                         <button
                             onClick={handleSubmit}
-                            disabled={submitting}
-                            className={`flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={submitting || isHarianLocked}
+                            title={isHarianBeforeStart && submitWindowStart
+                                ? `Window submit mulai ${submitWindowStart.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+                                : isHarianPastEnd ? 'Window submit sudah berakhir' : undefined}
+                            className={`flex items-center justify-center gap-2 ${isHarianLocked ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting || isHarianLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            <span className="material-symbols-outlined text-[18px]">save</span>
-                            {submitting ? 'Menyimpan...' : 'SIMPAN LAPORAN'}
+                            <span className="material-symbols-outlined text-[18px]">{isHarianLocked ? 'lock' : 'save'}</span>
+                            {submitting ? 'Menyimpan...' : isHarianLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                         </button>
                     </div>
 

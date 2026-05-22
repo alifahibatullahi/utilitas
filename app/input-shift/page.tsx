@@ -127,15 +127,17 @@ function InputShiftPageInner() {
 
         // Saat station mode aktif: override URL shift/date dengan default sesuai konteks.
         // - Shift mode: pakai current shift saat ini (jam sekarang).
-        // - Harian mode: default ke KEMARIN (laporan harian merepresentasikan hari yang baru
-        //   selesai; biasanya diisi jam 23:00 hari D atau dini hari D+1).
+        // - Harian mode: window submit harian = 23:00 (D) - 09:00 (D+1). Default:
+        //     • jam < 9 → KEMARIN (D-1) — masih dalam window untuk laporan kemarin
+        //     • jam ≥ 9 → HARI INI (D) — prep laporan untuk submit nanti malam jam 23:00
         // Operator pengganti yang akses link lama dari WA group → tidak salah isi shift/hari.
         if (stationParam) {
             if (qMode === 'harian') {
-                const yest = new Date();
-                yest.setDate(yest.getDate() - 1);
                 const fmtY = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                setSelectedDate(fmtY(yest));
+                const nowH = new Date();
+                const target = new Date(nowH);
+                if (nowH.getHours() < 9) target.setDate(target.getDate() - 1);
+                setSelectedDate(fmtY(target));
             } else {
                 const { shift: nowShift, date: nowDate } = detectCurrentShift();
                 const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
@@ -260,17 +262,26 @@ function InputShiftPageInner() {
     // ─── Grace period & submit guard ─────────────────────────────────────────────
     // Shift: submit allowed sampai shift end + 2 jam.
     // Harian: submit allowed sampai shift malam (D+1) berakhir + 2 jam = jam 09:00 (D+2).
+    // Submit window per shift = [reminder_time, shift_end + 2h grace].
+    // Harian: window = [23:00 (D), 09:00 (D+1)].
+    // Reminder times: pagi 12:30, sore 20:30, malam 04:30 (D+1).
     const SHIFT_GRACE_HOURS = 2;
-    const HARIAN_GRACE_HOURS = 2; // after next-day malam ends (07:00 D+2)
-    const submitDeadline = useMemo(() => {
-        if (inputMode === 'shift') {
-            const win = getShiftWindow(selectedDate, shiftMap[selectedShift]);
-            return new Date(win.end.getTime() + SHIFT_GRACE_HOURS * 60 * 60 * 1000);
-        }
-        // harian
+    const submitWindow = useMemo(() => {
         const [y, m, d] = selectedDate.split('-').map(Number);
-        const nextMalamEnd = new Date(y, m - 1, d + 2, 7, 0, 0); // shift malam (D+1) ends at 07:00 (D+2)
-        return new Date(nextMalamEnd.getTime() + HARIAN_GRACE_HOURS * 60 * 60 * 1000);
+        if (inputMode === 'harian') {
+            const start = new Date(y, m - 1, d, 23, 0, 0);     // 23:00 (D)
+            const end   = new Date(y, m - 1, d + 1, 9, 0, 0);  // 09:00 (D+1)
+            return { start, end };
+        }
+        const shift = shiftMap[selectedShift];
+        const win = getShiftWindow(selectedDate, shift);
+        let startHour: number, startMin: number, startDayOffset = 0;
+        if (shift === 'pagi') { startHour = 12; startMin = 30; }
+        else if (shift === 'sore') { startHour = 20; startMin = 30; }
+        else { startHour = 4; startMin = 30; startDayOffset = 1; } // malam reminder = 04:30 (D+1)
+        const start = new Date(y, m - 1, d + startDayOffset, startHour, startMin, 0);
+        const end   = new Date(win.end.getTime() + SHIFT_GRACE_HOURS * 60 * 60 * 1000);
+        return { start, end };
     }, [inputMode, selectedDate, selectedShift, shiftMap]);
 
     const [nowTick, setNowTick] = useState(() => Date.now());
@@ -278,7 +289,11 @@ function InputShiftPageInner() {
         const id = setInterval(() => setNowTick(Date.now()), 60_000); // tick per menit
         return () => clearInterval(id);
     }, []);
-    const isPastDeadline = nowTick > submitDeadline.getTime();
+    const isBeforeStart  = nowTick < submitWindow.start.getTime();
+    const isPastDeadline = nowTick > submitWindow.end.getTime();
+    const isLocked       = isBeforeStart || isPastDeadline;
+    // Backward-compat alias agar refactor minimal
+    const submitDeadline = submitWindow.end;
     const reportStatus = (report?.status as 'draft' | 'submitted' | 'approved' | undefined) ?? null;
     const isReportSubmitted = reportStatus === 'submitted' || reportStatus === 'approved';
 
@@ -658,13 +673,13 @@ function InputShiftPageInner() {
 
     const handleSubmit = async () => {
         if (submitting) return;
-        // Guard grace period — operator pengganti yang akses link lama tidak boleh nge-edit
-        // shift di luar window submit.
-        if (isPastDeadline) {
-            setToast({
-                type: 'error',
-                message: `Window submit sudah berakhir (deadline ${submitDeadline.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor.`,
-            });
+        // Guard submit window — operator pengganti yang akses link lama tidak boleh nge-edit
+        // shift di luar window submit (sebelum reminder time atau setelah grace period).
+        if (isLocked) {
+            const reason = isBeforeStart
+                ? `Window submit belum dibuka (mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
+                : `Window submit sudah berakhir (deadline ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor.`;
+            setToast({ type: 'error', message: reason });
             setTimeout(() => setToast(null), 4000);
             return;
         }
@@ -1063,8 +1078,10 @@ function InputShiftPageInner() {
                                             </div>
                                         </>
                                     )}
-                                    {/* Station mode: badge Station + picker "Diisi oleh" (tanggal di row 2 editable) */}
-                                    {station && (
+                                    {/* Station mode: badge Station + picker "Diisi oleh" — HANYA tampil di shift mode.
+                                        Untuk harian, picker "Diisi oleh" sudah ada di sidebar InputHarianForm
+                                        (single source supaya tidak duplikat). */}
+                                    {station && inputMode === 'shift' && (
                                         <>
                                             <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
                                                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
@@ -1083,6 +1100,13 @@ function InputShiftPageInner() {
                                                 <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                             </div>
                                         </>
+                                    )}
+                                    {/* Station mode harian: cuma tampilkan badge station (picker di sidebar) */}
+                                    {station && inputMode === 'harian' && (
+                                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
+                                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
+                                            {STATION_LABELS[station]}
+                                        </span>
                                     )}
                                 </>
                             );
@@ -1160,19 +1184,21 @@ function InputShiftPageInner() {
                     </div>
 
                     {/* Status banner — penting untuk operator pengganti yang akses link lama */}
-                    {(isReportSubmitted || isPastDeadline) && (
+                    {(isReportSubmitted || isLocked) && (
                         <div className={`mt-3 px-4 py-2.5 rounded-lg border flex items-center gap-2.5 text-sm font-bold ${
-                            isPastDeadline
+                            isLocked
                                 ? 'bg-red-500/15 border-red-500/40 text-red-300'
                                 : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
                         }`}>
                             <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
-                                {isPastDeadline ? 'lock' : 'warning'}
+                                {isLocked ? 'lock' : 'warning'}
                             </span>
                             <span>
-                                {isPastDeadline
-                                    ? `Window submit ${inputMode === 'shift' ? `shift ${SHIFT_LABELS[selectedShift].toLowerCase()}` : 'laporan harian'} sudah berakhir (deadline ${submitDeadline.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
-                                    : `Laporan ini sudah disubmit. Submit ulang akan mengganti data. Deadline koreksi: ${submitDeadline.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                                {isBeforeStart
+                                    ? `Window submit ${inputMode === 'shift' ? `shift ${SHIFT_LABELS[selectedShift].toLowerCase()}` : 'laporan harian'} belum dibuka (mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
+                                : isPastDeadline
+                                    ? `Window submit ${inputMode === 'shift' ? `shift ${SHIFT_LABELS[selectedShift].toLowerCase()}` : 'laporan harian'} sudah berakhir (deadline ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
+                                    : `Laporan ini sudah disubmit. Submit ulang akan mengganti data. Deadline koreksi: ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
                             </span>
                         </div>
                     )}
@@ -1231,12 +1257,12 @@ function InputShiftPageInner() {
                             <div className="flex flex-col gap-2 mt-1">
                                 <button
                                     onClick={handleSubmit}
-                                    disabled={submitting || isPastDeadline}
-                                    title={isPastDeadline ? 'Window submit sudah berakhir' : undefined}
-                                    className={`flex justify-center items-center gap-2 ${isPastDeadline ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting || isPastDeadline ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    disabled={submitting || isLocked}
+                                    title={isBeforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : isPastDeadline ? 'Window submit sudah berakhir' : undefined}
+                                    className={`flex justify-center items-center gap-2 ${isLocked ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting || isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined text-[20px]">{isPastDeadline ? 'lock' : 'save'}</span>
-                                    {submitting ? 'Menyimpan...' : isPastDeadline ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
+                                    <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
+                                    {submitting ? 'Menyimpan...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                                 </button>
                             </div>
                         </div>
@@ -1404,7 +1430,7 @@ function InputShiftPageInner() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} />
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} />
             )}
         </div>
     );

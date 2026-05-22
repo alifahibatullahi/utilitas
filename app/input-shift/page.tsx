@@ -1078,32 +1078,12 @@ function InputShiftPageInner() {
                                             </div>
                                         </>
                                     )}
-                                    {/* Station mode: badge Station + picker "Diisi oleh" — HANYA tampil di shift mode.
-                                        Untuk harian, picker "Diisi oleh" sudah ada di sidebar InputHarianForm
-                                        (single source supaya tidak duplikat). */}
-                                    {station && inputMode === 'shift' && (
-                                        <>
-                                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
-                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
-                                                {STATION_LABELS[station]}
-                                            </span>
-                                            <span className="text-xs font-bold text-white uppercase tracking-wider">Diisi oleh</span>
-                                            <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                                <select value={fillerName} onChange={e => setFillerName(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
-                                                    <option value="" className="bg-[#101822]">Pilih...</option>
-                                                    {operators.map(op => (
-                                                        <option key={op.id} value={op.name} className="bg-[#101822]">
-                                                            {op.name}{op.group ? ` (Group ${op.group})` : ''}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
-                                            </div>
-                                        </>
-                                    )}
-                                    {/* Station mode harian: cuma tampilkan badge station (picker di sidebar) */}
-                                    {station && inputMode === 'harian' && (
-                                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
+                                    {/* Station mode (shift & harian): cuma tampilkan badge station di header.
+                                        Picker "Diisi oleh" ada di sidebar masing-masing form (style sama). */}
+                                    {station && (
+                                        <span className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold border uppercase tracking-wider ${
+                                            inputMode === 'harian' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                                        }`}>
                                             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
                                             {STATION_LABELS[station]}
                                         </span>
@@ -1266,6 +1246,31 @@ function InputShiftPageInner() {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Station info + Diisi oleh — mirror style harian sidebar */}
+                        {station && (
+                            <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-[#0f1721]/80 border border-slate-700/50 shadow-lg">
+                                <div className="flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-blue-400" style={{ fontSize: 18 }}>badge</span>
+                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Station</span>
+                                    <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
+                                    <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                        <select value={fillerName} onChange={e => setFillerName(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none w-full">
+                                            <option value="" className="bg-[#101822]">Pilih...</option>
+                                            {operators.map(op => (
+                                                <option key={op.id} value={op.name} className="bg-[#101822]">
+                                                    {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Desktop Tab List */}
                         <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg hidden lg:flex flex-col gap-1">

@@ -325,7 +325,7 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                                                   fontSize: 'clamp(1.8rem, 4vw, 3.8rem)', 
                                                   textShadow: '0 0 35px rgba(148,163,184,0.4)' 
                                               }}>
-                                            trending_flat
+                                            waves
                                         </span>
                                     )}
                                 </div>
@@ -922,8 +922,8 @@ export default function TankLevelPage() {
                     100% { opacity: 0; transform: translateY(8px) scale(0.9); }
                 }
                 @keyframes chevronFlat {
-                    0%, 100% { opacity: 0.3; transform: translateX(-4px); }
-                    50% { opacity: 1; transform: translateX(4px); }
+                    0%, 100% { opacity: 0.5; transform: translateY(-2px) scale(0.98); }
+                    50% { opacity: 1; transform: translateY(2px) scale(1.02); }
                 }
             `}} />
             {/* ─────────────────── MOBILE layout (< lg) ─────────────────── */}

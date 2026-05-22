@@ -309,16 +309,30 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             }
         };
 
-        fetchTankLevels().then(() => fetchShiftTankyard());
-        fetchFlowReadings();
-        fetchSolar();
-
-        // Auto-refresh setiap 30 menit sebagai fallback dari realtime subscription
-        const autoRefreshInterval = setInterval(() => {
+        const refreshAll = () => {
             fetchTankLevels().then(() => fetchShiftTankyard());
             fetchFlowReadings();
             fetchSolar();
-        }, 15 * 60 * 1000);
+        };
+
+        refreshAll();
+
+        // Safety-net polling — jaga-jaga kalau websocket realtime drop.
+        const autoRefreshInterval = setInterval(refreshAll, 60 * 1000);
+
+        // Refetch saat tab kembali visible atau jaringan reconnect.
+        // Menangani kasus WS drop saat device sleep / network blip — tanpa
+        // ini, display harus di-refresh manual setelah idle lama.
+        const handleVisibility = () => { if (!document.hidden) refreshAll(); };
+        const handleOnline = () => refreshAll();
+        document.addEventListener('visibilitychange', handleVisibility);
+        window.addEventListener('online', handleOnline);
+
+        const onSubStatus = (channelName: string) => (status: string, err?: Error) => {
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                console.warn(`[useTankData] channel ${channelName} status=${status}`, err);
+            }
+        };
 
         // Realtime: tank_levels
         const levelChannel = supabase
@@ -362,7 +376,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     };
                 });
             })
-            .subscribe();
+            .subscribe(onSubStatus('tank_levels'));
 
         // Realtime: tank_flow_readings (INSERT, UPDATE, DELETE)
         const flowChannel = supabase
@@ -384,7 +398,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     setPumpActiveSince(calcPumpActiveSince(deminRevampHistory));
                 }
             })
-            .subscribe();
+            .subscribe(onSubStatus('tank_flow_readings'));
 
         // Realtime: solar_unloadings (INSERT, UPDATE, DELETE)
         const solarChannel = supabase
@@ -409,7 +423,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     setSolarUnloadings([]);
                 }
             })
-            .subscribe();
+            .subscribe(onSubStatus('solar_unloadings'));
 
         // Realtime: solar_usages (INSERT, UPDATE, DELETE)
         const solarUsageChannel = supabase
@@ -432,10 +446,12 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     setSolarUsages([]);
                 }
             })
-            .subscribe();
+            .subscribe(onSubStatus('solar_usages'));
 
         return () => {
             clearInterval(autoRefreshInterval);
+            document.removeEventListener('visibilitychange', handleVisibility);
+            window.removeEventListener('online', handleOnline);
             supabase.removeChannel(levelChannel);
             supabase.removeChannel(flowChannel);
             supabase.removeChannel(solarChannel);

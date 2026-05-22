@@ -1195,9 +1195,9 @@ function InputShiftPageInner() {
                             </span>
                             <span>
                                 {isBeforeStart
-                                    ? `Window submit ${inputMode === 'shift' ? `shift ${SHIFT_LABELS[selectedShift].toLowerCase()}` : 'laporan harian'} belum dibuka (mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
+                                    ? `Window submit ${inputMode === 'shift' ? SHIFT_LABELS[selectedShift].toLowerCase() : 'laporan harian'} belum dibuka (mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
                                 : isPastDeadline
-                                    ? `Window submit ${inputMode === 'shift' ? `shift ${SHIFT_LABELS[selectedShift].toLowerCase()}` : 'laporan harian'} sudah berakhir (deadline ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
+                                    ? `Window submit ${inputMode === 'shift' ? SHIFT_LABELS[selectedShift].toLowerCase() : 'laporan harian'} sudah berakhir (deadline ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
                                     : `Laporan ini sudah disubmit. Submit ulang akan mengganti data. Deadline koreksi: ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
                             </span>
                         </div>

@@ -47,11 +47,11 @@ function rowsToActiveJobs(rows: ScheduleRow[]): ReminderJob[] {
 
         // Same-day window (start < end)
         if (start <= end) {
-            // Pagi/sore variants: window is in today's date.
             if (nowMinutes >= start && nowMinutes < end) {
-                // Malam shift: report date = yesterday (shift ran 23:00 prev → 07:00 today).
-                const reportDate = row.shift === 'malam' ? yesterday : date;
-                jobs.push({ schedule: row, date: reportDate, nowMinutesShifted: nowMinutes });
+                // ENDING convention: malam D = shift yang submit di hari D.
+                // Reminder malam fires 04:30 D → reportDate = today (= shift end day).
+                // Pagi/sore/harian: reportDate = today.
+                jobs.push({ schedule: row, date, nowMinutesShifted: nowMinutes });
             }
         } else {
             // Wrap window (e.g. 23:00 → 26:00 = 02:00 next day).

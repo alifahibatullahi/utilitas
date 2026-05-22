@@ -450,6 +450,9 @@ export const SHIFT_OPTIONS: { value: ShiftKey; label: string; start: string; end
     { value: 'malam', label: 'Malam (23:00–07:00)', start: '23:00', end: '07:00' },
 ];
 
+// KONVENSI: ENDING — shift malam D = shift yang SUBMIT di hari D
+// (working window 23:00 D-1 → 07:00 D, deadline 09:00 D).
+// Pagi/sore tidak terpengaruh (working sepenuhnya di hari D).
 export function getShiftWindow(date: string, shift: ShiftKey): { start: Date; end: Date } {
     const [y, m, d] = date.split('-').map(Number);
     if (shift === 'pagi') {
@@ -458,8 +461,8 @@ export function getShiftWindow(date: string, shift: ShiftKey): { start: Date; en
     if (shift === 'sore') {
         return { start: new Date(y, m - 1, d, 15, 0, 0), end: new Date(y, m - 1, d, 23, 0, 0) };
     }
-    // malam: 23:00 same day – 07:00 next day
-    return { start: new Date(y, m - 1, d, 23, 0, 0), end: new Date(y, m - 1, d + 1, 7, 0, 0) };
+    // malam D (ENDING): mulai 23:00 D-1, selesai 07:00 D
+    return { start: new Date(y, m - 1, d - 1, 23, 0, 0), end: new Date(y, m - 1, d, 7, 0, 0) };
 }
 
 export function detectCurrentShift(): { shift: ShiftKey; date: string } {
@@ -469,12 +472,11 @@ export function detectCurrentShift(): { shift: ShiftKey; date: string } {
     const fmt = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
     if (h >= 7 && h < 15) return { shift: 'pagi', date: fmt(now) };
     if (h >= 15 && h < 23) return { shift: 'sore', date: fmt(now) };
-    // malam: 23:00+ same day, or 00:00–06:59 = previous day's malam
-    if (h < 7) {
-        const prev = new Date(now); prev.setDate(prev.getDate() - 1);
-        return { shift: 'malam', date: fmt(prev) };
-    }
-    return { shift: 'malam', date: fmt(now) };
+    // malam (ENDING): h<7 = shift sedang berlangsung & selesai 07:00 hari ini → date=today.
+    // h>=23 = shift baru mulai, selesai 07:00 besok → date=tomorrow.
+    if (h < 7) return { shift: 'malam', date: fmt(now) };
+    const next = new Date(now); next.setDate(next.getDate() + 1);
+    return { shift: 'malam', date: fmt(next) };
 }
 
 export const KANBAN_COLUMNS = [

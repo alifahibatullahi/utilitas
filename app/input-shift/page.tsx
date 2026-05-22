@@ -64,26 +64,19 @@ function InputShiftPageInner() {
     const [activeTab, setActiveTab] = useState<TabId>('Boiler A');
     const [inputMode, setInputMode] = useState<'shift' | 'harian'>('shift');
     const [selectedShift, setSelectedShift] = useState<1 | 2 | 3>(() => {
-        const hour = nowWIB().getHours();
-        if (hour >= 6 && hour < 14) return 1;   // 06.00 Malam
-        if (hour >= 14 && hour < 22) return 2;   // 14.00 Pagi
-        return 3;                                 // 22.00 Sore
+        const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
+        return map[detectCurrentShift().shift];
     });
     const [submitting, setSubmitting] = useState(false);
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    const [selectedDate, setSelectedDate] = useState<string>(() => {
-        const wib = nowWIB();
-        const h = wib.getHours();
-        // Shift malam 23:00–07:00 → laporan dibuat pukul 06.00, tanggal = kemarin (shift mulai)
-        if (h >= 6 && h < 14) {
-            const yesterday = new Date(wib.getTime());
-            yesterday.setDate(yesterday.getDate() - 1);
-            return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-        }
-        return todayWIB();
-    });
+    // ENDING convention untuk malam (malam D = submit di hari D). detectCurrentShift handle ini:
+    // - h<7 : malam D=today (shift sedang berjalan, akan submit hari ini)
+    // - h≥7&<15 : pagi D=today
+    // - h≥15&<23 : sore D=today
+    // - h≥23 : malam D=tomorrow (shift baru mulai, submit besok)
+    const [selectedDate, setSelectedDate] = useState<string>(() => detectCurrentShift().date);
     const [mounted, setMounted] = useState(false);
     
     // Header specific states — persist to localStorage
@@ -275,11 +268,11 @@ function InputShiftPageInner() {
         }
         const shift = shiftMap[selectedShift];
         const win = getShiftWindow(selectedDate, shift);
-        let startHour: number, startMin: number, startDayOffset = 0;
+        let startHour: number, startMin: number;
         if (shift === 'pagi') { startHour = 12; startMin = 30; }
         else if (shift === 'sore') { startHour = 20; startMin = 30; }
-        else { startHour = 4; startMin = 30; startDayOffset = 1; } // malam reminder = 04:30 (D+1)
-        const start = new Date(y, m - 1, d + startDayOffset, startHour, startMin, 0);
+        else { startHour = 4; startMin = 30; } // malam reminder = 04:30 D (ENDING convention)
+        const start = new Date(y, m - 1, d, startHour, startMin, 0);
         const end   = new Date(win.end.getTime() + SHIFT_GRACE_HOURS * 60 * 60 * 1000);
         return { start, end };
     }, [inputMode, selectedDate, selectedShift, shiftMap]);

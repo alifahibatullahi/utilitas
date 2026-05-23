@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useOperator } from '@/hooks/useOperator';
 
 interface Props {
     kind: 'shift' | 'daily';
@@ -20,10 +21,6 @@ interface ChannelResult {
     error?: string;
     pdfUrl?: string;
 }
-
-const MOCK_SUPERVISORS = ['Bayu', 'Putra', 'Ade', 'Hendra', 'Fauzan'];
-const MOCK_FOREMEN_TURBIN = ['Rian', 'Fahmi', 'Aris', 'Dwi', 'Eko'];
-const MOCK_FOREMEN_BOILER = ['Taufik', 'Yudi', 'Slamet', 'Agus', 'Budi'];
 
 export function PublishReportModal({
     kind,
@@ -45,6 +42,20 @@ export function PublishReportModal({
     const [supervisor, setSupervisor] = useState('');
     const [foremanTurbin, setForemanTurbin] = useState('');
     const [foremanBoiler, setForemanBoiler] = useState('');
+
+    // Real operators dari useOperator hook, di-filter by jabatan.
+    // Kalau reportGroup diketahui, prioritaskan operator grup itu di atas (sort by group match).
+    const { operators } = useOperator();
+    const sortByGroupMatch = (a: typeof operators[number], b: typeof operators[number]) => {
+        const aMatch = reportGroup && a.group === reportGroup;
+        const bMatch = reportGroup && b.group === reportGroup;
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return a.name.localeCompare(b.name);
+    };
+    const supervisorOptions   = useMemo(() => operators.filter(op => op.jabatan === 'Supervisor').sort(sortByGroupMatch), [operators, reportGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+    const foremanTurbinOptions= useMemo(() => operators.filter(op => op.jabatan === 'Foreman Turbin').sort(sortByGroupMatch), [operators, reportGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+    const foremanBoilerOptions= useMemo(() => operators.filter(op => op.jabatan === 'Foreman Boiler').sort(sortByGroupMatch), [operators, reportGroup]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -207,8 +218,10 @@ export function PublishReportModal({
                                         className="w-full bg-transparent border-none p-0 text-xs font-black text-slate-200 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                     >
                                         <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
-                                        {MOCK_SUPERVISORS.map(name => (
-                                            <option key={name} value={name} className="bg-[#0e1621] text-slate-100">{name}</option>
+                                        {supervisorOptions.map(op => (
+                                            <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
+                                                {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                            </option>
                                         ))}
                                     </select>
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
@@ -225,8 +238,10 @@ export function PublishReportModal({
                                         className="w-full bg-transparent border-none p-0 text-xs font-black text-indigo-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                     >
                                         <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
-                                        {MOCK_FOREMEN_TURBIN.map(name => (
-                                            <option key={name} value={name} className="bg-[#0e1621] text-slate-100">{name}</option>
+                                        {foremanTurbinOptions.map(op => (
+                                            <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
+                                                {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                            </option>
                                         ))}
                                     </select>
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
@@ -243,8 +258,10 @@ export function PublishReportModal({
                                         className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                     >
                                         <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
-                                        {MOCK_FOREMEN_BOILER.map(name => (
-                                            <option key={name} value={name} className="bg-[#0e1621] text-slate-100">{name}</option>
+                                        {foremanBoilerOptions.map(op => (
+                                            <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
+                                                {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                            </option>
                                         ))}
                                     </select>
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>

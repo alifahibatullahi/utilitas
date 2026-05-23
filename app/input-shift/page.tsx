@@ -1203,20 +1203,28 @@ function InputShiftPageInner() {
                 </div>
 
                 {/* Mode & Shift Controls */}
-                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-auto">
+                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-64">
                     {!station && (
-                        <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
+                        <div className="flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 gap-2 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
                             <button
                                 onClick={() => setInputMode('shift')}
-                                className={`flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${inputMode === 'shift' ? 'bg-[#2b7cee] text-white shadow-[0_0_15px_rgba(43,124,238,0.4)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+                                className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
+                                    ${inputMode === 'shift' 
+                                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.3)]' 
+                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                             >
-                                Shift
+                                <span className="material-symbols-outlined text-sm">schedule</span>
+                                <span>Shift</span>
                             </button>
                             <button
                                 onClick={() => setInputMode('harian')}
-                                className={`flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${inputMode === 'harian' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+                                className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
+                                    ${inputMode === 'harian' 
+                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]' 
+                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                             >
-                                Harian
+                                <span className="material-symbols-outlined text-sm">today</span>
+                                <span>Harian</span>
                             </button>
                         </div>
                     )}

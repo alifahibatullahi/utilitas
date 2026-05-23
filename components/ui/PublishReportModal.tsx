@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Props {
     kind: 'shift' | 'daily';
@@ -38,6 +38,16 @@ export function PublishReportModal({
     const [sending, setSending] = useState(false);
     const [copied, setCopied] = useState(false);
     const [results, setResults] = useState<{ pdf?: ChannelResult; text?: ChannelResult } | null>(null);
+
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Auto-adjust textarea height to fit content without internal scrollbar
+    useEffect(() => {
+        if (tab === 'text' && textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [text, tab, open]);
 
     // Load suggested text body from server when modal opens.
     useEffect(() => {
@@ -198,10 +208,10 @@ export function PublishReportModal({
                                             </button>
                                         </div>
                                         <textarea 
+                                            ref={textareaRef}
                                             value={text} 
                                             onChange={e => setText(e.target.value)} 
-                                            rows={14}
-                                            className="w-full bg-transparent border-none text-[11.5px] md:text-xs font-mono focus:outline-none focus:ring-0 text-slate-200 resize-none min-h-[280px] leading-relaxed light-scrollbar" 
+                                            className="w-full bg-transparent border-none text-[11.5px] md:text-xs font-mono focus:outline-none focus:ring-0 text-slate-200 resize-none overflow-hidden leading-relaxed min-h-[200px]" 
                                             placeholder="Tulis laporan di sini..."
                                         />
                                     </div>

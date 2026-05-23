@@ -248,6 +248,7 @@ function InputShiftPageInner() {
     const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift]);
     const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift]);
     const { operator, operators } = useOperator();
+    const isAdmin = operator?.role === 'admin';
 
     // Auto-kalkulasi grup dari pola jadwal shift
     const currentGroup = getGroupForShift(selectedDate, shiftMap[selectedShift]);
@@ -282,8 +283,11 @@ function InputShiftPageInner() {
         const id = setInterval(() => setNowTick(Date.now()), 60_000); // tick per menit
         return () => clearInterval(id);
     }, []);
-    const isBeforeStart  = nowTick < submitWindow.start.getTime();
-    const isPastDeadline = nowTick > submitWindow.end.getTime();
+    const _isBeforeStartRaw = nowTick < submitWindow.start.getTime();
+    const _isPastDeadlineRaw = nowTick > submitWindow.end.getTime();
+    // Admin bisa isi laporan kapan saja, tanpa terikat window submit.
+    const isBeforeStart  = !isAdmin && _isBeforeStartRaw;
+    const isPastDeadline = !isAdmin && _isPastDeadlineRaw;
     const isLocked       = isBeforeStart || isPastDeadline;
     // Backward-compat alias agar refactor minimal
     const submitDeadline = submitWindow.end;
@@ -1197,6 +1201,14 @@ function InputShiftPageInner() {
                     )}
                     {/* Station badge — label statis sudah dipindah ke row 1 header */}
 
+                    {/* Admin badge — admin bypass window submit, bisa isi laporan kapan saja */}
+                    {isAdmin && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-300">
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>admin_panel_settings</span>
+                            <span className="text-xs font-bold uppercase tracking-wider">Admin Override — Bisa isi semua tanggal/shift</span>
+                        </div>
+                    )}
+
                     {inputMode === 'shift' && (
                         <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
                             {[
@@ -1428,7 +1440,7 @@ function InputShiftPageInner() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} />
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} />
             )}
         </div>
     );

@@ -49,17 +49,22 @@ interface InputHarianFormProps {
      *  saat ini di luar window submit (sebelum 23:00 D atau setelah 09:00 D+1). */
     submitWindowStart?: Date;
     submitWindowEnd?: Date;
+    /** Admin bypass — kalau true, tombol SAVE selalu enabled (admin bisa isi kapan saja). */
+    isAdmin?: boolean;
 }
 
-export default function InputHarianForm({ date, operator, groupName, supervisorName, submitWindowStart, submitWindowEnd }: InputHarianFormProps) {
+export default function InputHarianForm({ date, operator, groupName, supervisorName, submitWindowStart, submitWindowEnd, isAdmin = false }: InputHarianFormProps) {
     // Lock state — disable tombol SAVE & banner kalau di luar window.
     const [nowTickH, setNowTickH] = useState(() => Date.now());
     useEffect(() => {
         const id = setInterval(() => setNowTickH(Date.now()), 60_000);
         return () => clearInterval(id);
     }, []);
-    const isHarianBeforeStart = !!submitWindowStart && nowTickH < submitWindowStart.getTime();
-    const isHarianPastEnd     = !!submitWindowEnd   && nowTickH > submitWindowEnd.getTime();
+    const _isHarianBeforeStartRaw = !!submitWindowStart && nowTickH < submitWindowStart.getTime();
+    const _isHarianPastEndRaw     = !!submitWindowEnd   && nowTickH > submitWindowEnd.getTime();
+    // Admin bypass: lock window tidak berlaku untuk admin.
+    const isHarianBeforeStart = !isAdmin && _isHarianBeforeStartRaw;
+    const isHarianPastEnd     = !isAdmin && _isHarianPastEndRaw;
     const isHarianLocked      = isHarianBeforeStart || isHarianPastEnd;
     // Station-based view filter via ?station=<id>
     const searchParams = useSearchParams();

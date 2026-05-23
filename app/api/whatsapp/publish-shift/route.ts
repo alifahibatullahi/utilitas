@@ -6,6 +6,7 @@ import {
     sendFonnteGroup,
     getWhatsappGroup,
     logNotification,
+    renderTemplate,
 } from '@/lib/whatsapp';
 import { htmlToPdf } from '@/lib/pdf';
 import { uploadToR2 } from '@/lib/r2';
@@ -39,7 +40,14 @@ export async function GET(req: NextRequest) {
         .eq('shift_report_id', reportId)
         .order('item', { ascending: true });
 
-    const text = buildShiftTextBody(report, maintenance ?? []);
+    const summary = buildShiftSummary(report, maintenance ?? []);
+    const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
+    const text = await renderTemplate(supabase, 'shift_share', {
+        shift: shiftLabel,
+        group: report.group_name as string,
+        date: report.date as string,
+        summary,
+    });
     return NextResponse.json({ text });
 }
 
@@ -320,16 +328,17 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
 </html>`;
 }
 
+// Returns the `{{summary}}` content for the shift_share template:
+// parameters + maintenance + catatan shift. The template provides the header
+// (e.g. "*Laporan Shift {{shift}} — {{date}}*").
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftTextBody(report: any, maintenance: any[]): string {
-    const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
+function buildShiftSummary(report: any, maintenance: any[]): string {
     const turbin = report.shift_turbin?.[0];
     const gen = report.shift_generator_gi?.[0];
     const boilers = (report.shift_boiler ?? []).sort((a: any, b: any) => (a.boiler ?? '').localeCompare(b.boiler ?? ''));
 
     const lines: string[] = [];
-    lines.push(`📋 *Laporan Shift ${shiftLabel} — ${report.date}*`);
-    lines.push(`Grup ${report.group_name} · Supervisor: ${report.supervisor ?? '-'}`);
+    lines.push(`Supervisor: ${report.supervisor ?? '-'}`);
     lines.push('');
     lines.push('━━━ *PARAMETER OPERASI* ━━━');
     if (boilers.length > 0) {

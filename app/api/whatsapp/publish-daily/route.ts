@@ -6,6 +6,7 @@ import {
     sendFonnteGroup,
     getWhatsappGroup,
     logNotification,
+    renderTemplate,
 } from '@/lib/whatsapp';
 import { htmlToPdf } from '@/lib/pdf';
 import { uploadToR2 } from '@/lib/r2';
@@ -37,7 +38,11 @@ export async function GET(req: NextRequest) {
         .eq('date', report.date as string)
         .order('item', { ascending: true });
 
-    const text = buildDailyTextBody(report, maintenance ?? []);
+    const summary = buildDailySummary(report, maintenance ?? []);
+    const text = await renderTemplate(supabase, 'daily_share', {
+        date: report.date as string,
+        summary,
+    });
     return NextResponse.json({ text });
 }
 
@@ -255,16 +260,15 @@ function buildDailyReportHtml(report: any, maintenance: any[]): string {
 </body></html>`;
 }
 
+// Returns the `{{summary}}` content for the daily_share template.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildDailyTextBody(report: any, maintenance: any[]): string {
+function buildDailySummary(report: any, maintenance: any[]): string {
     const stm = report.daily_report_steam?.[0];
     const pwr = report.daily_report_power?.[0];
     const coal = report.daily_report_coal?.[0];
     const tank = report.daily_report_stock_tank?.[0];
 
     const lines: string[] = [];
-    lines.push(`📋 *Laporan Harian (LHUBB) — ${report.date}*`);
-    lines.push('');
     lines.push('━━━ *PARAMETER OPERASI* ━━━');
     if (stm) {
         lines.push('');

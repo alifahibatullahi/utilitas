@@ -95,9 +95,27 @@ export function PublishReportModal({
             onClick={() => !sending && onClose()}
         >
             <div 
-                className="bg-gradient-to-b from-[#182333] to-[#0e1621] rounded-2xl border border-slate-700/60 max-w-3xl w-full max-h-[92vh] flex flex-col shadow-[0_0_60px_rgba(43,124,238,0.18)] overflow-hidden transform transition-all duration-300 scale-100" 
+                className="relative bg-gradient-to-b from-[#182333] to-[#0e1621] rounded-2xl border border-slate-700/60 max-w-3xl w-full max-h-[92vh] flex flex-col shadow-[0_0_60px_rgba(43,124,238,0.18)] overflow-hidden transform transition-all duration-300 scale-100" 
                 onClick={e => e.stopPropagation()}
             >
+                {/* Loading Overlay */}
+                {sending && (
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center space-y-4">
+                        <div className="relative flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin" />
+                            <div className="absolute w-10 h-10 rounded-full border-4 border-emerald-500/20 border-b-emerald-500 animate-spin duration-1000" />
+                        </div>
+                        <div className="space-y-1 text-center">
+                            <h4 className="text-sm font-bold text-slate-100 uppercase tracking-widest animate-pulse">
+                                Mempublikasikan Laporan
+                            </h4>
+                            <p className="text-[10px] text-slate-400">
+                                Sedang mengirim PDF dan pesan WhatsApp, mohon tunggu...
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Accent Top Bar */}
                 <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-500" />
 
@@ -158,73 +176,36 @@ export function PublishReportModal({
                 <div className="flex-1 overflow-y-auto p-6">
                     {tab === 'text' && (
                         <div className="space-y-4">
-                            {/* Editor Header */}
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="flex items-center gap-1.5 text-emerald-400 font-bold uppercase tracking-wider">
-                                    <span className="material-symbols-outlined text-base">chat</span>
-                                    WhatsApp Broadcast Preview
-                                </span>
-                                <div className="flex items-center gap-3">
-                                    <button 
-                                        onClick={copyToClipboard}
-                                        disabled={loadingText || !text}
-                                        className="flex items-center gap-1.5 hover:text-white bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl transition-all text-[10px] font-bold uppercase tracking-wider cursor-pointer disabled:opacity-40 hover:scale-105 active:scale-95 shadow-sm"
-                                    >
-                                        <span className="material-symbols-outlined text-[12px]">{copied ? 'check' : 'content_copy'}</span>
-                                        {copied ? 'Tersalin' : 'Salin Teks'}
-                                    </button>
-                                    <span className="bg-slate-900/80 px-3 py-1.5 border border-slate-800 rounded-xl text-[10px] font-mono text-slate-300 font-bold">
-                                        {text.length} karakter
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            {/* Highlighted WhatsApp Window Container */}
-                            <div className="bg-[#0b141a] rounded-2xl border border-slate-800/80 shadow-[0_4px_24px_rgba(0,0,0,0.4)] overflow-hidden">
-                                {/* Chat Header */}
-                                <div className="bg-[#202c33] px-4 py-3 flex items-center justify-between border-b border-slate-950/40">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white shadow-md">
-                                            <span className="material-symbols-outlined text-lg">group</span>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs font-black text-slate-100">Grup {washiftKey}</div>
-                                            <div className="text-[9px] text-emerald-400 font-medium flex items-center gap-1">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-                                                Saluran Aktif
-                                            </div>
-                                        </div>
+                            <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
+                                {loadingText ? (
+                                    <div className="flex flex-col items-center justify-center py-20 gap-3">
+                                        <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
+                                        <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat template...</span>
                                     </div>
-                                    <span className="text-[10px] text-slate-400 font-mono bg-slate-950/40 px-2.5 py-0.5 rounded border border-slate-900">Broadcast</span>
-                                </div>
-
-                                {/* Chat Body Area */}
-                                <div className="p-5 bg-gradient-to-b from-[#0b141a] to-[#080d10] relative min-h-[300px] flex flex-col justify-between">
-                                    {loadingText ? (
-                                        <div className="flex flex-col items-center justify-center py-20 gap-3 my-auto mx-auto">
-                                            <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
-                                            <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat template...</span>
+                                ) : (
+                                    <div className="flex flex-col">
+                                        <div className="flex justify-end mb-3">
+                                            <button 
+                                                onClick={copyToClipboard}
+                                                disabled={loadingText || !text}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-40 active:scale-95 border text-[10px] font-bold uppercase tracking-wider
+                                                    ${copied 
+                                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]' 
+                                                        : 'bg-slate-900 border-slate-800 hover:border-slate-700/80 text-slate-400 hover:text-white hover:scale-105 shadow-sm'}`}
+                                            >
+                                                <span className="material-symbols-outlined text-[13px]">{copied ? 'check' : 'content_copy'}</span>
+                                                {copied ? 'Tersalin' : 'Salin Teks'}
+                                            </button>
                                         </div>
-                                    ) : (
-                                        <div className="bg-[#005c4b] text-[#e9edef] rounded-xl p-4 max-w-[90%] self-start relative shadow-[0_2px_12px_rgba(0,0,0,0.3)] border-l-4 border-emerald-400 flex flex-col w-full">
-                                            <textarea 
-                                                value={text} 
-                                                onChange={e => setText(e.target.value)} 
-                                                rows={15}
-                                                className="w-full bg-transparent border-none text-[11px] md:text-xs font-mono focus:outline-none focus:ring-0 text-[#e9edef] resize-none min-h-[260px] leading-relaxed light-scrollbar" 
-                                            />
-                                            <div className="text-[9px] text-emerald-300/80 font-mono text-right mt-1.5 flex items-center justify-end gap-1 select-none">
-                                                <span>Draft</span>
-                                                <span className="material-symbols-outlined text-[10px]">done_all</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-2 text-[11px] text-slate-400 bg-slate-900/30 p-3 rounded-xl border border-slate-800/40">
-                                <span className="material-symbols-outlined text-sm text-cyan-400 flex-shrink-0">info</span>
-                                <p>Teks di atas dapat diedit secara langsung. Perubahan bersifat sementara dan hanya berlaku untuk pengiriman saat ini.</p>
+                                        <textarea 
+                                            value={text} 
+                                            onChange={e => setText(e.target.value)} 
+                                            rows={14}
+                                            className="w-full bg-transparent border-none text-[11.5px] md:text-xs font-mono focus:outline-none focus:ring-0 text-slate-200 resize-none min-h-[280px] leading-relaxed light-scrollbar" 
+                                            placeholder="Tulis laporan di sini..."
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

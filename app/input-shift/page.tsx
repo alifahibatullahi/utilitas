@@ -1203,7 +1203,7 @@ function InputShiftPageInner() {
                 </div>
 
                 {/* Mode & Shift Controls */}
-                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-64">
+                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-[340px]">
                     {!station && (
                         <div className="flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 gap-2 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
                             <button
@@ -1263,7 +1263,7 @@ function InputShiftPageInner() {
                                 <button
                                     key={shift.id}
                                     onClick={() => setSelectedShift(shift.id as 1 | 2 | 3)}
-                                    className={`flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
+                                    className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg text-[10px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
                                         ${selectedShift === shift.id 
                                             ? shift.activeClass 
                                             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}

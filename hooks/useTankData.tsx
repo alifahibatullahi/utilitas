@@ -332,12 +332,34 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     operator: row.operator_name,
                     timestamp: row.created_at,
                     note: row.note || undefined,
+                    trend: row.trend as 'naik' | 'turun' | 'tetap' || undefined,
                 };
                 setCurrentLevels(prev => ({ ...prev, [tankId]: newLevel }));
                 setHistory(prev => {
                     const newHistory = [{ id: prev.length + 1, ...newLevel }, ...prev];
                     setTrendData(buildTrendData(newHistory));
                     return newHistory;
+                });
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tank_levels' }, (payload) => {
+                const row = payload.new as TankLevelRow;
+                const tankId = row.tank_id as TankId;
+                setCurrentLevels(prev => {
+                    const existing = prev[tankId];
+                    // Only update if this row is newer or same as current
+                    if (existing && existing.timestamp && row.created_at < existing.timestamp) return prev;
+                    return {
+                        ...prev,
+                        [tankId]: {
+                            ...existing,
+                            tankId,
+                            level: Number(row.level_pct),
+                            operator: row.operator_name,
+                            timestamp: row.created_at,
+                            note: row.note || undefined,
+                            trend: row.trend as 'naik' | 'turun' | 'tetap' || undefined,
+                        },
+                    };
                 });
             })
             .subscribe();

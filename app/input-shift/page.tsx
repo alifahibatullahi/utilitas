@@ -1231,18 +1231,37 @@ function InputShiftPageInner() {
                     )}
 
                     {inputMode === 'shift' && (
-                        <div className="flex bg-[#0f1721]/80 p-1.5 rounded-xl border border-slate-700/50">
+                        <div className="flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 gap-2 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
                             {[
-                                { id: 1, label: 'Malam (06)', color: 'indigo' },
-                                { id: 2, label: 'Pagi (14)', color: 'amber' },
-                                { id: 3, label: 'Sore (22)', color: 'orange' }
+                                { 
+                                    id: 1, 
+                                    label: 'Malam (06)', 
+                                    icon: 'bedtime', 
+                                    activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.35)] hover:from-indigo-500 hover:to-violet-500' 
+                                },
+                                { 
+                                    id: 2, 
+                                    label: 'Pagi (14)', 
+                                    icon: 'light_mode', 
+                                    activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_14px_rgba(245,158,11,0.35)] hover:from-amber-400 hover:to-yellow-400' 
+                                },
+                                { 
+                                    id: 3, 
+                                    label: 'Sore (22)', 
+                                    icon: 'wb_twilight', 
+                                    activeClass: 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-[0_4px_14px_rgba(234,88,12,0.35)] hover:from-orange-500 hover:to-red-400' 
+                                }
                             ].map(shift => (
                                 <button
                                     key={shift.id}
                                     onClick={() => setSelectedShift(shift.id as 1 | 2 | 3)}
-                                    className={`flex-1 lg:flex-none px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${selectedShift === shift.id ? `bg-${shift.color}-500 text-white shadow-[0_0_10px_rgba(var(--color-${shift.color}-500),0.4)]` : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+                                    className={`flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
+                                        ${selectedShift === shift.id 
+                                            ? shift.activeClass 
+                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                                 >
-                                    {shift.label}
+                                    <span className="material-symbols-outlined text-sm">{shift.icon}</span>
+                                    <span>{shift.label}</span>
                                 </button>
                             ))}
                         </div>

@@ -39,11 +39,12 @@ interface KanbanBoardProps {
     /** Read-only mode (mis. shift sudah lewat) — disable DnD + Lanjut Kerja button. */
     readOnly?: boolean;
     workOrders?: WorkOrderWithPekerjaan[];
+    onOpenDetail?: (id: string, type: 'critical' | 'preventif' | 'modifikasi') => void;
 }
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift, readOnly = false, workOrders }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift, readOnly = false, workOrders, onOpenDetail }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
     const [columnOrders, setColumnOrders] = useState<Record<string, string[]>>({});
 
@@ -192,6 +193,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         boardShift={boardShift}
                         readOnly={readOnly}
                         workOrders={workOrders}
+                        onOpenDetail={onOpenDetail}
                         headerExtra={col.status === 'OPEN' && onOpenSearchChange ? (
                             <div className="px-3 pt-2">
                                 <div className="relative">

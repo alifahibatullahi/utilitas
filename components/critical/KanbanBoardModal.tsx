@@ -30,6 +30,7 @@ interface KanbanBoardModalProps {
      *  Used to compute snapshot saat board dikunci. */
     activityLogs?: BoardActivityLog[];
     workOrders?: WorkOrderWithPekerjaan[];
+    onOpenDetail?: (id: string, type: 'critical' | 'preventif' | 'modifikasi') => void;
 }
 
 export default function KanbanBoardModal({
@@ -40,6 +41,7 @@ export default function KanbanBoardModal({
     photosByMaintId, statusTimeByMaintId, statusActorByMaintId,
     activityLogs,
     workOrders,
+    onOpenDetail,
 }: KanbanBoardModalProps) {
     // Status change langsung — board sync via updated_at timestamp, no manual assignment.
     // Block kalau shift sudah lewat (laporan shift sudah final).
@@ -280,6 +282,7 @@ export default function KanbanBoardModal({
                         statusActorByMaintId={effectiveStatusActor}
                         readOnly={isPastShift}
                         workOrders={workOrders}
+                        onOpenDetail={onOpenDetail}
                     />
                 </div>
 

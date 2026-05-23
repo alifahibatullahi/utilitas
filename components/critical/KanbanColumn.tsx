@@ -25,6 +25,7 @@ interface KanbanColumnProps {
     boardShift?: 'pagi' | 'sore' | 'malam';
     readOnly?: boolean;
     workOrders?: WorkOrderWithPekerjaan[];
+    onOpenDetail?: (id: string, type: 'critical' | 'preventif' | 'modifikasi') => void;
 }
 
 function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, statusActors, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
@@ -77,7 +78,7 @@ function AssignedItemWrapper({ item, photos, statusTimeIso, statusActors, onUnas
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, statusActorByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift, readOnly = false, workOrders }: KanbanColumnProps) {
+export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, statusActorByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift, readOnly = false, workOrders, onOpenDetail }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
@@ -221,16 +222,30 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                             <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${style.badgeBg} ${style.badgeText} ${style.badgeBorder}`}>
                                 {style.label}
                             </span>
-                            <h4 className="text-xs font-black text-slate-800 tracking-tight truncate max-w-[150px]" title={parentTitle}>
+                            <h4 className="text-xs font-black text-slate-800 tracking-tight truncate max-w-[130px]" title={parentTitle}>
                                 {parentTitle}
                             </h4>
+                            <button
+                                onClick={() => {
+                                    const parentId = firstCard.critical_id || firstCard.work_order_id;
+                                    if (parentId) onOpenDetail?.(parentId, parentType);
+                                }}
+                                className={`flex items-center justify-center p-1 rounded-lg text-slate-400 hover:scale-105 transition-all cursor-pointer ${
+                                    parentType === 'critical' ? 'hover:bg-rose-100/80 hover:text-rose-700' :
+                                    parentType === 'preventif' ? 'hover:bg-emerald-100/80 hover:text-emerald-700' :
+                                    'hover:bg-indigo-100/80 hover:text-indigo-700'
+                                }`}
+                                title="Buka Detail"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>open_in_new</span>
+                            </button>
                             <span className="ml-auto text-[9px] font-black text-slate-500 bg-white/70 px-2 py-0.5 rounded-full border border-slate-200 shadow-sm whitespace-nowrap">
                                 {cards.length} Pekerjaan
                             </span>
                         </div>
                         {parentDesc && (
-                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5 leading-tight line-clamp-1 italic" title={parentDesc}>
-                                &ldquo;{parentDesc}&rdquo;
+                            <p className="text-xs text-slate-900 font-bold mt-1.5 leading-snug line-clamp-2" title={parentDesc}>
+                                {parentDesc.charAt(0).toUpperCase() + parentDesc.slice(1)}
                             </p>
                         )}
                     </div>

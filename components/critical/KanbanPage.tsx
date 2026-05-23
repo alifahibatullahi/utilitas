@@ -9,6 +9,8 @@ import type { HarScope, ForemanType } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 import MaintenanceFormModal from './MaintenanceFormModal';
 import CustomCalendarPopover from './CustomCalendarPopover';
+import CriticalDetailModal from './CriticalDetailModal';
+import WorkOrderDetailModal from './WorkOrderDetailModal';
 
 const SHIFT_LABELS: Record<string, string> = { malam: 'Malam', pagi: 'Pagi', sore: 'Sore' };
 
@@ -26,6 +28,15 @@ export default function KanbanPage() {
     const [filterForeman, setFilterForeman] = useState<ForemanType | ''>('');
     const [showForm, setShowForm] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+    // Detail modal & edit states
+    const [expandedCriticalId, setExpandedCriticalId] = useState<string | null>(null);
+    const [expandedWOId, setExpandedWOId] = useState<string | null>(null);
+    const [editingMaintenance, setEditingMaintenance] = useState<any>(null);
+    const [maintenanceInitial, setMaintenanceInitial] = useState<any>(null);
+    const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
+    const [returnToDetailId, setReturnToDetailId] = useState<string | null>(null);
+    const [returnToWOId, setReturnToWOId] = useState<string | null>(null);
 
     const defaultShift = detectCurrentShift();
     const [selectedDate, setSelectedDate] = useState(defaultShift.date);
@@ -235,6 +246,13 @@ export default function KanbanPage() {
                         onMoveStatus={cm.moveMaintenanceStatus}
                         onKonfirmasiShift={cm.konfirmasiShift}
                         workOrders={cm.workOrders}
+                        onOpenDetail={(id, type) => {
+                            if (type === 'critical') {
+                                setExpandedCriticalId(id);
+                            } else {
+                                setExpandedWOId(id);
+                            }
+                        }}
                     />
                 )}
 
@@ -257,14 +275,103 @@ export default function KanbanPage() {
                 )}
             </main>
 
-            {/* Maintenance form modal — light theme version uses same dark modal for now */}
+            {/* Maintenance form modal */}
             <MaintenanceFormModal
-                open={showForm}
-                onClose={() => setShowForm(false)}
-                onSubmit={cm.createMaintenance}
+                open={showForm || showMaintenanceForm || !!editingMaintenance}
+                initial={editingMaintenance || maintenanceInitial}
+                onClose={() => {
+                    setShowForm(false);
+                    setShowMaintenanceForm(false);
+                    setEditingMaintenance(null);
+                    setMaintenanceInitial(null);
+                }}
+                onSubmit={async (data) => {
+                    let res;
+                    if (editingMaintenance) {
+                        res = await cm.updateMaintenance(editingMaintenance.id, data, operator?.name);
+                    } else {
+                        res = await cm.createMaintenance(data);
+                    }
+                    if (!res.error) {
+                        if (returnToDetailId) {
+                            setExpandedCriticalId(returnToDetailId);
+                            setReturnToDetailId(null);
+                        } else if (returnToWOId) {
+                            setExpandedWOId(returnToWOId);
+                            setReturnToWOId(null);
+                        }
+                    }
+                    return res;
+                }}
                 activeCriticals={cm.criticals}
                 operatorName={operator?.name}
             />
+
+            {/* Detail Modals for Kanban View */}
+            {expandedCriticalId && cm.criticals.find(c => c.id === expandedCriticalId) && (() => {
+                const critical = cm.criticals.find(c => c.id === expandedCriticalId)!;
+                return (
+                    <CriticalDetailModal
+                        critical={critical}
+                        rowIndex={0}
+                        onClose={() => setExpandedCriticalId(null)}
+                        onEditMaintenance={(m) => setEditingMaintenance({ ...m, critical_equipment: null })}
+                        onDeleteMaintenance={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
+                        onAddMaintenance={(c) => {
+                            setMaintenanceInitial(c ? {
+                                critical_id: c.id,
+                                item: c.item,
+                                scope: c.scope,
+                                foreman: c.foreman,
+                                date: new Date().toISOString().split('T')[0],
+                            } : { date: new Date().toISOString().split('T')[0] });
+                            if (c?.id) { setReturnToDetailId(c.id); setExpandedCriticalId(null); }
+                            setShowMaintenanceForm(true);
+                        }}
+                        onRefresh={cm.refetch}
+                        fetchPhotos={cm.fetchPhotos}
+                        deletePhoto={cm.deletePhoto}
+                        operatorName={operator?.name}
+                        addActivityNote={cm.addActivityNote}
+                        onChangeMaintenanceStatus={async (id, newStatus, actor) => {
+                            return await cm.moveMaintenanceStatus(id, newStatus, actor);
+                        }}
+                    />
+                );
+            })()}
+
+            {expandedWOId && cm.workOrders.find(w => w.id === expandedWOId) && (() => {
+                const wo = cm.workOrders.find(w => w.id === expandedWOId)!;
+                return (
+                    <WorkOrderDetailModal
+                        workOrder={wo}
+                        rowIndex={0}
+                        onClose={() => setExpandedWOId(null)}
+                        onEditPekerjaan={(m) => setEditingMaintenance({ ...m, critical_equipment: null })}
+                        onDeletePekerjaan={async (id) => { await cm.deleteMaintenance(id, operator?.name); }}
+                        onAddPekerjaan={(wData) => {
+                            setMaintenanceInitial({
+                                work_order_id: wData.id,
+                                item: wData.item,
+                                scope: wData.scope,
+                                foreman: wData.foreman,
+                                date: new Date().toISOString().split('T')[0],
+                            });
+                            setReturnToWOId(wData.id);
+                            setExpandedWOId(null);
+                            setShowMaintenanceForm(true);
+                        }}
+                        onRefresh={cm.refetch}
+                        fetchPhotos={cm.fetchWOPhotos}
+                        deletePhoto={cm.deletePhoto}
+                        operatorName={operator?.name}
+                        addActivityNote={cm.addWOActivityNote}
+                        onChangePekerjaanStatus={async (id, newStatus, actor) => {
+                            return await cm.moveMaintenanceStatus(id, newStatus, actor);
+                        }}
+                    />
+                );
+            })()}
         </div>
     );
 }

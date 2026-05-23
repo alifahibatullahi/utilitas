@@ -478,6 +478,13 @@ export default function CriticalPage() {
                 statusActorByMaintId={statusActorByMaintId}
                 activityLogs={allMaintActivityLogs}
                 workOrders={cm.workOrders}
+                onOpenDetail={(id, type) => {
+                    if (type === 'critical') {
+                        setExpandedCriticalId(id);
+                    } else {
+                        setExpandedWOId(id);
+                    }
+                }}
             />
 
             {/* Modals — create */}

@@ -151,91 +151,109 @@ export function PublishReportModal({
                 {/* Body Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                     {tab === 'text' && (
-                        <div className="bg-slate-950/40 border border-slate-800 p-4.5 rounded-xl space-y-3.5">
+                        <div className="space-y-4">
+                            {/* Editor Header */}
                             <div className="flex items-center justify-between text-xs">
-                                <span className="uppercase font-bold tracking-wider text-slate-400">Isi Pesan WhatsApp (Editable)</span>
+                                <span className="flex items-center gap-1.5 text-emerald-400 font-bold uppercase tracking-wider">
+                                    <span className="material-symbols-outlined text-base">chat</span>
+                                    WhatsApp Broadcast Preview
+                                </span>
                                 <div className="flex items-center gap-3">
                                     <button 
                                         onClick={copyToClipboard}
                                         disabled={loadingText || !text}
-                                        className="flex items-center gap-1.5 hover:text-white bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer disabled:opacity-40"
+                                        className="flex items-center gap-1.5 hover:text-white bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl transition-all text-[10px] font-bold uppercase tracking-wider cursor-pointer disabled:opacity-40 hover:scale-105 active:scale-95 shadow-sm"
                                     >
                                         <span className="material-symbols-outlined text-[12px]">{copied ? 'check' : 'content_copy'}</span>
                                         {copied ? 'Tersalin' : 'Salin Teks'}
                                     </button>
-                                    <span className="bg-slate-900/80 px-2.5 py-1 border border-slate-800 rounded-lg text-[10px] font-mono text-slate-300">
+                                    <span className="bg-slate-900/80 px-3 py-1.5 border border-slate-800 rounded-xl text-[10px] font-mono text-slate-300 font-bold">
                                         {text.length} karakter
                                     </span>
                                 </div>
                             </div>
                             
-                            {loadingText ? (
-                                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                                    <span className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent" />
-                                    <span className="text-slate-400 text-xs font-semibold">Memuat template laporan...</span>
+                            {/* Highlighted WhatsApp Window Container */}
+                            <div className="bg-[#0b141a] rounded-2xl border border-slate-800/80 shadow-[0_4px_24px_rgba(0,0,0,0.4)] overflow-hidden">
+                                {/* Chat Header */}
+                                <div className="bg-[#202c33] px-4 py-3 flex items-center justify-between border-b border-slate-950/40">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white shadow-md">
+                                            <span className="material-symbols-outlined text-lg">group</span>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-black text-slate-100">Grup {washiftKey}</div>
+                                            <div className="text-[9px] text-emerald-400 font-medium flex items-center gap-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+                                                Saluran Aktif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-mono bg-slate-950/40 px-2.5 py-0.5 rounded border border-slate-900">Broadcast</span>
                                 </div>
-                            ) : (
-                                <textarea 
-                                    value={text} 
-                                    onChange={e => setText(e.target.value)} 
-                                    rows={12}
-                                    className="w-full bg-slate-950/80 border border-slate-800/80 rounded-lg p-3 text-white text-xs font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all duration-150 resize-none min-h-[280px] light-scrollbar" 
-                                />
-                            )}
+
+                                {/* Chat Body Area */}
+                                <div className="p-5 bg-gradient-to-b from-[#0b141a] to-[#080d10] relative min-h-[300px] flex flex-col justify-between">
+                                    {loadingText ? (
+                                        <div className="flex flex-col items-center justify-center py-20 gap-3 my-auto mx-auto">
+                                            <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
+                                            <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat template...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-[#005c4b] text-[#e9edef] rounded-xl p-4 max-w-[90%] self-start relative shadow-[0_2px_12px_rgba(0,0,0,0.3)] border-l-4 border-emerald-400 flex flex-col w-full">
+                                            <textarea 
+                                                value={text} 
+                                                onChange={e => setText(e.target.value)} 
+                                                rows={15}
+                                                className="w-full bg-transparent border-none text-[11px] md:text-xs font-mono focus:outline-none focus:ring-0 text-[#e9edef] resize-none min-h-[260px] leading-relaxed light-scrollbar" 
+                                            />
+                                            <div className="text-[9px] text-emerald-300/80 font-mono text-right mt-1.5 flex items-center justify-end gap-1 select-none">
+                                                <span>Draft</span>
+                                                <span className="material-symbols-outlined text-[10px]">done_all</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                             
-                            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 bg-slate-900/30 p-3 rounded-xl border border-slate-800/40">
                                 <span className="material-symbols-outlined text-sm text-cyan-400 flex-shrink-0">info</span>
-                                <p>Berisi parameter operasional, list maintenance, dan catatan shift. Silakan edit bebas sebelum mempublikasikan.</p>
+                                <p>Teks di atas dapat diedit secara langsung. Perubahan bersifat sementara dan hanya berlaku untuk pengiriman saat ini.</p>
                             </div>
                         </div>
                     )}
 
                     {tab === 'pdf' && (
-                        <div className="space-y-4">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Detail Dokumen PDF</p>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                                {/* Card 1: Engine */}
-                                <div className="bg-slate-950/40 border border-slate-800 p-4 rounded-xl space-y-2 flex flex-col">
-                                    <div className="bg-blue-500/10 text-blue-400 w-8 h-8 rounded-lg flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-lg">auto_settings</span>
+                        <div className="space-y-4 py-6">
+                            <div className="max-w-md mx-auto">
+                                <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-5 shadow-[0_4px_20px_rgba(0,0,0,0.35)] relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-rose-500 to-amber-500" />
+                                    
+                                    {/* Glowing PDF File Icon */}
+                                    <div className="w-16 h-16 bg-rose-500/10 text-rose-400 rounded-2xl flex items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.12)] border border-rose-500/20">
+                                        <span className="material-symbols-outlined text-4xl">picture_as_pdf</span>
                                     </div>
-                                    <span className="text-xs font-bold text-slate-200">Engine Render</span>
-                                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                                        Menyusun tabel parameter, log aktivitas maintenance, dan catatan ke PDF menggunakan engine server (Puppeteer).
-                                    </p>
-                                </div>
-                                
-                                {/* Card 2: Target */}
-                                <div className="bg-slate-950/40 border border-slate-800 p-4 rounded-xl space-y-2 flex flex-col">
-                                    <div className="bg-emerald-500/10 text-emerald-400 w-8 h-8 rounded-lg flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-lg">send_and_archive</span>
+                                    
+                                    {/* Document Details */}
+                                    <div className="space-y-1.5">
+                                        <div className="text-sm font-extrabold text-slate-100 font-mono tracking-tight break-all">
+                                            Laporan_{kindLabel}_{reportId || 'Preview'}.pdf
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                                            Tautan pratinjau layout cetak resmi yang akan dipublikasikan ke grup <span className="text-emerald-400 font-bold">{pdfGroupKey}</span>.
+                                        </p>
                                     </div>
-                                    <span className="text-xs font-bold text-slate-200">Tujuan Kirim</span>
-                                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                                        Mengirimkan file PDF secara langsung ke saluran komunikasi tim manajemen (<code className="text-emerald-400">{pdfGroupKey}</code>).
-                                    </p>
-                                </div>
-
-                                {/* Card 3: Layout */}
-                                <div className="bg-slate-950/40 border border-slate-800 p-4 rounded-xl space-y-2 flex flex-col">
-                                    <div className="bg-purple-500/10 text-purple-400 w-8 h-8 rounded-lg flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-lg">fact_check</span>
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-200">Format Laporan</span>
-                                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                                        Dokumen PDF memuat visualisasi layout penuh yang siap diunduh, dicetak, atau diarsipkan.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl flex gap-3 items-start">
-                                <span className="material-symbols-outlined text-amber-400 text-lg flex-shrink-0">warning</span>
-                                <div className="space-y-1">
-                                    <div className="text-xs font-bold text-amber-300">Catatan Khusus PDF</div>
-                                    <p className="text-[11px] text-amber-200/70 leading-relaxed">
-                                        Tidak ada pesan teks/caption pendukung yang dikirim bersamanya (hanya file PDF). Waktu generate memerlukan waktu sekitar 10–30 detik.
-                                    </p>
+                                    
+                                    {/* Preview Button */}
+                                    <a 
+                                        href={`/laporan-${kind === 'shift' ? 'shift' : 'harian'}/preview`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="flex items-center gap-2.5 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-rose-300 hover:text-rose-200 border border-slate-800 hover:border-slate-700/80 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-md hover:scale-[1.03] active:scale-[0.97]"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">visibility</span>
+                                        Buka Link PDF Tertaut
+                                    </a>
                                 </div>
                             </div>
                         </div>

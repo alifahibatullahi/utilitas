@@ -21,6 +21,10 @@ interface ChannelResult {
     pdfUrl?: string;
 }
 
+const MOCK_SUPERVISORS = ['Bayu', 'Putra', 'Ade', 'Hendra', 'Fauzan'];
+const MOCK_FOREMEN_TURBIN = ['Rian', 'Fahmi', 'Aris', 'Dwi', 'Eko'];
+const MOCK_FOREMEN_BOILER = ['Taufik', 'Yudi', 'Slamet', 'Agus', 'Budi'];
+
 export function PublishReportModal({
     kind,
     reportId,
@@ -38,6 +42,9 @@ export function PublishReportModal({
     const [sending, setSending] = useState(false);
     const [copied, setCopied] = useState(false);
     const [results, setResults] = useState<{ pdf?: ChannelResult; text?: ChannelResult } | null>(null);
+    const [supervisor, setSupervisor] = useState('');
+    const [foremanTurbin, setForemanTurbin] = useState('');
+    const [foremanBoiler, setForemanBoiler] = useState('');
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -179,6 +186,71 @@ export function PublishReportModal({
                             <span className="material-symbols-outlined text-base">picture_as_pdf</span>
                             PDF ke {pdfGroupKey}
                         </button>
+                    </div>
+                </div>
+
+                {/* Personnel Selection */}
+                <div className="px-6 pt-4">
+                    <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                            <span className="material-symbols-outlined text-[14px] text-blue-400">badge</span>
+                            Penanggung Jawab Laporan
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {/* Supervisor Dropdown */}
+                            <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Supervisor</label>
+                                <div className="relative flex items-center">
+                                    <select 
+                                        value={supervisor} 
+                                        onChange={e => setSupervisor(e.target.value)} 
+                                        className="w-full bg-transparent border-none p-0 text-xs font-black text-slate-200 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
+                                    >
+                                        <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
+                                        {MOCK_SUPERVISORS.map(name => (
+                                            <option key={name} value={name} className="bg-[#0e1621] text-slate-100">{name}</option>
+                                        ))}
+                                    </select>
+                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
+                                </div>
+                            </div>
+
+                            {/* Foreman Turbin Dropdown */}
+                            <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Turbin</label>
+                                <div className="relative flex items-center">
+                                    <select 
+                                        value={foremanTurbin} 
+                                        onChange={e => setForemanTurbin(e.target.value)} 
+                                        className="w-full bg-transparent border-none p-0 text-xs font-black text-indigo-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
+                                    >
+                                        <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
+                                        {MOCK_FOREMEN_TURBIN.map(name => (
+                                            <option key={name} value={name} className="bg-[#0e1621] text-slate-100">{name}</option>
+                                        ))}
+                                    </select>
+                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
+                                </div>
+                            </div>
+
+                            {/* Foreman Boiler Dropdown */}
+                            <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Boiler</label>
+                                <div className="relative flex items-center">
+                                    <select 
+                                        value={foremanBoiler} 
+                                        onChange={e => setForemanBoiler(e.target.value)} 
+                                        className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
+                                    >
+                                        <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
+                                        {MOCK_FOREMEN_BOILER.map(name => (
+                                            <option key={name} value={name} className="bg-[#0e1621] text-slate-100">{name}</option>
+                                        ))}
+                                    </select>
+                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -1062,18 +1062,22 @@ function InputShiftPageInner() {
                                         {group ? `Group ${group}` : 'Off'}
                                     </span>
                                     {inputMode === 'shift' && !station && (
-                                        <>
-                                            <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
-                                            <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                                <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
-                                                    <option value="" className="bg-[#101822]">Pilih...</option>
+                                        <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[140px]">
+                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-tight select-none">Supervisor</span>
+                                            <div className="relative w-full flex items-center">
+                                                <select 
+                                                    value={supervisor} 
+                                                    onChange={e => setSupervisor(e.target.value)} 
+                                                    className="w-full bg-transparent border-none p-0 text-xs font-black text-slate-100 focus:ring-0 cursor-pointer appearance-none outline-none"
+                                                >
+                                                    <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
                                                     {supervisorOptions.map(op => (
-                                                        <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
+                                                        <option key={op.id} value={op.name} className="bg-[#101822] text-slate-100">{op.name}</option>
                                                     ))}
                                                 </select>
-                                                <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                             </div>
-                                        </>
+                                            <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
+                                        </div>
                                     )}
                                     {/* Station mode (shift & harian): cuma tampilkan badge station di header.
                                         Picker "Diisi oleh" ada di sidebar masing-masing form (style sama). */}
@@ -1120,41 +1124,58 @@ function InputShiftPageInner() {
                         <span className="text-slate-600 hidden sm:inline">|</span>
 
                         {inputMode === 'harian' && !station && (
-                            <>
-                                <span className="text-xs font-bold text-white uppercase tracking-wider">Supervisor</span>
-                                <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                    <select value={supervisor} onChange={e => setSupervisor(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none">
-                                        <option value="" className="bg-[#101822]">Pilih...</option>
+                            <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[140px]">
+                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-tight select-none">Supervisor</span>
+                                <div className="relative w-full flex items-center">
+                                    <select 
+                                        value={supervisor} 
+                                        onChange={e => setSupervisor(e.target.value)} 
+                                        className="w-full bg-transparent border-none p-0 text-xs font-black text-slate-100 focus:ring-0 cursor-pointer appearance-none outline-none"
+                                    >
+                                        <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
                                         {supervisorOptions.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
+                                            <option key={op.id} value={op.name} className="bg-[#101822] text-slate-100">{op.name}</option>
                                         ))}
                                     </select>
-                                    <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                 </div>
-                            </>
+                                <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
+                            </div>
                         )}
 
                         {inputMode === 'shift' && !station && (
                             <>
-                                <span className="text-xs font-bold text-white uppercase tracking-wider">Foreman Boiler</span>
-                                <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                    <select value={foremanBoiler} onChange={e => setForemanBoiler(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none">
-                                        <option value="" className="bg-[#101822]">Pilih...</option>
-                                        {foremanBoilerOptions.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
-                                        ))}
-                                    </select>
-                                    <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[140px]">
+                                    <span className="text-[8px] font-bold text-amber-400 uppercase tracking-widest leading-tight select-none">Foreman Boiler</span>
+                                    <div className="relative w-full flex items-center">
+                                        <select 
+                                            value={foremanBoiler} 
+                                            onChange={e => setForemanBoiler(e.target.value)} 
+                                            className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none"
+                                        >
+                                            <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
+                                            {foremanBoilerOptions.map(op => (
+                                                <option key={op.id} value={op.name} className="bg-[#101822] text-amber-100">{op.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                 </div>
-                                <span className="text-xs font-bold text-white uppercase tracking-wider">Foreman Turbin</span>
-                                <div className="flex items-center gap-1.5 bg-[#0f1721] px-2 py-1.5 rounded-lg border border-slate-700/50 shadow-sm relative pr-5">
-                                    <select value={foremanTurbin} onChange={e => setForemanTurbin(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-indigo-100 focus:ring-0 cursor-pointer appearance-none outline-none">
-                                        <option value="" className="bg-[#101822]">Pilih...</option>
-                                        {foremanTurbinOptions.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#101822]">{op.name}</option>
-                                        ))}
-                                    </select>
-                                    <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+
+                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[140px]">
+                                    <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest leading-tight select-none">Foreman Turbin</span>
+                                    <div className="relative w-full flex items-center">
+                                        <select 
+                                            value={foremanTurbin} 
+                                            onChange={e => setForemanTurbin(e.target.value)} 
+                                            className="w-full bg-transparent border-none p-0 text-xs font-black text-indigo-100 focus:ring-0 cursor-pointer appearance-none outline-none"
+                                        >
+                                            <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
+                                            {foremanTurbinOptions.map(op => (
+                                                <option key={op.id} value={op.name} className="bg-[#101822] text-indigo-100">{op.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                 </div>
                             </>
                         )}

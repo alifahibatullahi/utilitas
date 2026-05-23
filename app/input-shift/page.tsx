@@ -1105,6 +1105,12 @@ function InputShiftPageInner() {
                                         )}
                                     </div>
 
+                                    {formattedDate && (
+                                        <span className="text-sm font-bold text-slate-300 bg-slate-900/60 px-3 py-2.5 rounded-xl border border-slate-800 capitalize hidden sm:inline-block shadow-sm">
+                                            {formattedDate}
+                                        </span>
+                                    )}
+
                                     {/* Station mode (shift & harian): cuma tampilkan badge station di header.
                                         Picker "Diisi oleh" ada di sidebar masing-masing form (style sama). */}
                                     {station && (
@@ -1139,12 +1145,6 @@ function InputShiftPageInner() {
                                 </div>
                                 <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                             </div>
-                        )}
-
-                        {formattedDate && (
-                            <span className="text-sm font-bold text-slate-300 bg-slate-900/60 px-3 py-2.5 rounded-lg border border-slate-800 capitalize hidden sm:inline-block shadow-sm">
-                                {formattedDate}
-                            </span>
                         )}
 
                         {!station && <span className="text-slate-600 hidden sm:inline">|</span>}

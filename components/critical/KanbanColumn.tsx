@@ -37,28 +37,11 @@ interface KanbanColumnProps {
     onOpenDetail?: (id: string, type: 'critical' | 'preventif' | 'modifikasi') => void;
 }
 
-function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, statusActors, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
-    const [loading, setLoading] = useState(false);
-    const handleKonfirmasi = async () => {
-        if (!onKonfirmasi) return;
-        setLoading(true);
-        await onKonfirmasi(item.id);
-        setLoading(false);
-    };
+function PrevItemWrapper({ item, photos, statusTimeIso, statusActors, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
+    // Lanjut Kerja sekarang dilakukan via drag dari "Shift Sebelumnya" ke "Shift Ini" — button dihapus.
     return (
-        <div className="relative opacity-80 hover:opacity-100 transition-opacity">
+        <div className="opacity-80 hover:opacity-100 transition-opacity">
             <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} statusActors={statusActors} boardDate={boardDate} boardShift={boardShift} />
-            {onKonfirmasi && (
-                <button
-                    onClick={handleKonfirmasi}
-                    disabled={loading}
-                    className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200 transition-colors cursor-pointer disabled:opacity-50"
-                    title="Tandai ada pekerjaan di shift ini → maintenance masuk laporan shift"
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{loading ? 'progress_activity' : 'add_task'}</span>
-                    {loading ? 'Memproses…' : '+ Lanjut Kerja di Shift Ini'}
-                </button>
-            )}
         </div>
     );
 }
@@ -354,6 +337,9 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                                     {prevItems.length} Pekerjaan
                                 </span>
                             </div>
+                            {!readOnly && prevItems.length > 0 && (
+                                <p className="px-1.5 text-[9px] italic text-slate-500">Drag ke <span className="font-bold text-amber-700">Shift Ini</span> untuk lanjut kerja</p>
+                            )}
                             <DroppableSection id="IP_PREV" className="p-2 rounded-2xl min-h-[100px] space-y-1.5 border border-dashed border-slate-200 bg-slate-50/50">
                                 <SortableContext items={prevItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                                     {renderGroups(prevItems, 'prev', true)}

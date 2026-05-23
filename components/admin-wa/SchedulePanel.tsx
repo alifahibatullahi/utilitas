@@ -54,8 +54,11 @@ export default function SchedulePanel() {
             <div>
                 <h3 className="text-sm font-bold text-white">Jadwal Reminder</h3>
                 <p className="text-xs text-text-secondary mt-1">
-                    Cron eksternal (cron-job.org) memanggil endpoint setiap 15 menit. Endpoint membaca jadwal di sini untuk menentukan kapan kirim WA.
-                    Untuk jam stop yang melewati tengah malam, gunakan jam &gt; 23 (mis. <code className="text-amber-300">26:00</code> = 02:00 hari berikutnya).
+                    Reminder dikirim <b>1x per shift</b> (tidak repeat). Cron eksternal ping endpoint tiap 15 menit;
+                    pengiriman pertama setelah <b>Jam mulai</b> akan trigger send, lalu di-skip permanen sampai laporan berikutnya.
+                </p>
+                <p className="text-xs text-text-secondary mt-1">
+                    <b>Jam selesai</b> = batas akhir window (kalau cron baru aktif setelah jam ini, reminder dilewat). Untuk jam yang melewati tengah malam, gunakan jam &gt; 23 (mis. <code className="text-amber-300">26:00</code> = 02:00 hari berikutnya).
                 </p>
             </div>
 
@@ -80,12 +83,11 @@ export default function SchedulePanel() {
                             </label>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <Field label="Mulai jam" value={r.start_hour} min={0} max={23} onChange={v => update(r.id, { start_hour: v })} />
                             <Field label="Mulai menit" value={r.start_minute} min={0} max={59} onChange={v => update(r.id, { start_minute: v })} />
                             <Field label="Selesai jam" value={r.end_hour} min={0} max={47} onChange={v => update(r.id, { end_hour: v })} hint=">23 = next day" />
                             <Field label="Selesai menit" value={r.end_minute} min={0} max={59} onChange={v => update(r.id, { end_minute: v })} />
-                            <Field label="Throttle (menit)" value={r.throttle_minutes} min={1} max={1440} onChange={v => update(r.id, { throttle_minutes: v })} />
                         </div>
 
                         <div className="flex justify-end mt-4">

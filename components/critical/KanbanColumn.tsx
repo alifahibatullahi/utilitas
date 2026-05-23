@@ -37,11 +37,33 @@ interface KanbanColumnProps {
     onOpenDetail?: (id: string, type: 'critical' | 'preventif' | 'modifikasi') => void;
 }
 
-function PrevItemWrapper({ item, photos, statusTimeIso, statusActors, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
-    // Lanjut Kerja sekarang dilakukan via drag dari "Shift Sebelumnya" ke "Shift Ini" — button dihapus.
+function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, statusActors, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
+    const [loading, setLoading] = useState(false);
+    const handleKonfirmasi = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!onKonfirmasi) return;
+        setLoading(true);
+        const res = await onKonfirmasi(item.id);
+        setLoading(false);
+        if (res?.error) {
+            alert(`Gagal: ${res.error}`);
+        }
+    };
     return (
         <div className="opacity-80 hover:opacity-100 transition-opacity">
             <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} statusActors={statusActors} boardDate={boardDate} boardShift={boardShift} />
+            {onKonfirmasi && (
+                <button
+                    onClick={handleKonfirmasi}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    disabled={loading}
+                    className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Tandai ada pekerjaan di shift ini → maintenance masuk laporan shift"
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{loading ? 'progress_activity' : 'add_task'}</span>
+                    {loading ? 'Memproses…' : '+ Lanjut Kerja di Shift Ini'}
+                </button>
+            )}
         </div>
     );
 }

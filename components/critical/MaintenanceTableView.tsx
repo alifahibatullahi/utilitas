@@ -61,16 +61,16 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             return { mode: 'window' as const, startMs: w.start.getTime(), endMs: w.end.getTime() };
         }
         if (dateMode === 'today') {
-            const today = todayWIB();
-            return { mode: 'date' as const, from: today, to: today };
+            // Hari ini sampai terbaru — semua dengan date >= today (termasuk masa depan)
+            return { mode: 'from' as const, from: todayWIB() };
         }
-        // last_1_day: kemarin + hari ini
+        // last_1_day: kemarin sampai terbaru — semua dengan date >= kemarin
         const today = todayWIB();
         const [y, m, d] = today.split('-').map(Number);
         const yesterday = new Date(y, m - 1, d - 1);
         const pad = (n: number) => String(n).padStart(2, '0');
         const yStr = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
-        return { mode: 'date' as const, from: yStr, to: today };
+        return { mode: 'from' as const, from: yStr };
     }, [dateMode]);
 
     const matchesDate = (m: MaintenanceWithCritical): boolean => {
@@ -79,7 +79,8 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             const t = new Date(m.updated_at).getTime();
             return t >= dateFilter.startMs && t <= dateFilter.endMs;
         }
-        return m.date >= dateFilter.from && m.date <= dateFilter.to;
+        // mode 'from': inclusive lower bound, no upper bound
+        return m.date >= dateFilter.from;
     };
 
     const filtered = useMemo(() => {

@@ -573,16 +573,16 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
             return { mode: 'window' as const, startMs: w.start.getTime(), endMs: w.end.getTime() };
         }
         if (dateMode === 'today') {
-            const t = todayWIB();
-            return { mode: 'date' as const, from: t, to: t };
+            // Hari ini sampai terbaru — semua dengan date >= today (termasuk masa depan)
+            return { mode: 'from' as const, from: todayWIB() };
         }
-        // last_1_day: kemarin + hari ini
+        // last_1_day: kemarin sampai terbaru — semua dengan date >= kemarin
         const today = todayWIB();
         const [y, m, d] = today.split('-').map(Number);
         const yesterday = new Date(y, m - 1, d - 1);
         const pad = (n: number) => String(n).padStart(2, '0');
         const yStr = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
-        return { mode: 'date' as const, from: yStr, to: today };
+        return { mode: 'from' as const, from: yStr };
     })();
 
     const matchesDateFilter = (row: { date: string; updated_at: string }): boolean => {
@@ -591,7 +591,8 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
             const t = new Date(row.updated_at).getTime();
             return t >= dateFilter.startMs && t <= dateFilter.endMs;
         }
-        return row.date >= dateFilter.from && row.date <= dateFilter.to;
+        // mode 'from': inclusive lower bound, no upper bound
+        return row.date >= dateFilter.from;
     };
 
     const tabCounts = {

@@ -8,7 +8,7 @@ import { KANBAN_COLUMNS } from '@/lib/constants';
 import KanbanCard from './KanbanCard';
 
 interface KanbanColumnProps {
-    status: CriticalStatus;
+    status: 'OPEN' | 'IP' | 'IP_PREV' | 'OK' | 'CLOSED';
     items: MaintenanceWithCritical[];
     prevItems?: MaintenanceWithCritical[];
     hiddenFuture?: number;
@@ -80,24 +80,55 @@ function AssignedItemWrapper({ item, photos, statusTimeIso, statusActors, onUnas
 
 export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, statusActorByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift, readOnly = false, workOrders, onOpenDetail }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
-    const config = KANBAN_COLUMNS.find(c => c.id === status)!;
+    const baseConfig = KANBAN_COLUMNS.find(c => c.id === (status === 'IP_PREV' ? 'IP' : status))!;
+    const config = status === 'IP_PREV' ? {
+        ...baseConfig,
+        label: 'In Progress (Sebelumnya)',
+        bgColor: 'bg-slate-50',
+        borderColor: 'border-slate-300',
+        textColor: 'text-slate-700',
+        badgeBg: 'bg-slate-200/80',
+    } : status === 'IP' ? {
+        ...baseConfig,
+        label: 'In Progress (Shift Ini)',
+    } : baseConfig;
 
     function renderCardOrWrapper(item: MaintenanceWithCritical, flatIdx: number, totalLen: number, withControls: boolean) {
+        const card = (
+            <KanbanCard
+                item={item}
+                photos={photosByMaintId?.[item.id]}
+                statusTimeIso={statusTimeByMaintId?.[item.id]}
+                statusActors={statusActorByMaintId?.[item.id]}
+                boardDate={boardDate}
+                boardShift={boardShift}
+                index={flatIdx + 1}
+                isFirst={flatIdx === 0}
+                isLast={flatIdx === totalLen - 1}
+                onMoveUp={withControls ? () => onMoveInColumn?.(item.id, 'up') : undefined}
+                onMoveDown={withControls ? () => onMoveInColumn?.(item.id, 'down') : undefined}
+            />
+        );
+
+        if (status === 'IP_PREV') {
+            return (
+                <div key={item.id}>
+                    <PrevItemWrapper
+                        item={item}
+                        onKonfirmasi={readOnly ? undefined : onKonfirmasiShift}
+                        photos={photosByMaintId?.[item.id]}
+                        statusTimeIso={statusTimeByMaintId?.[item.id]}
+                        statusActors={statusActorByMaintId?.[item.id]}
+                        boardDate={boardDate}
+                        boardShift={boardShift}
+                    />
+                </div>
+            );
+        }
+
         return (
             <div key={item.id}>
-                <KanbanCard
-                    item={item}
-                    photos={photosByMaintId?.[item.id]}
-                    statusTimeIso={statusTimeByMaintId?.[item.id]}
-                    statusActors={statusActorByMaintId?.[item.id]}
-                    boardDate={boardDate}
-                    boardShift={boardShift}
-                    index={flatIdx + 1}
-                    isFirst={flatIdx === 0}
-                    isLast={flatIdx === totalLen - 1}
-                    onMoveUp={withControls ? () => onMoveInColumn?.(item.id, 'up') : undefined}
-                    onMoveDown={withControls ? () => onMoveInColumn?.(item.id, 'down') : undefined}
-                />
+                {card}
             </div>
         );
     }
@@ -244,8 +275,8 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                             </span>
                         </div>
                         {parentDesc && (
-                            <p className="text-xs text-slate-900 font-bold mt-1.5 leading-snug line-clamp-2" title={parentDesc}>
-                                {parentDesc.charAt(0).toUpperCase() + parentDesc.slice(1)}
+                            <p className="text-sm text-slate-900 font-bold mt-1.5 leading-snug line-clamp-2" title={parentDesc}>
+                                {style.label}: {parentDesc.charAt(0).toUpperCase() + parentDesc.slice(1)}
                             </p>
                         )}
                     </div>
@@ -264,11 +295,13 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
 
     const headerGradient: Record<string, string> = {
         OPEN: 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-sm',
+        IP_PREV: 'bg-gradient-to-r from-slate-500 to-slate-600 shadow-sm',
         IP: 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-sm',
         OK: 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-sm',
     };
     const headerIcon: Record<string, string> = {
         OPEN: 'info',
+        IP_PREV: 'history',
         IP: 'pending',
         OK: 'check_circle',
     };

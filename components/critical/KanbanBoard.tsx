@@ -42,7 +42,7 @@ interface KanbanBoardProps {
     onOpenDetail?: (id: string, type: 'critical' | 'preventif' | 'modifikasi') => void;
 }
 
-const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
+const COLUMN_IDS = ['OPEN', 'IP_PREV', 'IP', 'OK'] as const;
 
 export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift, readOnly = false, workOrders, onOpenDetail }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
@@ -57,7 +57,8 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
     useEffect(() => {
         setColumnOrders(prev => {
             const next: Record<string, string[]> = {};
-            STATUSES.forEach(status => {
+            const dbStatuses: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
+            dbStatuses.forEach(status => {
                 // OPEN: sort by item asc (item sama bersebelahan), then by created_at
                 // IP/OK: sort by created_at saja (custom order via drag tetap dihormati di prevOrder)
                 const statusItems = [...maintenances]
@@ -101,15 +102,28 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
         if (item) setActiveItem(item);
     }, [maintenances]);
 
+    function inWindow(iso: string) {
+        if (!shiftWindow) return true;
+        const t = new Date(iso).getTime();
+        return t >= shiftWindow.start.getTime() && t <= shiftWindow.end.getTime();
+    }
+
     const handleDragEnd = useCallback(async (event: DragEndEvent) => {
         setActiveItem(null);
         if (readOnly) return; // shift sudah lewat → tidak boleh ubah status
         const { active, over } = event;
         if (!over) return;
 
+        const overId = over.id as string;
+        const sourceItem = maintenances.find(m => m.id === active.id);
+        if (!sourceItem) return;
+
+        // Tentukan target status & sub-lokasi
         let targetStatus: MaintenanceStatus | null = null;
-        if (STATUSES.includes(over.id as MaintenanceStatus)) {
-            targetStatus = over.id as MaintenanceStatus;
+        if (overId === 'IP_PREV' || overId === 'IP') {
+            targetStatus = 'IP';
+        } else if (overId === 'OPEN' || overId === 'OK') {
+            targetStatus = overId as MaintenanceStatus;
         } else {
             const targetCard = maintenances.find(m => m.id === over.id);
             if (targetCard) targetStatus = targetCard.status;
@@ -117,44 +131,62 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
 
         if (!targetStatus) return;
 
-        const sourceItem = maintenances.find(m => m.id === active.id);
-        if (!sourceItem || sourceItem.status === targetStatus) return;
+        // Khusus transisi internal IP (IP_PREV <-> IP_CURR)
+        if (sourceItem.status === 'IP' && targetStatus === 'IP') {
+            const isSourceInCurr = inWindow(sourceItem.updated_at);
+            const isOverPrev = overId === 'IP_PREV' || (overId !== 'IP' && (() => {
+                const targetCard = maintenances.find(m => m.id === over.id);
+                return targetCard && !inWindow(targetCard.updated_at);
+            })());
 
+            if (!isSourceInCurr && !isOverPrev) {
+                // Drag dari IP_PREV ke IP_CURR (atau ke card di IP_CURR)
+                await onKonfirmasiShift(active.id as string);
+            } else if (isSourceInCurr && isOverPrev && onUnassignCurrentShift) {
+                // Drag dari IP_CURR ke IP_PREV (atau ke card di IP_PREV)
+                if (confirm('Batalkan "Lanjut Kerja" — maintenance ini akan dihapus dari laporan shift sekarang. Lanjut?')) {
+                    await onUnassignCurrentShift(active.id as string);
+                }
+            }
+            return;
+        }
+
+        if (sourceItem.status === targetStatus) return;
+
+        // Jika drag ke IP_PREV dari kolom lain, drag itu dianggap sebagai move status ke IP
+        // dan jika onUnassignCurrentShift disediakan kita juga unassign agar tidak masuk shift ini
         await onMoveStatus(active.id as string, targetStatus);
-    }, [maintenances, onMoveStatus]);
+        if (overId === 'IP_PREV' && onUnassignCurrentShift) {
+            // Karena move status ke IP secara default men-set updated_at = now (sehingga masuk shift ini),
+            // kita panggil unassign untuk mengeluarkannya dari shift ini (agar masuk IP_PREV)
+            await onUnassignCurrentShift(active.id as string);
+        }
+    }, [maintenances, onMoveStatus, onKonfirmasiShift, onUnassignCurrentShift, readOnly, shiftWindow]);
 
-    function inWindow(iso: string) {
-        if (!shiftWindow) return true;
-        const t = new Date(iso).getTime();
-        return t >= shiftWindow.start.getTime() && t <= shiftWindow.end.getTime();
-    }
-
-    // Build columns using columnOrders for sorting
-    const columns = STATUSES.map(status => {
-        const order = columnOrders[status] || [];
-        const allStatusItems = maintenances.filter(m => m.status === status);
+    // Build columns using COLUMN_IDS for rendering
+    const columns = COLUMN_IDS.map(status => {
+        const order = columnOrders[status === 'IP_PREV' ? 'IP' : status] || [];
+        const allStatusItems = maintenances.filter(m => m.status === (status === 'IP_PREV' ? 'IP' : status));
         // Sort by custom order
         const sortedAll = [
             ...order.map(id => allStatusItems.find(m => m.id === id)).filter(Boolean) as MaintenanceWithCritical[],
             ...allStatusItems.filter(m => !order.includes(m.id)),
         ];
 
-        // IP/OK items = updated_at di window shift sekarang → match dengan laporan shift.
-        // Untuk IP, juga tampilkan prevItems (IP yang updated_at di luar window) sebagai carry-forward —
-        // visible dengan tombol "Lanjut Kerja" untuk dimasukkan ke laporan shift kalau dikerjakan di shift ini.
-        // OK tidak punya prevItems (sudah selesai, tidak perlu carry-forward).
         if (status === 'OK') {
             const items = sortedAll.filter(m => inWindow(m.updated_at));
             return { status, items, prevItems: [], hiddenFuture: 0 };
         }
         if (status === 'IP') {
             const items = sortedAll.filter(m => inWindow(m.updated_at));
-            const prevItems = sortedAll.filter(m => !inWindow(m.updated_at));
-            return { status, items, prevItems, hiddenFuture: 0 };
+            return { status, items, prevItems: [], hiddenFuture: 0 };
         }
+        if (status === 'IP_PREV') {
+            const items = sortedAll.filter(m => !inWindow(m.updated_at));
+            return { status, items, prevItems: [], hiddenFuture: 0 };
+        }
+
         // OPEN: filter berdasarkan search query (jika ada) + date <= boardDate (kalau search kosong)
-        // Saat board dikunci (readOnly = past shift): tampilkan SEMUA OPEN tanpa filter date —
-        // user perlu lihat semua context backlog, tidak ada lagi yang bisa diubah.
         const q = (openSearch ?? '').trim().toLowerCase();
         const searchedOpen = q
             ? sortedAll.filter(m =>
@@ -187,7 +219,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
                         statusActorByMaintId={statusActorByMaintId}
-                        onMoveInColumn={(id, dir) => handleMoveInColumn(col.status, id, dir)}
+                        onMoveInColumn={(id, dir) => handleMoveInColumn(col.status === 'IP_PREV' ? 'IP' : col.status, id, dir)}
                         onUnassignCurrentShift={onUnassignCurrentShift}
                         boardDate={boardDate}
                         boardShift={boardShift}

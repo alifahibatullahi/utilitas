@@ -43,8 +43,11 @@ export function PublishReportModal({
     const [foremanTurbin, setForemanTurbin] = useState('');
     const [foremanBoiler, setForemanBoiler] = useState('');
 
-    // Real operators dari useOperator hook, di-filter by jabatan.
-    // Kalau reportGroup diketahui, prioritaskan operator grup itu di atas (sort by group match).
+    // Filter sama persis dengan dropdown di header input-shift (app/input-shift/page.tsx:298-308).
+    // - Supervisor: jabatan Supervisor ATAU Foreman (semua foreman bisa jadi supervisor approval).
+    // - Foreman Boiler: UBB & jabatan 'Foreman Boiler' atau operator biasa (tanpa jabatan).
+    // - Foreman Turbin: UBB & jabatan 'Foreman Turbin' atau operator biasa.
+    // Sort by reportGroup match (operator grup yang dinas paling atas).
     const { operators } = useOperator();
     const sortByGroupMatch = (a: typeof operators[number], b: typeof operators[number]) => {
         const aMatch = reportGroup && a.group === reportGroup;
@@ -53,9 +56,18 @@ export function PublishReportModal({
         if (!aMatch && bMatch) return 1;
         return a.name.localeCompare(b.name);
     };
-    const supervisorOptions   = useMemo(() => operators.filter(op => op.jabatan === 'Supervisor').sort(sortByGroupMatch), [operators, reportGroup]); // eslint-disable-line react-hooks/exhaustive-deps
-    const foremanTurbinOptions= useMemo(() => operators.filter(op => op.jabatan === 'Foreman Turbin').sort(sortByGroupMatch), [operators, reportGroup]); // eslint-disable-line react-hooks/exhaustive-deps
-    const foremanBoilerOptions= useMemo(() => operators.filter(op => op.jabatan === 'Foreman Boiler').sort(sortByGroupMatch), [operators, reportGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+    const supervisorOptions = useMemo(
+        () => operators.filter(op => op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman')).sort(sortByGroupMatch),
+        [operators, reportGroup], // eslint-disable-line react-hooks/exhaustive-deps
+    );
+    const foremanBoilerOptions = useMemo(
+        () => operators.filter(op => op.company === 'UBB' && (op.jabatan === 'Foreman Boiler' || !op.jabatan)).sort(sortByGroupMatch),
+        [operators, reportGroup], // eslint-disable-line react-hooks/exhaustive-deps
+    );
+    const foremanTurbinOptions = useMemo(
+        () => operators.filter(op => op.company === 'UBB' && (op.jabatan === 'Foreman Turbin' || !op.jabatan)).sort(sortByGroupMatch),
+        [operators, reportGroup], // eslint-disable-line react-hooks/exhaustive-deps
+    );
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 

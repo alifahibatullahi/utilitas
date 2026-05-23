@@ -671,7 +671,20 @@ export default function LaporanShiftPage() {
                     </button>
                 </div>
             )}
-            <PublishReportModal kind="shift" reportId={supaReport?.id ?? ''} open={publishOpen} onClose={() => setPublishOpen(false)} reportDate={selectedDate} reportShift={SHIFT_LABELS[activeShift]} reportGroup={report?.group} />
+            <PublishReportModal
+                kind="shift"
+                reportId={supaReport?.id ?? ''}
+                open={publishOpen}
+                onClose={() => setPublishOpen(false)}
+                reportDate={selectedDate}
+                reportShift={SHIFT_LABELS[activeShift]}
+                reportGroup={report?.group}
+                initialSupervisor={supaReport?.supervisor ?? ''}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                initialForemanTurbin={(supaReport as any)?.shift_personnel?.[0]?.turbin_karu ?? ''}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                initialForemanBoiler={(supaReport as any)?.shift_personnel?.[0]?.boiler_karu ?? ''}
+            />
             </>)}
 
         </div>

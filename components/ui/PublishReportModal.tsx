@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useOperator } from '@/hooks/useOperator';
+import { createClient } from '@/lib/supabase/client';
 
 interface Props {
     kind: 'shift' | 'daily';
@@ -13,6 +14,10 @@ interface Props {
     reportDate?: string;       // e.g. '2026-05-23'
     reportShift?: string;      // e.g. 'Pagi' (only for shift reports)
     reportGroup?: string;      // e.g. 'C'
+    /** Initial dropdown values dari report DB — sync ke header input laporan. */
+    initialSupervisor?: string;
+    initialForemanTurbin?: string;   // shift only
+    initialForemanBoiler?: string;   // shift only
 }
 
 interface ChannelResult {
@@ -32,6 +37,9 @@ export function PublishReportModal({
     reportDate,
     reportShift,
     reportGroup,
+    initialSupervisor = '',
+    initialForemanTurbin = '',
+    initialForemanBoiler = '',
 }: Props) {
     const [tab, setTab] = useState<'pdf' | 'text'>('text');
     const [text, setText] = useState('');
@@ -39,9 +47,46 @@ export function PublishReportModal({
     const [sending, setSending] = useState(false);
     const [copied, setCopied] = useState(false);
     const [results, setResults] = useState<{ pdf?: ChannelResult; text?: ChannelResult } | null>(null);
-    const [supervisor, setSupervisor] = useState('');
-    const [foremanTurbin, setForemanTurbin] = useState('');
-    const [foremanBoiler, setForemanBoiler] = useState('');
+    const [supervisor, setSupervisor] = useState(initialSupervisor);
+    const [foremanTurbin, setForemanTurbin] = useState(initialForemanTurbin);
+    const [foremanBoiler, setForemanBoiler] = useState(initialForemanBoiler);
+
+    // Sync state dari props saat modal open atau initial values berubah dari parent.
+    // Direksi: parent (input laporan / fetched report) → modal.
+    useEffect(() => {
+        if (open) {
+            setSupervisor(initialSupervisor);
+            setForemanTurbin(initialForemanTurbin);
+            setForemanBoiler(initialForemanBoiler);
+        }
+    }, [open, initialSupervisor, initialForemanTurbin, initialForemanBoiler]);
+
+    // Persist dropdown changes ke DB (direksi: modal → input laporan via DB).
+    // Untuk shift: shift_reports.supervisor + shift_personnel.turbin_karu/boiler_karu/turbin_kasi/boiler_kasi.
+    // Untuk daily: daily_report_totalizer.kasi_name (foreman tidak applicable).
+    const persistChange = async (field: 'supervisor' | 'foreman_turbin' | 'foreman_boiler', value: string) => {
+        if (!reportId) return;
+        const supabase = createClient();
+        const v = value || null;
+        try {
+            if (kind === 'shift') {
+                if (field === 'supervisor') {
+                    await supabase.from('shift_reports').update({ supervisor: v }).eq('id', reportId);
+                    // Mirror ke shift_personnel.{turbin_kasi, boiler_kasi} sesuai konvensi input form.
+                    await supabase.from('shift_personnel').update({ turbin_kasi: v, boiler_kasi: v }).eq('shift_report_id', reportId);
+                } else if (field === 'foreman_turbin') {
+                    await supabase.from('shift_personnel').update({ turbin_karu: v }).eq('shift_report_id', reportId);
+                } else if (field === 'foreman_boiler') {
+                    await supabase.from('shift_personnel').update({ boiler_karu: v }).eq('shift_report_id', reportId);
+                }
+            } else if (kind === 'daily' && field === 'supervisor') {
+                // Harian simpan supervisor di daily_report_totalizer.kasi_name.
+                await supabase.from('daily_report_totalizer').update({ kasi_name: v }).eq('daily_report_id', reportId);
+            }
+        } catch (err) {
+            console.warn('[PublishReportModal] persistChange failed', field, err);
+        }
+    };
 
     // Filter sama persis dengan dropdown di header input-shift (app/input-shift/page.tsx:298-308).
     // - Supervisor: jabatan Supervisor ATAU Foreman (semua foreman bisa jadi supervisor approval).
@@ -224,9 +269,9 @@ export function PublishReportModal({
                             <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
                                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Supervisor</label>
                                 <div className="relative flex items-center">
-                                    <select 
-                                        value={supervisor} 
-                                        onChange={e => setSupervisor(e.target.value)} 
+                                    <select
+                                        value={supervisor}
+                                        onChange={e => { const v = e.target.value; setSupervisor(v); persistChange('supervisor', v); }}
                                         className="w-full bg-transparent border-none p-0 text-xs font-black text-slate-200 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                     >
                                         <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
@@ -244,9 +289,9 @@ export function PublishReportModal({
                             <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
                                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Turbin</label>
                                 <div className="relative flex items-center">
-                                    <select 
-                                        value={foremanTurbin} 
-                                        onChange={e => setForemanTurbin(e.target.value)} 
+                                    <select
+                                        value={foremanTurbin}
+                                        onChange={e => { const v = e.target.value; setForemanTurbin(v); persistChange('foreman_turbin', v); }}
                                         className="w-full bg-transparent border-none p-0 text-xs font-black text-indigo-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                     >
                                         <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
@@ -265,8 +310,8 @@ export function PublishReportModal({
                                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Boiler</label>
                                 <div className="relative flex items-center">
                                     <select 
-                                        value={foremanBoiler} 
-                                        onChange={e => setForemanBoiler(e.target.value)} 
+                                        value={foremanBoiler}
+                                        onChange={e => { const v = e.target.value; setForemanBoiler(v); persistChange('foreman_boiler', v); }}
                                         className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                     >
                                         <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>

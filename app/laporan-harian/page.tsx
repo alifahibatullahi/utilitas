@@ -856,7 +856,15 @@ export default function LaporanHarianPage() {
                     </button>
                 </div>
             )}
-            <PublishReportModal kind="daily" reportId={(report?.id as string) ?? ''} open={publishOpen} onClose={() => setPublishOpen(false)} reportDate={selectedDate} reportGroup={r.group} />
+            <PublishReportModal
+                kind="daily"
+                reportId={(report?.id as string) ?? ''}
+                open={publishOpen}
+                onClose={() => setPublishOpen(false)}
+                reportDate={selectedDate}
+                reportGroup={r.group}
+                initialSupervisor={r.supervisor || ''}
+            />
         </div>
     );
 }

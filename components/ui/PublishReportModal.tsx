@@ -9,6 +9,9 @@ interface Props {
     onClose: () => void;
     pdfGroupKey?: string;      // default 'management'
     washiftKey?: string;       // group key for washift (default 'washift')
+    reportDate?: string;       // e.g. '2026-05-23'
+    reportShift?: string;      // e.g. 'Pagi' (only for shift reports)
+    reportGroup?: string;      // e.g. 'C'
 }
 
 interface ChannelResult {
@@ -25,6 +28,9 @@ export function PublishReportModal({
     onClose,
     pdfGroupKey = 'management',
     washiftKey = 'washift',
+    reportDate,
+    reportShift,
+    reportGroup,
 }: Props) {
     const [tab, setTab] = useState<'pdf' | 'text'>('text');
     const [text, setText] = useState('');
@@ -237,11 +243,33 @@ export function PublishReportModal({
                                     {/* Document Details */}
                                     <div className="space-y-1.5">
                                         <div className="text-sm font-extrabold text-slate-100 font-mono tracking-tight break-all">
-                                            Laporan_{kindLabel}_{reportId || 'Preview'}.pdf
+                                            Laporan_{kindLabel}_{reportDate ?? 'unknown'}_{kind === 'shift' && reportShift ? reportShift : ''}{reportGroup ? `_Grup${reportGroup}` : ''}.pdf
                                         </div>
                                         <p className="text-[11px] text-slate-400 leading-relaxed">
-                                            Tautan pratinjau layout cetak resmi yang akan dipublikasikan ke grup <span className="text-emerald-400 font-bold">{pdfGroupKey}</span>.
+                                            PDF akan di-generate dari data laporan ini dan dikirim ke grup <span className="text-emerald-400 font-bold">{pdfGroupKey}</span>.
                                         </p>
+                                    </div>
+
+                                    {/* Report Metadata Badge Row */}
+                                    <div className="flex flex-wrap items-center justify-center gap-2">
+                                        {reportDate && (
+                                            <span className="inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold">
+                                                <span className="material-symbols-outlined text-[11px]">calendar_today</span>
+                                                {reportDate}
+                                            </span>
+                                        )}
+                                        {kind === 'shift' && reportShift && (
+                                            <span className="inline-flex items-center gap-1 bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold">
+                                                <span className="material-symbols-outlined text-[11px]">schedule</span>
+                                                Shift {reportShift}
+                                            </span>
+                                        )}
+                                        {reportGroup && (
+                                            <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 text-amber-300 px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold">
+                                                <span className="material-symbols-outlined text-[11px]">groups</span>
+                                                Grup {reportGroup}
+                                            </span>
+                                        )}
                                     </div>
                                     
                                     {/* Preview Button */}
@@ -252,7 +280,7 @@ export function PublishReportModal({
                                         className="flex items-center gap-2.5 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-rose-300 hover:text-rose-200 border border-slate-800 hover:border-slate-700/80 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-md hover:scale-[1.03] active:scale-[0.97]"
                                     >
                                         <span className="material-symbols-outlined text-sm">visibility</span>
-                                        Buka Link PDF Tertaut
+                                        Lihat Preview PDF
                                     </a>
                                 </div>
                             </div>

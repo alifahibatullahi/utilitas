@@ -671,7 +671,7 @@ export default function LaporanShiftPage() {
                     </button>
                 </div>
             )}
-            <PublishReportModal kind="shift" reportId={supaReport?.id ?? ''} open={publishOpen} onClose={() => setPublishOpen(false)} />
+            <PublishReportModal kind="shift" reportId={supaReport?.id ?? ''} open={publishOpen} onClose={() => setPublishOpen(false)} reportDate={selectedDate} reportShift={SHIFT_LABELS[activeShift]} reportGroup={report?.group} />
             </>)}
 
         </div>

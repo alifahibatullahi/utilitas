@@ -1102,19 +1102,26 @@ function InputShiftPageInner() {
                             const formattedDate = mounted && selectedDate ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
                             return (
                                 <>
-                                    <div className={`relative flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border ${isToday ? 'bg-blue-500/15 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-[#0f1721] border-slate-700/50'}`}>
-                                        <span className="material-symbols-outlined text-[16px] text-blue-400">calendar_month</span>
-                                        <input
-                                            type="date"
-                                            value={selectedDate}
-                                            onChange={e => setSelectedDate(e.target.value)}
-                                            className="bg-transparent border-none p-0 text-xs sm:text-sm md:text-base text-blue-100 font-bold focus:ring-0 cursor-pointer [color-scheme:dark] focus:text-base focus:sm:text-lg"
-                                        />
-                                        <span className="material-symbols-outlined text-[16px] text-blue-400 pointer-events-none">arrow_drop_down</span>
-                                        {isToday && inputMode === 'shift' && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider ml-1 hidden sm:inline">Hari ini</span>}
+                                    <div className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-3 pr-8 py-1 min-w-[160px] lg:min-w-[220px] ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}>
+                                        <span className="text-[8px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none">Tanggal</span>
+                                        <div className="relative w-full flex items-center">
+                                            <input
+                                                type="date"
+                                                value={selectedDate}
+                                                onChange={e => setSelectedDate(e.target.value)}
+                                                className="w-full bg-transparent border-none p-0 text-xs font-black text-blue-100 focus:ring-0 cursor-pointer [color-scheme:dark]"
+                                            />
+                                        </div>
+                                        <span className="material-symbols-outlined text-[18px] text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
+                                        {isToday && inputMode === 'shift' && (
+                                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                            </span>
+                                        )}
                                     </div>
                                     {inputMode === 'harian' && formattedDate && (
-                                        <span className="text-sm font-bold text-slate-300 bg-[#0f1721] px-3 py-1.5 rounded-lg border border-slate-700/50 capitalize hidden sm:inline-block shadow-sm">
+                                        <span className="text-sm font-bold text-slate-300 bg-slate-900/60 px-3 py-2.5 rounded-lg border border-slate-800 capitalize hidden sm:inline-block shadow-sm">
                                             {formattedDate}
                                         </span>
                                     )}
@@ -1124,7 +1131,7 @@ function InputShiftPageInner() {
                         <span className="text-slate-600 hidden sm:inline">|</span>
 
                         {inputMode === 'harian' && !station && (
-                            <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[140px]">
+                            <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[160px] lg:min-w-[220px]">
                                 <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-tight select-none">Supervisor</span>
                                 <div className="relative w-full flex items-center">
                                     <select 
@@ -1144,7 +1151,7 @@ function InputShiftPageInner() {
 
                         {inputMode === 'shift' && !station && (
                             <>
-                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[140px]">
+                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[160px] lg:min-w-[220px]">
                                     <span className="text-[8px] font-bold text-amber-400 uppercase tracking-widest leading-tight select-none">Foreman Boiler</span>
                                     <div className="relative w-full flex items-center">
                                         <select 
@@ -1161,7 +1168,7 @@ function InputShiftPageInner() {
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                 </div>
 
-                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[140px]">
+                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[160px] lg:min-w-[220px]">
                                     <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest leading-tight select-none">Foreman Turbin</span>
                                     <div className="relative w-full flex items-center">
                                         <select 

@@ -78,6 +78,17 @@ function InputShiftPageInner() {
     // - h≥23 : malam D=tomorrow (shift baru mulai, submit besok)
     const [selectedDate, setSelectedDate] = useState<string>(() => detectCurrentShift().date);
     const [mounted, setMounted] = useState(false);
+    const today = mounted ? todayWIB() : '';
+    const isToday = selectedDate === today;
+    const formattedDate = mounted && selectedDate 
+        ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { 
+            timeZone: 'Asia/Jakarta', 
+            weekday: 'long', 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+          }) 
+        : '';
     
     // Header specific states — persist to localStorage
     const [supervisor, setSupervisor] = useState(() => {
@@ -101,6 +112,7 @@ function InputShiftPageInner() {
 
     const skipNextClear = useRef(false);
     const lastSubmittedReportId = useRef<string | null>(null);
+    const dateInputRef = useRef<HTMLInputElement>(null);
     const [initialDataReady, setInitialDataReady] = useState(false);
 
     useEffect(() => { setMounted(true); }, []);
@@ -1031,7 +1043,7 @@ function InputShiftPageInner() {
                 }`}></div>
 
                 <div className="flex flex-col gap-1 z-10 w-full lg:w-auto">
-                    {/* Row 1: Judul + Badge Shift + Supervisor */}
+                    {/* Row 1: Judul + Badge Shift + Tanggal (Date Picker) */}
                     <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
                             {inputMode === 'shift' ? 'LAPORAN SHIFT' : 'LAPORAN HARIAN'}
@@ -1045,7 +1057,7 @@ function InputShiftPageInner() {
                                 REPORT HARIAN
                             </span>
                         )}
-                        {/* Group + Supervisor — tampil untuk shift maupun harian */}
+                        {/* Group + Tanggal (Date Picker) — tampil untuk shift maupun harian */}
                         {(() => {
                             const group = inputMode === 'harian'
                                 ? getGroupMalamOnDate(selectedDate)
@@ -1061,24 +1073,38 @@ function InputShiftPageInner() {
                                     }`}>
                                         {group ? `Group ${group}` : 'Off'}
                                     </span>
-                                    {inputMode === 'shift' && !station && (
-                                        <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[140px]">
-                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-tight select-none">Supervisor</span>
-                                            <div className="relative w-full flex items-center">
-                                                <select 
-                                                    value={supervisor} 
-                                                    onChange={e => setSupervisor(e.target.value)} 
-                                                    className="w-full bg-transparent border-none p-0 text-xs font-black text-slate-100 focus:ring-0 cursor-pointer appearance-none outline-none"
-                                                >
-                                                    <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
-                                                    {supervisorOptions.map(op => (
-                                                        <option key={op.id} value={op.name} className="bg-[#101822] text-slate-100">{op.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
+
+                                    {/* Tanggal (Date Picker) - Swapped to Row 1 */}
+                                    <div 
+                                        onClick={() => {
+                                            try {
+                                                dateInputRef.current?.showPicker();
+                                            } catch (err) {
+                                                console.error(err);
+                                            }
+                                        }}
+                                        className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-3 pr-8 py-1 min-w-[160px] lg:min-w-[220px] cursor-pointer focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}
+                                    >
+                                        <span className="text-[8px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none">Tanggal</span>
+                                        <div className="relative w-full flex items-center">
+                                            <input
+                                                ref={dateInputRef}
+                                                type="date"
+                                                value={selectedDate}
+                                                onChange={e => setSelectedDate(e.target.value)}
+                                                onClick={e => e.stopPropagation()}
+                                                className="w-full bg-transparent border-none p-0 text-xs font-black text-blue-100 focus:ring-0 cursor-pointer [color-scheme:dark]"
+                                            />
                                         </div>
-                                    )}
+                                        <span className="material-symbols-outlined text-[18px] text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
+                                        {isToday && inputMode === 'shift' && (
+                                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                            </span>
+                                        )}
+                                    </div>
+
                                     {/* Station mode (shift & harian): cuma tampilkan badge station di header.
                                         Picker "Diisi oleh" ada di sidebar masing-masing form (style sama). */}
                                     {station && (
@@ -1093,44 +1119,10 @@ function InputShiftPageInner() {
                             );
                         })()}
                     </div>
-                    {/* Row 2: Tanggal, Waktu, Foreman Boiler, Foreman Turbin (Shift) / Supervisor (Harian).
-                        Date input TETAP tampil di station mode (untuk navigation antar tanggal). */}
+                    {/* Row 2: Supervisor, Waktu, Foreman Boiler, Foreman Turbin. */}
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
-                        {(() => {
-                            const today = mounted ? todayWIB() : '';
-                            const isToday = selectedDate === today;
-                            const formattedDate = mounted && selectedDate ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
-                            return (
-                                <>
-                                    <div className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-3 pr-8 py-1 min-w-[160px] lg:min-w-[220px] ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}>
-                                        <span className="text-[8px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none">Tanggal</span>
-                                        <div className="relative w-full flex items-center">
-                                            <input
-                                                type="date"
-                                                value={selectedDate}
-                                                onChange={e => setSelectedDate(e.target.value)}
-                                                className="w-full bg-transparent border-none p-0 text-xs font-black text-blue-100 focus:ring-0 cursor-pointer [color-scheme:dark]"
-                                            />
-                                        </div>
-                                        <span className="material-symbols-outlined text-[18px] text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
-                                        {isToday && inputMode === 'shift' && (
-                                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                                            </span>
-                                        )}
-                                    </div>
-                                    {inputMode === 'harian' && formattedDate && (
-                                        <span className="text-sm font-bold text-slate-300 bg-slate-900/60 px-3 py-2.5 rounded-lg border border-slate-800 capitalize hidden sm:inline-block shadow-sm">
-                                            {formattedDate}
-                                        </span>
-                                    )}
-                                </>
-                            );
-                        })()}
-                        <span className="text-slate-600 hidden sm:inline">|</span>
-
-                        {inputMode === 'harian' && !station && (
+                        {/* Supervisor dropdown - Swapped to Row 2 */}
+                        {!station && (
                             <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[160px] lg:min-w-[220px]">
                                 <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-tight select-none">Supervisor</span>
                                 <div className="relative w-full flex items-center">
@@ -1148,6 +1140,14 @@ function InputShiftPageInner() {
                                 <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                             </div>
                         )}
+
+                        {formattedDate && (
+                            <span className="text-sm font-bold text-slate-300 bg-slate-900/60 px-3 py-2.5 rounded-lg border border-slate-800 capitalize hidden sm:inline-block shadow-sm">
+                                {formattedDate}
+                            </span>
+                        )}
+
+                        {!station && <span className="text-slate-600 hidden sm:inline">|</span>}
 
                         {inputMode === 'shift' && !station && (
                             <>

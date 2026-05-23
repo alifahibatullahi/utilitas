@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { SHIFT_OPTIONS, getShiftWindow, detectCurrentShift } from '@/lib/constants';
-import type { ActivityActionType, MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
+import type { ActivityActionType, MaintenanceWithCritical, MaintenanceStatus, PhotoRow, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
 import KanbanBoard from './KanbanBoard';
 import CustomCalendarPopover from './CustomCalendarPopover';
 
@@ -29,6 +29,7 @@ interface KanbanBoardModalProps {
     /** All maintenance-related activity logs (critical_activity_logs + work_order_activity_logs).
      *  Used to compute snapshot saat board dikunci. */
     activityLogs?: BoardActivityLog[];
+    workOrders?: WorkOrderWithPekerjaan[];
 }
 
 export default function KanbanBoardModal({
@@ -38,6 +39,7 @@ export default function KanbanBoardModal({
     onMoveStatus, onKonfirmasiShift,
     photosByMaintId, statusTimeByMaintId, statusActorByMaintId,
     activityLogs,
+    workOrders,
 }: KanbanBoardModalProps) {
     // Status change langsung — board sync via updated_at timestamp, no manual assignment.
     // Block kalau shift sudah lewat (laporan shift sudah final).
@@ -203,18 +205,7 @@ export default function KanbanBoardModal({
                         {/* Hari Ini Indicator / Shortcut */}
                         {(() => {
                             if (!isViewingTodayDate) {
-                                const now = new Date();
-                                const pad = (n: number) => String(n).padStart(2, '0');
-                                const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-                                return (
-                                    <button
-                                        onClick={() => onChangeBoardDate(todayStr)}
-                                        className="ml-2 px-3 h-9 rounded-xl border border-blue-200 bg-blue-50/80 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer text-xs font-bold transition-all shadow-sm"
-                                        title="Lompat ke hari ini"
-                                    >
-                                        Hari Ini
-                                    </button>
-                                );
+                                return null;
                             } else {
                                 return (
                                     <div className="ml-2.5 mr-1 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-100/50 text-emerald-700 text-[10px] font-black uppercase tracking-wider border border-emerald-200/50" title="Tanggal hari ini">
@@ -288,6 +279,7 @@ export default function KanbanBoardModal({
                         statusTimeByMaintId={effectiveStatusTime}
                         statusActorByMaintId={effectiveStatusActor}
                         readOnly={isPastShift}
+                        workOrders={workOrders}
                     />
                 </div>
 

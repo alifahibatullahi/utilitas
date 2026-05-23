@@ -11,7 +11,7 @@ import {
     type DragStartEvent,
     type DragEndEvent,
 } from '@dnd-kit/core';
-import type { MaintenanceWithCritical, MaintenanceStatus, PhotoRow } from '@/lib/supabase/types';
+import type { MaintenanceWithCritical, MaintenanceStatus, PhotoRow, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
 
@@ -38,11 +38,12 @@ interface KanbanBoardProps {
     onUnassignCurrentShift?: (id: string) => Promise<{ error: string | null }>;
     /** Read-only mode (mis. shift sudah lewat) — disable DnD + Lanjut Kerja button. */
     readOnly?: boolean;
+    workOrders?: WorkOrderWithPekerjaan[];
 }
 
 const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
-export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift, readOnly = false }: KanbanBoardProps) {
+export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift, readOnly = false, workOrders }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
     const [columnOrders, setColumnOrders] = useState<Record<string, string[]>>({});
 
@@ -190,6 +191,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         boardDate={boardDate}
                         boardShift={boardShift}
                         readOnly={readOnly}
+                        workOrders={workOrders}
                         headerExtra={col.status === 'OPEN' && onOpenSearchChange ? (
                             <div className="px-3 pt-2">
                                 <div className="relative">

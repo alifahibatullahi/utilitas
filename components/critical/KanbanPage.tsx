@@ -122,15 +122,7 @@ export default function KanbanPage() {
                                 {(() => {
                                     const now = detectCurrentShift();
                                     if (selectedDate !== now.date) {
-                                        return (
-                                            <button
-                                                onClick={() => setSelectedDate(now.date)}
-                                                className="ml-2 px-3 h-9 rounded-xl border border-blue-200 bg-blue-50/80 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer text-xs font-bold transition-all shadow-sm"
-                                                title="Lompat ke hari ini"
-                                            >
-                                                Hari Ini
-                                            </button>
-                                        );
+                                        return null;
                                     } else {
                                         return (
                                             <div className="ml-2.5 mr-1 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-100/50 text-emerald-700 text-[10px] font-black uppercase tracking-wider border border-emerald-200/50" title="Tanggal hari ini">
@@ -242,6 +234,7 @@ export default function KanbanPage() {
                         shiftWindow={shiftWindow}
                         onMoveStatus={cm.moveMaintenanceStatus}
                         onKonfirmasiShift={cm.konfirmasiShift}
+                        workOrders={cm.workOrders}
                     />
                 )}
 

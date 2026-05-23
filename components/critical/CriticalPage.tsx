@@ -477,6 +477,7 @@ export default function CriticalPage() {
                 statusTimeByMaintId={statusTimeByMaintId}
                 statusActorByMaintId={statusActorByMaintId}
                 activityLogs={allMaintActivityLogs}
+                workOrders={cm.workOrders}
             />
 
             {/* Modals — create */}

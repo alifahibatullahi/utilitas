@@ -749,16 +749,6 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                             </button>
                         ))}
                     </div>
-                    {/* Clear */}
-                    {hasActiveFilter && (
-                        <button
-                            onClick={clearFilters}
-                            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 text-xs font-bold shadow-sm cursor-pointer transition-colors h-9"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>filter_list_off</span>
-                            Reset
-                        </button>
-                    )}
                     {/* Scope — pinggir kanan */}
                     <div className="ml-auto relative flex items-center">
                         <span className="material-symbols-outlined absolute left-3 text-slate-500 pointer-events-none" style={{ fontSize: 16 }}>

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type { MaintenanceWithCritical, CriticalStatus, PhotoRow } from '@/lib/supabase/types';
+import type { MaintenanceWithCritical, CriticalStatus, PhotoRow, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
 import { KANBAN_COLUMNS } from '@/lib/constants';
 import KanbanCard from './KanbanCard';
 
@@ -24,6 +24,7 @@ interface KanbanColumnProps {
     boardDate?: string;
     boardShift?: 'pagi' | 'sore' | 'malam';
     readOnly?: boolean;
+    workOrders?: WorkOrderWithPekerjaan[];
 }
 
 function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, statusActors, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
@@ -76,7 +77,7 @@ function AssignedItemWrapper({ item, photos, statusTimeIso, statusActors, onUnas
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, statusActorByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift, readOnly = false }: KanbanColumnProps) {
+export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, statusActorByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift, readOnly = false, workOrders }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
@@ -101,48 +102,149 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
     }
 
     function renderGroups(list: MaintenanceWithCritical[], keyPrefix = '', withControls = false) {
-        const groups: { isGroup: boolean; criticalId: string | null; itemName: string | null; cards: MaintenanceWithCritical[] }[] = [];
-        let current: MaintenanceWithCritical[] = [];
+        // Group by parent ID (critical_id or work_order_id)
+        const groupsMap = new Map<string, MaintenanceWithCritical[]>();
+        const groupKeys: string[] = []; // preserve original order of first appearance
+
         list.forEach(item => {
-            if (current.length === 0) {
-                current.push(item);
+            let key = '';
+            if (item.critical_id) {
+                key = `critical-${item.critical_id}`;
+            } else if (item.work_order_id) {
+                key = `wo-${item.work_order_id}`;
             } else {
-                const prev = current[current.length - 1];
-                if (item.critical_id && prev.critical_id === item.critical_id) {
-                    current.push(item);
-                } else {
-                    groups.push({ isGroup: current.length > 1, criticalId: current[0].critical_id, itemName: current[0].critical_equipment?.item || 'Unknown Critical', cards: current });
-                    current = [item];
-                }
+                key = `standalone-${item.id}`;
             }
+
+            if (!groupsMap.has(key)) {
+                groupsMap.set(key, []);
+                groupKeys.push(key);
+            }
+            groupsMap.get(key)!.push(item);
         });
-        if (current.length > 0) groups.push({ isGroup: current.length > 1, criticalId: current[0].critical_id, itemName: current[0].critical_equipment?.item || 'Unknown Critical', cards: current });
 
         // Build flat index for numbering (based on original list position)
         const flatIndexMap = new Map<string, number>();
         list.forEach((item, idx) => flatIndexMap.set(item.id, idx));
 
-        return groups.map((g, idx) => g.isGroup ? (
-            <div key={keyPrefix + 'group-' + idx} className="bg-slate-100/40 border border-dashed border-slate-350 rounded-2xl p-2.5 flex flex-col gap-2 relative shadow-inner overflow-hidden">
-                <div className="px-1.5 pt-0.5 flex items-center gap-2 opacity-90">
-                    <span className="material-symbols-outlined text-blue-600" style={{ fontSize: 15 }}>layers</span>
-                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider truncate">{g.itemName}</span>
-                    <span className="ml-auto text-[9px] font-black text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded-md border border-slate-300/45">
-                        {g.cards.length} Item
-                    </span>
+        return groupKeys.map((key, groupIdx) => {
+            const cards = groupsMap.get(key) || [];
+            if (cards.length === 0) return null;
+
+            const firstCard = cards[0];
+            const isGroup = cards.length > 1;
+
+            if (!isGroup) {
+                const flatIdx = flatIndexMap.get(firstCard.id) ?? 0;
+                return renderCardOrWrapper(firstCard, flatIdx, list.length, withControls);
+            }
+
+            // Resolve parent properties for grouped items
+            let parentTitle = firstCard.item;
+            let parentDesc = '';
+            let parentType: 'critical' | 'preventif' | 'modifikasi' = 'critical';
+
+            if (firstCard.critical_id) {
+                parentTitle = firstCard.critical_equipment?.item || firstCard.item;
+                parentDesc = firstCard.critical_equipment?.deskripsi || '';
+                parentType = 'critical';
+            } else if (firstCard.work_order_id && workOrders) {
+                const wo = workOrders.find(w => w.id === firstCard.work_order_id);
+                parentTitle = wo?.item || firstCard.item;
+                parentDesc = wo?.deskripsi || '';
+                parentType = wo?.tipe === 'preventif' ? 'preventif' : 'modifikasi';
+            } else if (firstCard.work_order_id) {
+                parentTitle = firstCard.item;
+                parentType = firstCard.tipe === 'preventif' ? 'preventif' : 'modifikasi';
+            }
+
+            // Style tokens per parent type
+            const styles: Record<'critical' | 'preventif' | 'modifikasi', {
+                bg: string;
+                border: string;
+                borderLeft: string;
+                badgeBg: string;
+                badgeText: string;
+                badgeBorder: string;
+                iconColor: string;
+                icon: string;
+                label: string;
+            }> = {
+                critical: {
+                    bg: 'bg-rose-50/30 backdrop-blur-[2px]',
+                    border: 'border-rose-200/75 shadow-sm shadow-rose-100/10',
+                    borderLeft: 'border-l-rose-500',
+                    badgeBg: 'bg-rose-100/60',
+                    badgeText: 'text-rose-700',
+                    badgeBorder: 'border-rose-200/50',
+                    iconColor: 'text-rose-500',
+                    icon: 'report_problem',
+                    label: 'Critical'
+                },
+                preventif: {
+                    bg: 'bg-emerald-50/20 backdrop-blur-[2px]',
+                    border: 'border-emerald-250/50 shadow-sm shadow-emerald-100/5',
+                    borderLeft: 'border-l-emerald-500',
+                    badgeBg: 'bg-emerald-100/60',
+                    badgeText: 'text-emerald-700',
+                    badgeBorder: 'border-emerald-200/50',
+                    iconColor: 'text-emerald-500',
+                    icon: 'build_circle',
+                    label: 'Preventif'
+                },
+                modifikasi: {
+                    bg: 'bg-indigo-50/20 backdrop-blur-[2px]',
+                    border: 'border-indigo-200/60 shadow-sm shadow-indigo-100/5',
+                    borderLeft: 'border-l-indigo-500',
+                    badgeBg: 'bg-indigo-100/60',
+                    badgeText: 'text-indigo-700',
+                    badgeBorder: 'border-indigo-200/50',
+                    iconColor: 'text-indigo-500',
+                    icon: 'published_with_changes',
+                    label: 'Modifikasi'
+                }
+            };
+
+            const style = styles[parentType] || styles.critical;
+
+            return (
+                <div
+                    key={`${keyPrefix}group-${key}-${groupIdx}`}
+                    className={`rounded-2xl p-3 flex flex-col gap-2.5 relative border border-l-4 ${style.bg} ${style.border} ${style.borderLeft} transition-all hover:shadow-md duration-200`}
+                >
+                    {/* Parent Header */}
+                    <div className="flex flex-col gap-1 border-b border-slate-200/40 pb-2 px-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`material-symbols-outlined ${style.iconColor}`} style={{ fontSize: 16 }}>
+                                {style.icon}
+                            </span>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${style.badgeBg} ${style.badgeText} ${style.badgeBorder}`}>
+                                {style.label}
+                            </span>
+                            <h4 className="text-xs font-black text-slate-800 tracking-tight truncate max-w-[150px]" title={parentTitle}>
+                                {parentTitle}
+                            </h4>
+                            <span className="ml-auto text-[9px] font-black text-slate-500 bg-white/70 px-2 py-0.5 rounded-full border border-slate-200 shadow-sm whitespace-nowrap">
+                                {cards.length} Pekerjaan
+                            </span>
+                        </div>
+                        {parentDesc && (
+                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5 leading-tight line-clamp-1 italic" title={parentDesc}>
+                                &ldquo;{parentDesc}&rdquo;
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Grouped Cards nested list with connector line */}
+                    <div className="flex flex-col gap-2 pl-2 border-l border-dashed border-slate-300/70 ml-2">
+                        {cards.map(item => {
+                            const flatIdx = flatIndexMap.get(item.id) ?? 0;
+                            return renderCardOrWrapper(item, flatIdx, list.length, withControls);
+                        })}
+                    </div>
                 </div>
-                {g.cards.map(item => {
-                    const flatIdx = flatIndexMap.get(item.id) ?? 0;
-                    return renderCardOrWrapper(item, flatIdx, list.length, withControls);
-                })}
-            </div>
-        ) : (
-            (() => {
-                const item = g.cards[0];
-                const flatIdx = flatIndexMap.get(item.id) ?? 0;
-                return renderCardOrWrapper(item, flatIdx, list.length, withControls);
-            })()
-        ));
+            );
+        });
     }
 
     const headerGradient: Record<string, string> = {

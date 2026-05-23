@@ -7,8 +7,17 @@ import type { MaintenanceWithCritical, CriticalStatus, PhotoRow, WorkOrderWithPe
 import { KANBAN_COLUMNS } from '@/lib/constants';
 import KanbanCard from './KanbanCard';
 
+function DroppableSection({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) {
+    const { setNodeRef, isOver } = useDroppable({ id });
+    return (
+        <div ref={setNodeRef} className={`${className} ${isOver ? 'bg-amber-100/10 ring-2 ring-amber-400/30 scale-[1.002] border-solid border-amber-300' : ''} transition-all duration-150`}>
+            {children}
+        </div>
+    );
+}
+
 interface KanbanColumnProps {
-    status: 'OPEN' | 'IP' | 'IP_PREV' | 'OK' | 'CLOSED';
+    status: 'OPEN' | 'IP' | 'OK' | 'CLOSED';
     items: MaintenanceWithCritical[];
     prevItems?: MaintenanceWithCritical[];
     hiddenFuture?: number;
@@ -79,21 +88,9 @@ function AssignedItemWrapper({ item, photos, statusTimeIso, statusActors, onUnas
 }
 
 export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, statusActorByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift, readOnly = false, workOrders, onOpenDetail }: KanbanColumnProps) {
-    const { setNodeRef, isOver } = useDroppable({ id: status });
-    const baseConfig = KANBAN_COLUMNS.find(c => c.id === (status === 'IP_PREV' ? 'IP' : status))!;
-    const config = status === 'IP_PREV' ? {
-        ...baseConfig,
-        label: 'In Progress (Sebelumnya)',
-        bgColor: 'bg-slate-50',
-        borderColor: 'border-slate-300',
-        textColor: 'text-slate-700',
-        badgeBg: 'bg-slate-200/80',
-    } : status === 'IP' ? {
-        ...baseConfig,
-        label: 'In Progress (Shift Ini)',
-    } : baseConfig;
+    const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
-    function renderCardOrWrapper(item: MaintenanceWithCritical, flatIdx: number, totalLen: number, withControls: boolean) {
+    function renderCardOrWrapper(item: MaintenanceWithCritical, flatIdx: number, totalLen: number, withControls: boolean, isPrev = false) {
         const card = (
             <KanbanCard
                 item={item}
@@ -110,7 +107,7 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
             />
         );
 
-        if (status === 'IP_PREV') {
+        if (isPrev) {
             return (
                 <div key={item.id}>
                     <PrevItemWrapper
@@ -168,7 +165,7 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
 
             if (!isGroup) {
                 const flatIdx = flatIndexMap.get(firstCard.id) ?? 0;
-                return renderCardOrWrapper(firstCard, flatIdx, list.length, withControls);
+                return renderCardOrWrapper(firstCard, flatIdx, list.length, withControls, keyPrefix === 'prev');
             }
 
             // Resolve parent properties for grouped items
@@ -285,7 +282,7 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                     <div className="flex flex-col gap-2 pl-2 border-l border-dashed border-slate-300/70 ml-2">
                         {cards.map(item => {
                             const flatIdx = flatIndexMap.get(item.id) ?? 0;
-                            return renderCardOrWrapper(item, flatIdx, list.length, withControls);
+                            return renderCardOrWrapper(item, flatIdx, list.length, withControls, keyPrefix === 'prev');
                         })}
                     </div>
                 </div>
@@ -295,21 +292,17 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
 
     const headerGradient: Record<string, string> = {
         OPEN: 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-sm',
-        IP_PREV: 'bg-gradient-to-r from-slate-500 to-slate-600 shadow-sm',
         IP: 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-sm',
         OK: 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-sm',
     };
     const headerIcon: Record<string, string> = {
         OPEN: 'info',
-        IP_PREV: 'history',
         IP: 'pending',
         OK: 'check_circle',
     };
 
     return (
-        <div className={`flex flex-col min-w-[260px] md:min-w-0 md:flex-1 rounded-2xl border transition-all duration-200
-            ${isOver ? `${config.borderColor} shadow-md scale-[1.01]` : 'border-gray-200 shadow-sm'}
-            ${config.bgColor}`}
+        <div className={`flex flex-col min-w-[280px] md:min-w-0 md:flex-1 rounded-2xl border transition-all duration-200 border-gray-200 shadow-sm ${config.bgColor}`}
         >
             {/* Column header */}
             <div className={`${headerGradient[status]} rounded-t-2xl px-4 py-2.5 flex items-center justify-between`}>
@@ -327,51 +320,73 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
             {headerExtra}
 
             {/* Cards container */}
-            <div
-                ref={setNodeRef}
-                className="flex-1 p-2 space-y-1.5 min-h-[160px] overflow-y-auto light-scrollbar"
-            >
-                <SortableContext items={[...items, ...prevItems].map(i => i.id)} strategy={verticalListSortingStrategy}>
-                    {renderGroups(items, '', true)}
-
-                    {/* Divider: shift sebelumnya */}
-                    {prevItems.length > 0 && (
-                        <>
-                            <div className="flex items-center gap-2 py-1">
-                                <div className="flex-1 h-px bg-gray-300" />
-                                <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest whitespace-nowrap">Shift Sebelumnya</span>
-                                <div className="flex-1 h-px bg-gray-300" />
+            <div className="flex-1 p-2 overflow-y-auto light-scrollbar min-h-[200px]">
+                {status === 'IP' ? (
+                    <div className="space-y-4">
+                        {/* Section: Shift Ini */}
+                        <div className="flex flex-col gap-1.5">
+                            <div className="px-1.5 py-0.5 flex items-center gap-1.5 opacity-90">
+                                <span className="material-symbols-outlined text-amber-500" style={{ fontSize: 13 }}>pending</span>
+                                <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Shift Ini</span>
+                                <span className="ml-auto text-[9px] font-black text-amber-500 bg-amber-100/50 px-1.5 py-0.5 rounded-md border border-amber-250/30">
+                                    {items.length} Pekerjaan
+                                </span>
                             </div>
-                            <div className="opacity-60 flex flex-col gap-3">
-                                {prevItems.map(item => (
-                                    <PrevItemWrapper
-                                        key={item.id}
-                                        item={item}
-                                        onKonfirmasi={readOnly ? undefined : onKonfirmasiShift}
-                                        photos={photosByMaintId?.[item.id]}
-                                        statusTimeIso={statusTimeByMaintId?.[item.id]}
-                                        statusActors={statusActorByMaintId?.[item.id]}
-                                        boardDate={boardDate}
-                                        boardShift={boardShift}
-                                    />
-                                ))}
+                            <DroppableSection id="IP" className="p-2 rounded-2xl min-h-[100px] space-y-1.5 border border-dashed border-amber-250 bg-amber-50/20">
+                                <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                                    {renderGroups(items, 'curr', true)}
+                                    {items.length === 0 && (
+                                        <div className="flex flex-col items-center justify-center py-6 text-amber-600/50 text-xs">
+                                            <span className="material-symbols-outlined text-2xl">pending</span>
+                                            <span className="mt-1">Belum ada pekerjaan di shift ini</span>
+                                        </div>
+                                    )}
+                                </SortableContext>
+                            </DroppableSection>
+                        </div>
+
+                        {/* Section: Shift Sebelumnya */}
+                        <div className="flex flex-col gap-1.5 pt-3 border-t border-slate-200/60">
+                            <div className="px-1.5 py-0.5 flex items-center gap-1.5 opacity-90">
+                                <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 13 }}>history</span>
+                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Shift Sebelumnya</span>
+                                <span className="ml-auto text-[9px] font-black text-slate-500 bg-slate-200/50 px-1.5 py-0.5 rounded-md border border-slate-300/40">
+                                    {prevItems.length} Pekerjaan
+                                </span>
                             </div>
-                        </>
-                    )}
-                </SortableContext>
-
-                {items.length === 0 && prevItems.length === 0 && (
-                    <div className={`flex flex-col items-center justify-center py-8 ${config.textColor} opacity-50`}>
-                        <span className="material-symbols-outlined text-3xl">inbox</span>
-                        <span className="text-xs mt-1">Kosong</span>
+                            <DroppableSection id="IP_PREV" className="p-2 rounded-2xl min-h-[100px] space-y-1.5 border border-dashed border-slate-200 bg-slate-50/50">
+                                <SortableContext items={prevItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                                    {renderGroups(prevItems, 'prev', true)}
+                                    {prevItems.length === 0 && (
+                                        <div className="flex flex-col items-center justify-center py-6 text-slate-400 text-xs">
+                                            <span className="material-symbols-outlined text-2xl">history</span>
+                                            <span className="mt-1">Tidak ada carry-forward sebelumnya</span>
+                                        </div>
+                                    )}
+                                </SortableContext>
+                            </DroppableSection>
+                        </div>
                     </div>
-                )}
+                ) : (
+                    <DroppableSection id={status} className="h-full min-h-[160px] space-y-1.5">
+                        <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                            {renderGroups(items, '', true)}
+                        </SortableContext>
 
-                {hiddenFuture > 0 && (
-                    <div className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-slate-100 border border-dashed border-slate-300 text-[11px] font-bold text-slate-500" title="Maintenance dengan tanggal di masa depan tidak ditampilkan untuk fokus pada backlog & hari ini">
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
-                        +{hiddenFuture} dijadwalkan untuk tanggal mendatang
-                    </div>
+                        {items.length === 0 && (
+                            <div className={`flex flex-col items-center justify-center py-8 ${config.textColor} opacity-50`}>
+                                <span className="material-symbols-outlined text-3xl">inbox</span>
+                                <span className="text-xs mt-1">Kosong</span>
+                            </div>
+                        )}
+
+                        {hiddenFuture > 0 && (
+                            <div className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-slate-100 border border-dashed border-slate-300 text-[11px] font-bold text-slate-500" title="Maintenance dengan tanggal di masa depan tidak ditampilkan untuk fokus pada backlog & hari ini">
+                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
+                                +{hiddenFuture} dijadwalkan untuk tanggal mendatang
+                            </div>
+                        )}
+                    </DroppableSection>
                 )}
             </div>
         </div>

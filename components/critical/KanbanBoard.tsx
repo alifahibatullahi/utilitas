@@ -42,7 +42,7 @@ interface KanbanBoardProps {
     onOpenDetail?: (id: string, type: 'critical' | 'preventif' | 'modifikasi') => void;
 }
 
-const COLUMN_IDS = ['OPEN', 'IP_PREV', 'IP', 'OK'] as const;
+const STATUSES: MaintenanceStatus[] = ['OPEN', 'IP', 'OK'];
 
 export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, onKonfirmasiShift, photosByMaintId, statusTimeByMaintId, statusActorByMaintId, boardDate, boardShift, openSearch, onOpenSearchChange, assignedToCurrentShiftIds, onUnassignCurrentShift, readOnly = false, workOrders, onOpenDetail }: KanbanBoardProps) {
     const [activeItem, setActiveItem] = useState<MaintenanceWithCritical | null>(null);
@@ -163,10 +163,10 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
         }
     }, [maintenances, onMoveStatus, onKonfirmasiShift, onUnassignCurrentShift, readOnly, shiftWindow]);
 
-    // Build columns using COLUMN_IDS for rendering
-    const columns = COLUMN_IDS.map(status => {
-        const order = columnOrders[status === 'IP_PREV' ? 'IP' : status] || [];
-        const allStatusItems = maintenances.filter(m => m.status === (status === 'IP_PREV' ? 'IP' : status));
+    // Build columns using STATUSES for rendering
+    const columns = STATUSES.map(status => {
+        const order = columnOrders[status] || [];
+        const allStatusItems = maintenances.filter(m => m.status === status);
         // Sort by custom order
         const sortedAll = [
             ...order.map(id => allStatusItems.find(m => m.id === id)).filter(Boolean) as MaintenanceWithCritical[],
@@ -179,11 +179,8 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
         }
         if (status === 'IP') {
             const items = sortedAll.filter(m => inWindow(m.updated_at));
-            return { status, items, prevItems: [], hiddenFuture: 0 };
-        }
-        if (status === 'IP_PREV') {
-            const items = sortedAll.filter(m => !inWindow(m.updated_at));
-            return { status, items, prevItems: [], hiddenFuture: 0 };
+            const prevItems = sortedAll.filter(m => !inWindow(m.updated_at));
+            return { status, items, prevItems, hiddenFuture: 0 };
         }
 
         // OPEN: filter berdasarkan search query (jika ada) + date <= boardDate (kalau search kosong)
@@ -219,7 +216,7 @@ export default function KanbanBoard({ maintenances, shiftWindow, onMoveStatus, o
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={statusTimeByMaintId}
                         statusActorByMaintId={statusActorByMaintId}
-                        onMoveInColumn={(id, dir) => handleMoveInColumn(col.status === 'IP_PREV' ? 'IP' : col.status, id, dir)}
+                        onMoveInColumn={(id, dir) => handleMoveInColumn(col.status, id, dir)}
                         onUnassignCurrentShift={onUnassignCurrentShift}
                         boardDate={boardDate}
                         boardShift={boardShift}

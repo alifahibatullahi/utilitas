@@ -1091,11 +1091,11 @@ function InputShiftPageInner() {
                                                 console.error(err);
                                             }
                                         }}
-                                        className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-3 pr-8 py-1 min-w-[180px] lg:min-w-[240px] cursor-pointer focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}
+                                        className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-2.5 pr-7 py-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px] cursor-pointer focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}
                                     >
                                         <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none">Tanggal</span>
-                                        <div className="relative w-full flex items-center h-5">
-                                            <span className="text-xs lg:text-sm font-black text-blue-100 select-none">
+                                        <div className="relative w-full flex items-center h-5 overflow-hidden">
+                                            <span className="text-[11px] sm:text-xs lg:text-sm font-black text-blue-100 select-none whitespace-nowrap">
                                                 {formattedDate || selectedDate}
                                             </span>
                                             <input
@@ -1107,7 +1107,7 @@ function InputShiftPageInner() {
                                                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full bg-transparent border-none outline-none ring-0 appearance-none focus:ring-0 focus:border-none focus:outline-none [color-scheme:dark]"
                                             />
                                         </div>
-                                        <span className="material-symbols-outlined text-[18px] text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
+                                        <span className="material-symbols-outlined text-[18px] text-blue-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
                                         {isToday && inputMode === 'shift' && (
                                             <span className="absolute -top-1 -right-1 flex h-2 w-2">
                                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -1134,13 +1134,13 @@ function InputShiftPageInner() {
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
                         {/* Supervisor dropdown - Swapped to Row 2 */}
                         {!station && (
-                            <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[180px] lg:min-w-[240px]">
+                            <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight select-none">Supervisor</span>
-                                <div className="relative w-full flex items-center">
+                                <div className="relative w-full flex items-center h-5">
                                     <select 
                                         value={supervisor} 
                                         onChange={e => setSupervisor(e.target.value)} 
-                                        className="w-full bg-transparent border-none p-0 text-xs lg:text-sm font-black text-slate-100 focus:ring-0 cursor-pointer appearance-none outline-none"
+                                        className="w-full bg-transparent border-none p-0 text-[11px] sm:text-xs lg:text-sm font-black text-slate-100 focus:ring-0 cursor-pointer appearance-none outline-none"
                                     >
                                         <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
                                         {supervisorOptions.map(op => (
@@ -1156,13 +1156,13 @@ function InputShiftPageInner() {
 
                         {inputMode === 'shift' && !station && (
                             <>
-                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[180px] lg:min-w-[240px]">
+                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
                                     <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest leading-tight select-none">Foreman Boiler</span>
-                                    <div className="relative w-full flex items-center">
+                                    <div className="relative w-full flex items-center h-5">
                                         <select 
                                             value={foremanBoiler} 
                                             onChange={e => setForemanBoiler(e.target.value)} 
-                                            className="w-full bg-transparent border-none p-0 text-xs lg:text-sm font-black text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none"
+                                            className="w-full bg-transparent border-none p-0 text-[11px] sm:text-xs lg:text-sm font-black text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none"
                                         >
                                             <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
                                             {foremanBoilerOptions.map(op => (
@@ -1173,13 +1173,13 @@ function InputShiftPageInner() {
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                 </div>
 
-                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-3 pr-8 py-1 transition-all duration-200 min-w-[180px] lg:min-w-[240px]">
+                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
                                     <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-tight select-none">Foreman Turbin</span>
-                                    <div className="relative w-full flex items-center">
+                                    <div className="relative w-full flex items-center h-5">
                                         <select 
                                             value={foremanTurbin} 
                                             onChange={e => setForemanTurbin(e.target.value)} 
-                                            className="w-full bg-transparent border-none p-0 text-xs lg:text-sm font-black text-indigo-100 focus:ring-0 cursor-pointer appearance-none outline-none"
+                                            className="w-full bg-transparent border-none p-0 text-[11px] sm:text-xs lg:text-sm font-black text-indigo-100 focus:ring-0 cursor-pointer appearance-none outline-none"
                                         >
                                             <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
                                             {foremanTurbinOptions.map(op => (

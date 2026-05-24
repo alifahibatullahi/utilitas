@@ -391,28 +391,39 @@ export default function CriticalDetailModal({
                 <div className="overflow-y-auto detail-scrollbar flex-1 bg-slate-50">
                     <div className="p-8 pb-32 flex flex-col gap-8 min-h-max">
                         
-                        {/* Top Row: Meta info Cards */}
-                        <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
-                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-rose-500 col-span-1 flex flex-col justify-between">
-                                <span className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-rose-500" style={{ fontSize: 16 }}>calendar_today</span>
-                                    Tanggal
-                                </span>
-                                <span className="text-sm font-black text-slate-800 mt-2">{formatDate(critical.date)}</span>
+                        {/* Top Row: Cohesive Dashboard Meta Banner */}
+                        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-col md:flex-row md:items-center justify-between gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-150">
+                            {/* Tanggal */}
+                            <div className="flex-1 md:pr-6 flex items-center gap-4">
+                                <div className="flex-shrink-0 p-2.5 bg-rose-50 rounded-xl text-rose-500 border border-rose-100 flex items-center justify-center">
+                                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>calendar_today</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-0.5">Tanggal</span>
+                                    <span className="text-sm font-black text-slate-800 whitespace-nowrap">{formatDate(critical.date)}</span>
+                                </div>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-rose-500 col-span-4 flex flex-col justify-between">
-                                <span className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-rose-500" style={{ fontSize: 16 }}>description</span>
-                                    Deskripsi Critical
-                                </span>
-                                <span className="text-base font-black text-slate-900 leading-relaxed mt-2">{critical.deskripsi}</span>
+                            
+                            {/* Deskripsi */}
+                            <div className="flex-[3] md:px-6 py-4 md:py-0 flex items-center gap-4">
+                                <div className="flex-shrink-0 p-2.5 bg-rose-50 rounded-xl text-rose-500 border border-rose-100 flex items-center justify-center">
+                                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>description</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-0.5">Deskripsi Critical</span>
+                                    <span className="text-sm md:text-base font-black text-slate-900 leading-relaxed block break-words">{critical.deskripsi}</span>
+                                </div>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-rose-500 col-span-1 flex flex-col justify-between">
-                                <span className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-rose-500" style={{ fontSize: 16 }}>tag</span>
-                                    Notif/SAP
-                                </span>
-                                <span className="text-sm font-black text-slate-800 mt-2">{critical.notif || '-'}</span>
+
+                            {/* Notif / SAP */}
+                            <div className="flex-1 md:pl-6 pt-4 md:pt-0 flex items-center gap-4">
+                                <div className="flex-shrink-0 p-2.5 bg-rose-50 rounded-xl text-rose-500 border border-rose-100 flex items-center justify-center">
+                                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>tag</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-0.5">Notif / SAP</span>
+                                    <span className="text-sm font-black text-slate-800 whitespace-nowrap">{critical.notif || '-'}</span>
+                                </div>
                             </div>
                         </div>
 

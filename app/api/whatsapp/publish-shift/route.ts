@@ -59,7 +59,6 @@ export async function GET(req: NextRequest) {
         .gte('updated_at', win.start)
         .lte('updated_at', win.end)
         .neq('item', 'NOTE')
-        .or('keterangan.is.null,keterangan.neq.IS_NOTE')
         .order('item', { ascending: true });
 
     const summary = buildShiftSummary(report, maintenance ?? []);
@@ -130,7 +129,6 @@ export async function POST(req: NextRequest) {
         .gte('updated_at', win.start)
         .lte('updated_at', win.end)
         .neq('item', 'NOTE')
-        .or('keterangan.is.null,keterangan.neq.IS_NOTE')
         .order('item', { ascending: true });
 
     // ────────── Run both sends in parallel ──────────

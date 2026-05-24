@@ -209,31 +209,40 @@ export default function WorkOrderDetailModal({
                 await onRefresh?.();
             } else { alert('Gagal menambah note'); }
         }
-    }
-
-    return (
+    }    return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={handleClose}>
-            <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <div
-                className="relative bg-white w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                className="relative bg-white w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100"
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header — sama dengan CriticalDetailModal */}
-                <div className="flex-shrink-0 bg-[#EAEFF5] border-b border-[#D8E2ED] px-8 py-5 flex items-start justify-between">
+                {/* Header — matching gradient depending on tipe (preventif / modifikasi) */}
+                <div className={`flex-shrink-0 bg-gradient-to-r ${isPreventif ? 'from-emerald-50/90' : 'from-violet-50/90'} via-slate-50/90 to-white/80 border-b border-slate-200 border-l-[6px] ${isPreventif ? 'border-l-emerald-500' : 'border-l-violet-500'} px-8 py-5 flex items-start justify-between backdrop-blur-md`}>
                     <div className="flex flex-col gap-3 w-full overflow-hidden">
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
-                            <span className={`px-4 py-1.5 ${accentBg} text-white text-sm font-black rounded-full uppercase tracking-widest whitespace-nowrap shadow-sm`}>{tipeLabel}</span>
-                            <h2 className="text-2xl font-black text-slate-800 whitespace-nowrap uppercase">ITEM : {getDisplayItem(workOrder.item)}</h2>
-                            <span className="px-3 py-1 bg-white text-slate-700 text-sm font-bold rounded-full border border-slate-200 whitespace-nowrap">ID {tipeLabel.toUpperCase()} : #{workOrder.id.slice(0, 8).toUpperCase()}</span>
-                            <StatusBadge status={workOrder.status} solid className="px-3 py-1 text-sm shadow-sm" />
+                            <span className={`px-4 py-1.5 ${accentBg} text-white text-xs font-black rounded-full uppercase tracking-widest whitespace-nowrap shadow-sm flex items-center gap-2`}>
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                                </span>
+                                {tipeLabel}
+                            </span>
+                            <h2 className="text-2xl font-black text-slate-800 whitespace-nowrap uppercase tracking-tight">
+                                ITEM : <span className={accentText}>{getDisplayItem(workOrder.item)}</span>
+                            </h2>
+                            <span className="px-3 py-1 bg-white/85 text-slate-700 text-xs font-extrabold rounded-full border border-slate-200/80 whitespace-nowrap shadow-sm">
+                                ID {tipeLabel.toUpperCase()} : #{workOrder.id.slice(0, 8).toUpperCase()}
+                            </span>
+                            <StatusBadge status={workOrder.status} solid className="px-3 py-1 text-xs shadow-sm font-bold" />
                         </div>
                         <div className="flex items-center gap-3 overflow-x-auto light-scrollbar pr-4 pb-1">
                             {workOrder.reported_by && (
-                                <span className="px-3 py-1 bg-white text-slate-700 font-bold text-sm rounded-full border border-slate-200 whitespace-nowrap">
-                                    👤 Yang Melaporkan : {workOrder.reported_by}
+                                <span className="px-3 py-1 bg-white/90 text-slate-600 font-bold text-xs rounded-full border border-slate-250/80 whitespace-nowrap flex items-center gap-1.5 shadow-sm">
+                                    <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 14 }}>person</span>
+                                    Melaporkan : <span className="text-slate-800 font-black">{workOrder.reported_by}</span>
                                 </span>
                             )}
-                            <ScopeBadge scope={workOrder.scope} solid className="px-6 py-2 text-xl font-black shadow-sm" />
+                            <ScopeBadge scope={workOrder.scope} solid className="px-4 py-1 text-xs font-extrabold shadow-sm" />
                         </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4 flex-shrink-0">
@@ -242,10 +251,10 @@ export default function WorkOrderDetailModal({
                             disabled={saving}
                             className={`px-4 h-10 flex items-center gap-1.5 rounded-xl text-sm font-bold border transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 ${
                                 savedFlash
-                                    ? 'bg-emerald-500 border-emerald-400 text-white'
+                                    ? 'bg-emerald-50 border-emerald-400 text-white'
                                     : dirty
                                     ? `${accentBg} border-transparent text-white ${accentHover} hover:shadow-md ${accentShadow}`
-                                    : 'bg-white border-[#D8E2ED] text-slate-500 hover:bg-slate-100'
+                                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100'
                             }`}
                             title={dirty ? 'Refresh tampilan & tandai sudah disimpan' : 'Tidak ada perubahan'}
                         >
@@ -267,7 +276,7 @@ export default function WorkOrderDetailModal({
                             )}
                         </button>
                         <button onClick={handleClose}
-                            className="group w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#D8E2ED] hover:bg-rose-500 hover:border-rose-400 hover:scale-110 hover:shadow-rose-500/30 text-slate-500 hover:text-white transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
+                            className="group w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-rose-500 hover:border-rose-400 hover:scale-110 hover:shadow-rose-500/30 text-slate-500 hover:text-white transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
                             title={dirty ? 'Tutup (ada perubahan terbaru)' : 'Tutup'}>
                             <span className="material-symbols-outlined transition-transform group-hover:rotate-90" style={{ fontSize: 24 }}>close</span>
                         </button>
@@ -277,19 +286,28 @@ export default function WorkOrderDetailModal({
                 {/* Body — 3 kolom seperti critical */}
                 <div className="overflow-y-auto detail-scrollbar flex-1 bg-slate-50">
                     <div className="p-8 pb-32 flex flex-col gap-8 min-h-max">
-                        {/* Meta info */}
+                        {/* Meta info Cards */}
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
-                            <div className="bg-white p-4 rounded-2xl shadow-sm col-span-1">
-                                <span className="text-xs uppercase font-black text-black block mb-1.5">Tanggal</span>
-                                <span className="text-base font-bold text-slate-800">{formatDate(workOrder.date)}</span>
+                            <div className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-100 border-l-4 ${isPreventif ? 'border-l-emerald-500' : 'border-l-violet-500'} col-span-1 flex flex-col justify-between`}>
+                                <span className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                                    <span className={`material-symbols-outlined ${accentText}`} style={{ fontSize: 16 }}>calendar_today</span>
+                                    Tanggal
+                                </span>
+                                <span className="text-sm font-black text-slate-800 mt-2">{formatDate(workOrder.date)}</span>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 col-span-4">
-                                <span className="text-sm uppercase font-black text-black block mb-1.5">Deskripsi {tipeLabel}</span>
-                                <span className="text-lg font-bold text-slate-800 leading-relaxed">{workOrder.deskripsi}</span>
+                            <div className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-200 border-l-4 ${isPreventif ? 'border-l-emerald-500' : 'border-l-violet-500'} col-span-4 flex flex-col justify-between`}>
+                                <span className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                                    <span className={`material-symbols-outlined ${accentText}`} style={{ fontSize: 16 }}>description</span>
+                                    Deskripsi {tipeLabel}
+                                </span>
+                                <span className="text-base font-black text-slate-900 leading-relaxed mt-2">{workOrder.deskripsi}</span>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl shadow-sm col-span-1">
-                                <span className="text-xs uppercase font-black text-black block mb-1.5">Notif/SAP</span>
-                                <span className="text-base font-bold text-slate-800">{workOrder.notif || '-'}</span>
+                            <div className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-100 border-l-4 ${isPreventif ? 'border-l-emerald-500' : 'border-l-violet-500'} col-span-1 flex flex-col justify-between`}>
+                                <span className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                                    <span className={`material-symbols-outlined ${accentText}`} style={{ fontSize: 16 }}>tag</span>
+                                    Notif/SAP
+                                </span>
+                                <span className="text-sm font-black text-slate-800 mt-2">{workOrder.notif || '-'}</span>
                             </div>
                         </div>
 
@@ -297,21 +315,21 @@ export default function WorkOrderDetailModal({
                             {/* Pekerjaan column (2 spans) */}
                             <div className="md:col-span-2 flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
                                         <span className={`material-symbols-outlined ${accentText}`}>handyman</span>
                                         Daftar Pekerjaan
                                     </h3>
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => { setEditingNoteId(null); setNoteText(''); setShowNoteForm(true); }}
-                                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-sm shadow-amber-500/20"
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-sm shadow-amber-500/20"
                                         >
                                             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit_note</span>
                                             Note
                                         </button>
                                         <button
                                             onClick={() => onAddPekerjaan?.(workOrder)}
-                                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg ${accentBg} ${accentHover} text-white text-xs font-bold transition-all shadow-sm ${accentShadow}`}
+                                            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl ${accentBg} ${accentHover} text-white text-xs font-bold transition-all shadow-sm ${accentShadow}`}
                                         >
                                             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
                                             Tambah
@@ -333,22 +351,25 @@ export default function WorkOrderDetailModal({
 
                                             if (isNote) {
                                                 return (
-                                                    <div key={m.id} className="group relative p-3 rounded-xl border bg-[#FFFDF7] border-amber-200/60 shadow-sm hover:shadow-md">
+                                                    <div key={m.id} className="group relative p-4 rounded-2xl border bg-gradient-to-br from-amber-50/70 to-amber-100/30 border-amber-200/80 border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-all duration-205">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-amber-100 rounded-lg text-amber-600 shadow-sm border border-amber-200">
-                                                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>sticky_note_2</span>
+                                                            <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 text-amber-600">
+                                                                <span className="material-symbols-outlined text-slate-300 mr-1" style={{ fontSize: 20 }}>drag_indicator</span>
+                                                                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>sticky_note_2</span>
                                                             </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <span className="text-[15px] font-black text-slate-800 break-words">{capitalizeFirst(m.uraian)}</span>
+                                                            <div className="flex-1 min-w-0 pl-1">
+                                                                <span className="text-base font-bold text-slate-800 break-words leading-relaxed">{capitalizeFirst(m.uraian)}</span>
                                                                 {m.reported_by && (
-                                                                    <span className="text-[10px] text-slate-500 block font-black tracking-wide uppercase mt-0.5">— {m.reported_by}</span>
+                                                                    <span className="text-[10px] text-amber-800/70 block font-bold tracking-wide uppercase mt-1">
+                                                                        — Oleh: {m.reported_by}
+                                                                    </span>
                                                                 )}
                                                             </div>
-                                                            <div className="flex-shrink-0 flex items-center gap-2 border-l border-amber-200/50 pl-3">
-                                                                <button onClick={() => handleEditNote(m)} className="w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border text-blue-600 hover:text-white bg-blue-50 border-blue-200 hover:bg-blue-600 hover:border-transparent">
+                                                            <div className="flex-shrink-0 flex items-center gap-2 border-l border-amber-200/60 pl-3">
+                                                                <button onClick={() => handleEditNote(m)} className="w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border text-blue-600 hover:text-white bg-white hover:bg-blue-600 border-slate-200 hover:border-transparent">
                                                                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
                                                                 </button>
-                                                                <button onClick={() => { if (confirm('Hapus note ini?')) onDeletePekerjaan?.(m.id); }} className="w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border text-rose-600 hover:text-white bg-rose-50 border-rose-200 hover:bg-rose-600 hover:border-transparent">
+                                                                <button onClick={() => { if (confirm('Hapus note ini?')) onDeletePekerjaan?.(m.id); }} className="w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border text-rose-600 hover:text-white bg-white hover:bg-rose-600 border-slate-200 hover:border-transparent">
                                                                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
                                                                 </button>
                                                             </div>
@@ -357,23 +378,43 @@ export default function WorkOrderDetailModal({
                                                 );
                                             }
 
+                                            const scopeBorderColor = 
+                                                m.scope === 'mekanik' ? 'border-l-blue-500' :
+                                                m.scope === 'listrik' ? 'border-l-amber-500' :
+                                                m.scope === 'instrumen' ? 'border-l-purple-500' : 'border-l-teal-500';
+
                                             return (
-                                                <div key={m.id} className={`group relative p-4 rounded-2xl border-2 transition-all duration-200 ${
-                                                    isOk ? 'border-slate-200 shadow-sm bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_10px,#f1f5f9_10px,#f1f5f9_20px)]' : 'border-slate-300 shadow-sm hover:border-slate-400 hover:shadow-lg bg-white'
+                                                <div key={m.id} className={`group relative p-5 rounded-2xl border border-slate-200 border-l-[6px] ${scopeBorderColor} transition-all duration-200 ${
+                                                    isOk
+                                                        ? 'bg-slate-50/70 opacity-90 shadow-sm border-slate-200 bg-[repeating-linear-gradient(45deg,#fcfdfe,#fcfdfe_8px,#f8fafc_8px,#f8fafc_16px)]'
+                                                        : 'bg-white shadow-sm hover:shadow-lg hover:border-slate-350'
                                                 }`}>
-                                                    <div className={`flex items-center gap-4 ${isOk ? 'opacity-80' : ''}`}>
-                                                        <div className={`flex-shrink-0 flex flex-col items-center justify-center w-10 h-10 rounded-xl border ${isOk ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-100'}`}>
-                                                            <span className={`text-xl font-black ${isOk ? 'text-slate-400' : 'text-black'}`}>#{pekerjaanIndex}</span>
+                                                    <div className="flex items-center gap-4">
+                                                        {/* Left Section: Index / Checkmark */}
+                                                        <div className="flex-shrink-0 flex items-center gap-1.5">
+                                                            <span className="material-symbols-outlined text-slate-300" style={{ fontSize: 20 }}>drag_indicator</span>
+                                                            <div className={`flex flex-col items-center justify-center w-9 h-9 rounded-xl border font-bold ${
+                                                                isOk ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-50 border-slate-100 text-slate-800'
+                                                            }`}>
+                                                                {isOk ? (
+                                                                    <span className="material-symbols-outlined font-black" style={{ fontSize: 18 }}>check</span>
+                                                                ) : (
+                                                                    <span className="text-sm font-black">#{pekerjaanIndex}</span>
+                                                                )}
+                                                            </div>
                                                         </div>
+
+                                                        {/* Middle Section: Info & Title */}
                                                         <div className="flex-1 min-w-0 pr-4">
-                                                            <div className="flex flex-wrap items-center gap-3 mb-3">
-                                                                <span className={`text-base font-black uppercase tracking-wide ${
-                                                                    m.scope === 'mekanik' ? 'text-blue-600 bg-blue-50 border-blue-200' :
-                                                                    m.scope === 'listrik' ? 'text-amber-600 bg-amber-50 border-amber-200' :
-                                                                    m.scope === 'instrumen' ? 'text-purple-600 bg-purple-50 border-purple-200' :
-                                                                    'text-teal-600 bg-teal-50 border-teal-200'
-                                                                } px-2 py-0.5 rounded shadow-sm border`}>{m.scope}</span>
-                                                                <span className={`text-lg font-black flex-1 ${isOk ? 'text-slate-400' : 'text-slate-800'}`}>{capitalizeFirst(m.uraian)}</span>
+                                                            <div className="flex flex-wrap items-center gap-3 mb-2.5 break-words">
+                                                                <span className={`text-xs font-black uppercase tracking-wider ${
+                                                                    m.scope === 'mekanik' ? 'text-blue-700 bg-blue-50 border-blue-200/80' :
+                                                                    m.scope === 'listrik' ? 'text-amber-700 bg-amber-50 border-amber-200/80' :
+                                                                    m.scope === 'instrumen' ? 'text-purple-700 bg-purple-50 border-purple-200/80' :
+                                                                    'text-teal-700 bg-teal-50 border-teal-200/80'
+                                                                } px-2.5 py-1 rounded-lg border shadow-sm`}>{m.scope}</span>
+                                                                
+                                                                <span className={`text-lg font-bold leading-snug flex-1 ${isOk ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{capitalizeFirst(m.uraian)}</span>
                                                                 
                                                                 {/* Status Dropdown */}
                                                                 <div className="relative flex-shrink-0">
@@ -385,28 +426,63 @@ export default function WorkOrderDetailModal({
                                                                     />
                                                                 </div>
                                                             </div>
+                                                            
+                                                            {/* Labels / Badges */}
                                                             <div className="flex flex-wrap items-center gap-2">
-                                                                <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
+                                                                <span className={`px-2.5 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 border ${
+                                                                    isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-slate-50 text-slate-600 border-slate-200/60'
+                                                                }`}>
+                                                                    <span className="material-symbols-outlined text-slate-400" style={{fontSize:14}}>event</span>
                                                                     {formatDate(m.date)}
                                                                 </span>
                                                                 {m.notif && (
-                                                                    <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-100 text-indigo-800 border-indigo-200'}`}>
+                                                                    <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border ${
+                                                                        isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-50 text-indigo-700 border-indigo-150'
+                                                                    }`}>
                                                                         Notif: {m.notif}
                                                                     </span>
                                                                 )}
                                                                 {m.reported_by && (
-                                                                    <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-teal-100 text-teal-800 border-teal-200'}`}>
-                                                                        👤 {m.reported_by}
+                                                                    <span className={`px-2.5 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 border ${
+                                                                        isOk ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-teal-50 text-teal-700 border-teal-150'
+                                                                    }`}>
+                                                                        <span className="material-symbols-outlined text-teal-500/70" style={{fontSize:14}}>person</span>
+                                                                        {m.reported_by}
                                                                     </span>
                                                                 )}
                                                             </div>
+
+                                                            {m.keterangan && (
+                                                                <div className={`text-xs p-3 rounded-xl border mt-3 ${
+                                                                    isOk ? 'text-slate-400 bg-slate-50/50 border-slate-100' : 'text-slate-600 bg-slate-50 border-slate-200/50'
+                                                                }`}>
+                                                                    <span className={`font-black block mb-1 uppercase tracking-wider text-[10px] ${isOk ? 'text-slate-400' : 'text-slate-500'}`}>Keterangan:</span>
+                                                                    <p className="font-medium leading-relaxed">{m.keterangan}</p>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className={`flex-shrink-0 flex flex-col gap-2 min-w-[100px] border-l pl-4 ${isOk ? 'border-slate-200' : 'border-slate-100'}`}>
-                                                            <button onClick={() => onEditPekerjaan?.(m)} className={`w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border ${isOk ? 'text-slate-400 bg-slate-100 border-slate-200 hover:bg-slate-200' : 'text-blue-600 hover:text-white bg-blue-50 border-blue-200 hover:bg-blue-600 hover:border-transparent'}`}>
-                                                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>Edit
+                                                        <div className="flex-shrink-0 flex flex-col justify-center gap-2 min-w-[90px] border-l border-slate-150 pl-4">
+                                                            <button
+                                                                onClick={() => onEditPekerjaan?.(m)}
+                                                                className={`w-full py-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all text-xs shadow-sm border ${
+                                                                    isOk
+                                                                        ? 'text-slate-400 bg-white border-slate-200 hover:bg-slate-50'
+                                                                        : 'text-blue-600 bg-white border-slate-200 hover:bg-blue-600 hover:text-white hover:border-transparent'
+                                                                }`}
+                                                            >
+                                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit</span>
+                                                                Edit
                                                             </button>
-                                                            <button onClick={() => handleDeletePekerjaan(m)} className={`w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm border ${isOk ? 'text-slate-400 bg-slate-100 border-slate-200 hover:bg-slate-200' : 'text-rose-600 hover:text-white bg-rose-50 border-rose-200 hover:bg-rose-600 hover:border-transparent'}`}>
-                                                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>Hapus
+                                                            <button
+                                                                onClick={() => handleDeletePekerjaan(m)}
+                                                                className={`w-full py-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all text-xs shadow-sm border ${
+                                                                    isOk
+                                                                        ? 'text-slate-400 bg-white border-slate-200 hover:bg-slate-50'
+                                                                        : 'text-rose-600 bg-white border-slate-200 hover:bg-rose-600 hover:text-white hover:border-transparent'
+                                                                }`}
+                                                            >
+                                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
+                                                                Hapus
                                                             </button>
                                                         </div>
                                                     </div>
@@ -422,7 +498,7 @@ export default function WorkOrderDetailModal({
                                 {/* Photos */}
                                 <div className="flex flex-col gap-3">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                        <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
                                             <span className="material-symbols-outlined text-purple-500">photo_library</span>
                                             Foto
                                         </h3>
@@ -451,7 +527,7 @@ export default function WorkOrderDetailModal({
 
                                 {/* Activity logs */}
                                 <div className="flex flex-col gap-3 flex-1 min-h-[300px]">
-                                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
                                         <span className="material-symbols-outlined text-blue-500">history</span>
                                         Riwayat Aktivitas
                                     </h3>
@@ -477,7 +553,7 @@ export default function WorkOrderDetailModal({
             {/* Note Pop Up Form */}
             {showNoteForm && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowNoteForm(false)}>
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-3 mb-4 text-amber-600">
                             <span className="material-symbols-outlined text-3xl">edit_note</span>
                             <h3 className="text-xl font-black text-slate-800">{editingNoteId ? 'Edit Note' : 'Tambah Note Baru'}</h3>

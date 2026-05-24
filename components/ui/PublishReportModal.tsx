@@ -382,58 +382,22 @@ export function PublishReportModal({
                     )}
 
                     {tab === 'pdf' && (
-                        <div className="space-y-4 py-6">
+                        <div className="space-y-4 py-12">
                             <div className="max-w-md mx-auto">
-                                <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-5 shadow-[0_4px_20px_rgba(0,0,0,0.35)] relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-rose-500 to-amber-500" />
-                                    
-                                    {/* Glowing PDF File Icon */}
-                                    <div className="w-16 h-16 bg-rose-500/10 text-rose-400 rounded-2xl flex items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.12)] border border-rose-500/20">
-                                        <span className="material-symbols-outlined text-4xl">picture_as_pdf</span>
+                                <div className="bg-slate-950/60 border border-slate-800/80 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
+                                    <div className="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center shadow-[0_0_25px_rgba(245,158,11,0.15)] border border-amber-500/30">
+                                        <span className="material-symbols-outlined text-4xl">construction</span>
                                     </div>
-                                    
-                                    {/* Document Details */}
-                                    <div className="space-y-1.5">
-                                        <div className="text-sm font-extrabold text-slate-100 font-mono tracking-tight break-all">
-                                            Laporan_{kindLabel}_{reportDate ?? 'unknown'}_{kind === 'shift' && reportShift ? reportShift : ''}{reportGroup ? `_Grup${reportGroup}` : ''}.pdf
-                                        </div>
-                                        <p className="text-[11px] text-slate-400 leading-relaxed">
-                                            PDF akan di-generate dari data laporan ini dan dikirim ke grup <span className="text-emerald-400 font-bold">{pdfGroupKey}</span>.
+                                    <div className="space-y-2">
+                                        <h3 className="text-base font-extrabold text-amber-300 uppercase tracking-wider">Coming Soon</h3>
+                                        <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
+                                            Pengiriman PDF laporan ke grup <span className="text-emerald-400 font-bold">{pdfGroupKey}</span> sedang dalam pengembangan. Untuk sementara, gunakan tab <span className="text-cyan-300 font-bold">Text Washift</span> untuk publish.
                                         </p>
                                     </div>
-
-                                    {/* Report Metadata Badge Row */}
-                                    <div className="flex flex-wrap items-center justify-center gap-2">
-                                        {reportDate && (
-                                            <span className="inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold">
-                                                <span className="material-symbols-outlined text-[11px]">calendar_today</span>
-                                                {reportDate}
-                                            </span>
-                                        )}
-                                        {kind === 'shift' && reportShift && (
-                                            <span className="inline-flex items-center gap-1 bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold">
-                                                <span className="material-symbols-outlined text-[11px]">schedule</span>
-                                                Shift {reportShift}
-                                            </span>
-                                        )}
-                                        {reportGroup && (
-                                            <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 text-amber-300 px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold">
-                                                <span className="material-symbols-outlined text-[11px]">groups</span>
-                                                Grup {reportGroup}
-                                            </span>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Preview Button */}
-                                    <a 
-                                        href={`/laporan-${kind === 'shift' ? 'shift' : 'harian'}/preview`} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer" 
-                                        className="flex items-center gap-2.5 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-rose-300 hover:text-rose-200 border border-slate-800 hover:border-slate-700/80 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-md hover:scale-[1.03] active:scale-[0.97]"
-                                    >
-                                        <span className="material-symbols-outlined text-sm">visibility</span>
-                                        Lihat Preview PDF
-                                    </a>
+                                    <span className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest">
+                                        <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                        Fitur dalam pengembangan
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -460,9 +424,10 @@ export function PublishReportModal({
                     >
                         Tutup
                     </button>
-                    <button 
-                        onClick={publish} 
-                        disabled={sending || loadingText || !text.trim()}
+                    <button
+                        onClick={publish}
+                        disabled={sending || loadingText || !text.trim() || tab === 'pdf'}
+                        title={tab === 'pdf' ? 'PDF ke management belum tersedia (coming soon)' : undefined}
                         className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all duration-300 shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
                     >
                         {sending ? (
@@ -473,7 +438,7 @@ export function PublishReportModal({
                         ) : (
                             <>
                                 <span className="material-symbols-outlined text-sm">publish</span>
-                                Publish Laporan
+                                {tab === 'pdf' ? 'PDF Coming Soon' : 'Publish Laporan'}
                             </>
                         )}
                     </button>

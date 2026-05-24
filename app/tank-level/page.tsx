@@ -5,8 +5,8 @@ import { useTankData } from '@/hooks/useTankData';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { TANK_IDS, TANKS, TankId, TANK_THRESHOLDS, DEFAULT_THRESHOLDS } from '@/lib/constants';
 import { getAlertStatus } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import BottomTabBar from '@/components/layout/BottomTabBar';
 
@@ -39,7 +39,7 @@ const TANK_COLORS: Record<string, {
     SOLAR: { base: '#f59e0b', bgClass: 'bg-amber-500', textClass: 'text-amber-400', icon: 'oil_barrel', borderClass: 'border-amber-500/30' },
 };
 
-function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boolean }) {
+function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankId; compact?: boolean; readOnly?: boolean }) {
     const { currentLevels, flowRates, outputFlowRates, solarUnloadings, solarUsages, pumpActiveSince, trendData, deleteSolarUnloading, updateSolarUnloading, deleteSolarUsage, updateSolarUsage } = useTankData();
     // Edit unloading state
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,9 +90,10 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
     const renderUnloadingItem = (entry: any, idx: number) => {
         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
         return (
-            <div key={entry.id ?? idx} 
-                onClick={() => { if(entry.id) setActionSheetData({ type: 'unloading', entry }) }}
-                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-amber-500 hover:border-amber-500/40 hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:shadow-[0_6px_20px_rgba(245,158,11,0.12)] hover:z-10 transition-all duration-300 group relative overflow-hidden cursor-pointer lg:cursor-default shadow-sm">
+            <div key={entry.id ?? idx}
+                onClick={() => { if(!readOnly && entry.id) setActionSheetData({ type: 'unloading', entry }) }}
+                className={`flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-amber-500 hover:border-amber-500/40 hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:shadow-[0_6px_20px_rgba(245,158,11,0.12)] hover:z-10 transition-all duration-300 group relative overflow-hidden ${readOnly ? 'cursor-default' : 'cursor-pointer lg:cursor-default'} shadow-sm`}>
+
                 <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
                     {/* Icon Indicator */}
                     <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-400 shrink-0 shadow-inner group-hover:scale-110 group-hover:bg-amber-500/20 group-hover:border-amber-500/40 transition-all duration-300">
@@ -106,13 +107,13 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         </span>
                     </div>
                 </div>
-                <div className={`flex items-baseline gap-1 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
+                <div className={`flex items-baseline gap-1 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id && !readOnly ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
                     <span className="text-lg xl:text-xl font-black font-mono tracking-tighter leading-none text-amber-400">
                         {entry.liters.toLocaleString('id-ID')}
                     </span>
                     <span className="text-[10px] xl:text-xs text-slate-500 font-bold">L</span>
                 </div>
-                {entry.id && (
+                {entry.id && !readOnly && (
                     <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 lg:flex items-center gap-1.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto translate-x-3 group-hover:translate-x-0 transition-all duration-300 bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20 invisible lg:visible">
                         <button onClick={(e) => { e.stopPropagation(); setEditingId(entry.id!); setEditDate(entry.date); setEditLiters(entry.liters.toLocaleString('id-ID')); setEditSupplier(entry.supplier); }}
                             className="text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors p-1.5 rounded-md cursor-pointer flex items-center justify-center" title="Edit">
@@ -131,9 +132,10 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
     const renderUsageItem = (entry: any, idx: number) => {
         const lbl = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
         return (
-            <div key={entry.id ?? idx} 
-                onClick={() => { if(entry.id) setActionSheetData({ type: 'usage', entry }) }}
-                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-rose-500 hover:border-rose-500/40 hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:shadow-[0_6px_20px_rgba(244,63,94,0.12)] hover:z-10 transition-all duration-300 group relative overflow-hidden cursor-pointer lg:cursor-default shadow-sm">
+            <div key={entry.id ?? idx}
+                onClick={() => { if(!readOnly && entry.id) setActionSheetData({ type: 'usage', entry }) }}
+                className={`flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-rose-500 hover:border-rose-500/40 hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:shadow-[0_6px_20px_rgba(244,63,94,0.12)] hover:z-10 transition-all duration-300 group relative overflow-hidden ${readOnly ? 'cursor-default' : 'cursor-pointer lg:cursor-default'} shadow-sm`}>
+
                 <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
                     {/* Icon Indicator */}
                     <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0 shadow-inner group-hover:scale-110 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 transition-all duration-300">
@@ -147,13 +149,13 @@ function TankCard({ tankId, compact = false }: { tankId: TankId; compact?: boole
                         </span>
                     </div>
                 </div>
-                <div className={`flex items-baseline gap-1 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
+                <div className={`flex items-baseline gap-1 whitespace-nowrap z-10 transition-transform duration-300 ${entry.id && !readOnly ? 'lg:group-hover:-translate-x-[76px]' : ''}`}>
                     <span className="text-lg xl:text-xl font-black font-mono tracking-tighter leading-none text-rose-400">
                         {entry.liters.toLocaleString('id-ID')}
                     </span>
                     <span className="text-[10px] xl:text-xs text-slate-500 font-bold">L</span>
                 </div>
-                {entry.id && (
+                {entry.id && !readOnly && (
                     <div className="absolute right-3 xl:right-4 top-1/2 -translate-y-1/2 lg:flex items-center gap-1.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto translate-x-3 group-hover:translate-x-0 transition-all duration-300 bg-surface-dark/95 backdrop-blur-md rounded-lg p-1.5 shadow-lg border border-slate-700/50 z-20 invisible lg:visible">
                         <button onClick={(e) => { e.stopPropagation(); setEditingUsageId(entry.id!); setEditUsageDate(entry.date); setEditUsageLiters(entry.liters.toLocaleString('id-ID')); setEditUsageTujuan(entry.tujuan); }}
                             className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-md cursor-pointer flex items-center justify-center" title="Edit">
@@ -888,9 +890,19 @@ const SIDEBAR_COLLAPSED_W = 68;
 const SIDEBAR_EXPANDED_W = 260;
 
 export default function TankLevelPage() {
+    return (
+        <Suspense fallback={null}>
+            <TankLevelPageInner />
+        </Suspense>
+    );
+}
+
+function TankLevelPageInner() {
     const { operator, canInputTank, loading: operatorLoading } = useOperator();
     const { currentLevels } = useTankData();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isGuest = searchParams.get('guest') === '1';
     const [now, setNow] = useState('');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
@@ -914,10 +926,11 @@ export default function TankLevelPage() {
         : '---';
 
     useEffect(() => {
+        if (isGuest) return;
         if (!operatorLoading && !operator) router.push('/');
-    }, [operator, operatorLoading, router]);
+    }, [operator, operatorLoading, router, isGuest]);
 
-    if (operatorLoading || !operator) return null;
+    if (!isGuest && (operatorLoading || !operator)) return null;
 
     const bg = 'var(--color-background, #060c1a)';
 
@@ -952,21 +965,30 @@ export default function TankLevelPage() {
                             <p className="text-[10px] text-slate-500 uppercase tracking-[0.15em] font-bold">CCR Live Display</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                            {canInputTank && (
-                                <button onClick={() => router.push('/input')}
-                                    className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer">
-                                    <span className="material-symbols-outlined text-sm">edit</span>
-                                    Update
-                                </button>
+                            {isGuest ? (
+                                <span className="flex items-center gap-1 bg-slate-800/60 border border-slate-700 text-slate-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                                    <span className="material-symbols-outlined text-sm">visibility</span>
+                                    Guest View
+                                </span>
+                            ) : (
+                                <>
+                                    {canInputTank && (
+                                        <button onClick={() => router.push('/input')}
+                                            className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer">
+                                            <span className="material-symbols-outlined text-sm">edit</span>
+                                            Update
+                                        </button>
+                                    )}
+                                    <button onClick={() => window.location.reload()}
+                                        className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-primary/20 cursor-pointer">
+                                        <span className="material-symbols-outlined text-sm">refresh</span>
+                                    </button>
+                                    <button onClick={() => router.push('/dashboard')}
+                                        className="flex items-center gap-1 text-slate-400 hover:text-white hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer">
+                                        <span className="material-symbols-outlined text-sm">arrow_back</span>
+                                    </button>
+                                </>
                             )}
-                            <button onClick={() => window.location.reload()}
-                                className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-primary/20 cursor-pointer">
-                                <span className="material-symbols-outlined text-sm">refresh</span>
-                            </button>
-                            <button onClick={() => router.push('/dashboard')}
-                                className="flex items-center gap-1 text-slate-400 hover:text-white hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer">
-                                <span className="material-symbols-outlined text-sm">arrow_back</span>
-                            </button>
                         </div>
                     </div>
                     <div className="flex items-center gap-3 bg-primary/10 border border-primary/40 rounded-xl px-4 py-2.5 shadow-[0_0_15px_rgba(43,124,238,0.2)] relative overflow-hidden">
@@ -984,23 +1006,27 @@ export default function TankLevelPage() {
                     </div>
                 </header>
                 <div className="grid grid-cols-1 gap-4">
-                    {TANK_IDS.map(id => <TankCard key={id} tankId={id} />)}
+                    {TANK_IDS.map(id => <TankCard key={id} tankId={id} readOnly={isGuest} />)}
                 </div>
             </div>
 
-            {/* Bottom tab bar — mobile only */}
-            <div className="lg:hidden">
-                <BottomTabBar />
-            </div>
+            {/* Bottom tab bar — mobile only (sembunyikan untuk guest agar full kiosk) */}
+            {!isGuest && (
+                <div className="lg:hidden">
+                    <BottomTabBar />
+                </div>
+            )}
 
             {/* ─────────────────── DESKTOP: Fluid Native (full display) ─────────────────── */}
-            {/* Sidebar — desktop only */}
-            <div className="hidden lg:block fixed top-0 left-0 bottom-0 z-30">
-                <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(p => !p)} />
-            </div>
+            {/* Sidebar — desktop only (sembunyikan untuk guest agar full kiosk) */}
+            {!isGuest && (
+                <div className="hidden lg:block fixed top-0 left-0 bottom-0 z-30">
+                    <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(p => !p)} />
+                </div>
+            )}
             {/* Outer: fills viewport minus sidebar */}
             <div className="hidden lg:flex fixed top-0 bottom-0 overflow-hidden transition-all duration-300"
-                style={{ left: `${sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W}px`, right: 0, background: bg }}>
+                style={{ left: `${isGuest ? 0 : (sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W)}px`, right: 0, background: bg }}>
                 <div style={{
                     width: '100%',
                     height: '100%',
@@ -1040,29 +1066,38 @@ export default function TankLevelPage() {
                                 </div>
                             </div>
 
-                            {/* Buttons */}
+                            {/* Buttons / Guest badge */}
                             <div className="flex items-center gap-3">
-                                {canInputTank && (
-                                    <button onClick={() => router.push('/input')} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold transition-all shadow-[0_4px_20px_rgba(5,150,105,0.3)] cursor-pointer">
-                                        <span className="material-symbols-outlined text-xl">edit</span>
-                                        Update Level
-                                    </button>
+                                {isGuest ? (
+                                    <span className="flex items-center gap-2 bg-slate-800/60 border border-slate-700 text-slate-400 px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-xs 2xl:text-[13px] font-black uppercase tracking-[0.25em]">
+                                        <span className="material-symbols-outlined text-xl">visibility</span>
+                                        Guest View
+                                    </span>
+                                ) : (
+                                    <>
+                                        {canInputTank && (
+                                            <button onClick={() => router.push('/input')} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold transition-all shadow-[0_4px_20px_rgba(5,150,105,0.3)] cursor-pointer">
+                                                <span className="material-symbols-outlined text-xl">edit</span>
+                                                Update Level
+                                            </button>
+                                        )}
+                                        <button onClick={() => window.location.reload()} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold transition-all shadow-[0_4px_20px_rgba(43,124,238,0.3)] cursor-pointer">
+                                            <span className="material-symbols-outlined text-xl">refresh</span>
+                                            Refresh
+                                        </button>
+                                        <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold border border-white/10 transition-all cursor-pointer">
+                                            <span className="material-symbols-outlined text-xl">home</span>
+                                            Dashboard
+                                        </button>
+                                    </>
                                 )}
-                                <button onClick={() => window.location.reload()} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold transition-all shadow-[0_4px_20px_rgba(43,124,238,0.3)] cursor-pointer">
-                                    <span className="material-symbols-outlined text-xl">refresh</span>
-                                    Refresh
-                                </button>
-                                <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold border border-white/10 transition-all cursor-pointer">
-                                    <span className="material-symbols-outlined text-xl">home</span>
-                                    Dashboard
-                                </button>
                             </div>
                         </div>
                     </header>
 
                     {/* Tank cards — fill remaining height */}
                     <div className="grid grid-cols-3 gap-4 2xl:gap-6 flex-1 min-h-0 mt-2">
-                        {TANK_IDS.map(id => <TankCard key={id} tankId={id} compact />)}
+                        {TANK_IDS.map(id => <TankCard key={id} tankId={id} compact readOnly={isGuest} />)}
                     </div>
                 </div>
             </div>

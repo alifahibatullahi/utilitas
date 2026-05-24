@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
             shift_generator_gi (gen_load, gen_tegangan, gen_frequensi, gi_sum_p),
             shift_boiler (boiler, press_steam, flow_steam, batubara_ton, temp_furnace, temp_flue_gas),
             shift_steam_dist (pabrik1_flow, pabrik3a_flow),
-            shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_pabrik3b, power_pie),
+            shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie),
             shift_tankyard (tk_rcw, tk_demin)
         `)
         .eq('id', reportId)
@@ -402,7 +402,7 @@ function buildShiftSummary(report: any, maintenance: any[]): string {
         lines.push(`  Internal UBB: ${fmtNum(powerDist?.power_ubb)} MW`);
         lines.push(`  Pabrik 2    : ${fmtNum(powerDist?.power_pabrik2)} MW`);
         lines.push(`  Pabrik 3A   : ${fmtNum(powerDist?.power_pabrik3a)} MW`);
-        lines.push(`  Pabrik 3B   : ${fmtNum(powerDist?.power_pabrik3b)} MW`);
+        lines.push(`  Pabrik 3B   : ${fmtNum(powerDist?.power_revamping)} MW`);
         lines.push(`  PIU         : ${fmtNum(powerDist?.power_pie)} MW`);
         lines.push(`  PLN         : ${fmtNum(gen?.gi_sum_p)} MW`);
     }

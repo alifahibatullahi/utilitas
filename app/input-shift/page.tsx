@@ -90,6 +90,15 @@ function InputShiftPageInner() {
             year: 'numeric' 
           }) 
         : '';
+    const formattedDateShort = mounted && selectedDate 
+        ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { 
+            timeZone: 'Asia/Jakarta', 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short', 
+            year: '2-digit' 
+          }) 
+        : '';
     
     // Header specific states — persist to localStorage
     const [supervisor, setSupervisor] = useState(() => {
@@ -1095,7 +1104,10 @@ function InputShiftPageInner() {
                                     >
                                         <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none">Tanggal</span>
                                         <div className="relative w-full flex items-center h-5 overflow-hidden">
-                                            <span className="text-[11px] sm:text-xs lg:text-sm font-black text-blue-100 select-none whitespace-nowrap">
+                                            <span className="inline sm:hidden text-[11px] font-black text-blue-100 select-none whitespace-nowrap">
+                                                {formattedDateShort || selectedDate}
+                                            </span>
+                                            <span className="hidden sm:inline text-xs lg:text-sm font-black text-blue-100 select-none whitespace-nowrap">
                                                 {formattedDate || selectedDate}
                                             </span>
                                             <input

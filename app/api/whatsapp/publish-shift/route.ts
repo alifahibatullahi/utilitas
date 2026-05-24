@@ -15,16 +15,20 @@ import { uploadToR2 } from '@/lib/r2';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-/** Compute shift window (ISO 8601 with WIB offset). */
+/**
+ * Compute shift window (ISO 8601 with WIB offset).
+ * KONVENSI: ENDING — shift malam D = window 23:00 D-1 → 07:00 D (submit pada hari D).
+ * Sinkron dengan `getShiftWindow` di lib/constants.ts yang dipakai web.
+ */
 function getShiftWindowIso(date: string, shift: string): { start: string; end: string } {
     if (shift === 'pagi') return { start: `${date}T07:00:00+07:00`, end: `${date}T15:00:00+07:00` };
     if (shift === 'sore') return { start: `${date}T15:00:00+07:00`, end: `${date}T23:00:00+07:00` };
-    // malam: 23:00 same day → 07:00 next day
+    // malam D (ENDING): 23:00 D-1 → 07:00 D
     const [y, m, d] = date.split('-').map(Number);
-    const next = new Date(y, m - 1, d + 1);
+    const prev = new Date(y, m - 1, d - 1);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const nextDate = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
-    return { start: `${date}T23:00:00+07:00`, end: `${nextDate}T07:00:00+07:00` };
+    const prevDate = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`;
+    return { start: `${prevDate}T23:00:00+07:00`, end: `${date}T07:00:00+07:00` };
 }
 
 // GET — returns the suggested text body for the Washift channel.

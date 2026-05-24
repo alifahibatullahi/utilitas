@@ -15,15 +15,19 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 /**
- * Compute operational day window (ISO+WIB offset):
- * 07:00 reportDate WIB → 07:00 next day WIB — cakup Pagi+Sore+Malam shifts dari report.date.
+ * Compute operational day window (ISO+WIB offset).
+ * KONVENSI: ENDING. Laporan harian D mencakup 3 shifts yang submit pada hari D:
+ *   - Malam D: 23:00 D-1 → 07:00 D
+ *   - Pagi  D: 07:00 D → 15:00 D
+ *   - Sore  D: 15:00 D → 23:00 D
+ * Total operasional window: 23:00 D-1 → 23:00 D (24 jam, sinkron dgn web).
  */
 function getOperationalDayWindowIso(date: string): { start: string; end: string } {
     const [y, m, d] = date.split('-').map(Number);
-    const next = new Date(y, m - 1, d + 1);
+    const prev = new Date(y, m - 1, d - 1);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const nextDate = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
-    return { start: `${date}T07:00:00+07:00`, end: `${nextDate}T07:00:00+07:00` };
+    const prevDate = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}-${pad(prev.getDate())}`;
+    return { start: `${prevDate}T23:00:00+07:00`, end: `${date}T23:00:00+07:00` };
 }
 
 export async function GET(req: NextRequest) {

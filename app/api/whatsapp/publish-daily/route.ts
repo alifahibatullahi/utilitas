@@ -288,12 +288,12 @@ function buildDailySummary(report: any, maintenance: any[]): string {
     const lines: string[] = [];
     lines.push('━━━ *PARAMETER OPERASI* ━━━');
 
-    // Boiler A & B (snapshot 00:00 untuk flow, 24h total untuk batubara)
+    // Boiler A & B (snapshot 00:00 untuk flow, 24h total untuk batubara). Unit di setiap value.
     lines.push('');
     lines.push('*Boiler A & B*');
-    lines.push(`  Flow Steam     : A ${fmtNum(stm?.prod_boiler_a_00)} | B ${fmtNum(stm?.prod_boiler_b_00)} t/h`);
-    lines.push(`  Total Batubara : A ${fmtNum(coal?.total_boiler_a_24)} | B ${fmtNum(coal?.total_boiler_b_24)} Ton`);
-    lines.push(`  Temp. Furnace  : A ${fmtNum(turb?.temp_furnace_a)} | B ${fmtNum(turb?.temp_furnace_b)} °C`);
+    lines.push(`  Flow Steam     : A ${fmtNum(stm?.prod_boiler_a_00)} t/h | B ${fmtNum(stm?.prod_boiler_b_00)} t/h`);
+    lines.push(`  Total Batubara : A ${fmtNum(coal?.total_boiler_a_24)} Ton | B ${fmtNum(coal?.total_boiler_b_24)} Ton`);
+    lines.push(`  Temp. Furnace  : A ${fmtNum(turb?.temp_furnace_a)} °C | B ${fmtNum(turb?.temp_furnace_b)} °C`);
 
     // Turbin
     lines.push('');

@@ -366,13 +366,13 @@ function buildShiftSummary(report: any, maintenance: any[]): string {
     lines.push('');
     lines.push('━━━ *PARAMETER OPERASI* ━━━');
 
-    // Boiler A & B
+    // Boiler A & B — unit di setiap value supaya konsisten kalau salah satu kosong.
     if (boilerA || boilerB) {
         lines.push('');
         lines.push('*Boiler A & B*');
-        lines.push(`  Flow Steam     : A ${fmtNum(boilerA?.flow_steam)} | B ${fmtNum(boilerB?.flow_steam)} t/h`);
-        lines.push(`  Total Batubara : A ${fmtNum(boilerA?.batubara_ton)} | B ${fmtNum(boilerB?.batubara_ton)} Ton`);
-        lines.push(`  Temp. Furnace  : A ${fmtNum(boilerA?.temp_furnace)} | B ${fmtNum(boilerB?.temp_furnace)} °C`);
+        lines.push(`  Flow Steam     : A ${fmtNum(boilerA?.flow_steam)} t/h | B ${fmtNum(boilerB?.flow_steam)} t/h`);
+        lines.push(`  Total Batubara : A ${fmtNum(boilerA?.batubara_ton)} Ton | B ${fmtNum(boilerB?.batubara_ton)} Ton`);
+        lines.push(`  Temp. Furnace  : A ${fmtNum(boilerA?.temp_furnace)} °C | B ${fmtNum(boilerB?.temp_furnace)} °C`);
     }
 
     // Turbin

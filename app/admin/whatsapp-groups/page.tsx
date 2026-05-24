@@ -18,6 +18,7 @@ const PRESET_KEYS = [
     { value: 'shift_d', label: 'Shift Grup D' },
     { value: 'management', label: 'Management' },
     { value: 'maintenance', label: 'Maintenance' },
+    { value: 'washift', label: 'Washift (nomor pribadi penerima laporan)' },
 ];
 
 const emptyForm = { id: undefined as string | undefined, key: '', label: '', fonnte_target: '', is_group: true, active: true };

@@ -259,15 +259,16 @@ export function PublishReportModal({
                             <span className="material-symbols-outlined text-base">chat</span>
                             Text ke {washiftKey}
                         </button>
-                        <button 
+                        <button
                             onClick={() => setTab('pdf')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer
-                                ${tab === 'pdf' 
-                                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.25)]' 
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
+                                ${tab === 'pdf'
+                                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.25)]'
                                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                         >
                             <span className="material-symbols-outlined text-base">picture_as_pdf</span>
                             PDF ke {pdfGroupKey}
+                            <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">SOON</span>
                         </button>
                     </div>
                 </div>

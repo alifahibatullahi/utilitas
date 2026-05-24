@@ -142,7 +142,17 @@ export default function WhatsappGroupsPage() {
                         <label className="block text-xs text-text-secondary uppercase mb-1.5">Key</label>
                         <select
                             value={form.key}
-                            onChange={e => setForm({ ...form, key: e.target.value, label: form.label || (PRESET_KEYS.find(p => p.value === e.target.value)?.label ?? '') })}
+                            onChange={e => {
+                                const v = e.target.value;
+                                // Washift selalu chat pribadi (bukan group) — auto uncheck is_group.
+                                const autoIsGroup = v === 'washift' ? false : form.is_group;
+                                setForm({
+                                    ...form,
+                                    key: v,
+                                    label: form.label || (PRESET_KEYS.find(p => p.value === v)?.label ?? ''),
+                                    is_group: autoIsGroup,
+                                });
+                            }}
                             className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
                         >
                             <option value="">— pilih —</option>
@@ -165,8 +175,15 @@ export default function WhatsappGroupsPage() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
-                            <input type="checkbox" checked={form.is_group} onChange={e => setForm({ ...form, is_group: e.target.checked })} />
+                        <label className={`flex items-center gap-2 text-xs ${form.key === 'washift' ? 'text-slate-600 cursor-not-allowed' : 'text-text-secondary cursor-pointer'}`}
+                            title={form.key === 'washift' ? 'Washift selalu chat pribadi' : undefined}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={form.is_group}
+                                disabled={form.key === 'washift'}
+                                onChange={e => setForm({ ...form, is_group: e.target.checked })}
+                            />
                             Group chat
                         </label>
                         <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
@@ -174,6 +191,11 @@ export default function WhatsappGroupsPage() {
                             Aktif
                         </label>
                     </div>
+                    {form.key === 'washift' && (
+                        <p className="text-[10px] text-amber-300 -mt-1">
+                            Washift selalu chat pribadi. Field target wajib nomor pribadi (<code className="text-amber-200">628xxx</code>).
+                        </p>
+                    )}
 
                     <div className="flex gap-2 pt-2">
                         <button onClick={save} className="flex-1 px-4 py-2 text-sm bg-primary hover:bg-primary/90 text-white rounded-lg cursor-pointer">{editing ? 'Update' : 'Simpan'}</button>

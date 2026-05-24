@@ -23,6 +23,8 @@ interface KanbanBoardModalProps {
     onChangeBoardShift: (s: 'pagi' | 'sore' | 'malam') => void;
     onMoveStatus: (id: string, newStatus: MaintenanceStatus) => Promise<{ error: string | null }>;
     onKonfirmasiShift: (id: string) => Promise<{ error: string | null }>;
+    /** Revert: pindah maintenance dari "Shift Ini" balik ke "Shift Sebelumnya" (set updated_at sebelum shift window). */
+    onRevertFromCurrentShift?: (id: string, shiftWindow: { start: Date; end: Date }) => Promise<{ error: string | null }>;
     photosByMaintId?: Record<string, PhotoRow[]>;
     statusTimeByMaintId?: Record<string, string>;
     statusActorByMaintId?: Record<string, { ip?: string; ok?: string }>;
@@ -37,7 +39,7 @@ export default function KanbanBoardModal({
     open, onClose,
     maintenances,
     boardDate, boardShift, onChangeBoardDate, onChangeBoardShift,
-    onMoveStatus, onKonfirmasiShift,
+    onMoveStatus, onKonfirmasiShift, onRevertFromCurrentShift,
     photosByMaintId, statusTimeByMaintId, statusActorByMaintId,
     activityLogs,
     workOrders,
@@ -52,6 +54,12 @@ export default function KanbanBoardModal({
     const handleKonfirmasi = async (id: string) => {
         if (isPastShift) return { error: 'Shift sudah selesai — board dikunci' };
         return onKonfirmasiShift(id);
+    };
+    // Revert: pindah card dari "Shift Ini" balik ke "Shift Sebelumnya"
+    const handleRevert = async (id: string) => {
+        if (isPastShift) return { error: 'Shift sudah selesai — board dikunci' };
+        if (!onRevertFromCurrentShift) return { error: 'Revert handler tidak tersedia' };
+        return await onRevertFromCurrentShift(id, shiftWindow);
     };
 
     const [search, setSearch] = useState('');
@@ -221,9 +229,12 @@ export default function KanbanBoardModal({
                         {/* Vertical Divider */}
                         <div className="w-px h-6 bg-slate-300/60 mx-2.5" />
 
-                        {/* Shift Tabs */}
+                        {/* Shift Tabs — urutan kronologis 1 hari kerja: Malam → Pagi → Sore */}
                         <div className="flex items-center gap-1 h-9">
-                            {SHIFT_OPTIONS.map(s => {
+                            {[...SHIFT_OPTIONS].sort((a, b) => {
+                                const order: Record<string, number> = { malam: 0, pagi: 1, sore: 2 };
+                                return (order[a.value] ?? 99) - (order[b.value] ?? 99);
+                            }).map(s => {
                                 const isCurrentRealShift = isViewingTodayDate && s.value === nowShift.shift;
                                 const active = boardShift === s.value;
                                 const shiftIcons: Record<string, string> = { pagi: 'light_mode', sore: 'wb_twilight', malam: 'dark_mode' };
@@ -277,6 +288,7 @@ export default function KanbanBoardModal({
                         onOpenSearchChange={setSearch}
                         onMoveStatus={handleMoveStatus}
                         onKonfirmasiShift={handleKonfirmasi}
+                        onUnassignCurrentShift={onRevertFromCurrentShift ? handleRevert : undefined}
                         photosByMaintId={photosByMaintId}
                         statusTimeByMaintId={effectiveStatusTime}
                         statusActorByMaintId={effectiveStatusActor}

@@ -14,6 +14,18 @@ import { uploadToR2 } from '@/lib/r2';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+/**
+ * Compute operational day window (ISO+WIB offset):
+ * 07:00 reportDate WIB → 07:00 next day WIB — cakup Pagi+Sore+Malam shifts dari report.date.
+ */
+function getOperationalDayWindowIso(date: string): { start: string; end: string } {
+    const [y, m, d] = date.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nextDate = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+    return { start: `${date}T07:00:00+07:00`, end: `${nextDate}T07:00:00+07:00` };
+}
+
 export async function GET(req: NextRequest) {
     const reportId = req.nextUrl.searchParams.get('reportId');
     if (!reportId) return NextResponse.json({ error: 'reportId required' }, { status: 400 });
@@ -33,10 +45,15 @@ export async function GET(req: NextRequest) {
         .single();
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
+    // Maintenance untuk laporan harian: status IP/OK dengan updated_at di window operasional
+    // (07:00 today WIB → 07:00 next day WIB — cakup Pagi+Sore+Malam shifts)
+    const win = getOperationalDayWindowIso(report.date as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
         .select('item, uraian, scope, status, tipe')
-        .eq('date', report.date as string)
+        .in('status', ['IP', 'OK'])
+        .gte('updated_at', win.start)
+        .lte('updated_at', win.end)
         .order('item', { ascending: true });
 
     const summary = buildDailySummary(report, maintenance ?? []);
@@ -93,10 +110,14 @@ export async function POST(req: NextRequest) {
         .single();
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
+    // Maintenance untuk laporan harian — timestamp-based, status IP/OK saja
+    const win = getOperationalDayWindowIso(report.date as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
         .select('item, uraian, scope, foreman, tipe, status, notif')
-        .eq('date', report.date as string)
+        .in('status', ['IP', 'OK'])
+        .gte('updated_at', win.start)
+        .lte('updated_at', win.end)
         .order('item', { ascending: true });
 
     const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey);

@@ -388,11 +388,11 @@ export default function CriticalDetailModal({
                 </div>
 
                 {/* Body container -> 3 cols / 2 rows */}
-                <div className="overflow-y-auto detail-scrollbar flex-1 bg-slate-50">
-                    <div className="p-8 pb-32 flex flex-col gap-8 min-h-max">
+                <div className="overflow-y-auto md:overflow-hidden detail-scrollbar flex-1 bg-slate-50 flex flex-col">
+                    <div className="p-8 pb-32 md:pb-8 flex-1 flex flex-col gap-8 min-h-max md:min-h-0 md:overflow-hidden">
                         
                         {/* Top Row: Cohesive Dashboard Meta Banner */}
-                        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-col md:flex-row md:items-center justify-between gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-150">
+                        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-col md:flex-row md:items-center justify-between gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-150 flex-shrink-0">
                             {/* Tanggal */}
                             <div className="flex-1 md:pr-6 flex items-center gap-4">
                                 <div className="flex-shrink-0 p-2.5 bg-rose-50 rounded-xl text-rose-500 border border-rose-100 flex items-center justify-center">
@@ -427,9 +427,9 @@ export default function CriticalDetailModal({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-[300px]">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-[300px] md:min-h-0 md:overflow-hidden">
                             {/* Maintenance Col (2 spans) */}
-                            <div className="md:col-span-2 flex flex-col gap-3">
+                            <div className="md:col-span-2 flex flex-col gap-3 md:min-h-0 md:overflow-hidden">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
                                         <span className="material-symbols-outlined text-emerald-500">handyman</span>
@@ -649,7 +649,7 @@ export default function CriticalDetailModal({
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-6">
+                            <div className="flex flex-col gap-6 md:min-h-0 md:overflow-hidden">
                                 {/* Photos */}
                                 <div className="flex flex-col gap-3">
                                     <div className="flex items-center justify-between">
@@ -663,7 +663,7 @@ export default function CriticalDetailModal({
                                             onUploadSuccess={handlePhotoUploaded}
                                         />
                                     </div>
-                                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 min-h-[140px] flex flex-col">
+                                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 min-h-[140px] md:max-h-[220px] overflow-y-auto flex flex-col light-scrollbar">
                                         {!photosLoaded ? (
                                             <div className="my-auto flex items-center justify-center gap-2 text-slate-400 text-xs">
                                                 <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
@@ -681,12 +681,12 @@ export default function CriticalDetailModal({
                                 </div>
                                 
                                 {/* Activity logs */}
-                                <div className="flex flex-col gap-3 flex-1 min-h-[300px]">
+                                <div className="flex flex-col gap-3 flex-1 min-h-[300px] md:min-h-0 md:overflow-hidden">
                                     <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
                                         <span className="material-symbols-outlined text-blue-500">history</span>
                                         Riwayat Aktivitas
                                     </h3>
-                                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col">
+                                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col md:min-h-0 md:overflow-hidden">
                                         <ActivityTimelineImproved
                                             logs={critical.critical_activity_logs ?? []}
                                             onAddNote={async (note, actor) => {

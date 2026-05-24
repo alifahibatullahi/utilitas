@@ -641,6 +641,29 @@ export function useCriticalMaintenance() {
      * Unassign maintenance dari shift report (date+shift). Hapus row di pivot.
      * Tidak menghapus shift_report itu sendiri (tetap ada untuk maintenance lain).
      */
+    /**
+     * Revert maintenance dari "Shift Ini" ke "Shift Sebelumnya" pada board.
+     * Set updated_at ke timestamp sebelum shift window start, supaya card pindah ke section prev.
+     * (Catatan: ini hanya mempengaruhi tampilan board + filter laporan shift, status tidak berubah.)
+     */
+    const revertMaintenanceFromCurrentShift = useCallback(async (
+        id: string,
+        shiftWindow: { start: Date; end: Date },
+    ): Promise<{ error: string | null }> => {
+        const beforeShift = new Date(shiftWindow.start.getTime() - 1000).toISOString(); // 1 detik sebelum shift mulai
+        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, updated_at: beforeShift } : m));
+        const { error: err } = await supabase
+            .from('maintenance_logs')
+            .update({ updated_at: beforeShift })
+            .eq('id', id);
+        if (err) {
+            await fetchData();
+            return { error: err.message };
+        }
+        await silentFetch();
+        return { error: null };
+    }, [supabase, fetchData, silentFetch]);
+
     const unassignMaintenanceFromShift = useCallback(async (
         maintenanceIds: string[],
         date: string,
@@ -702,6 +725,7 @@ export function useCriticalMaintenance() {
         konfirmasiShift,
         assignMaintenanceToShift,
         unassignMaintenanceFromShift,
+        revertMaintenanceFromCurrentShift,
         addActivityNote,
         fetchPhotos,
         deletePhoto,

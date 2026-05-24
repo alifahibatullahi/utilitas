@@ -15,6 +15,18 @@ import { uploadToR2 } from '@/lib/r2';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+/** Compute shift window (ISO 8601 with WIB offset). */
+function getShiftWindowIso(date: string, shift: string): { start: string; end: string } {
+    if (shift === 'pagi') return { start: `${date}T07:00:00+07:00`, end: `${date}T15:00:00+07:00` };
+    if (shift === 'sore') return { start: `${date}T15:00:00+07:00`, end: `${date}T23:00:00+07:00` };
+    // malam: 23:00 same day → 07:00 next day
+    const [y, m, d] = date.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nextDate = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+    return { start: `${date}T23:00:00+07:00`, end: `${nextDate}T07:00:00+07:00` };
+}
+
 // GET — returns the suggested text body for the Washift channel.
 // Modal calls this to pre-fill the editable textarea.
 export async function GET(req: NextRequest) {
@@ -37,10 +49,14 @@ export async function GET(req: NextRequest) {
         .single();
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
+    // Maintenance untuk shift ini: status IP/OK dengan updated_at di window shift (sinkron dengan tampilan laporan-shift page)
+    const win = getShiftWindowIso(report.date as string, report.shift as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
         .select('item, uraian, scope, status, tipe')
-        .eq('shift_report_id', reportId)
+        .in('status', ['IP', 'OK'])
+        .gte('updated_at', win.start)
+        .lte('updated_at', win.end)
         .order('item', { ascending: true });
 
     const summary = buildShiftSummary(report, maintenance ?? []);
@@ -102,11 +118,14 @@ export async function POST(req: NextRequest) {
         .single();
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
-    // ── Maintenance for THIS shift report only ──
+    // ── Maintenance untuk shift ini — timestamp-based (sinkron dengan tampilan laporan-shift page) ──
+    const win = getShiftWindowIso(report.date as string, report.shift as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
         .select('item, uraian, scope, foreman, tipe, status, notif')
-        .eq('shift_report_id', reportId)
+        .in('status', ['IP', 'OK'])
+        .gte('updated_at', win.start)
+        .lte('updated_at', win.end)
         .order('item', { ascending: true });
 
     // ────────── Run both sends in parallel ──────────

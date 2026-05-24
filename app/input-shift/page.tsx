@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
+import { PublishReportModal } from '@/components/ui/PublishReportModal';
 import { nowWIB, todayWIB } from '@/lib/utils';
 import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, type OperatorStation } from '@/lib/constants';
 
@@ -255,6 +256,7 @@ function InputShiftPageInner() {
     const shiftMap: Record<number, ShiftType> = { 1: 'malam', 2: 'pagi', 3: 'sore' };
     const SHIFT_LABELS: Record<number, string> = { 1: 'Shift Malam 06.00', 2: 'Shift Pagi 14.00', 3: 'Shift Sore 22.00' };
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
+    const [publishOpen, setPublishOpen] = useState(false);
     const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift]);
@@ -936,6 +938,12 @@ function InputShiftPageInner() {
         }
     }, [boilerA, boilerB, turbin, generatorGi, powerDist, steamDist, tankyard, espHandling, coalBunker, waterQuality, chemicalDosing]);
 
+    // Semua tab visible (sesuai station kalau ada) sudah lengkap → tombol Publish aktif.
+    const allTabsComplete = useMemo(
+        () => visibleTabs.length > 0 && visibleTabs.every(t => isTabLengkap(t.id)),
+        [visibleTabs, isTabLengkap],
+    );
+
     const loadSampleData = () => {
         const d = SAMPLE_MALAM_01JAN;
         skipNextClear.current = true;
@@ -1301,6 +1309,16 @@ function InputShiftPageInner() {
                                     <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
                                     {submitting ? 'Menyimpan...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                                 </button>
+                                {/* Publish — aktif kalau semua tab visible sudah lengkap (centang semua) DAN report sudah di-submit (id ada). */}
+                                <button
+                                    onClick={() => setPublishOpen(true)}
+                                    disabled={!allTabsComplete || !report?.id}
+                                    title={!report?.id ? 'Submit laporan dulu sebelum publish' : !allTabsComplete ? 'Semua tab harus lengkap dulu' : 'Publish ke WhatsApp'}
+                                    className={`flex justify-center items-center gap-2 ${(!allTabsComplete || !report?.id) ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">send</span>
+                                    PUBLISH LAPORAN
+                                </button>
                             </div>
                         </div>
 
@@ -1493,6 +1511,21 @@ function InputShiftPageInner() {
                 </div>
             ) : (
                 <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} />
+            )}
+            {/* Publish modal — same component as laporan-shift / laporan-harian pages */}
+            {inputMode === 'shift' && (
+                <PublishReportModal
+                    kind="shift"
+                    reportId={report?.id ?? ''}
+                    open={publishOpen}
+                    onClose={() => setPublishOpen(false)}
+                    reportDate={selectedDate}
+                    reportShift={SHIFT_LABELS[selectedShift]}
+                    reportGroup={currentGroup ?? undefined}
+                    initialSupervisor={supervisor}
+                    initialForemanTurbin={foremanTurbin}
+                    initialForemanBoiler={foremanBoiler}
+                />
             )}
         </div>
     );

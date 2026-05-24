@@ -14,6 +14,7 @@ import TabHandling from './TabHandling';
 import TabChemical from './TabChemical';
 import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
+import { PublishReportModal } from '@/components/ui/PublishReportModal';
 import type { DailyTabProps } from './types';
 
 type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
@@ -118,6 +119,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
 
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
+    const [publishOpen, setPublishOpen] = useState(false);
 
     // Restore filler dari report.station_fillers[station] kalau ada — kalau belum, default
     // ke operator login (saat user pertama buka station view).
@@ -683,6 +685,12 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         }
     }, [steam, power, coal, turbineMisc, stockTank, coalTransfer, visitedTabs]);
 
+    // Semua tab visible (sesuai station kalau ada) sudah lengkap → tombol Publish aktif.
+    const allTabsComplete = useMemo(
+        () => visibleTabs.length > 0 && visibleTabs.every(t => isTabLengkap(t.id)),
+        [visibleTabs, isTabLengkap],
+    );
+
     return (
         <>
             {/* Toast */}
@@ -748,6 +756,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         >
                             <span className="material-symbols-outlined text-[18px]">{isHarianLocked ? 'lock' : 'save'}</span>
                             {submitting ? 'Menyimpan...' : isHarianLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
+                        </button>
+                        {/* Publish — aktif kalau semua tab visible sudah lengkap (centang semua) DAN report sudah submitted. */}
+                        <button
+                            onClick={() => setPublishOpen(true)}
+                            disabled={!allTabsComplete || !report?.id}
+                            title={!report?.id ? 'Submit laporan dulu sebelum publish' : !allTabsComplete ? 'Semua tab harus lengkap dulu' : 'Publish ke WhatsApp'}
+                            className={`flex items-center justify-center gap-2 ${(!allTabsComplete || !report?.id) ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">send</span>
+                            PUBLISH LAPORAN
                         </button>
                     </div>
 
@@ -929,6 +947,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     )}
                 </div>
             </div>
+            {/* Publish modal — same component as laporan-harian page */}
+            <PublishReportModal
+                kind="daily"
+                reportId={(report?.id as string) ?? ''}
+                open={publishOpen}
+                onClose={() => setPublishOpen(false)}
+                reportDate={date}
+                reportGroup={groupName ?? undefined}
+                initialSupervisor={(totalizer.kasi_name as string) || supervisorName || ''}
+            />
         </>
     );
 }

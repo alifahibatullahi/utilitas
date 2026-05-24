@@ -444,11 +444,14 @@ function buildShiftSummary(report: any, maintenance: any[]): string {
         lines.push('  (tidak ada item)');
     } else {
         // Sort by item ascending, then number sequentially.
-        // Format: "No Item + Deskripsi - Scope + uraian" — item field sudah "noItem - deskripsi".
+        // Format: "{No Item} {Deskripsi} - {Scope} {uraian} IP/OK"
+        // Item field disimpan sebagai "noItem - deskripsi" — split jadi 2, gabung dengan spasi.
         const sorted = [...maintenance].sort((a, b) => String(a.item ?? '').localeCompare(String(b.item ?? '')));
         sorted.forEach((m, i) => {
+            const rawItem = String(m.item ?? '-');
+            const itemDisplay = rawItem.includes(' - ') ? rawItem.replace(' - ', ' ') : rawItem;
             const scopeLabel = m.scope ? String(m.scope).charAt(0).toUpperCase() + String(m.scope).slice(1) : '-';
-            lines.push(`${i + 1}. ${m.item ?? '-'} - ${scopeLabel} + ${m.uraian ?? '-'}`);
+            lines.push(`${i + 1}. ${itemDisplay} - ${scopeLabel} ${m.uraian ?? '-'} ${m.status ?? '-'}`);
         });
     }
 

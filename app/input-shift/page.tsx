@@ -1309,16 +1309,22 @@ function InputShiftPageInner() {
                                     <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
                                     {submitting ? 'Menyimpan...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                                 </button>
-                                {/* Publish — aktif kalau semua tab visible sudah lengkap (centang semua) DAN report sudah di-submit (id ada). */}
-                                <button
-                                    onClick={() => setPublishOpen(true)}
-                                    disabled={!allTabsComplete || !report?.id}
-                                    title={!report?.id ? 'Submit laporan dulu sebelum publish' : !allTabsComplete ? 'Semua tab harus lengkap dulu' : 'Publish ke WhatsApp'}
-                                    className={`flex justify-center items-center gap-2 ${(!allTabsComplete || !report?.id) ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">send</span>
-                                    PUBLISH LAPORAN
-                                </button>
+                                {/* Publish — aktif kalau semua tab visible centang lengkap DAN report sudah submit.
+                                    Admin bypass: bisa klik tanpa nunggu centang lengkap (untuk testing). */}
+                                {(() => {
+                                    const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
+                                    return (
+                                        <button
+                                            onClick={() => setPublishOpen(true)}
+                                            disabled={publishDisabled}
+                                            title={!report?.id ? 'Submit laporan dulu sebelum publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Publish ke WhatsApp'}
+                                            className={`flex justify-center items-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]">send</span>
+                                            PUBLISH LAPORAN{isAdmin && !allTabsComplete ? ' (Admin)' : ''}
+                                        </button>
+                                    );
+                                })()}
                             </div>
                         </div>
 

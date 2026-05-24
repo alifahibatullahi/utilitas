@@ -83,6 +83,9 @@ export function PublishReportModal({
                 // Harian simpan supervisor di daily_report_totalizer.kasi_name.
                 await supabase.from('daily_report_totalizer').update({ kasi_name: v }).eq('daily_report_id', reportId);
             }
+            // Re-fetch template body — supaya tampilan {{summary}} di template
+            // auto-refresh dengan nilai supervisor/foreman baru.
+            await fetchTemplate();
         } catch (err) {
             console.warn('[PublishReportModal] persistChange failed', field, err);
         }
@@ -124,16 +127,28 @@ export function PublishReportModal({
         }
     }, [text, tab, open]);
 
+    // Reusable: re-fetch template body dari server. Dipanggil saat modal open AND
+    // setiap kali dropdown supervisor/foreman berubah supaya template auto-refresh.
+    const fetchTemplate = async () => {
+        if (!reportId) return;
+        setLoadingText(true);
+        try {
+            const res = await fetch(`/api/whatsapp/publish-${kind === 'shift' ? 'shift' : 'daily'}?reportId=${reportId}`);
+            const d = await res.json();
+            if (d.text) setText(d.text);
+        } catch (err) {
+            console.warn('text fetch failed', err);
+        } finally {
+            setLoadingText(false);
+        }
+    };
+
     // Load suggested text body from server when modal opens.
     useEffect(() => {
         if (!open || !reportId) return;
-        setLoadingText(true);
         setResults(null);
-        fetch(`/api/whatsapp/publish-${kind === 'shift' ? 'shift' : 'daily'}?reportId=${reportId}`)
-            .then(r => r.json())
-            .then(d => { if (d.text) setText(d.text); })
-            .catch(err => console.warn('text fetch failed', err))
-            .finally(() => setLoadingText(false));
+        fetchTemplate();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, reportId, kind]);
 
     if (!open) return null;

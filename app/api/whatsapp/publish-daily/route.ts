@@ -23,10 +23,11 @@ export async function GET(req: NextRequest) {
         .from('daily_reports')
         .select(`
             id, date, notes,
-            daily_report_steam (prod_boiler_a_24, prod_boiler_b_24, prod_total_24, inlet_turbine_24),
-            daily_report_power (gen_24, internal_bus1_24, exsport_24),
-            daily_report_coal (coal_a_24, coal_b_24, coal_c_24, coal_d_24, coal_e_24, coal_f_24),
-            daily_report_stock_tank (stock_batubara, bfw_total, solar_tank_a, solar_tank_b)
+            daily_report_steam (prod_boiler_a_00, prod_boiler_b_00, inlet_turbine_00, mps_i_00, mps_3a_00),
+            daily_report_power (gen_00, power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie),
+            daily_report_coal (total_boiler_a_24, total_boiler_b_24),
+            daily_report_turbine_misc (temp_furnace_a, temp_furnace_b, thrust_bearing_temp, gi_sum_p),
+            daily_report_stock_tank (rcw_level_00, demin_level_00)
         `)
         .eq('id', reportId)
         .single();
@@ -40,10 +41,25 @@ export async function GET(req: NextRequest) {
 
     const summary = buildDailySummary(report, maintenance ?? []);
     const text = await renderTemplate(supabase, 'daily_share', {
-        date: report.date as string,
+        date: formatDateHariTanggal(report.date as string),
         summary,
     });
     return NextResponse.json({ text });
+}
+
+/** Format "2026-05-23" → "Senin, 23 Mei 2026". */
+function formatDateHariTanggal(isoDate: string): string {
+    const [y, m, d] = (isoDate || '').split('-').map(Number);
+    if (!y || !m || !d) return isoDate ?? '';
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function fmtNum(v: number | null | undefined, decimals = 1): string {
+    if (v == null) return '-';
+    const n = Number(v);
+    if (isNaN(n)) return '-';
+    return Number.isInteger(n) ? String(n) : n.toFixed(decimals);
 }
 
 interface PublishBody {
@@ -263,36 +279,49 @@ function buildDailyReportHtml(report: any, maintenance: any[]): string {
 // Returns the `{{summary}}` content for the daily_share template.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildDailySummary(report: any, maintenance: any[]): string {
-    const stm = report.daily_report_steam?.[0];
-    const pwr = report.daily_report_power?.[0];
+    const stm  = report.daily_report_steam?.[0];
+    const pwr  = report.daily_report_power?.[0];
     const coal = report.daily_report_coal?.[0];
+    const turb = report.daily_report_turbine_misc?.[0];
     const tank = report.daily_report_stock_tank?.[0];
 
     const lines: string[] = [];
     lines.push('━━━ *PARAMETER OPERASI* ━━━');
-    if (stm) {
-        lines.push('');
-        lines.push('*Produksi Steam 24h*');
-        lines.push(`  Boiler A: ${stm.prod_boiler_a_24 ?? '-'} t`);
-        lines.push(`  Boiler B: ${stm.prod_boiler_b_24 ?? '-'} t`);
-        lines.push(`  Total:    ${stm.prod_total_24 ?? '-'} t`);
-        lines.push(`  Inlet Turbine: ${stm.inlet_turbine_24 ?? '-'} t`);
-    }
-    if (pwr) {
-        lines.push('');
-        lines.push('*Power 24h*');
-        lines.push(`  Gen: ${pwr.gen_24 ?? '-'} MWh · Internal: ${pwr.internal_bus1_24 ?? '-'} MWh · Export: ${pwr.exsport_24 ?? '-'} MWh`);
-    }
-    if (coal) {
-        lines.push('');
-        lines.push('*Coal 24h (per feeder, ton)*');
-        lines.push(`  A:${coal.coal_a_24 ?? '-'} B:${coal.coal_b_24 ?? '-'} C:${coal.coal_c_24 ?? '-'} D:${coal.coal_d_24 ?? '-'} E:${coal.coal_e_24 ?? '-'} F:${coal.coal_f_24 ?? '-'}`);
-    }
-    if (tank) {
-        lines.push('');
-        lines.push('*Stock*');
-        lines.push(`  Batubara: ${tank.stock_batubara ?? '-'} t · BFW: ${tank.bfw_total ?? '-'} m³ · Solar A/B: ${tank.solar_tank_a ?? '-'} / ${tank.solar_tank_b ?? '-'}`);
-    }
+
+    // Boiler A & B (snapshot 00:00 untuk flow, 24h total untuk batubara)
+    lines.push('');
+    lines.push('*Boiler A & B*');
+    lines.push(`  Flow Steam     : A ${fmtNum(stm?.prod_boiler_a_00)} | B ${fmtNum(stm?.prod_boiler_b_00)} t/h`);
+    lines.push(`  Total Batubara : A ${fmtNum(coal?.total_boiler_a_24)} | B ${fmtNum(coal?.total_boiler_b_24)} Ton`);
+    lines.push(`  Temp. Furnace  : A ${fmtNum(turb?.temp_furnace_a)} | B ${fmtNum(turb?.temp_furnace_b)} °C`);
+
+    // Turbin
+    lines.push('');
+    lines.push('*Turbin*');
+    lines.push(`  Steam Inlet         : ${fmtNum(stm?.inlet_turbine_00)} t/h`);
+    lines.push(`  Temp. Thrust Bearing: ${fmtNum(turb?.thrust_bearing_temp)} °C`);
+
+    // Distribusi Steam (snapshot 00:00)
+    lines.push('');
+    lines.push('*Distribusi Steam*');
+    lines.push(`  Pabrik 1 : ${fmtNum(stm?.mps_i_00)} t/h`);
+    lines.push(`  Pabrik 3 : ${fmtNum(stm?.mps_3a_00)} t/h`);
+
+    // Power (snapshot 00:00 MW aktual)
+    lines.push('');
+    lines.push('*Power*');
+    lines.push(`  STG UBB     : ${fmtNum(pwr?.gen_00)} MW`);
+    lines.push(`  Internal UBB: ${fmtNum(pwr?.power_ubb)} MW`);
+    lines.push(`  Pabrik 2    : ${fmtNum(pwr?.power_pabrik2)} MW`);
+    lines.push(`  Pabrik 3A   : ${fmtNum(pwr?.power_pabrik3a)} MW`);
+    lines.push(`  Pabrik 3B   : ${fmtNum(pwr?.power_revamping)} MW`);
+    lines.push(`  PIU         : ${fmtNum(pwr?.power_pie)} MW`);
+    lines.push(`  PLN         : ${fmtNum(turb?.gi_sum_p)} MW`);
+
+    // Tank levels (snapshot 00:00)
+    lines.push('');
+    lines.push(`Level RCW   : ${fmtNum(tank?.rcw_level_00)} m³`);
+    lines.push(`Level Demin : ${fmtNum(tank?.demin_level_00)} m³`);
 
     lines.push('');
     lines.push('━━━ *MAINTENANCE* ━━━');

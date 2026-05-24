@@ -26,9 +26,12 @@ export async function GET(req: NextRequest) {
         .from('shift_reports')
         .select(`
             id, date, shift, group_name, supervisor, catatan,
-            shift_turbin (flow_steam, press_steam, vacuum, stream_days),
+            shift_turbin (flow_steam, press_steam, vacuum, stream_days, thrust_bearing),
             shift_generator_gi (gen_load, gen_tegangan, gen_frequensi, gi_sum_p),
-            shift_boiler (boiler, press_steam, flow_steam, batubara_ton, temp_furnace, temp_flue_gas)
+            shift_boiler (boiler, press_steam, flow_steam, batubara_ton, temp_furnace, temp_flue_gas),
+            shift_steam_dist (pabrik1_flow, pabrik3a_flow),
+            shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_pabrik3b, power_pie),
+            shift_tankyard (tk_rcw, tk_demin)
         `)
         .eq('id', reportId)
         .single();
@@ -45,10 +48,26 @@ export async function GET(req: NextRequest) {
     const text = await renderTemplate(supabase, 'shift_share', {
         shift: shiftLabel,
         group: report.group_name as string,
-        date: report.date as string,
+        date: formatDateHariTanggal(report.date as string),
         summary,
     });
     return NextResponse.json({ text });
+}
+
+/** Format "2026-05-23" → "Senin, 23 Mei 2026". Parse local agar tidak ke-shift TZ. */
+function formatDateHariTanggal(isoDate: string): string {
+    const [y, m, d] = (isoDate || '').split('-').map(Number);
+    if (!y || !m || !d) return isoDate ?? '';
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/** Format angka: kalau null/undefined → '-', kalau integer → tampilkan tanpa decimal. */
+function fmtNum(v: number | null | undefined, decimals = 1): string {
+    if (v == null || v === undefined) return '-';
+    const n = Number(v);
+    if (isNaN(n)) return '-';
+    return Number.isInteger(n) ? String(n) : n.toFixed(decimals);
 }
 
 interface PublishBody {
@@ -335,28 +354,61 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
 function buildShiftSummary(report: any, maintenance: any[]): string {
     const turbin = report.shift_turbin?.[0];
     const gen = report.shift_generator_gi?.[0];
+    const steamDist = report.shift_steam_dist?.[0];
+    const powerDist = report.shift_power_dist?.[0];
+    const tankyard = report.shift_tankyard?.[0];
     const boilers = (report.shift_boiler ?? []).sort((a: any, b: any) => (a.boiler ?? '').localeCompare(b.boiler ?? ''));
+    const boilerA = boilers.find((b: any) => b.boiler === 'A');
+    const boilerB = boilers.find((b: any) => b.boiler === 'B');
 
     const lines: string[] = [];
     lines.push(`Supervisor: ${report.supervisor ?? '-'}`);
     lines.push('');
     lines.push('━━━ *PARAMETER OPERASI* ━━━');
-    if (boilers.length > 0) {
+
+    // Boiler A & B
+    if (boilerA || boilerB) {
         lines.push('');
-        lines.push('*Boiler*');
-        for (const b of boilers) {
-            lines.push(`  Boiler ${b.boiler}: flow ${b.flow_steam ?? '-'} t/h · press ${b.press_steam ?? '-'} bar · furnace ${b.temp_furnace ?? '-'}°C · BB ${b.batubara_ton ?? '-'} t`);
-        }
+        lines.push('*Boiler A & B*');
+        lines.push(`  Flow Steam     : A ${fmtNum(boilerA?.flow_steam)} | B ${fmtNum(boilerB?.flow_steam)} t/h`);
+        lines.push(`  Total Batubara : A ${fmtNum(boilerA?.batubara_ton)} | B ${fmtNum(boilerB?.batubara_ton)} Ton`);
+        lines.push(`  Temp. Furnace  : A ${fmtNum(boilerA?.temp_furnace)} | B ${fmtNum(boilerB?.temp_furnace)} °C`);
     }
+
+    // Turbin
     if (turbin) {
         lines.push('');
         lines.push('*Turbin*');
-        lines.push(`  Flow steam ${turbin.flow_steam ?? '-'} t/h · press ${turbin.press_steam ?? '-'} bar · vacuum ${turbin.vacuum ?? '-'} · stream-days ${turbin.stream_days ?? '-'}`);
+        lines.push(`  Steam Inlet         : ${fmtNum(turbin.flow_steam)} t/h`);
+        lines.push(`  Temp. Thrust Bearing: ${fmtNum(turbin.thrust_bearing)} °C`);
     }
-    if (gen) {
+
+    // Distribusi Steam
+    if (steamDist) {
         lines.push('');
-        lines.push('*Generator*');
-        lines.push(`  Load ${gen.gen_load ?? '-'} MW · ${gen.gen_tegangan ?? '-'} V · ${gen.gen_frequensi ?? '-'} Hz · GI Sum P ${gen.gi_sum_p ?? '-'} MW`);
+        lines.push('*Distribusi Steam*');
+        lines.push(`  Pabrik 1 : ${fmtNum(steamDist.pabrik1_flow)} t/h`);
+        lines.push(`  Pabrik 3 : ${fmtNum(steamDist.pabrik3a_flow)} t/h`);
+    }
+
+    // Power
+    if (gen || powerDist) {
+        lines.push('');
+        lines.push('*Power*');
+        lines.push(`  STG UBB     : ${fmtNum(gen?.gen_load)} MW`);
+        lines.push(`  Internal UBB: ${fmtNum(powerDist?.power_ubb)} MW`);
+        lines.push(`  Pabrik 2    : ${fmtNum(powerDist?.power_pabrik2)} MW`);
+        lines.push(`  Pabrik 3A   : ${fmtNum(powerDist?.power_pabrik3a)} MW`);
+        lines.push(`  Pabrik 3B   : ${fmtNum(powerDist?.power_pabrik3b)} MW`);
+        lines.push(`  PIU         : ${fmtNum(powerDist?.power_pie)} MW`);
+        lines.push(`  PLN         : ${fmtNum(gen?.gi_sum_p)} MW`);
+    }
+
+    // Tank Yard — Level RCW & Demin
+    if (tankyard) {
+        lines.push('');
+        lines.push(`Level RCW   : ${fmtNum(tankyard.tk_rcw)} m³`);
+        lines.push(`Level Demin : ${fmtNum(tankyard.tk_demin)} m³`);
     }
 
     lines.push('');

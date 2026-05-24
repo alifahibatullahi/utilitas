@@ -51,6 +51,16 @@ export function PublishReportModal({
     const [foremanTurbin, setForemanTurbin] = useState(initialForemanTurbin);
     const [foremanBoiler, setForemanBoiler] = useState(initialForemanBoiler);
 
+    // Washift target mode: 'group' (default, pakai whatsapp_groups key) atau 'manual' (nomor pribadi).
+    const [washiftMode, setWashiftMode] = useState<'group' | 'manual'>('group');
+    const [manualNumber, setManualNumber] = useState<string>(() => {
+        if (typeof window === 'undefined') return '';
+        try { return localStorage.getItem('publish_washift_manual') || ''; } catch { return ''; }
+    });
+    useEffect(() => {
+        try { localStorage.setItem('publish_washift_manual', manualNumber); } catch { /* ignore */ }
+    }, [manualNumber]);
+
     // Sync state dari props saat modal open atau initial values berubah dari parent.
     // Direksi: parent (input laporan / fetched report) → modal.
     useEffect(() => {
@@ -161,6 +171,11 @@ export function PublishReportModal({
     };
 
     const publish = async () => {
+        // Validasi: kalau mode manual, nomor wajib diisi.
+        if (washiftMode === 'manual' && !manualNumber.trim()) {
+            setResults({ text: { ok: false, error: 'Nomor WA manual wajib diisi (mis. 628xxxxxxxxxx)' } });
+            return;
+        }
         setSending(true);
         setResults(null);
         try {
@@ -170,8 +185,8 @@ export function PublishReportModal({
                 body: JSON.stringify({
                     reportId,
                     washiftMessage: text,
-                    washiftTarget: washiftKey,
-                    washiftIsGroupKey: true,
+                    washiftTarget: washiftMode === 'manual' ? manualNumber.trim() : washiftKey,
+                    washiftIsGroupKey: washiftMode !== 'manual',
                     pdfGroupKey,
                 }),
             });
@@ -343,6 +358,55 @@ export function PublishReportModal({
                         </div>
                     </div>
                 </div>
+
+                {/* Washift Target Selector — group default atau manual nomor pribadi */}
+                {tab === 'text' && (
+                    <div className="px-6 pt-4">
+                        <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                                    <span className="material-symbols-outlined text-[14px] text-cyan-400">forward_to_inbox</span>
+                                    Tujuan Washift
+                                </div>
+                                <div className="flex bg-slate-950/60 rounded-lg p-1 border border-slate-800/80">
+                                    <button
+                                        type="button"
+                                        onClick={() => setWashiftMode('group')}
+                                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${washiftMode === 'group' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                                    >
+                                        Group ({washiftKey})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setWashiftMode('manual')}
+                                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${washiftMode === 'manual' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                                    >
+                                        Manual (Nomor Pribadi)
+                                    </button>
+                                </div>
+                            </div>
+                            {washiftMode === 'manual' ? (
+                                <div className="relative flex flex-col bg-slate-950/40 border border-slate-800/80 focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/30 rounded-xl px-3 py-1.5 transition-all">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Nomor WA (format Fonnte)</label>
+                                    <input
+                                        type="tel"
+                                        value={manualNumber}
+                                        onChange={e => setManualNumber(e.target.value)}
+                                        placeholder="628xxxxxxxxxx atau 120363xxx@g.us"
+                                        className="w-full bg-transparent border-none p-0 text-sm font-mono font-bold text-cyan-200 focus:ring-0 outline-none placeholder:text-slate-600"
+                                    />
+                                    <p className="text-[9px] text-slate-500 mt-1">
+                                        Format: <code className="text-cyan-300">628xxx</code> (tanpa +) untuk nomor pribadi, atau JID berakhiran <code className="text-cyan-300">@g.us</code> untuk group.
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-[10px] text-slate-500">
+                                    Pesan akan dikirim ke group <span className="text-cyan-300 font-bold">{washiftKey}</span> (dari table <code>whatsapp_groups</code>).
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Body Content */}
                 <div className="flex-1 overflow-y-auto p-6">

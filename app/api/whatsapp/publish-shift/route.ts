@@ -352,11 +352,14 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
 // (e.g. "*Laporan Shift {{shift}} — {{date}}*").
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildShiftSummary(report: any, maintenance: any[]): string {
-    const turbin = report.shift_turbin?.[0];
-    const gen = report.shift_generator_gi?.[0];
-    const steamDist = report.shift_steam_dist?.[0];
-    const powerDist = report.shift_power_dist?.[0];
-    const tankyard = report.shift_tankyard?.[0];
+    // PostgREST nested SELECT untuk 1-to-1 relation return single object, untuk 1-to-many
+    // return array. Helper untuk ambil first regardless.
+    const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
+    const turbin = first(report.shift_turbin);
+    const gen = first(report.shift_generator_gi);
+    const steamDist = first(report.shift_steam_dist);
+    const powerDist = first(report.shift_power_dist);
+    const tankyard = first(report.shift_tankyard);
     const boilers = (report.shift_boiler ?? []).sort((a: any, b: any) => (a.boiler ?? '').localeCompare(b.boiler ?? ''));
     const boilerA = boilers.find((b: any) => b.boiler === 'A');
     const boilerB = boilers.find((b: any) => b.boiler === 'B');

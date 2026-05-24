@@ -279,11 +279,12 @@ function buildDailyReportHtml(report: any, maintenance: any[]): string {
 // Returns the `{{summary}}` content for the daily_share template.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildDailySummary(report: any, maintenance: any[]): string {
-    const stm  = report.daily_report_steam?.[0];
-    const pwr  = report.daily_report_power?.[0];
-    const coal = report.daily_report_coal?.[0];
-    const turb = report.daily_report_turbine_misc?.[0];
-    const tank = report.daily_report_stock_tank?.[0];
+    const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
+    const stm  = first(report.daily_report_steam);
+    const pwr  = first(report.daily_report_power);
+    const coal = first(report.daily_report_coal);
+    const turb = first(report.daily_report_turbine_misc);
+    const tank = first(report.daily_report_stock_tank);
 
     const lines: string[] = [];
     lines.push('━━━ *PARAMETER OPERASI* ━━━');

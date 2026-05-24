@@ -77,6 +77,12 @@ interface ShiftReport {
 
 const SHIFT_LABELS: Record<string, string> = { pagi: 'Pagi', sore: 'Sore', malam: 'Malam' };
 
+/** Convert scope slug (e.g. "bengkel_las") jadi label readable (e.g. "Bengkel Las"). */
+function humanizeScope(slug: string | null | undefined): string {
+    if (!slug) return '-';
+    return slug.split(/[_\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 /** Format a Date as YYYY-MM-DD in local timezone (avoids UTC shift from toISOString) */
 function toLocalDateStr(d: Date): string {
     const y = d.getFullYear();
@@ -582,27 +588,25 @@ export default function LaporanShiftPage() {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="text-[10px] text-green-300 font-bold uppercase bg-green-900/30 tracking-tighter">
-                                            <th className="py-2 px-1 w-[8%] border-b border-green-800/40 text-center">Tgl</th>
-                                            <th className="py-2 px-2 w-[14%] border-b border-green-800/40 text-left">Item</th>
-                                            <th className="py-2 px-1 w-[43%] border-b border-green-800/40 text-left">Uraian</th>
-                                            <th className="py-2 px-1 w-[18%] border-b border-green-800/40 text-center">Scope</th>
-                                            <th className="py-2 px-2 w-[12%] border-b border-green-800/40 text-center">Ket</th>
+                                            <th className="py-2 px-2 w-[18%] border-b border-green-800/40 text-left">Item</th>
+                                            <th className="py-2 px-1 w-[48%] border-b border-green-800/40 text-left">Uraian</th>
+                                            <th className="py-2 px-1 w-[20%] border-b border-green-800/40 text-center">Scope</th>
+                                            <th className="py-2 px-2 w-[14%] border-b border-green-800/40 text-center">Ket</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {activeMaintenance.map((m, i) => (
                                             <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
-                                                <td className="text-[10px] py-2 px-1 text-center text-slate-400">{m.date}</td>
                                                 <td className="text-[10px] py-2 px-2 font-mono font-bold text-primary">{m.item}</td>
                                                 <td className="text-[10px] py-2 px-1 text-slate-300">{m.uraian}</td>
-                                                <td className="text-[10px] py-2 px-1 text-center text-slate-400">{m.scope}</td>
+                                                <td className="text-[10px] py-2 px-1 text-center text-slate-400">{humanizeScope(m.scope)}</td>
                                                 <td className="text-center py-2 px-2">
                                                     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${m.status === 'OK' ? 'bg-emerald-500/20 text-emerald-400' : m.status === 'IP' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>{m.status}</span>
                                                 </td>
                                             </tr>
                                         ))}
                                         {activeMaintenance.length === 0 && (
-                                            <tr><td colSpan={5} className="text-center text-[10px] text-slate-500 italic py-4">Tidak ada maintenance aktif</td></tr>
+                                            <tr><td colSpan={4} className="text-center text-[10px] text-slate-500 italic py-4">Tidak ada maintenance aktif</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -636,7 +640,7 @@ export default function LaporanShiftPage() {
                                                 <td className="text-[10px] py-2 px-1 text-slate-400">{eq.date}</td>
                                                 <td className="text-[10px] py-2 px-1 font-mono font-bold text-rose-400">{eq.item}</td>
                                                 <td className="text-[10px] py-2 px-1 text-left text-slate-300">{eq.deskripsi}</td>
-                                                <td className="text-[10px] py-2 px-2 text-slate-400">{eq.scope}</td>
+                                                <td className="text-[10px] py-2 px-2 text-slate-400">{humanizeScope(eq.scope)}</td>
                                             </tr>
                                         ))}
                                         {openCriticals.length === 0 && (

@@ -119,13 +119,20 @@ export function PublishReportModal({
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Auto-adjust textarea height to fit content without internal scrollbar
+    // Auto-adjust textarea height to fit content without internal scrollbar.
+    // Pakai requestAnimationFrame supaya measurement scrollHeight terjadi SETELAH
+    // browser paint — fix bug "scrollbar tidak muncul saat pertama buka modal"
+    // (sebelumnya scrollHeight diukur sebelum text ter-render, hasil height = 0/kecil).
     useEffect(() => {
-        if (tab === 'text' && textareaRef.current) {
+        if (tab !== 'text' || !open) return;
+        let cancelled = false;
+        const raf = requestAnimationFrame(() => {
+            if (cancelled || !textareaRef.current) return;
             textareaRef.current.style.height = 'auto';
             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        }
-    }, [text, tab, open]);
+        });
+        return () => { cancelled = true; cancelAnimationFrame(raf); };
+    }, [text, tab, open, loadingText]);
 
     // Reusable: re-fetch template body dari server. Dipanggil saat modal open AND
     // setiap kali dropdown supervisor/foreman berubah supaya template auto-refresh.

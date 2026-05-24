@@ -46,14 +46,16 @@ export async function GET(req: NextRequest) {
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
     // Maintenance untuk laporan harian: status IP/OK dengan updated_at di window operasional
-    // (07:00 today WIB → 07:00 next day WIB — cakup Pagi+Sore+Malam shifts)
+    // (07:00 today WIB → 07:00 next day WIB — cakup Pagi+Sore+Malam shifts). Exclude sticky notes.
     const win = getOperationalDayWindowIso(report.date as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
-        .select('item, uraian, scope, status, tipe')
+        .select('item, uraian, scope, status, tipe, keterangan')
         .in('status', ['IP', 'OK'])
         .gte('updated_at', win.start)
         .lte('updated_at', win.end)
+        .neq('item', 'NOTE')
+        .or('keterangan.is.null,keterangan.neq.IS_NOTE')
         .order('item', { ascending: true });
 
     const summary = buildDailySummary(report, maintenance ?? []);
@@ -110,14 +112,16 @@ export async function POST(req: NextRequest) {
         .single();
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
-    // Maintenance untuk laporan harian — timestamp-based, status IP/OK saja
+    // Maintenance untuk laporan harian — timestamp-based, status IP/OK saja. Exclude sticky notes.
     const win = getOperationalDayWindowIso(report.date as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
-        .select('item, uraian, scope, foreman, tipe, status, notif')
+        .select('item, uraian, scope, foreman, tipe, status, notif, keterangan')
         .in('status', ['IP', 'OK'])
         .gte('updated_at', win.start)
         .lte('updated_at', win.end)
+        .neq('item', 'NOTE')
+        .or('keterangan.is.null,keterangan.neq.IS_NOTE')
         .order('item', { ascending: true });
 
     const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey);
@@ -351,8 +355,10 @@ function buildDailySummary(report: any, maintenance: any[]): string {
         lines.push('  (tidak ada item)');
     } else {
         const sorted = [...maintenance].sort((a, b) => String(a.item ?? '').localeCompare(String(b.item ?? '')));
+        // Format: "No Item + Deskripsi - Scope + uraian" — item field sudah "noItem - deskripsi".
         sorted.forEach((m, i) => {
-            lines.push(`${i + 1} - ${m.item ?? '-'} + ${m.scope ?? '-'} + ${m.uraian ?? '-'} + ${m.status ?? '-'}`);
+            const scopeLabel = m.scope ? String(m.scope).charAt(0).toUpperCase() + String(m.scope).slice(1) : '-';
+            lines.push(`${i + 1}. ${m.item ?? '-'} - ${scopeLabel} + ${m.uraian ?? '-'}`);
         });
     }
 

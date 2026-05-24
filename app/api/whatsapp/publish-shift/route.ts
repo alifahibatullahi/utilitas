@@ -49,14 +49,17 @@ export async function GET(req: NextRequest) {
         .single();
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
-    // Maintenance untuk shift ini: status IP/OK dengan updated_at di window shift (sinkron dengan tampilan laporan-shift page)
+    // Maintenance untuk shift ini: status IP/OK dengan updated_at di window shift (sinkron dengan tampilan laporan-shift page).
+    // Exclude sticky notes (item='NOTE' atau keterangan='IS_NOTE').
     const win = getShiftWindowIso(report.date as string, report.shift as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
-        .select('item, uraian, scope, status, tipe')
+        .select('item, uraian, scope, status, tipe, keterangan')
         .in('status', ['IP', 'OK'])
         .gte('updated_at', win.start)
         .lte('updated_at', win.end)
+        .neq('item', 'NOTE')
+        .or('keterangan.is.null,keterangan.neq.IS_NOTE')
         .order('item', { ascending: true });
 
     const summary = buildShiftSummary(report, maintenance ?? []);
@@ -118,14 +121,16 @@ export async function POST(req: NextRequest) {
         .single();
     if (error || !report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
-    // ── Maintenance untuk shift ini — timestamp-based (sinkron dengan tampilan laporan-shift page) ──
+    // ── Maintenance untuk shift ini — timestamp-based (sinkron dengan tampilan laporan-shift page). Exclude sticky notes. ──
     const win = getShiftWindowIso(report.date as string, report.shift as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
-        .select('item, uraian, scope, foreman, tipe, status, notif')
+        .select('item, uraian, scope, foreman, tipe, status, notif, keterangan')
         .in('status', ['IP', 'OK'])
         .gte('updated_at', win.start)
         .lte('updated_at', win.end)
+        .neq('item', 'NOTE')
+        .or('keterangan.is.null,keterangan.neq.IS_NOTE')
         .order('item', { ascending: true });
 
     // ────────── Run both sends in parallel ──────────
@@ -439,9 +444,11 @@ function buildShiftSummary(report: any, maintenance: any[]): string {
         lines.push('  (tidak ada item)');
     } else {
         // Sort by item ascending, then number sequentially.
+        // Format: "No Item + Deskripsi - Scope + uraian" — item field sudah "noItem - deskripsi".
         const sorted = [...maintenance].sort((a, b) => String(a.item ?? '').localeCompare(String(b.item ?? '')));
         sorted.forEach((m, i) => {
-            lines.push(`${i + 1} - ${m.item ?? '-'} + ${m.scope ?? '-'} + ${m.uraian ?? '-'} + ${m.status ?? '-'}`);
+            const scopeLabel = m.scope ? String(m.scope).charAt(0).toUpperCase() + String(m.scope).slice(1) : '-';
+            lines.push(`${i + 1}. ${m.item ?? '-'} - ${scopeLabel} + ${m.uraian ?? '-'}`);
         });
     }
 

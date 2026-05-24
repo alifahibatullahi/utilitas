@@ -215,7 +215,7 @@ export default function WorkOrderDetailModal({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={handleClose}>
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <div
-                className="relative bg-white w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100"
+                className="relative bg-white w-full max-w-[94vw] h-[95vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header — matching gradient depending on tipe (preventif / modifikasi) */}
@@ -507,7 +507,7 @@ export default function WorkOrderDetailModal({
                             </div>
 
                             {/* Photos & Activity column */}
-                            <div className="flex flex-col gap-6 md:min-h-0 md:overflow-hidden">
+                            <div className="flex flex-col gap-6 md:overflow-y-auto md:max-h-full light-scrollbar pr-2">
                                 {/* Photos */}
                                 <div className="flex flex-col gap-3">
                                     <div className="flex items-center justify-between">
@@ -521,7 +521,7 @@ export default function WorkOrderDetailModal({
                                             onUploadSuccess={handlePhotoUploaded}
                                         />
                                     </div>
-                                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 min-h-[140px] md:max-h-[220px] overflow-y-auto flex flex-col light-scrollbar">
+                                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 min-h-[140px] flex flex-col">
                                         {!photosLoaded ? (
                                             <div className="my-auto flex items-center justify-center gap-2 text-slate-400 text-xs">
                                                 <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
@@ -539,14 +539,15 @@ export default function WorkOrderDetailModal({
                                 </div>
 
                                 {/* Activity logs */}
-                                <div className="flex flex-col gap-3 flex-1 min-h-[300px] md:min-h-0 md:overflow-hidden">
+                                <div className="flex flex-col gap-3 flex-1">
                                     <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
                                         <span className="material-symbols-outlined text-blue-500">history</span>
                                         Riwayat Aktivitas
                                     </h3>
-                                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col md:min-h-0 md:overflow-hidden">
+                                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
                                         <ActivityTimelineImproved
                                             logs={workOrder.work_order_activity_logs ?? []}
+                                            compact={true}
                                             onAddNote={async (note, actor) => {
                                                 if (!addActivityNote) return { error: 'Handler tidak tersedia' };
                                                 const r = await addActivityNote(workOrder.id, note, actor);

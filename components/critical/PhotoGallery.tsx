@@ -293,7 +293,7 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                         </div>
 
                         {/* Caption box — kotak polos saja */}
-                        <div className="w-full max-w-3xl bg-white rounded-xl shadow-xl px-4 py-3">
+                        <div className="w-full max-w-3xl bg-slate-950/60 backdrop-blur-sm border border-slate-800/80 rounded-xl shadow-xl px-4 py-3">
                             {onCaptionUpdate ? (
                                 <textarea
                                     value={draftCaption}
@@ -301,11 +301,11 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                                     onBlur={flushCaption}
                                     placeholder="Tambahkan keterangan foto…"
                                     rows={2}
-                                    className="w-full resize-none text-sm font-medium text-gray-900 placeholder-gray-400 outline-none bg-transparent border-0 focus:ring-0"
+                                    className="w-full resize-none text-sm font-medium text-white placeholder-slate-400 outline-none bg-transparent border-0 focus:ring-0"
                                     aria-label="Keterangan foto"
                                 />
                             ) : (
-                                <p className="text-sm text-gray-800">{photos[lightboxIdx].caption || <span className="italic text-gray-400">Tidak ada keterangan</span>}</p>
+                                <p className="text-sm text-slate-100">{photos[lightboxIdx].caption || <span className="italic text-slate-500">Tidak ada keterangan</span>}</p>
                             )}
                         </div>
                     </div>

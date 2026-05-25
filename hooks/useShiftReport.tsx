@@ -407,6 +407,8 @@ export interface ShiftReportData {
     supervisor: string;
     status: ReportStatus;
     catatan: string | null;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
     created_by: string;
     shift_boiler: {
         boiler: 'A' | 'B';
@@ -773,7 +775,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         group_name: string;
         supervisor: string;
         created_by: string;
-        catatan?: string;
+        catatan?: string | null;
         boilerA?: Record<string, number | string | null>;
         boilerB?: Record<string, number | string | null>;
         turbin?: Record<string, number | string | null>;

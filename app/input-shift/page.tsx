@@ -10,6 +10,7 @@ import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
+import TabCatatanOperasional from '@/components/input-shift/TabCatatanOperasional';
 import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory, useBoilerShutdownHistory, useLatestBoilerStatus } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
@@ -27,7 +28,7 @@ function getGroupMalamOnDate(dateStr: string): string {
     return '';
 }
 
-type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker' | 'Lab';
+type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker' | 'Lab' | 'Catatan Operasional';
 
 const TABS: { id: TabId; label: string; icon: string; colorClass: string }[] = [
     { id: 'Boiler A', label: 'Boiler A', icon: 'factory', colorClass: 'rose' },
@@ -39,6 +40,7 @@ const TABS: { id: TabId; label: string; icon: string; colorClass: string }[] = [
     { id: 'ESP', label: 'ESP', icon: 'air', colorClass: 'stone' },
     { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2', colorClass: 'indigo' },
     { id: 'Lab', label: 'Lab / QC', icon: 'science', colorClass: 'teal' },
+    { id: 'Catatan Operasional', label: 'Catatan Operasional', icon: 'sticky_note_2', colorClass: 'amber' },
 ];
 
 const TAB_STYLES: Record<string, { active: string; inactive: string; icon: string }> = {
@@ -257,6 +259,7 @@ function InputShiftPageInner() {
     const [ashEntries, setAshEntries] = useState<AshUnloadingEntry[]>([]);
     const [savedAshEntries, setSavedAshEntries] = useState<AshUnloadingEntry[]>([]);
     const [lastStock, setLastStock] = useState<{ phosphate: number | null; amine: number | null; hydrazine: number | null }>({ phosphate: null, amine: null, hydrazine: null });
+    const [catatan, setCatatan] = useState<string>('');
 
     // Shift mapping: button order matches chronological report time
     // 06.00 → shift malam (night shift makes 06.00 report)
@@ -270,7 +273,7 @@ function InputShiftPageInner() {
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift]);
     const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift]);
-    const { operator, operators } = useOperator();
+    const { operator, operators, canReviewReport } = useOperator();
     const isAdmin = operator?.role === 'admin';
 
     // Auto-kalkulasi grup dari pola jadwal shift
@@ -445,6 +448,7 @@ function InputShiftPageInner() {
         const personnel = (report as any).shift_personnel?.[0];
         if (personnel?.turbin_karu) setForemanTurbin(personnel.turbin_karu);
         if (personnel?.boiler_karu) setForemanBoiler(personnel.boiler_karu);
+        if (report.catatan != null) setCatatan(report.catatan);
         // status_turbin restored automatically via extractFields di useEffect lain saat
         // report.shift_turbin di-load → setTurbin(extractFields(turbinData)).
         // Restore filler dari station_fillers[station] kalau ada — kalau belum, default
@@ -510,6 +514,7 @@ function InputShiftPageInner() {
         setSupervisor('');
         setForemanBoiler('');
         setForemanTurbin('');
+        setCatatan('');
     }, [selectedShift, selectedDate]);
 
     // Populate form when report data arrives from Supabase
@@ -809,6 +814,7 @@ function InputShiftPageInner() {
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
                 supervisor: supervisor || operator?.name || 'Operator',
+                catatan: catatan || null,
                 created_by: operator?.supabaseId || '',
                 boilerA: { ...finalBoilerA, batubara_ton: batubaraA, selisih_steam: selisihSteamA, selisih_bfw: selisihBfwA },
                 boilerB: { ...finalBoilerB, batubara_ton: batubaraB, selisih_steam: selisihSteamB, selisih_bfw: selisihBfwB },
@@ -943,6 +949,7 @@ function InputShiftPageInner() {
             case 'ESP': return hasVal(espHandling, ['esp_a1', 'esp_a2', 'esp_a3', 'esp_b1', 'esp_b2', 'esp_b3', 'silo_a', 'silo_b']);
             case 'Coal Bunker': return hasVal(coalBunker, ['bunker_a', 'bunker_b', 'bunker_c', 'bunker_d', 'bunker_e', 'bunker_f']);
             case 'Lab': return hasVal(waterQuality, ['demin_1250_ph', 'demin_1250_conduct', 'bfw_ph', 'bfw_conduct', 'boiler_water_a_ph', 'boiler_water_b_ph', 'product_steam_ph']) && hasVal(chemicalDosing, ['phosphate_level_tanki', 'phosphate_stroke_pompa', 'phosphate_b_level_tanki', 'phosphate_b_stroke_pompa', 'amine_level_tanki', 'amine_stroke_pompa', 'hydrazine_level_tanki', 'hydrazine_stroke_pompa']);
+            case 'Catatan Operasional': return true; // optional — selalu lengkap
             default: return false;
         }
     }, [boilerA, boilerB, turbin, generatorGi, powerDist, steamDist, tankyard, espHandling, coalBunker, waterQuality, chemicalDosing]);
@@ -1524,6 +1531,7 @@ function InputShiftPageInner() {
                                     {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} onDeleteSavedAsh={handleDeleteSavedAsh} />}
                                     {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
                                     {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} />}
+                                    {activeTab === 'Catatan Operasional' && <TabCatatanOperasional catatan={catatan} onCatatanChange={setCatatan} solarEntries={solarEntries} outSolarEntries={outSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} ashEntries={ashEntries} savedAshEntries={savedAshEntries} coalBunker={coalBunker} />}
                                 </div>
                                 )}
                             </>
@@ -1546,6 +1554,8 @@ function InputShiftPageInner() {
                     initialSupervisor={supervisor}
                     initialForemanTurbin={foremanTurbin}
                     initialForemanBoiler={foremanBoiler}
+                    canReview={canReviewReport}
+                    reviewerName={operator?.name ?? ''}
                 />
             )}
         </div>

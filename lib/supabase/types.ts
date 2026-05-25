@@ -52,6 +52,9 @@ export interface ShiftReportRow {
      *  di mana pengisi bisa berasal dari grup lain. Diisi via picker "Diisi oleh" di
      *  station view. Tidak overwrite station lain saat partial submit. */
     station_fillers?: Record<string, string> | null;
+    /** Approval supervisor/foreman saat publish. Di-set bersamaan dengan status='approved'. */
+    reviewed_by?: string | null;
+    reviewed_at?: string | null;
 }
 
 export interface DailyReportRow {

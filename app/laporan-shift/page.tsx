@@ -295,7 +295,7 @@ function CylinderTank({ label, value, unit, color, fillPercent }: {
 }
 
 export default function LaporanShiftPage() {
-    const { operator } = useOperator();
+    const { operator, canReviewReport } = useOperator();
     const router = useRouter();
     const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('malam');
     const [selectedDate, setSelectedDate] = useState(todayWIB);
@@ -426,6 +426,15 @@ export default function LaporanShiftPage() {
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tanggal</span><span className="text-sm font-black text-white">{dateFormatted}</span></div>
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Grup</span><span className="text-sm font-black text-white">{report.group}</span></div>
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Supervisor</span><span className="text-sm font-black text-white">{report.supervisor}</span></div>
+                {supaReport?.reviewed_by && (
+                    <div className="flex items-center justify-center gap-2 px-4 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
+                        <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 14 }}>verified</span>
+                        <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Disetujui {supaReport.reviewed_by}</span>
+                        {supaReport.reviewed_at && (
+                            <span className="text-[10px] text-emerald-200/70">· {new Date(supaReport.reviewed_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        )}
+                    </div>
+                )}
             </div>)}
 
             {/* Main 2-Column Grid (matching PDF preview layout) */}
@@ -730,6 +739,8 @@ export default function LaporanShiftPage() {
                 initialForemanTurbin={(supaReport as any)?.shift_personnel?.[0]?.turbin_karu ?? ''}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 initialForemanBoiler={(supaReport as any)?.shift_personnel?.[0]?.boiler_karu ?? ''}
+                canReview={canReviewReport}
+                reviewerName={operator?.name ?? ''}
             />
             </>)}
 

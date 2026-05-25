@@ -625,7 +625,7 @@ export default function LaporanShiftPage() {
                                                 <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
                                                     <td className="py-2.5 px-3 leading-tight text-center">
                                                         <div className="text-[10.5px] font-mono font-extrabold text-cyan-400">{code}</div>
-                                                        {desc && <div className="text-[9.5px] text-slate-400 font-medium mt-0.5">{capFirst(desc)}</div>}
+                                                        {desc && <div className="text-[9.5px] text-cyan-300/90 font-bold mt-0.5">{capFirst(desc)}</div>}
                                                     </td>
                                                     <td className="text-[11.5px] py-2.5 px-2 text-white font-medium text-center">{capFirst(m.uraian)}</td>
                                                     <td className="text-[10.5px] py-2.5 px-2 text-center text-slate-300 font-bold">{humanizeScope(m.scope)}</td>
@@ -678,7 +678,7 @@ export default function LaporanShiftPage() {
                                                     <td className="text-[10.5px] py-2.5 px-2 text-slate-300 font-bold">{toDMShort(eq.date)}</td>
                                                     <td className="py-2.5 px-2 text-center leading-tight">
                                                         <div className="text-[10.5px] font-mono font-extrabold text-rose-400">{code}</div>
-                                                        {desc && <div className="text-[9.5px] text-slate-400 font-medium mt-0.5">{capFirst(desc)}</div>}
+                                                        {desc && <div className="text-[9.5px] text-rose-300/90 font-bold mt-0.5">{capFirst(desc)}</div>}
                                                     </td>
                                                     <td className="text-[11.5px] py-2.5 px-2 text-white font-medium text-center">{capFirst(eq.deskripsi)}</td>
                                                     <td className="text-[10.5px] py-2.5 px-3 text-slate-300 font-bold">{humanizeScope(eq.scope)}</td>

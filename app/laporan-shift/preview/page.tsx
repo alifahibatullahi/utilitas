@@ -402,7 +402,7 @@ export default function PreviewPdfPage() {
                                                     <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
                                                         <td className="py-2.5 px-3 leading-tight text-center">
                                                             <div className="text-xs font-mono font-extrabold text-blue-700">{code}</div>
-                                                            {desc && <div className="text-[10px] text-slate-700 font-medium mt-0.5">{desc}</div>}
+                                                            {desc && <div className="text-[10px] text-blue-900 font-bold mt-0.5">{desc}</div>}
                                                         </td>
                                                         <td className="text-xs py-2.5 px-2 whitespace-normal break-words font-semibold text-slate-900 text-center">{m.uraian}</td>
                                                         <td className="text-xs py-2.5 px-2 font-bold text-slate-800 text-center">{m.scope}</td>
@@ -451,7 +451,7 @@ export default function PreviewPdfPage() {
                                                         <td className="text-xs py-2.5 font-bold text-slate-900">{eq.date}</td>
                                                         <td className="py-2.5 px-2 text-center leading-tight">
                                                             <div className="text-xs font-mono font-extrabold text-red-600">{code}</div>
-                                                            {desc && <div className="text-[10px] text-slate-700 font-medium mt-0.5">{desc}</div>}
+                                                            {desc && <div className="text-[10px] text-red-900 font-bold mt-0.5">{desc}</div>}
                                                         </td>
                                                         <td className="text-xs py-2.5 px-2 font-medium text-center text-slate-900">{eq.deskripsi}</td>
                                                         <td className="text-xs py-2.5 font-bold text-slate-800 text-center">{eq.scope}</td>

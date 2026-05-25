@@ -757,8 +757,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             <span className="material-symbols-outlined text-[18px]">{isHarianLocked ? 'lock' : 'save'}</span>
                             {submitting ? 'Menyimpan...' : isHarianLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                         </button>
-                        {/* Publish — admin bypass: bisa klik tanpa nunggu centang lengkap. */}
-                        {(() => {
+                        {/* Publish — disembunyikan di mode station (operator station hanya isi tab-nya).
+                            Admin bypass: bisa klik tanpa nunggu centang lengkap. */}
+                        {!station && (() => {
                             const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
                             return (
                                 <button

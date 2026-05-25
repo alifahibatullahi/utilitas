@@ -1330,8 +1330,10 @@ function InputShiftPageInner() {
                                     {submitting ? 'Menyimpan...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                                 </button>
                                 {/* Publish — aktif kalau semua tab visible centang lengkap DAN report sudah submit.
-                                    Admin bypass: bisa klik tanpa nunggu centang lengkap (untuk testing). */}
-                                {(() => {
+                                    Admin bypass: bisa klik tanpa nunggu centang lengkap (untuk testing).
+                                    Disembunyikan di mode station: operator station hanya isi tab-nya,
+                                    publish dilakukan dari view full (admin/foreman) di laporan-shift. */}
+                                {!station && (() => {
                                     const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
                                     return (
                                         <button

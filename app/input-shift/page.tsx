@@ -1092,36 +1092,37 @@ function InputShiftPageInner() {
                                     </span>
 
                                     {/* Tanggal (Date Picker) - Swapped to Row 1 */}
-                                    <div 
-                                        onClick={() => {
-                                            try {
-                                                dateInputRef.current?.showPicker();
-                                            } catch (err) {
-                                                console.error(err);
-                                            }
+                                    <div
+                                        onMouseDown={e => {
+                                            // mousedown lebih cepat dari click (tidak menunggu mouseup).
+                                            // Cegah default supaya tidak fokus ke parent div, lalu langsung buka picker.
+                                            e.preventDefault();
+                                            dateInputRef.current?.showPicker?.();
                                         }}
                                         className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-2.5 pr-7 py-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px] cursor-pointer focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}
                                     >
-                                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none">Tanggal</span>
+                                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none pointer-events-none">Tanggal</span>
                                         <div className="relative w-full flex items-center h-5 overflow-hidden">
-                                            <span className="inline sm:hidden text-[11px] font-black text-blue-100 select-none whitespace-nowrap">
+                                            <span className="inline sm:hidden text-[11px] font-black text-blue-100 select-none whitespace-nowrap pointer-events-none">
                                                 {formattedDateShort || selectedDate}
                                             </span>
-                                            <span className="hidden sm:inline text-xs lg:text-sm font-black text-blue-100 select-none whitespace-nowrap">
+                                            <span className="hidden sm:inline text-xs lg:text-sm font-black text-blue-100 select-none whitespace-nowrap pointer-events-none">
                                                 {formattedDate || selectedDate}
                                             </span>
+                                            {/* Input native — hanya untuk hold value & jadi picker target.
+                                                pointer-events-none supaya semua klik kena parent div → langsung showPicker. */}
                                             <input
                                                 ref={dateInputRef}
                                                 type="date"
                                                 value={selectedDate}
                                                 onChange={e => setSelectedDate(e.target.value)}
-                                                onClick={e => e.stopPropagation()}
-                                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full bg-transparent border-none outline-none ring-0 appearance-none focus:ring-0 focus:border-none focus:outline-none [color-scheme:dark]"
+                                                tabIndex={-1}
+                                                className="absolute inset-0 opacity-0 pointer-events-none w-full h-full bg-transparent border-none outline-none ring-0 appearance-none [color-scheme:dark]"
                                             />
                                         </div>
                                         <span className="material-symbols-outlined text-[18px] text-blue-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
                                         {isToday && inputMode === 'shift' && (
-                                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                            <span className="absolute -top-1 -right-1 flex h-2 w-2 pointer-events-none">
                                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                                             </span>

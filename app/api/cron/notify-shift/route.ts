@@ -10,7 +10,7 @@ import {
     nowWIB,
     shiftYesterdayWIB,
 } from '@/lib/whatsapp';
-import { getGroupForShift } from '@/lib/constants';
+import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
 
 // Reminders run as a single endpoint hit by an external cron every ~15 minutes.
 // Schedule (start/end/throttle per kind) is loaded from `notification_schedule` table — admin-editable.
@@ -132,6 +132,14 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
     let groupLetter: string | null = null;
     if (schedule.kind === 'shift_reminder' && schedule.shift) {
         groupLetter = getGroupForShift(date, schedule.shift as 'pagi' | 'sore' | 'malam');
+        if (!groupLetter) return { schedule: schedule.id, skipped: 'no_group_assignment' };
+        groupKey = `shift_${groupLetter.toLowerCase()}`;
+    } else if (schedule.kind === 'daily_reminder') {
+        // LHUBB reminder fires 22:45 hari D. Yang mengisi LHUBB = grup yang dinas malam
+        // mulai 23:00 hari D (working_start = D). Pattern rotasi pakai working_start = `date`.
+        for (const g of ['A', 'B', 'C', 'D'] as const) {
+            if (getGroupShiftOnDate(g, date) === 'M') { groupLetter = g; break; }
+        }
         if (!groupLetter) return { schedule: schedule.id, skipped: 'no_group_assignment' };
         groupKey = `shift_${groupLetter.toLowerCase()}`;
     } else {

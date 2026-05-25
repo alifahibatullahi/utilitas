@@ -1304,9 +1304,8 @@ function InputShiftPageInner() {
 
             {inputMode === 'shift' ? (
                 <div className="flex flex-col lg:flex-row gap-6 w-full max-w-full">
-                    {/* Left Sidebar — di lg+ tetap di kiri, di bawah lg pindah ke BAWAH konten
-                        supaya operator langsung lihat form (tab Action Buttons + Tab list jadi mobile-bar di bawah). */}
-                    <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4 order-2 lg:order-1">
+                    {/* Left Sidebar */}
+                    <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
                         {/* Action Buttons */}
                         <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
                             <div>
@@ -1424,7 +1423,7 @@ function InputShiftPageInner() {
                     </div>
 
                     {/* Tab Content Area */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-4 order-1 lg:order-2">
+                    <div className="flex-1 min-w-0 flex flex-col gap-4">
                         {/* Active Tab Header */}
                         <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                             {(() => {

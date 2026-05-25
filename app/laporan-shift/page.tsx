@@ -90,6 +90,23 @@ function capFirst(s: string | null | undefined): string {
     return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
+/** Split `item` field yang disimpan sebagai "NO_ITEM - DESKRIPSI" (oleh ItemCombobox)
+ *  menjadi { code, desc }. Kalau tidak ada " - ", desc kosong. */
+function splitItem(item: string | null | undefined): { code: string; desc: string } {
+    const s = (item ?? '').trim();
+    const idx = s.indexOf(' - ');
+    if (idx === -1) return { code: s, desc: '' };
+    return { code: s.slice(0, idx).trim(), desc: s.slice(idx + 3).trim() };
+}
+
+/** Format "2026-05-23" → "23/05" (DD/MM). */
+function toDMShort(isoDate: string | null | undefined): string {
+    if (!isoDate) return '-';
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+    return `${parts[2]}/${parts[1]}`;
+}
+
 /** Format a Date as YYYY-MM-DD in local timezone (avoids UTC shift from toISOString) */
 function toLocalDateStr(d: Date): string {
     const y = d.getFullYear();
@@ -603,13 +620,12 @@ export default function LaporanShiftPage() {
                                     </thead>
                                     <tbody>
                                         {activeMaintenance.map((m, i) => {
-                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            const deskripsi = (m as any).critical_equipment?.deskripsi ?? '';
+                                            const { code, desc } = splitItem(m.item);
                                             return (
                                                 <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
                                                     <td className="py-2.5 px-3 leading-tight text-center">
-                                                        <div className="text-[10.5px] font-mono font-extrabold text-cyan-400">{m.item}</div>
-                                                        {deskripsi && <div className="text-[9.5px] text-slate-400 font-medium mt-0.5">{capFirst(deskripsi)}</div>}
+                                                        <div className="text-[10.5px] font-mono font-extrabold text-cyan-400">{code}</div>
+                                                        {desc && <div className="text-[9.5px] text-slate-400 font-medium mt-0.5">{capFirst(desc)}</div>}
                                                     </td>
                                                     <td className="text-[11.5px] py-2.5 px-2 text-white font-medium text-center">{capFirst(m.uraian)}</td>
                                                     <td className="text-[10.5px] py-2.5 px-2 text-center text-slate-300 font-bold">{humanizeScope(m.scope)}</td>
@@ -648,24 +664,29 @@ export default function LaporanShiftPage() {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="text-[9px] text-rose-100 font-extrabold uppercase bg-rose-950/60 tracking-wider text-center border-b border-rose-900/50">
-                                            <th className="py-2.5 px-2 w-[12%]">Tgl</th>
-                                            <th className="py-2.5 px-2 w-[58%] text-center">Item</th>
-                                            <th className="py-2.5 px-3 w-[30%]">Scope</th>
+                                            <th className="py-2.5 px-2 w-[10%]">Tgl</th>
+                                            <th className="py-2.5 px-2 w-[28%] text-center">Item</th>
+                                            <th className="py-2.5 px-2 w-[42%] text-center">Uraian</th>
+                                            <th className="py-2.5 px-3 w-[20%]">Scope</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center">
-                                        {openCriticals.map((eq, i) => (
-                                            <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-                                                <td className="text-[10.5px] py-2.5 px-2 text-slate-300 font-bold">{eq.date}</td>
-                                                <td className="py-2.5 px-2 text-center leading-tight">
-                                                    <div className="text-[10.5px] font-mono font-extrabold text-rose-400">{eq.item}</div>
-                                                    {eq.deskripsi && <div className="text-[10px] text-white font-medium mt-0.5">{capFirst(eq.deskripsi)}</div>}
-                                                </td>
-                                                <td className="text-[10.5px] py-2.5 px-3 text-slate-300 font-bold">{humanizeScope(eq.scope)}</td>
-                                            </tr>
-                                        ))}
+                                        {openCriticals.map((eq, i) => {
+                                            const { code, desc } = splitItem(eq.item);
+                                            return (
+                                                <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                                                    <td className="text-[10.5px] py-2.5 px-2 text-slate-300 font-bold">{toDMShort(eq.date)}</td>
+                                                    <td className="py-2.5 px-2 text-center leading-tight">
+                                                        <div className="text-[10.5px] font-mono font-extrabold text-rose-400">{code}</div>
+                                                        {desc && <div className="text-[9.5px] text-slate-400 font-medium mt-0.5">{capFirst(desc)}</div>}
+                                                    </td>
+                                                    <td className="text-[11.5px] py-2.5 px-2 text-white font-medium text-center">{capFirst(eq.deskripsi)}</td>
+                                                    <td className="text-[10.5px] py-2.5 px-3 text-slate-300 font-bold">{humanizeScope(eq.scope)}</td>
+                                                </tr>
+                                            );
+                                        })}
                                         {openCriticals.length === 0 && (
-                                            <tr><td colSpan={3} className="text-center text-xs text-slate-400 font-medium italic py-6">Tidak ada critical aktif</td></tr>
+                                            <tr><td colSpan={4} className="text-center text-xs text-slate-400 font-medium italic py-6">Tidak ada critical aktif</td></tr>
                                         )}
                                     </tbody>
                                 </table>

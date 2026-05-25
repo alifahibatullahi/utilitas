@@ -47,7 +47,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
 
     return (
         <>
-            <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+            <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Steam Inlet Turbin" icon="waves" color="blue">
@@ -101,7 +101,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                 </div>
             </div>
 
-            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
                 <Card title="Produksi Shift" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="PRODUKSI STEAM INLET" value={produksiSteamInlet.toFixed(2)} unit="ton" variant="primary" />
                     <CalculatedField label="PRODUKSI CONDENSATE" value={produksiCondensate.toFixed(2)} unit="ton" variant="secondary" />

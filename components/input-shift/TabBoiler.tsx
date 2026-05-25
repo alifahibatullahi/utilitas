@@ -147,7 +147,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
 
     return (
         <>
-            <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 scrollbar-hide w-full">
+            <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 {isBoilerShutdown && (
                     <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
                         <span className="material-symbols-outlined text-[16px] text-rose-400 shrink-0 mt-0.5">power_off</span>
@@ -237,7 +237,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                 </div>
             </div>
 
-            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
                 <Card title="Produksi Shift" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="PRODUKSI STEAM" value={produksiSteam.toFixed(2)} unit="ton" variant="primary" size="large" />
                     <CalculatedField label="PRODUKSI BFW" value={produksiBfw.toFixed(2)} unit="ton" variant="secondary" size="medium" />

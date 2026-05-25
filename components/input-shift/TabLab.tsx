@@ -26,7 +26,7 @@ export default function TabLab({
 
     return (
         <>
-            <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+            <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     {/* Chemical Dosing Section */}
@@ -178,7 +178,7 @@ export default function TabLab({
                 </div>
             </div>
 
-            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
                 <Card title="Lab Summary" icon="summarize" color="purple" isSidebar={true}>
                     <CalculatedField label="PHOSPHATE A" value={(Number(cd.phosphate_penambahan_chemical) || 0).toFixed(1)} unit="liter" variant="primary" />
                     <CalculatedField label="PHOSPHATE B" value={(Number(cd.phosphate_b_penambahan_chemical) || 0).toFixed(1)} unit="liter" variant="transparent" />

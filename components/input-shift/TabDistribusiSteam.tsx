@@ -27,7 +27,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
 
     return (
         <>
-            <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+            <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Pabrik 1" icon="factory" color="blue">
@@ -69,7 +69,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                 </div>
             </div>
 
-            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
                 <Card title="Distribusi Shift" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="Steam Pabrik 1" value={produksiP1.toFixed(2)} unit="ton" variant="secondary" size="medium" />
                     <CalculatedField label="Steam Pabrik 2" value={produksiP2.toFixed(2)} unit="ton" variant="secondary" size="medium" />

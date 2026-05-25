@@ -40,7 +40,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
 
     return (
         <>
-            <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+            <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
                     <Card title="Trafo A" icon="electrical_services" color="blue">
@@ -143,7 +143,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                 </div>
             </div>
 
-            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
                 <Card title="Summary Fly Ash" icon="assessment" color="emerald" isSidebar={true}>
                     <CalculatedField label="TOTAL SILO A" value={totalAshSiloA.toLocaleString('id-ID')} unit="Rit" variant="primary" />
                     <CalculatedField label="TOTAL SILO B" value={totalAshSiloB.toLocaleString('id-ID')} unit="Rit" variant="transparent" />

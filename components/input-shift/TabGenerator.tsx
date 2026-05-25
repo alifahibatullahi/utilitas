@@ -49,7 +49,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
 
     return (
         <>
-            <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+            <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Generator Output" icon="flash_on" color="blue">
@@ -115,7 +115,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                 </div>
             </div>
 
-            <div className="w-full xl:w-[240px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
                 <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="LOAD STG" value={fmt(gv.gen_load)} unit="MW" variant="primary" />
 

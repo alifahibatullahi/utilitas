@@ -974,7 +974,7 @@ function InputShiftPageInner() {
     };
 
     return (
-        <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 flex flex-col gap-4 h-full overflow-hidden">
+        <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 flex flex-col gap-4 xl:h-full xl:overflow-hidden">
             {/* Loading Overlay */}
             {submitting && (
                 <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
@@ -1304,8 +1304,9 @@ function InputShiftPageInner() {
 
             {inputMode === 'shift' ? (
                 <div className="flex flex-col lg:flex-row gap-6 w-full max-w-full">
-                    {/* Left Sidebar */}
-                    <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
+                    {/* Left Sidebar — di lg+ tetap di kiri, di bawah lg pindah ke BAWAH konten
+                        supaya operator langsung lihat form (tab Action Buttons + Tab list jadi mobile-bar di bawah). */}
+                    <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4 order-2 lg:order-1">
                         {/* Action Buttons */}
                         <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
                             <div>
@@ -1423,7 +1424,7 @@ function InputShiftPageInner() {
                     </div>
 
                     {/* Tab Content Area */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-4">
+                    <div className="flex-1 min-w-0 flex flex-col gap-4 order-1 lg:order-2">
                         {/* Active Tab Header */}
                         <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                             {(() => {
@@ -1510,9 +1511,11 @@ function InputShiftPageInner() {
                                         <p className="text-slate-400 text-sm max-w-md">Station ini hanya mengisi data di laporan harian. Buka link yang sesuai dari grup WA.</p>
                                     </div>
                                 )}
-                                {/* Shift Tab Content */}
+                                {/* Shift Tab Content. Pada lebar < xl, gunakan layout block normal (auto height
+                                    per child) supaya form tidak collapse ke 0 height karena flex-1 + min-h-0.
+                                    Pada xl+, switch ke flex-row supaya form & sidebar summary sejajar. */}
                                 {visibleTabs.length > 0 && (
-                                <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 pb-6 w-full max-w-full">
+                                <div className="flex flex-col xl:flex-row gap-6 xl:flex-1 xl:min-h-0 pb-6 w-full max-w-full">
                                     {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
                                     {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
                                     {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet as number | null} prevTotalizerCondensate={prevTurbin.totalizer_condensate as number | null} />}

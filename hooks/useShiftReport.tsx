@@ -793,6 +793,12 @@ export function useShiftReport(date: string, shift: ShiftType) {
         /** Per-station filler — kalau diisi, di-merge ke station_fillers JSONB tanpa
          *  overwrite station lain. Dipakai saat operator submit dari station view. */
         station_filler?: { station: string; name: string };
+        /** Station scope. Kalau diisi:
+         *  - parent shift_reports update tidak overwrite supervisor/catatan/group_name
+         *  - hanya child tables yang owned station tsb yang ditulis
+         *  - shared tables (shift_esp_handling) → partial column update
+         *  Untuk submit non-station (foreman/supervisor/admin penuh), biarkan null. */
+        station?: string | null;
     }) => {
         if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
 
@@ -801,6 +807,45 @@ export function useShiftReport(date: string, shift: ShiftType) {
 
         const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const validCreatedBy = reportData.created_by && UUID_REGEX.test(reportData.created_by) ? reportData.created_by : null;
+
+        // ─── Station scope mapping ───
+        // Tabel yang DI-OWNED penuh oleh tiap station (DELETE+INSERT seperti normal).
+        const STATION_OWNS_TABLES: Record<string, string[]> = {
+            panel_boiler: ['shift_boiler'],          // legacy: keduanya
+            panel_boiler_a: ['shift_boiler'],        // row-level filter via STATION_OWNS_BOILER_ROW
+            panel_boiler_b: ['shift_boiler'],
+            panel_turbin: ['shift_turbin', 'shift_steam_dist', 'shift_generator_gi', 'shift_power_dist'],
+            handling: ['shift_esp_handling'],
+            esp: ['shift_esp_handling'],
+            bunker: ['shift_coal_bunker'],
+            lapangan_boiler: ['shift_water_quality', 'shift_tankyard'],
+            lapangan_turbin: [],
+        };
+        // Row-level filter untuk shift_boiler (multi-row by `boiler` column).
+        const STATION_OWNS_BOILER_ROW: Record<string, ('A' | 'B')[]> = {
+            panel_boiler: ['A', 'B'],
+            panel_boiler_a: ['A'],
+            panel_boiler_b: ['B'],
+        };
+        // Kolom yang dimiliki station di SHARED table (partial update — bukan delete+insert).
+        const STATION_PARTIAL_COLS: Record<string, Record<string, string[]>> = {
+            handling: { shift_esp_handling: ['hopper', 'conveyor', 'unloading_a', 'unloading_b', 'loading', 'pf1', 'pf2'] },
+            esp:      { shift_esp_handling: ['esp_a1', 'esp_a2', 'esp_a3', 'esp_b1', 'esp_b2', 'esp_b3', 'silo_a', 'silo_b'] },
+        };
+
+        const stationKey = reportData.station ?? null;
+        const isStationScoped = !!stationKey && stationKey in STATION_OWNS_TABLES;
+        const ownedTables = isStationScoped ? (STATION_OWNS_TABLES[stationKey!] ?? []) : null;
+        const partialColsMap = isStationScoped ? (STATION_PARTIAL_COLS[stationKey!] ?? {}) : {};
+
+        const canWriteTable = (table: string): boolean => {
+            if (!isStationScoped) return true;
+            return ownedTables!.includes(table);
+        };
+        const getPartialCols = (table: string): string[] | null => {
+            if (!isStationScoped) return null;
+            return partialColsMap[table] ?? null;
+        };
 
         // Merge station_fillers — fetch existing dulu supaya tidak overwrite station lain.
         let mergedStationFillers: Record<string, string> | undefined;
@@ -815,22 +860,88 @@ export function useShiftReport(date: string, shift: ShiftType) {
             mergedStationFillers = { ...current, [reportData.station_filler.station]: reportData.station_filler.name };
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: sr, error: srError } = await supabase
+        // ─── Parent shift_reports: INSERT vs UPDATE eksplisit ───
+        // Station-scope: pada UPDATE jangan overwrite supervisor/catatan/group_name.
+        const { data: existingParent } = await supabase
             .from('shift_reports')
-            .upsert({
+            .select('id')
+            .eq('date', date)
+            .eq('shift', shift)
+            .maybeSingle();
+
+        let sr: { id: string } | null = null;
+        let srError: { message: string } | null = null;
+
+        if (existingParent) {
+            const updatePayload: Record<string, unknown> = {};
+            if (!isStationScoped) {
+                updatePayload.group_name = reportData.group_name;
+                updatePayload.supervisor = reportData.supervisor;
+                updatePayload.catatan = reportData.catatan || null;
+            }
+            if (mergedStationFillers) updatePayload.station_fillers = mergedStationFillers;
+            if (validCreatedBy && !isStationScoped) updatePayload.created_by = validCreatedBy;
+
+            if (Object.keys(updatePayload).length > 0) {
+                const r = await supabase
+                    .from('shift_reports')
+                    .update(updatePayload)
+                    .eq('id', (existingParent as { id: string }).id)
+                    .select('id')
+                    .single();
+                sr = r.data as { id: string } | null;
+                srError = r.error;
+            } else {
+                sr = existingParent as { id: string };
+            }
+        } else {
+            const insertPayload: Record<string, unknown> = {
                 date,
                 shift,
                 group_name: reportData.group_name,
                 supervisor: reportData.supervisor,
                 status: 'draft' as ReportStatus,
-                catatan: reportData.catatan || null,
+                catatan: isStationScoped ? null : (reportData.catatan || null),
                 ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
                 ...(mergedStationFillers ? { station_fillers: mergedStationFillers } : {}),
+            };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any, { onConflict: 'date,shift' })
-            .select()
-            .single();
+            const r = await supabase.from('shift_reports').insert(insertPayload as any).select('id').single();
+            sr = r.data as { id: string } | null;
+            srError = r.error;
+            // Race: station lain mungkin barusan insert untuk (date,shift) yang sama → unique violation.
+            // Re-fetch + lakukan UPDATE path (tanpa overwrite supervisor/catatan kalau station-scoped).
+            if (srError && (srError as { code?: string }).code === '23505') {
+                const { data: nowExisting } = await supabase
+                    .from('shift_reports')
+                    .select('id')
+                    .eq('date', date)
+                    .eq('shift', shift)
+                    .maybeSingle();
+                if (nowExisting) {
+                    const updatePayload: Record<string, unknown> = {};
+                    if (!isStationScoped) {
+                        updatePayload.group_name = reportData.group_name;
+                        updatePayload.supervisor = reportData.supervisor;
+                        updatePayload.catatan = reportData.catatan || null;
+                    }
+                    if (mergedStationFillers) updatePayload.station_fillers = mergedStationFillers;
+                    if (Object.keys(updatePayload).length > 0) {
+                        const r2 = await supabase
+                            .from('shift_reports')
+                            .update(updatePayload)
+                            .eq('id', (nowExisting as { id: string }).id)
+                            .select('id')
+                            .single();
+                        sr = r2.data as { id: string } | null;
+                        srError = r2.error;
+                    } else {
+                        sr = nowExisting as { id: string };
+                        srError = null;
+                    }
+                }
+            }
+        }
 
         if (srError || !sr) return { error: srError?.message || 'Failed to create report' };
 
@@ -874,44 +985,99 @@ export function useShiftReport(date: string, shift: ShiftType) {
             }
         }
 
-        // Save boiler A & B (delete by boiler id, then insert)
-        for (const [boilerId, boilerData] of [['A', reportData.boilerA], ['B', reportData.boilerB]] as [string, Record<string, number | string | null> | undefined][]) {
-            if (boilerData && Object.keys(boilerData).length > 0) {
-                const filtered = pickValidCols('shift_boiler', boilerData as Record<string, unknown>);
-                if (Object.keys(filtered).length > 0) {
-                    await supabase.from('shift_boiler').delete()
-                        .eq('shift_report_id', reportId).eq('boiler', boilerId);
+        // Partial column update untuk shared table (delete dilewati, hanya update kolom owned).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async function savePartialChild(table: string, data: Record<string, unknown>, allowedCols: string[]) {
+            const filtered = pickValidCols(table, data);
+            const subset: Record<string, unknown> = {};
+            for (const k of allowedCols) {
+                if (k in filtered) subset[k] = filtered[k];
+            }
+            if (Object.keys(subset).length === 0) {
+                console.log(`[submitReport] skip "${table}" partial: no owned columns provided`);
+                return;
+            }
+            const { data: existing } = await supabase
+                .from(table)
+                .select('id')
+                .eq('shift_report_id', reportId)
+                .maybeSingle();
+            if (existing) {
+                const { error: updErr } = await supabase
+                    .from(table)
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const { data: ins, error: bErr } = await supabase.from('shift_boiler')
-                        .insert({ shift_report_id: reportId, boiler: boilerId, ...filtered } as any)
-                        .select();
-                    if (bErr) {
-                        console.error(`[submitReport] INSERT shift_boiler ${boilerId} error:`, bErr.message);
-                        errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
-                    } else {
-                        console.log(`[submitReport] shift_boiler ${boilerId} saved OK, id=${(ins as Record<string, unknown>[])?.[0]?.id}`);
+                    .update(subset as any)
+                    .eq('id', (existing as { id: string }).id);
+                if (updErr) {
+                    console.error(`[submitReport] partial UPDATE "${table}" error:`, updErr.message);
+                    errors.push(`${table}: ${updErr.message}`);
+                } else {
+                    console.log(`[submitReport] partial UPDATE "${table}" OK:`, Object.keys(subset));
+                }
+            } else {
+                const payload = { shift_report_id: reportId, ...subset };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { error: insErr } = await supabase.from(table).insert(payload as any);
+                if (insErr) {
+                    console.error(`[submitReport] partial INSERT "${table}" error:`, insErr.message);
+                    errors.push(`${table}: ${insErr.message}`);
+                } else {
+                    console.log(`[submitReport] partial INSERT "${table}" OK:`, Object.keys(subset));
+                }
+            }
+        }
+
+        // Save boiler A & B (delete by boiler id, then insert)
+        if (canWriteTable('shift_boiler')) {
+            // Filter row level — panel_boiler_a hanya tulis row A, panel_boiler_b hanya row B.
+            const allowedBoilers: ('A' | 'B')[] = isStationScoped
+                ? (STATION_OWNS_BOILER_ROW[stationKey!] ?? ['A', 'B'])
+                : ['A', 'B'];
+            for (const [boilerId, boilerData] of [['A', reportData.boilerA], ['B', reportData.boilerB]] as [('A' | 'B'), Record<string, number | string | null> | undefined][]) {
+                if (!allowedBoilers.includes(boilerId)) continue;
+                if (boilerData && Object.keys(boilerData).length > 0) {
+                    const filtered = pickValidCols('shift_boiler', boilerData as Record<string, unknown>);
+                    if (Object.keys(filtered).length > 0) {
+                        await supabase.from('shift_boiler').delete()
+                            .eq('shift_report_id', reportId).eq('boiler', boilerId);
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const { data: ins, error: bErr } = await supabase.from('shift_boiler')
+                            .insert({ shift_report_id: reportId, boiler: boilerId, ...filtered } as any)
+                            .select();
+                        if (bErr) {
+                            console.error(`[submitReport] INSERT shift_boiler ${boilerId} error:`, bErr.message);
+                            errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
+                        } else {
+                            console.log(`[submitReport] shift_boiler ${boilerId} saved OK, id=${(ins as Record<string, unknown>[])?.[0]?.id}`);
+                        }
                     }
                 }
             }
         }
 
-        // Save all other child tables
-        if (reportData.turbin && Object.keys(reportData.turbin).length > 0) {
+        // Save all other child tables (gated by station scope)
+        if (canWriteTable('shift_turbin') && reportData.turbin && Object.keys(reportData.turbin).length > 0) {
             await saveChild('shift_turbin', reportData.turbin);
         }
-        if (reportData.steamDist && Object.keys(reportData.steamDist).length > 0) {
+        if (canWriteTable('shift_steam_dist') && reportData.steamDist && Object.keys(reportData.steamDist).length > 0) {
             await saveChild('shift_steam_dist', reportData.steamDist);
         }
-        if (reportData.generatorGi && Object.keys(reportData.generatorGi).length > 0) {
+        if (canWriteTable('shift_generator_gi') && reportData.generatorGi && Object.keys(reportData.generatorGi).length > 0) {
             await saveChild('shift_generator_gi', reportData.generatorGi);
         }
-        if (reportData.powerDist && Object.keys(reportData.powerDist).length > 0) {
+        if (canWriteTable('shift_power_dist') && reportData.powerDist && Object.keys(reportData.powerDist).length > 0) {
             await saveChild('shift_power_dist', reportData.powerDist);
         }
-        if (reportData.espHandling && Object.keys(reportData.espHandling).length > 0) {
-            await saveChild('shift_esp_handling', reportData.espHandling as Record<string, unknown>);
+        if (canWriteTable('shift_esp_handling') && reportData.espHandling && Object.keys(reportData.espHandling).length > 0) {
+            const partial = getPartialCols('shift_esp_handling');
+            if (partial) {
+                // handling/esp station → partial column update (jangan overwrite kolom milik station lain).
+                await savePartialChild('shift_esp_handling', reportData.espHandling as Record<string, unknown>, partial);
+            } else {
+                await saveChild('shift_esp_handling', reportData.espHandling as Record<string, unknown>);
+            }
         }
-        if (reportData.tankyard && Object.keys(reportData.tankyard).length > 0) {
+        if (canWriteTable('shift_tankyard') && reportData.tankyard && Object.keys(reportData.tankyard).length > 0) {
             await saveChild('shift_tankyard', reportData.tankyard);
 
             // Sync tankyard data to tank_levels for real-time monitoring
@@ -935,13 +1101,15 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 }
             }
         }
-        if (reportData.personnel && Object.keys(reportData.personnel).length > 0) {
+        // shift_personnel = data foreman/supervisor (turbin_karu, boiler_karu, kasi). Hanya
+        // di-tulis pada submit non-station. Station operator tidak boleh overwrite personnel.
+        if (canWriteTable('shift_personnel') && reportData.personnel && Object.keys(reportData.personnel).length > 0) {
             await saveChild('shift_personnel', reportData.personnel as Record<string, unknown>);
         }
-        if (reportData.coalBunker && Object.keys(reportData.coalBunker).length > 0) {
+        if (canWriteTable('shift_coal_bunker') && reportData.coalBunker && Object.keys(reportData.coalBunker).length > 0) {
             await saveChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>);
         }
-        if (reportData.waterQuality && Object.keys(reportData.waterQuality).length > 0) {
+        if (canWriteTable('shift_water_quality') && reportData.waterQuality && Object.keys(reportData.waterQuality).length > 0) {
             await saveChild('shift_water_quality', reportData.waterQuality);
         }
 

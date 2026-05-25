@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card } from './SharedComponents';
 import type { AshUnloadingEntry } from './TabESP';
 
@@ -19,18 +19,76 @@ interface TabCatatanOperasionalProps {
 }
 
 const BUNKER_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-    running:     { label: 'Running',     color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' },
-    standby:     { label: 'Standby',     color: 'bg-slate-500/15 text-slate-300 border-slate-500/40' },
-    maintenance: { label: 'Maintenance', color: 'bg-blue-500/15 text-blue-300 border-blue-500/40' },
-    berasap:     { label: 'Berasap',     color: 'bg-amber-500/15 text-amber-300 border-amber-500/40' },
-    shutdown:    { label: 'Shutdown',    color: 'bg-rose-500/15 text-rose-300 border-rose-500/40' },
-};
 
-function statusBadge(value: string) {
-    const def = STATUS_LABEL[value] ?? { label: value || '-', color: 'bg-slate-700/30 text-slate-400 border-slate-700/40' };
-    return <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${def.color}`}>{def.label}</span>;
+// ─── Auto-catatan helpers (exported, dipakai juga di page.tsx saat submit) ───
+
+export interface AutoCatatanInput {
+    solarIn: SolarInEntry[];
+    solarOut: SolarOutEntry[];
+    ash: AshUnloadingEntry[];
+    coalBunker: Record<string, number | string | null>;
 }
+
+/** Pattern auto-line yang harus di-strip dari catatan saat load supaya tidak duplikat. */
+const AUTO_CATATAN_PATTERNS: RegExp[] = [
+    /^Kedatangan solar dari .+ sebanyak .+ L\.?$/i,
+    /^Permintaan solar ke .+ sebanyak .+ L\.?$/i,
+    /^Unloading fly ash Silo [AB] sebanyak \d+× ke .+\.?$/i,
+    /^Bunker [A-F] berasap\.?$/i,
+];
+
+/** Hapus auto-line dari teks catatan (dipakai saat load dari DB). */
+export function stripAutoCatatan(raw: string | null | undefined): string {
+    if (!raw) return '';
+    const kept = raw
+        .split('\n')
+        .filter(line => {
+            const t = line.trim();
+            if (!t) return true; // keep blank lines, akan di-trim nanti
+            return !AUTO_CATATAN_PATTERNS.some(re => re.test(t));
+        })
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    return kept;
+}
+
+/** Build daftar auto-line dari state live (entries + bunker). */
+export function buildAutoCatatanLines(p: AutoCatatanInput): string[] {
+    const lines: string[] = [];
+
+    for (const e of p.solarIn) {
+        if (e.jumlah && e.perusahaan) {
+            lines.push(`Kedatangan solar dari ${e.perusahaan} sebanyak ${e.jumlah.toLocaleString('id-ID')} L`);
+        }
+    }
+    for (const e of p.solarOut) {
+        if (e.jumlah && e.tujuan) {
+            lines.push(`Permintaan solar ke ${e.tujuan} sebanyak ${e.jumlah.toLocaleString('id-ID')} L`);
+        }
+    }
+    for (const e of p.ash) {
+        if (e.silo && e.ritase) {
+            lines.push(`Unloading fly ash Silo ${e.silo} sebanyak ${e.ritase}× ke ${e.tujuan || '-'}`);
+        }
+    }
+    for (const k of BUNKER_KEYS) {
+        const st = String(p.coalBunker[`status_bunker_${k}`] ?? 'running').toLowerCase();
+        if (st === 'berasap') lines.push(`Bunker ${k.toUpperCase()} berasap`);
+    }
+    return lines;
+}
+
+/** Gabungkan auto-lines + free text jadi catatan final untuk disimpan ke DB. */
+export function combineCatatan(autoLines: string[], freeText: string): string | null {
+    const free = (freeText ?? '').trim();
+    if (autoLines.length === 0 && !free) return null;
+    if (autoLines.length === 0) return free;
+    if (!free) return autoLines.join('\n');
+    return autoLines.join('\n') + '\n\n' + free;
+}
+
+// ─── Component ───
 
 export default function TabCatatanOperasional({
     catatan,
@@ -43,138 +101,53 @@ export default function TabCatatanOperasional({
     savedAshEntries,
     coalBunker,
 }: TabCatatanOperasionalProps) {
-    const solarIn = [...savedSolarEntries, ...solarEntries].filter(e => e.jumlah && e.perusahaan);
-    const solarOut = [...savedOutSolarEntries, ...outSolarEntries].filter(e => e.jumlah && e.tujuan);
-    const ash = [...savedAshEntries, ...ashEntries].filter(e => e.silo && e.ritase);
-    const ashA = ash.filter(e => e.silo === 'A');
-    const ashB = ash.filter(e => e.silo === 'B');
-
-    const bunkerWithIssue = BUNKER_KEYS
-        .map(k => ({ key: k, status: String(coalBunker[`status_bunker_${k}`] ?? 'running') }))
-        .filter(b => b.status && b.status !== 'running');
+    const autoLines = useMemo(() => {
+        const solarIn = [...savedSolarEntries, ...solarEntries];
+        const solarOut = [...savedOutSolarEntries, ...outSolarEntries];
+        const ash = [...savedAshEntries, ...ashEntries];
+        return buildAutoCatatanLines({ solarIn, solarOut, ash, coalBunker });
+    }, [solarEntries, outSolarEntries, savedSolarEntries, savedOutSolarEntries, ashEntries, savedAshEntries, coalBunker]);
 
     return (
-        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* === Kolom kiri: auto sections === */}
-            <div className="flex flex-col gap-6">
-                {/* Solar */}
-                <Card title="Aktivitas Solar" icon="local_gas_station" color="amber">
-                    {/* Kedatangan */}
-                    <div>
-                        <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-2">Kedatangan</div>
-                        {solarIn.length === 0 ? (
-                            <p className="text-[11px] text-slate-500 italic">Tidak ada kedatangan solar</p>
-                        ) : (
-                            <ul className="space-y-1.5">
-                                {solarIn.map((e, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-[11px] text-slate-200">
-                                        <span className="material-symbols-outlined text-amber-400 text-[14px]">arrow_downward</span>
-                                        <span className="font-mono font-bold text-amber-200">{(e.jumlah ?? 0).toLocaleString('id-ID')} L</span>
-                                        <span className="text-slate-400">dari</span>
-                                        <span className="font-semibold">{e.perusahaan}</span>
-                                        <span className="text-slate-500 text-[10px]">({e.tanggal})</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                    {/* Permintaan / pemakaian */}
-                    <div className="pt-3 mt-3 border-t border-slate-700/40">
-                        <div className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2">Permintaan / Pemakaian</div>
-                        {solarOut.length === 0 ? (
-                            <p className="text-[11px] text-slate-500 italic">Tidak ada permintaan solar</p>
-                        ) : (
-                            <ul className="space-y-1.5">
-                                {solarOut.map((e, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-[11px] text-slate-200">
-                                        <span className="material-symbols-outlined text-orange-400 text-[14px]">arrow_upward</span>
-                                        <span className="font-mono font-bold text-orange-200">{(e.jumlah ?? 0).toLocaleString('id-ID')} L</span>
-                                        <span className="text-slate-400">ke</span>
-                                        <span className="font-semibold">{e.tujuan}</span>
-                                        <span className="text-slate-500 text-[10px]">({e.tanggal})</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                </Card>
+        <div className="w-full max-w-3xl mx-auto">
+            <Card title="Catatan Operasional" icon="sticky_note_2" color="amber">
+                <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+                    Tulis catatan operasional bebas (kejadian penting, info untuk shift berikutnya, dll).
+                    Aktivitas <span className="text-amber-300 font-semibold">solar</span>,{' '}
+                    <span className="text-slate-300 font-semibold">unloading fly ash</span>, dan{' '}
+                    <span className="text-amber-300 font-semibold">bunker berasap</span> akan ditambahkan otomatis
+                    dari tab masing-masing saat laporan disimpan.
+                </p>
 
-                {/* Fly Ash */}
-                <Card title="Unloading Fly Ash" icon="ac_unit" color="slate">
-                    {ash.length === 0 ? (
-                        <p className="text-[11px] text-slate-500 italic">Tidak ada unloading fly ash</p>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Silo A</div>
-                                {ashA.length === 0 ? (
-                                    <p className="text-[11px] text-slate-500 italic">—</p>
-                                ) : (
-                                    <ul className="space-y-1">
-                                        {ashA.map((e, i) => (
-                                            <li key={i} className="text-[11px] text-slate-200 flex items-center gap-1.5">
-                                                <span className="font-mono font-bold text-slate-200">{e.ritase}× </span>
-                                                <span className="text-slate-400">→</span>
-                                                <span className="text-slate-300">{e.tujuan || '-'}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                            <div>
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Silo B</div>
-                                {ashB.length === 0 ? (
-                                    <p className="text-[11px] text-slate-500 italic">—</p>
-                                ) : (
-                                    <ul className="space-y-1">
-                                        {ashB.map((e, i) => (
-                                            <li key={i} className="text-[11px] text-slate-200 flex items-center gap-1.5">
-                                                <span className="font-mono font-bold text-slate-200">{e.ritase}× </span>
-                                                <span className="text-slate-400">→</span>
-                                                <span className="text-slate-300">{e.tujuan || '-'}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
+                {/* Preview auto-lines yang bakal di-prepend saat save */}
+                {autoLines.length > 0 && (
+                    <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                            <span className="material-symbols-outlined text-amber-400 text-[14px]">auto_awesome</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                                Otomatis ditambahkan saat simpan
+                            </span>
                         </div>
-                    )}
-                </Card>
-
-                {/* Bunker Status */}
-                <Card title="Status Bunker" icon="inventory_2" color="indigo">
-                    {bunkerWithIssue.length === 0 ? (
-                        <p className="text-[11px] text-slate-500 italic">Semua bunker dalam status Running.</p>
-                    ) : (
-                        <ul className="space-y-1.5">
-                            {bunkerWithIssue.map(b => (
-                                <li key={b.key} className="flex items-center gap-2 text-[11px]">
-                                    <span className="font-mono font-bold text-indigo-300 uppercase">Bunker {b.key.toUpperCase()}</span>
-                                    <span className="text-slate-500">·</span>
-                                    {statusBadge(b.status)}
-                                </li>
+                        <ul className="space-y-0.5">
+                            {autoLines.map((line, i) => (
+                                <li key={i} className="text-[11px] text-amber-100/90 font-mono">• {line}</li>
                             ))}
                         </ul>
-                    )}
-                </Card>
-            </div>
+                    </div>
+                )}
 
-            {/* === Kolom kanan: catatan textarea === */}
-            <div className="flex flex-col">
-                <Card title="Catatan Lain" icon="edit_note" color="amber">
-                    <p className="text-[11px] text-slate-400 leading-relaxed mb-2">
-                        Catatan operasional lain yang perlu disampaikan ke shift berikutnya / supervisor.
-                        Solar, fly ash, dan status bunker sudah otomatis tercatat dari tab masing-masing.
-                    </p>
-                    <textarea
-                        value={catatan}
-                        onChange={e => onCatatanChange(e.target.value)}
-                        placeholder="Tulis catatan operasional di sini..."
-                        rows={14}
-                        className="w-full bg-[#0e1621] border border-slate-700/60 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 rounded-xl px-3 py-2.5 text-sm text-slate-100 outline-none resize-y placeholder:text-slate-600 leading-relaxed"
-                    />
-                </Card>
-            </div>
+                <textarea
+                    value={catatan}
+                    onChange={e => onCatatanChange(e.target.value)}
+                    placeholder="Tulis catatan operasional di sini... (mis. kejadian unit trip, info ke shift berikutnya)"
+                    rows={14}
+                    className="w-full bg-[#0e1621] border border-slate-700/60 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 rounded-xl px-3 py-2.5 text-sm text-slate-100 outline-none resize-y placeholder:text-slate-600 leading-relaxed"
+                />
+
+                <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                    Catatan ini akan ikut tampil di pesan publish WhatsApp dan laporan PDF.
+                </p>
+            </Card>
         </div>
     );
 }

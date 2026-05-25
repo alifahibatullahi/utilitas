@@ -327,7 +327,9 @@ export const SHIFT_INPUT_ROLES: OperatorRole[] = ['group_a', 'group_b', 'group_c
 // membawa operator langsung ke tab(s) yang sesuai station-nya via query param
 // ?station=<id>.
 export type OperatorStation =
-    | 'panel_boiler'
+    | 'panel_boiler'        // legacy/full panel — A + B (back-compat untuk link lama)
+    | 'panel_boiler_a'
+    | 'panel_boiler_b'
     | 'panel_turbin'
     | 'handling'
     | 'esp'
@@ -337,6 +339,8 @@ export type OperatorStation =
 
 export const STATION_LABELS: Record<OperatorStation, string> = {
     panel_boiler: 'Panel Boiler',
+    panel_boiler_a: 'Panel Boiler A',
+    panel_boiler_b: 'Panel Boiler B',
     panel_turbin: 'Panel Turbin',
     handling: 'Handling',
     esp: 'ESP',
@@ -348,6 +352,8 @@ export const STATION_LABELS: Record<OperatorStation, string> = {
 // Tab IDs harus match dengan TabId di app/input-shift/page.tsx.
 export const STATION_SHIFT_TABS: Record<OperatorStation, string[]> = {
     panel_boiler: ['Boiler A', 'Boiler B'],
+    panel_boiler_a: ['Boiler A'],
+    panel_boiler_b: ['Boiler B'],
     panel_turbin: ['Turbin', 'Distribusi Steam', 'Generator'],
     handling: ['Handling'],
     esp: ['ESP'],
@@ -359,6 +365,8 @@ export const STATION_SHIFT_TABS: Record<OperatorStation, string[]> = {
 // Tab IDs harus match dengan HarianTabId di components/input-harian/InputHarianForm.tsx.
 export const STATION_HARIAN_TABS: Record<OperatorStation, string[]> = {
     panel_boiler: ['Boiler'],
+    panel_boiler_a: ['Boiler'],
+    panel_boiler_b: ['Boiler'],
     panel_turbin: ['Turbin', 'Power'],
     handling: ['Handling'],
     esp: ['Silo & Fly Ash'],
@@ -374,7 +382,8 @@ export function isValidStation(s: string | null | undefined): s is OperatorStati
 
 // Urutan station untuk render link block reminder WA.
 export const STATION_ORDER: OperatorStation[] = [
-    'panel_boiler',
+    'panel_boiler_a',
+    'panel_boiler_b',
     'panel_turbin',
     'handling',
     'esp',

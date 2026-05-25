@@ -10,7 +10,7 @@ import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
-import TabCatatanOperasional from '@/components/input-shift/TabCatatanOperasional';
+import TabCatatanOperasional, { buildAutoCatatanLines, stripAutoCatatan, combineCatatan } from '@/components/input-shift/TabCatatanOperasional';
 import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory, useBoilerShutdownHistory, useLatestBoilerStatus } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
@@ -448,7 +448,7 @@ function InputShiftPageInner() {
         const personnel = (report as any).shift_personnel?.[0];
         if (personnel?.turbin_karu) setForemanTurbin(personnel.turbin_karu);
         if (personnel?.boiler_karu) setForemanBoiler(personnel.boiler_karu);
-        if (report.catatan != null) setCatatan(report.catatan);
+        if (report.catatan != null) setCatatan(stripAutoCatatan(report.catatan));
         // status_turbin restored automatically via extractFields di useEffect lain saat
         // report.shift_turbin di-load → setTurbin(extractFields(turbinData)).
         // Restore filler dari station_fillers[station] kalau ada — kalau belum, default
@@ -534,8 +534,28 @@ function InputShiftPageInner() {
         const tankyardData = report.shift_tankyard?.[0];
         const coalData = report.shift_coal_bunker?.[0];
 
-        if (boilerAData) setBoilerA(extractFields(boilerAData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>);
-        if (boilerBData) setBoilerB(extractFields(boilerBData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>);
+        // Shared press_steam — A & B header pressure plant-wide sama. Kalau salah satu sudah
+        // ngisi (mis. operator panel boiler A submit dulu) → row yang lain auto-default ke
+        // nilai itu. User boleh override sebelum submit.
+        const psA = (boilerAData as Record<string, unknown> | undefined)?.press_steam as number | null | undefined;
+        const psB = (boilerBData as Record<string, unknown> | undefined)?.press_steam as number | null | undefined;
+        const sharedPressSteam = psA ?? psB ?? null;
+
+        if (boilerAData) {
+            const a = extractFields(boilerAData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>;
+            if ((a.press_steam == null || a.press_steam === 0) && sharedPressSteam != null) a.press_steam = sharedPressSteam;
+            setBoilerA(a);
+        } else if (sharedPressSteam != null) {
+            // Row A belum ada; default press_steam dari row B supaya operator A buka form sudah keisi.
+            setBoilerA({ press_steam: sharedPressSteam });
+        }
+        if (boilerBData) {
+            const b = extractFields(boilerBData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>;
+            if ((b.press_steam == null || b.press_steam === 0) && sharedPressSteam != null) b.press_steam = sharedPressSteam;
+            setBoilerB(b);
+        } else if (sharedPressSteam != null) {
+            setBoilerB({ press_steam: sharedPressSteam });
+        }
         if (turbinData) setTurbin(extractFields(turbinData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
         if (steamDistData) setSteamDist(extractFields(steamDistData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (genData) setGeneratorGi(extractFields(genData as unknown as Record<string, unknown>) as Record<string, number | null>);
@@ -811,10 +831,20 @@ function InputShiftPageInner() {
                 ? { ...generatorGi, ...Object.fromEntries(GEN_OUTPUT_FIELDS.map(k => [k, 0])) }
                 : generatorGi;
 
+            // Catatan operasional: auto-line (solar/ash/bunker berasap) + free text.
+            // Strip dulu kalau-kalau user load report yang sudah pernah punya auto-line lalu re-save.
+            const autoCatatanLines = buildAutoCatatanLines({
+                solarIn: [...savedSolarEntries, ...solarEntries],
+                solarOut: [...savedOutSolarEntries, ...outSolarEntries],
+                ash: [...savedAshEntries, ...ashEntries],
+                coalBunker,
+            });
+            const catatanFinal = combineCatatan(autoCatatanLines, stripAutoCatatan(catatan));
+
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
                 supervisor: supervisor || operator?.name || 'Operator',
-                catatan: catatan || null,
+                catatan: catatanFinal,
                 created_by: operator?.supabaseId || '',
                 boilerA: { ...finalBoilerA, batubara_ton: batubaraA, selisih_steam: selisihSteamA, selisih_bfw: selisihBfwA },
                 boilerB: { ...finalBoilerB, batubara_ton: batubaraB, selisih_steam: selisihSteamB, selisih_bfw: selisihBfwB },
@@ -838,6 +868,8 @@ function InputShiftPageInner() {
                 prevBoilerB: { totalizer_steam: (prevBoilerB.totalizer_steam as number | null) ?? null },
                 // Station-scoped fill audit: hanya di-kirim kalau operator submit dari station view.
                 ...(station && fillerName ? { station_filler: { station, name: fillerName } } : {}),
+                // Station scope — hook akan filter child tables yang hanya owned station ini.
+                station: station ?? null,
             });
             // Save solar unloadings if filled
             const validSolarEntries = solarEntries.filter(e => e.tanggal && e.jumlah && e.perusahaan);

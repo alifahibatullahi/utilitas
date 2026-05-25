@@ -386,7 +386,7 @@ export default function PreviewPdfPage() {
                                     <table className="w-full border-collapse text-left">
                                         <thead>
                                             <tr className="text-xs text-green-950 font-black uppercase bg-green-100 tracking-wider">
-                                                <th className="py-2.5 px-3 w-[24%] border-b border-green-200">Item</th>
+                                                <th className="py-2.5 px-3 w-[24%] border-b border-green-200 text-center">Item</th>
                                                 <th className="py-2.5 px-2 w-[46%] border-b border-green-200 text-center">Uraian</th>
                                                 <th className="py-2.5 px-2 w-[15%] border-b border-green-200 text-center">Scope</th>
                                                 <th className="py-2.5 px-3 w-[15%] border-b border-green-200 text-center">Ket</th>
@@ -398,7 +398,7 @@ export default function PreviewPdfPage() {
                                                 const desk = (m as any).deskripsi as string | undefined;
                                                 return (
                                                     <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
-                                                        <td className="py-2.5 px-3 leading-tight">
+                                                        <td className="py-2.5 px-3 leading-tight text-center">
                                                             <div className="text-xs font-mono font-extrabold text-blue-700">{m.item}</div>
                                                             {desk && <div className="text-[10px] text-slate-700 font-medium mt-0.5">{desk}</div>}
                                                         </td>
@@ -433,7 +433,7 @@ export default function PreviewPdfPage() {
                                         <thead>
                                             <tr className="text-xs text-red-950 font-black uppercase tracking-wider text-center bg-red-100">
                                                 <th className="py-2.5 px-2 w-[12%] border-b border-red-200">Tgl</th>
-                                                <th className="py-2.5 px-2 w-[58%] border-b border-red-200 text-left">Item</th>
+                                                <th className="py-2.5 px-2 w-[58%] border-b border-red-200 text-center">Item</th>
                                                 <th className="py-2.5 px-3 w-[30%] border-b border-red-200 text-center">Scope</th>
                                             </tr>
                                         </thead>
@@ -441,7 +441,7 @@ export default function PreviewPdfPage() {
                                             {r.criticalEquipment.map((eq, i) => (
                                                 <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
                                                     <td className="text-xs py-2.5 font-bold text-slate-900">{eq.date}</td>
-                                                    <td className="py-2.5 px-2 text-left leading-tight">
+                                                    <td className="py-2.5 px-2 text-center leading-tight">
                                                         <div className="text-xs font-mono font-extrabold text-red-600">{eq.item}</div>
                                                         {eq.deskripsi && <div className="text-[10px] text-slate-700 font-medium mt-0.5">{eq.deskripsi}</div>}
                                                     </td>

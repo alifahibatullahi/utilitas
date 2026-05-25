@@ -10,7 +10,7 @@ import TabHandling from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
-import TabCatatanOperasional, { buildAutoCatatanLines, stripAutoCatatan, combineCatatan } from '@/components/input-shift/TabCatatanOperasional';
+import TabCatatanOperasional, { buildAutoCatatanLines } from '@/components/input-shift/TabCatatanOperasional';
 import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory, useBoilerShutdownHistory, useLatestBoilerStatus } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
@@ -261,6 +261,32 @@ function InputShiftPageInner() {
     const [lastStock, setLastStock] = useState<{ phosphate: number | null; amine: number | null; hydrazine: number | null }>({ phosphate: null, amine: null, hydrazine: null });
     const [catatan, setCatatan] = useState<string>('');
 
+    // Auto-inject untuk Catatan Operasional: tiap auto-line (solar/ash/bunker berasap)
+    // di-append ke textarea SEKALI per session. Setelah di-append, user bebas edit/hapus —
+    // kita tidak re-add walau line tetap "aktif" di state (sesuai user spec: catatan
+    // automatis = sama dengan input manual yang lain). Tracker di-reset di clear-effect
+    // saat user ganti tanggal/shift.
+    const autoInjectedRef = useRef<Set<string>>(new Set());
+    useEffect(() => {
+        const lines = buildAutoCatatanLines({
+            solarIn: [...savedSolarEntries, ...solarEntries],
+            solarOut: [...savedOutSolarEntries, ...outSolarEntries],
+            ash: [...savedAshEntries, ...ashEntries],
+            coalBunker,
+        });
+        const newLines = lines.filter(l => !autoInjectedRef.current.has(l));
+        if (newLines.length === 0) return;
+        newLines.forEach(l => autoInjectedRef.current.add(l));
+        setCatatan(prev => {
+            // Skip baris yang KEBETULAN sudah ada di textarea (mis. baris yang sama persis
+            // sebelumnya dari DB) supaya tidak duplikat.
+            const toAppend = newLines.filter(l => !prev.includes(l));
+            if (toAppend.length === 0) return prev;
+            const sep = prev && !prev.endsWith('\n') ? '\n' : '';
+            return prev + sep + toAppend.join('\n');
+        });
+    }, [solarEntries, outSolarEntries, savedSolarEntries, savedOutSolarEntries, ashEntries, savedAshEntries, coalBunker]);
+
     // Shift mapping: button order matches chronological report time
     // 06.00 → shift malam (night shift makes 06.00 report)
     // 14.00 → shift pagi  (morning shift makes 14.00 report)
@@ -448,7 +474,7 @@ function InputShiftPageInner() {
         const personnel = (report as any).shift_personnel?.[0];
         if (personnel?.turbin_karu) setForemanTurbin(personnel.turbin_karu);
         if (personnel?.boiler_karu) setForemanBoiler(personnel.boiler_karu);
-        if (report.catatan != null) setCatatan(stripAutoCatatan(report.catatan));
+        if (report.catatan != null) setCatatan(report.catatan);
         // status_turbin restored automatically via extractFields di useEffect lain saat
         // report.shift_turbin di-load → setTurbin(extractFields(turbinData)).
         // Restore filler dari station_fillers[station] kalau ada — kalau belum, default
@@ -515,6 +541,7 @@ function InputShiftPageInner() {
         setForemanBoiler('');
         setForemanTurbin('');
         setCatatan('');
+        autoInjectedRef.current = new Set();
     }, [selectedShift, selectedDate]);
 
     // Populate form when report data arrives from Supabase
@@ -831,20 +858,13 @@ function InputShiftPageInner() {
                 ? { ...generatorGi, ...Object.fromEntries(GEN_OUTPUT_FIELDS.map(k => [k, 0])) }
                 : generatorGi;
 
-            // Catatan operasional: auto-line (solar/ash/bunker berasap) + free text.
-            // Strip dulu kalau-kalau user load report yang sudah pernah punya auto-line lalu re-save.
-            const autoCatatanLines = buildAutoCatatanLines({
-                solarIn: [...savedSolarEntries, ...solarEntries],
-                solarOut: [...savedOutSolarEntries, ...outSolarEntries],
-                ash: [...savedAshEntries, ...ashEntries],
-                coalBunker,
-            });
-            const catatanFinal = combineCatatan(autoCatatanLines, stripAutoCatatan(catatan));
-
+            // Catatan operasional disimpan apa adanya — auto-line untuk solar/ash/bunker
+            // sudah di-inject ke textarea via useEffect (lihat auto-inject section), dan user
+            // bisa edit bebas.
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
                 supervisor: supervisor || operator?.name || 'Operator',
-                catatan: catatanFinal,
+                catatan: catatan || null,
                 created_by: operator?.supabaseId || '',
                 boilerA: { ...finalBoilerA, batubara_ton: batubaraA, selisih_steam: selisihSteamA, selisih_bfw: selisihBfwA },
                 boilerB: { ...finalBoilerB, batubara_ton: batubaraB, selisih_steam: selisihSteamB, selisih_bfw: selisihBfwB },

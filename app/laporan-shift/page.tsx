@@ -237,7 +237,10 @@ function buildReportFromSupabase(sr: ShiftReportData): ShiftReport {
             status: ml.status ?? '',
             notif: ml.notif ?? null,
         })),
-        catatan: note?.content ?? '',
+        // Sumber utama catatan = shift_reports.catatan (diisi via tab "Catatan Operasional"
+        // di form input). Legacy shift_notes.content dipakai sebagai fallback untuk
+        // laporan lama yang belum migrasi.
+        catatan: sr.catatan ?? note?.content ?? '',
         catatanTime: note?.timestamp ?? '',
         catatanAuthor: sr.created_by ?? '',
         catatanRole: '',
@@ -596,9 +599,13 @@ export default function LaporanShiftPage() {
                             <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Catatan Shift</p>
                         </div>
                         <div className="p-4">
-                            <div className="text-sm text-slate-300 leading-relaxed space-y-3 italic">
-                                {report.catatan.split('\n\n').map((p, i) => <p key={i}>&ldquo;{p}&rdquo;</p>)}
-                            </div>
+                            {report.catatan.trim() ? (
+                                <pre className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
+{report.catatan}
+                                </pre>
+                            ) : (
+                                <p className="text-sm text-slate-500 italic">Tidak ada catatan untuk shift ini.</p>
+                            )}
                         </div>
                     </div>
                 </div>

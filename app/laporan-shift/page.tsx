@@ -83,6 +83,13 @@ function humanizeScope(slug: string | null | undefined): string {
     return slug.split(/[_\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+/** Capitalize huruf pertama. Trim whitespace di depan. */
+function capFirst(s: string | null | undefined): string {
+    if (!s) return '';
+    const t = s.trimStart();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 /** Format a Date as YYYY-MM-DD in local timezone (avoids UTC shift from toISOString) */
 function toLocalDateStr(d: Date): string {
     const y = d.getFullYear();
@@ -273,7 +280,7 @@ function CylinderTank({ label, value, unit, color, fillPercent }: {
 export default function LaporanShiftPage() {
     const { operator } = useOperator();
     const router = useRouter();
-    const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
+    const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('malam');
     const [selectedDate, setSelectedDate] = useState(todayWIB);
     const [publishOpen, setPublishOpen] = useState(false);
 
@@ -338,7 +345,7 @@ export default function LaporanShiftPage() {
 
             {/* Shift Selector - Centered */}
             <div className="flex items-center gap-2 justify-center">
-                {(['pagi', 'sore', 'malam'] as const).map(s => {
+                {(['malam', 'pagi', 'sore'] as const).map(s => {
                     const icons: Record<string, string> = { pagi: 'wb_sunny', sore: 'wb_twilight', malam: 'dark_mode' };
                     const activeColors: Record<string, string> = {
                         pagi: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)]',
@@ -598,7 +605,7 @@ export default function LaporanShiftPage() {
                                         {activeMaintenance.map((m, i) => (
                                             <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
                                                 <td className="text-[10px] py-2 px-2 font-mono font-bold text-primary">{m.item}</td>
-                                                <td className="text-[10px] py-2 px-1 text-slate-300">{m.uraian}</td>
+                                                <td className="text-[10px] py-2 px-1 text-slate-300">{capFirst(m.uraian)}</td>
                                                 <td className="text-[10px] py-2 px-1 text-center text-slate-400">{humanizeScope(m.scope)}</td>
                                                 <td className="text-center py-2 px-2">
                                                     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${m.status === 'OK' ? 'bg-emerald-500/20 text-emerald-400' : m.status === 'IP' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>{m.status}</span>
@@ -639,7 +646,7 @@ export default function LaporanShiftPage() {
                                             <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
                                                 <td className="text-[10px] py-2 px-1 text-slate-400">{eq.date}</td>
                                                 <td className="text-[10px] py-2 px-1 font-mono font-bold text-rose-400">{eq.item}</td>
-                                                <td className="text-[10px] py-2 px-1 text-left text-slate-300">{eq.deskripsi}</td>
+                                                <td className="text-[10px] py-2 px-1 text-left text-slate-300">{capFirst(eq.deskripsi)}</td>
                                                 <td className="text-[10px] py-2 px-2 text-slate-400">{humanizeScope(eq.scope)}</td>
                                             </tr>
                                         ))}

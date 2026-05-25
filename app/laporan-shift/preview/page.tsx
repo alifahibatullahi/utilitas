@@ -33,15 +33,15 @@ const REPORT = {
         { date: '12/03', item: 'V-909', deskripsi: 'Air Leakage', uraian: 'Air Leakage', scope: 'Sipil', foreman: 'Foreman Boiler' },
     ],
     maintenance: [
-        { date: '14/03', item: 'L-08.12 E', uraian: 'Cek ampere motor', scope: 'Listrik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
-        { date: '14/03', item: 'B-12.01 A', uraian: 'Pelumasan bearing', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'preventif', status: 'OK', notif: null },
-        { date: '14/03', item: 'M-04.05', uraian: 'Pembersihan area', scope: 'Sipil', foreman: 'Foreman Boiler', tipe: 'preventif', status: 'OK', notif: null },
-        { date: '14/03', item: 'P-101 C', uraian: 'Ganti oli pump', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
-        { date: '13/03', item: 'V-22.1', uraian: 'Kalibrasi valve', scope: 'Instrumen', foreman: 'Foreman Turbin', tipe: 'preventif', status: 'OK', notif: null },
-        { date: '13/03', item: 'E-304', uraian: 'Check efficiency', scope: 'Instrumen', foreman: 'Foreman Boiler', tipe: 'corrective', status: 'IP', notif: null },
-        { date: '12/03', item: 'C-12A', uraian: 'Greasing coupling', scope: 'Mekanik', foreman: 'Foreman Boiler', tipe: 'preventif', status: 'OK', notif: null },
-        { date: '12/03', item: 'T-501', uraian: 'Drain condensate', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
-        { date: '12/03', item: 'R-102', uraian: 'Inspection lining', scope: 'Mekanik', foreman: 'Foreman Boiler', tipe: 'corrective', status: 'OK', notif: null },
+        { date: '14/03', item: 'L-08.12 E', deskripsi: 'Motor Fan Cooler', uraian: 'Cek ampere motor', scope: 'Listrik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
+        { date: '14/03', item: 'B-12.01 A', deskripsi: 'Bearing Pompa BFW', uraian: 'Pelumasan bearing', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'preventif', status: 'OK', notif: null },
+        { date: '14/03', item: 'M-04.05', deskripsi: 'Area Boiler House', uraian: 'Pembersihan area', scope: 'Sipil', foreman: 'Foreman Boiler', tipe: 'preventif', status: 'OK', notif: null },
+        { date: '14/03', item: 'P-101 C', deskripsi: 'Pompa Condensate', uraian: 'Ganti oli pump', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
+        { date: '13/03', item: 'V-22.1', deskripsi: 'Valve Steam Inlet', uraian: 'Kalibrasi valve', scope: 'Instrumen', foreman: 'Foreman Turbin', tipe: 'preventif', status: 'OK', notif: null },
+        { date: '13/03', item: 'E-304', deskripsi: 'Electrical Panel STG', uraian: 'Check efficiency', scope: 'Instrumen', foreman: 'Foreman Boiler', tipe: 'corrective', status: 'IP', notif: null },
+        { date: '12/03', item: 'C-12A', deskripsi: 'Conveyor Coal Feeder A', uraian: 'Greasing coupling', scope: 'Mekanik', foreman: 'Foreman Boiler', tipe: 'preventif', status: 'OK', notif: null },
+        { date: '12/03', item: 'T-501', deskripsi: 'Tangki Demin Water', uraian: 'Drain condensate', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
+        { date: '12/03', item: 'R-102', deskripsi: 'Boiler Refractory A', uraian: 'Inspection lining', scope: 'Mekanik', foreman: 'Foreman Boiler', tipe: 'corrective', status: 'OK', notif: null },
     ],
     catatan: 'Kondisi operasional Boiler A dan B terpantau stabil sepanjang shift pagi. Load TG dipertahankan pada level aman. Semua parameter lab berada dalam batas normal sesuai SOP.',
 };
@@ -386,29 +386,34 @@ export default function PreviewPdfPage() {
                                     <table className="w-full border-collapse text-left">
                                         <thead>
                                             <tr className="text-xs text-green-950 font-black uppercase bg-green-100 tracking-wider">
-                                                <th className="py-2.5 px-2 w-[10%] border-b border-green-200 text-center">Tgl</th>
-                                                <th className="py-2.5 px-3 w-[15%] border-b border-green-200">Item</th>
-                                                <th className="py-2.5 px-2 w-[45%] border-b border-green-200">Uraian</th>
+                                                <th className="py-2.5 px-3 w-[24%] border-b border-green-200">Item</th>
+                                                <th className="py-2.5 px-2 w-[46%] border-b border-green-200 text-center">Uraian</th>
                                                 <th className="py-2.5 px-2 w-[15%] border-b border-green-200 text-center">Scope</th>
                                                 <th className="py-2.5 px-3 w-[15%] border-b border-green-200 text-center">Ket</th>
                                             </tr>
                                         </thead>
                                         <tbody className="text-slate-950">
-                                            {r.maintenance.map((m, i) => (
-                                                <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
-                                                    <td className="text-xs py-2.5 text-center font-bold text-slate-900">{m.date}</td>
-                                                    <td className="text-xs py-2.5 px-3 font-mono font-extrabold text-blue-700">{m.item}</td>
-                                                    <td className="text-xs py-2.5 px-2 whitespace-normal break-words font-semibold text-slate-900">{m.uraian}</td>
-                                                    <td className="text-xs py-2.5 px-2 font-bold text-slate-800 text-center">{m.scope}</td>
-                                                    <td className="text-center py-2.5 px-3">
-                                                        <span className={`px-2 py-0.5 rounded font-black text-[9px] shadow-sm border ${
-                                                            m.status === 'OK' 
-                                                                ? 'bg-green-500/10 border-green-500/25 text-green-700' 
-                                                                : 'bg-yellow-400/15 border-yellow-400/25 text-yellow-800'
-                                                        }`}>{m.status}</span>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {r.maintenance.map((m, i) => {
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                const desk = (m as any).deskripsi as string | undefined;
+                                                return (
+                                                    <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
+                                                        <td className="py-2.5 px-3 leading-tight">
+                                                            <div className="text-xs font-mono font-extrabold text-blue-700">{m.item}</div>
+                                                            {desk && <div className="text-[10px] text-slate-700 font-medium mt-0.5">{desk}</div>}
+                                                        </td>
+                                                        <td className="text-xs py-2.5 px-2 whitespace-normal break-words font-semibold text-slate-900 text-center">{m.uraian}</td>
+                                                        <td className="text-xs py-2.5 px-2 font-bold text-slate-800 text-center">{m.scope}</td>
+                                                        <td className="text-center py-2.5 px-3">
+                                                            <span className={`px-2 py-0.5 rounded font-black text-[9px] shadow-sm border ${
+                                                                m.status === 'OK'
+                                                                    ? 'bg-green-500/10 border-green-500/25 text-green-700'
+                                                                    : 'bg-yellow-400/15 border-yellow-400/25 text-yellow-800'
+                                                            }`}>{m.status}</span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -427,18 +432,19 @@ export default function PreviewPdfPage() {
                                     <table className="w-full border-collapse">
                                         <thead>
                                             <tr className="text-xs text-red-950 font-black uppercase tracking-wider text-center bg-red-100">
-                                                <th className="py-2.5 px-2 w-[10%] border-b border-red-200">Tgl</th>
-                                                <th className="py-2.5 px-2 w-[15%] border-b border-red-200">Item</th>
-                                                <th className="py-2.5 px-2 w-[40%] border-b border-red-200">Uraian</th>
-                                                <th className="py-2.5 px-3 w-[35%] border-b border-red-200 text-center">Scope</th>
+                                                <th className="py-2.5 px-2 w-[12%] border-b border-red-200">Tgl</th>
+                                                <th className="py-2.5 px-2 w-[58%] border-b border-red-200 text-left">Item</th>
+                                                <th className="py-2.5 px-3 w-[30%] border-b border-red-200 text-center">Scope</th>
                                             </tr>
                                         </thead>
                                         <tbody className="text-center text-slate-950">
                                             {r.criticalEquipment.map((eq, i) => (
                                                 <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
                                                     <td className="text-xs py-2.5 font-bold text-slate-900">{eq.date}</td>
-                                                    <td className="text-xs py-2.5 font-mono font-extrabold text-red-600">{eq.item}</td>
-                                                    <td className="text-xs py-2.5 text-left px-2 whitespace-normal break-words font-semibold text-slate-900">{eq.uraian}</td>
+                                                    <td className="py-2.5 px-2 text-left leading-tight">
+                                                        <div className="text-xs font-mono font-extrabold text-red-600">{eq.item}</div>
+                                                        {eq.deskripsi && <div className="text-[10px] text-slate-700 font-medium mt-0.5">{eq.deskripsi}</div>}
+                                                    </td>
                                                     <td className="text-xs py-2.5 font-bold text-slate-800 text-center">{eq.scope}</td>
                                                 </tr>
                                             ))}

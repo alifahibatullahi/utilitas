@@ -70,129 +70,185 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
     const btnClass = isPreventif ? 'from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20' : 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20';
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto light-scrollbar shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
                 {/* Header */}
-                <div className={`flex items-center justify-between px-6 py-4 bg-gradient-to-r ${gradientClass} rounded-t-2xl shadow-sm`}>
-                    <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>
-                            {isPreventif ? 'event_available' : 'precision_manufacturing'}
-                        </span>
-                        <h2 className="text-base font-extrabold text-white tracking-wide">
-                            {initial?.item ? `Edit ${isPreventif ? 'Preventif' : 'Modifikasi'}` : `Tambah ${isPreventif ? 'Preventif' : 'Modifikasi'}`}
+                <div className={`flex items-center justify-between px-6 py-4.5 bg-gradient-to-r ${gradientClass} shadow-sm flex-shrink-0`}>
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-white/10 rounded-xl flex items-center justify-center text-white">
+                            <span className="material-symbols-outlined font-black" style={{ fontSize: 20 }}>
+                                {isPreventif ? 'event_available' : 'precision_manufacturing'}
+                            </span>
+                        </div>
+                        <h2 className="text-base font-black text-white tracking-wider uppercase">
+                            {initial?.item ? `EDIT ${isPreventif ? 'PREVENTIF' : 'MODIFIKASI'}` : `TAMBAH ${isPreventif ? 'PREVENTIF' : 'MODIFIKASI'}`}
                         </h2>
                     </div>
-                    <button onClick={onClose} className={`text-${color}-100 hover:text-white cursor-pointer transition-colors bg-white/10 hover:bg-white/20 p-1 rounded-lg`}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+                    <button onClick={onClose} className="text-white/80 hover:text-white cursor-pointer transition-all bg-white/10 hover:bg-white/20 p-1.5 rounded-xl hover:scale-105 active:scale-95">
+                        <span className="material-symbols-outlined font-bold" style={{ fontSize: 18 }}>close</span>
                     </button>
                 </div>
 
                 {/* Body */}
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="p-6 md:p-8 overflow-y-auto light-scrollbar flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    {/* Section 1 */}
+                    <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mb-1">
+                        <span className={`w-5 h-5 rounded-full ${isPreventif ? 'bg-emerald-50 border-emerald-100 text-emerald-500' : 'bg-violet-50 border-violet-100 text-violet-500'} border flex items-center justify-center text-[10px] font-black`}>01</span>
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Ruang Lingkup Pekerjaan</span>
+                    </div>
+
                     {/* Tipe */}
-                    <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Tipe Pekerjaan</label>
-                        <div className="relative">
-                            <select
-                                value={tipe}
-                                onChange={e => setTipe(e.target.value as WorkOrderType)}
-                                className={`appearance-none w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-black text-sm font-bold ${ringClass} outline-none cursor-pointer transition-all shadow-sm`}
-                            >
-                                <option value="preventif">Preventif</option>
-                                <option value="modifikasi">Modifikasi</option>
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                    <div className="md:col-span-2">
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Tipe Pekerjaan</label>
+                        <div className="flex gap-3">
+                            {([
+                                { value: 'preventif' as WorkOrderType, label: 'Preventif', desc: 'Pemeliharaan terencana & rutin', activeCls: 'border-emerald-500 bg-emerald-50/50 text-emerald-700 ring-4 ring-emerald-500/10 shadow-sm' },
+                                { value: 'modifikasi' as WorkOrderType, label: 'Modifikasi', desc: 'Peningkatan / perubahan konstruksi', activeCls: 'border-violet-500 bg-violet-50/50 text-violet-700 ring-4 ring-violet-500/10 shadow-sm' },
+                            ]).map(opt => {
+                                const active = tipe === opt.value;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setTipe(opt.value)}
+                                        className={`flex-1 flex flex-col text-left py-2.5 px-4 rounded-xl border transition-all cursor-pointer select-none active:scale-[0.98] ${
+                                            active
+                                                ? opt.activeCls
+                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-350'
+                                        }`}
+                                    >
+                                        <span className="text-sm font-extrabold flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-[18px]">
+                                                {opt.value === 'preventif' ? 'event_available' : 'precision_manufacturing'}
+                                            </span>
+                                            {opt.label}
+                                            {active && <span className="material-symbols-outlined text-[14px] font-black ml-auto">check_circle</span>}
+                                        </span>
+                                        <span className="text-[10px] font-semibold text-slate-500 mt-0.5 leading-snug">{opt.desc}</span>
+                                    </button>
+                                );
+                             })}
                         </div>
                     </div>
 
                     {/* Item */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">No Item + Deskripsi</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={setItem} light={true} />
-                    </div>
-
-                    {/* Deskripsi */}
-                    <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Deskripsi</label>
-                        <textarea
-                            value={deskripsi}
-                            onChange={e => setDeskripsi(e.target.value)}
-                            rows={3}
-                            placeholder="Jelaskan pekerjaan yang akan dilakukan..."
-                            className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-black text-sm font-bold ${ringClass} outline-none resize-none transition-all shadow-sm placeholder-gray-400`}
-                        />
                     </div>
 
                     {/* Scope */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Scope HAR</label>
                         <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="Pilih scope HAR" />
                     </div>
 
-                    {/* Notif */}
-                    <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Notif SAP (ops)</label>
-                        <input type="text" value={notif} onChange={e => setNotif(e.target.value)}
-                            placeholder="Nomor notifikasi SAP..."
-                            className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-black text-sm font-bold ${ringClass} outline-none transition-all shadow-sm placeholder-gray-400`} />
+                    {/* Section 2 */}
+                    <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mt-3 mb-1">
+                        <span className={`w-5 h-5 rounded-full ${isPreventif ? 'bg-emerald-50 border-emerald-100 text-emerald-500' : 'bg-violet-50 border-violet-100 text-violet-500'} border flex items-center justify-center text-[10px] font-black`}>02</span>
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Detail Rencana & PIC</span>
                     </div>
 
-                    {/* Foreman */}
-                    <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Penanggung Jawab</label>
-                        <div className="flex gap-2">
+                    {/* Deskripsi */}
+                    <div className="md:col-span-2">
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Deskripsi Pekerjaan</label>
+                        <textarea
+                            value={deskripsi}
+                            onChange={e => setDeskripsi(e.target.value)}
+                            rows={3}
+                            placeholder="Jelaskan pekerjaan yang akan direncanakan..."
+                            className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-bold placeholder-slate-400 ${ringClass} outline-none resize-none transition-all shadow-sm`}
+                        />
+                    </div>
+
+                    {/* Penanggung Jawab */}
+                    <div className="md:col-span-2">
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
+                        <div className="flex gap-3">
                             {FOREMAN_OPTIONS.map(f => {
                                 const active = foreman === f.value;
                                 const activeClass = f.value === 'foreman_turbin' 
-                                    ? 'bg-teal-50 border-teal-500 text-teal-700 shadow-sm' 
-                                    : 'bg-orange-50 border-orange-500 text-orange-700 shadow-sm';
+                                    ? 'border-teal-500 bg-teal-50/50 text-teal-700 ring-4 ring-teal-500/10 shadow-sm' 
+                                    : 'border-orange-500 bg-orange-50/50 text-orange-700 ring-4 ring-orange-500/10 shadow-sm';
+                                const icon = f.value === 'foreman_turbin' ? 'wind_power' : 'heat_pump';
                                 return (
                                     <button
                                         key={f.value}
                                         type="button"
                                         onClick={() => setForeman(f.value as ForemanType)}
-                                        className={`flex-1 py-2.5 px-3 rounded-xl border text-sm font-bold transition-all cursor-pointer text-center ${
+                                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-extrabold transition-all cursor-pointer select-none active:scale-[0.98] ${
                                             active
                                                 ? activeClass
-                                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
                                         }`}
                                     >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{icon}</span>
                                         {f.label}
+                                        {active && (
+                                            <span className="material-symbols-outlined text-[16px] font-black ml-0.5">check_circle</span>
+                                        )}
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
 
+                    {/* Notif SAP */}
+                    <div>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Notif SAP</label>
+                        <input
+                            type="text"
+                            value={notif}
+                            onChange={e => setNotif(e.target.value)}
+                            placeholder="Nomor notifikasi SAP (opsional)"
+                            className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-bold placeholder-slate-400 ${ringClass} outline-none transition-all shadow-sm`}
+                        />
+                    </div>
+
                     {/* Yang Membuat */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Yang Membuat</label>
-                        <OperatorCombobox value={reportedBy} onChange={setReportedBy} placeholder="Pilih atau ketik nama..." dropUp />
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Yang Membuat</label>
+                        <OperatorCombobox
+                            value={reportedBy}
+                            onChange={setReportedBy}
+                            placeholder="Pilih atau ketik nama pembuat..."
+                            dropUp
+                        />
                     </div>
 
                     {/* Error */}
                     {err && (
-                        <div className="md:col-span-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-4 py-3 rounded-xl flex items-center gap-2 shadow-sm">
-                            <span className="material-symbols-outlined text-rose-500" style={{ fontSize: 16 }}>error</span>
+                        <div className="md:col-span-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-4 py-3 rounded-xl flex items-center gap-2 shadow-sm animate-shake">
+                            <span className="material-symbols-outlined text-rose-500 font-bold" style={{ fontSize: 16 }}>error</span>
                             {err}
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-2xl">
-                    <button onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-black bg-white text-sm font-bold hover:bg-gray-50 transition-colors cursor-pointer shadow-sm">
+                <div className="flex gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl flex-shrink-0">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-800 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98"
+                    >
                         Batal
                     </button>
-                    <button onClick={handleSubmit} disabled={saving}
-                        className={`flex-1 py-2.5 rounded-xl bg-gradient-to-r ${btnClass} text-white text-sm font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2`}>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={saving}
+                        className={`flex-1 py-2.5 rounded-xl bg-gradient-to-r ${btnClass} text-white text-sm font-bold hover:shadow-lg active:scale-98 transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2`}
+                    >
                         {saving ? (
                             <>
-                                <span className="material-symbols-outlined animate-spin" style={{ fontSize: 16 }}>progress_activity</span>
+                                <span className="material-symbols-outlined animate-spin font-bold" style={{ fontSize: 16 }}>progress_activity</span>
                                 Menyimpan...
                             </>
-                        ) : `Simpan ${isPreventif ? 'Preventif' : 'Modifikasi'}`}
+                        ) : (
+                            <>
+                                <span className="material-symbols-outlined font-bold" style={{ fontSize: 18 }}>save</span>
+                                Simpan {isPreventif ? 'Preventif' : 'Modifikasi'}
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

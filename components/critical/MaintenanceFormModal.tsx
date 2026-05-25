@@ -154,6 +154,13 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                       : useViolet ? 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20'
                       : 'from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-blue-500/20';
 
+    const ringClass = useEmerald ? 'focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500'
+                    : useViolet ? 'focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500'
+                    : 'focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500';
+    const stepCircleBg = useEmerald ? 'bg-emerald-50 border-emerald-100 text-emerald-500'
+                        : useViolet ? 'bg-violet-50 border-violet-100 text-violet-600'
+                        : 'bg-blue-50 border-blue-100 text-blue-500';
+
     const modalTitle = isWOMode
         ? `${initial?.uraian ? 'Edit' : 'Tambah'} Pekerjaan — ${workOrderContext?.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'}`
         : isPreventifModifikasiMode
@@ -163,30 +170,38 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
     void isModifikasiNew; void isPreventifWO;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto light-scrollbar shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
                 {/* Header */}
-                <div className={`flex items-center justify-between px-6 py-4 bg-gradient-to-r ${headerGradient} rounded-t-2xl shadow-sm`}>
-                    <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>construction</span>
-                        <h2 className="text-base font-extrabold text-white tracking-wide">{modalTitle}</h2>
+                <div className={`flex items-center justify-between px-6 py-4.5 bg-gradient-to-r ${headerGradient} shadow-sm flex-shrink-0`}>
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-white/10 rounded-xl flex items-center justify-center text-white">
+                            <span className="material-symbols-outlined font-black" style={{ fontSize: 20 }}>construction</span>
+                        </div>
+                        <h2 className="text-base font-black text-white tracking-wider uppercase">{modalTitle}</h2>
                     </div>
-                    <button onClick={onClose} className="text-white/80 hover:text-white cursor-pointer transition-colors bg-white/10 hover:bg-white/20 p-1 rounded-lg">
-                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+                    <button onClick={onClose} className="text-white/80 hover:text-white cursor-pointer transition-all bg-white/10 hover:bg-white/20 p-1.5 rounded-xl hover:scale-105 active:scale-95">
+                        <span className="material-symbols-outlined font-bold" style={{ fontSize: 18 }}>close</span>
                     </button>
                 </div>
 
                 {/* Body */}
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="p-6 md:p-8 overflow-y-auto light-scrollbar flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    {/* Section 1 */}
+                    <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mb-1">
+                        <span className={`w-5 h-5 rounded-full ${stepCircleBg} border flex items-center justify-center text-[10px] font-black`}>01</span>
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Tipe & Peralatan</span>
+                    </div>
+
                     {/* Tipe Maintenance — hanya muncul saat tambah baru tanpa konteks WO/critical */}
                     {showTipeSelector && (
                         <div className="md:col-span-2">
-                            <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Tipe Maintenance</label>
-                            <div className="flex gap-2">
+                            <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Tipe Maintenance</label>
+                            <div className="flex gap-3">
                                 {([
-                                    { value: 'corrective' as MaintenanceType, label: 'Critical', desc: 'Terkait Critical Equipment', activeCls: 'border-blue-500 bg-blue-50 shadow-md', titleCls: 'text-blue-700', descCls: 'text-blue-600' },
-                                    { value: 'preventif' as MaintenanceType, label: 'Preventif', desc: 'Pemeliharaan rutin', activeCls: 'border-emerald-500 bg-emerald-50 shadow-md', titleCls: 'text-emerald-700', descCls: 'text-emerald-600' },
-                                    { value: 'modifikasi' as MaintenanceType, label: 'Modifikasi', desc: 'Perubahan/upgrade', activeCls: 'border-violet-500 bg-violet-50 shadow-md', titleCls: 'text-violet-700', descCls: 'text-violet-600' },
+                                    { value: 'corrective' as MaintenanceType, label: 'Critical', desc: 'Terkait Critical Equipment', activeCls: 'border-blue-500 bg-blue-50/50 text-blue-700 ring-4 ring-blue-500/10 shadow-sm', titleCls: 'text-blue-800', descCls: 'text-blue-600/70', icon: 'warning' },
+                                    { value: 'preventif' as MaintenanceType, label: 'Preventif', desc: 'Pemeliharaan rutin', activeCls: 'border-emerald-500 bg-emerald-50/50 text-emerald-700 ring-4 ring-emerald-500/10 shadow-sm', titleCls: 'text-emerald-800', descCls: 'text-emerald-600/70', icon: 'event_available' },
+                                    { value: 'modifikasi' as MaintenanceType, label: 'Modifikasi', desc: 'Perubahan/upgrade', activeCls: 'border-violet-500 bg-violet-50/50 text-violet-700 ring-4 ring-violet-500/10 shadow-sm', titleCls: 'text-violet-800', descCls: 'text-violet-600/70', icon: 'precision_manufacturing' },
                                 ])
                                 .filter(opt => restrictTipe !== 'preventifModifikasi' || opt.value !== 'corrective')
                                 .map(opt => {
@@ -196,17 +211,21 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                                             key={opt.value}
                                             type="button"
                                             onClick={() => { setTipeSelected(opt.value); if (opt.value !== 'corrective') setCriticalId(''); }}
-                                            className={`flex-1 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${active ? opt.activeCls : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                                            className={`flex-1 px-4 py-3 rounded-xl border transition-all cursor-pointer select-none active:scale-[0.98] text-left flex flex-col gap-0.5 ${active ? opt.activeCls : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-350'}`}
                                         >
-                                            <div className={`text-sm font-extrabold ${active ? opt.titleCls : 'text-gray-700'}`}>{opt.label}</div>
-                                            <div className={`text-[10px] font-medium mt-0.5 ${active ? opt.descCls : 'text-gray-500'}`}>{opt.desc}</div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="material-symbols-outlined text-[16px]">{opt.icon}</span>
+                                                <div className={`text-sm font-extrabold ${active ? opt.titleCls : 'text-slate-700'}`}>{opt.label}</div>
+                                                {active && <span className="material-symbols-outlined text-[14px] font-black ml-auto">check_circle</span>}
+                                            </div>
+                                            <div className={`text-[10px] font-semibold ${active ? opt.descCls : 'text-slate-500'} mt-0.5 leading-snug`}>{opt.desc}</div>
                                         </button>
                                     );
                                 })}
                             </div>
                             {isPreventifModifikasiMode && (
-                                <p className="text-[11px] font-medium text-gray-600 mt-2 italic flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-amber-500" style={{ fontSize: 14 }}>info</span>
+                                <p className="text-[11px] font-medium text-slate-500 mt-2.5 italic flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-amber-500 font-bold" style={{ fontSize: 14 }}>info</span>
                                     Akan dibuat sebagai pekerjaan {tipeSelected} baru dan ditambahkan langsung ke daftar pekerjaan tim HAR
                                 </p>
                             )}
@@ -215,18 +234,18 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
 
                     {/* Row 1: Item | Critical (hanya mode corrective) */}
                     <div className={isPreventifModifikasiMode || isWOMode ? 'md:col-span-2' : ''}>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">No Item + Deskripsi</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={handleItemChange} light={true} />
                     </div>
 
                     {!isWOMode && !isPreventifModifikasiMode && (
                         <div className="min-w-0">
-                            <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Critical Terkait (ops)</label>
+                            <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Critical Terkait (opsional)</label>
                             <div className="relative w-full">
                                 <select
                                     value={criticalId}
                                     onChange={e => handleCriticalChange(e.target.value)}
-                                    className="appearance-none w-full max-w-full px-3 py-2.5 pr-9 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none cursor-pointer transition-all shadow-sm truncate"
+                                    className={`appearance-none w-full max-w-full px-3.5 py-2.5 pr-9 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-bold ${ringClass} outline-none cursor-pointer transition-all shadow-sm truncate`}
                                     style={{ textOverflow: 'ellipsis' }}
                                 >
                                     <option value="">— Tanpa Critical —</option>
@@ -242,73 +261,94 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                                         );
                                     })}
                                 </select>
-                                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-black pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
+                                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
                             </div>
                             {selectedCritical && (
-                                <p className="text-[11px] text-black mt-1.5 leading-snug break-words">
+                                <p className="text-[11px] text-slate-600 mt-1.5 leading-snug break-words">
                                     <span className="font-bold">Critical: </span>{selectedCritical.deskripsi}
                                 </p>
                             )}
                             {item && activeCriticalList.length === 0 && !selectedCritical && (
-                                <p className="text-[11px] text-gray-500 italic mt-1.5">Tidak ada critical OPEN untuk item ini.</p>
+                                <p className="text-[11px] text-slate-400 italic mt-1.5">Tidak ada critical OPEN untuk item ini.</p>
                             )}
                         </div>
                     )}
 
+                    {/* Section 2 */}
+                    <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mt-3 mb-1">
+                        <span className={`w-5 h-5 rounded-full ${stepCircleBg} border flex items-center justify-center text-[10px] font-black`}>02</span>
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Rincian Pekerjaan</span>
+                    </div>
 
                     {/* Uraian */}
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Uraian Pekerjaan</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Uraian Pekerjaan</label>
                         <textarea
                             value={uraian}
                             onChange={e => setUraian(e.target.value)}
                             rows={3}
-                            placeholder="Deskripsi pekerjaan..."
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 outline-none resize-none transition-all shadow-sm placeholder-gray-600"
+                            placeholder="Deskripsikan tindakan atau penemuan pekerjaan..."
+                            className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-bold placeholder-slate-400 ${ringClass} outline-none resize-none transition-all shadow-sm`}
                         />
                     </div>
 
                     {/* Scope */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Scope HAR</label>
                         <ScopeCombobox value={scope} onChange={setScope} light={true} />
                     </div>
 
                     {/* Notif */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Notif SAP (ops)</label>
-                        <input type="text" value={notif} onChange={e => setNotif(e.target.value)}
-                            placeholder="Nomor SA..."
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 outline-none transition-all shadow-sm placeholder-gray-600" />
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Notif SAP (opsional)</label>
+                        <input
+                            type="text"
+                            value={notif}
+                            onChange={e => setNotif(e.target.value)}
+                            placeholder="Nomor notifikasi SAP..."
+                            className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-bold placeholder-slate-400 ${ringClass} outline-none transition-all shadow-sm`}
+                        />
                         {selectedCritical?.notif && (
                             <button type="button" onClick={() => setNotif(selectedCritical.notif!)}
-                                className="mt-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer">
+                                className="mt-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">content_copy</span>
                                 Pakai notif critical: <span className="font-extrabold">{selectedCritical.notif}</span>
                             </button>
                         )}
                     </div>
 
+                    {/* Section 3 */}
+                    <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mt-3 mb-1">
+                        <span className={`w-5 h-5 rounded-full ${stepCircleBg} border flex items-center justify-center text-[10px] font-black`}>03</span>
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Personil</span>
+                    </div>
+
                     {/* Foreman */}
-                    <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Penanggung Jawab</label>
-                        <div className="flex gap-2">
+                    <div className="md:col-span-2">
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
+                        <div className="flex gap-3">
                             {FOREMAN_OPTIONS.map(f => {
                                 const active = foreman === f.value;
                                 const activeClass = f.value === 'foreman_turbin' 
-                                    ? 'bg-teal-50 border-teal-500 text-teal-700 shadow-sm' 
-                                    : 'bg-orange-50 border-orange-500 text-orange-700 shadow-sm';
+                                    ? 'border-teal-500 bg-teal-50/50 text-teal-700 ring-4 ring-teal-500/10 shadow-sm' 
+                                    : 'border-orange-500 bg-orange-50/50 text-orange-700 ring-4 ring-orange-500/10 shadow-sm';
+                                const icon = f.value === 'foreman_turbin' ? 'wind_power' : 'heat_pump';
                                 return (
                                     <button
                                         key={f.value}
                                         type="button"
                                         onClick={() => setForeman(f.value as ForemanType)}
-                                        className={`flex-1 py-2.5 px-3 rounded-xl border text-sm font-bold transition-all cursor-pointer text-center ${
+                                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-extrabold transition-all cursor-pointer select-none active:scale-[0.98] ${
                                             active
                                                 ? activeClass
-                                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
                                         }`}
                                     >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{icon}</span>
                                         {f.label}
+                                        {active && (
+                                            <span className="material-symbols-outlined text-[16px] font-black ml-0.5">check_circle</span>
+                                        )}
                                     </button>
                                 );
                             })}
@@ -316,34 +356,39 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                     </div>
 
                     {/* Yang Membuat */}
-                    <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Yang Membuat</label>
+                    <div className="md:col-span-2">
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Yang Membuat</label>
                         <OperatorCombobox value={reportedBy} onChange={setReportedBy} placeholder="Pilih atau ketik nama..." dropUp />
                     </div>
 
                     {/* Error */}
                     {err && (
-                        <div className="md:col-span-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-4 py-3 rounded-xl flex items-center gap-2 shadow-sm">
-                            <span className="material-symbols-outlined text-rose-500" style={{ fontSize: 16 }}>error</span>
+                        <div className="md:col-span-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-4 py-3 rounded-xl flex items-center gap-2 shadow-sm animate-shake">
+                            <span className="material-symbols-outlined text-rose-500 font-bold" style={{ fontSize: 16 }}>error</span>
                             {err}
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-2xl">
+                <div className="flex gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl flex-shrink-0">
                     <button onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-black bg-white text-sm font-bold hover:bg-gray-50 transition-colors cursor-pointer shadow-sm">
+                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-800 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98">
                         Batal
                     </button>
                     <button onClick={handleSubmit} disabled={saving}
-                        className={`flex-1 py-2.5 rounded-xl bg-gradient-to-r ${btnGradient} text-white text-sm font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2`}>
+                        className={`flex-1 py-2.5 rounded-xl bg-gradient-to-r ${btnGradient} text-white text-sm font-bold hover:shadow-lg active:scale-98 transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2`}>
                         {saving ? (
                             <>
-                                <span className="material-symbols-outlined animate-spin" style={{ fontSize: 16 }}>progress_activity</span>
+                                <span className="material-symbols-outlined animate-spin font-bold" style={{ fontSize: 16 }}>progress_activity</span>
                                 Menyimpan...
                             </>
-                        ) : 'Simpan'}
+                        ) : (
+                            <>
+                                <span className="material-symbols-outlined font-bold" style={{ fontSize: 18 }}>save</span>
+                                Simpan Maintenance
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

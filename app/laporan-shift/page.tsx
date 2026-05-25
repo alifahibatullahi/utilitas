@@ -594,26 +594,32 @@ export default function LaporanShiftPage() {
                             <div className="flex-1 overflow-y-auto">
                                 <table className="w-full border-collapse">
                                     <thead>
-                                        <tr className="text-[10px] text-green-300 font-bold uppercase bg-green-900/30 tracking-tighter">
-                                            <th className="py-2 px-2 w-[18%] border-b border-green-800/40 text-left">Item</th>
-                                            <th className="py-2 px-1 w-[48%] border-b border-green-800/40 text-left">Uraian</th>
-                                            <th className="py-2 px-1 w-[20%] border-b border-green-800/40 text-center">Scope</th>
-                                            <th className="py-2 px-2 w-[14%] border-b border-green-800/40 text-center">Ket</th>
+                                        <tr className="text-[9px] text-emerald-100 font-extrabold uppercase bg-emerald-950/60 tracking-wider border-b border-emerald-900/50">
+                                            <th className="py-2.5 px-3 w-[18%] text-left">Item</th>
+                                            <th className="py-2.5 px-2 w-[48%] text-left">Uraian</th>
+                                            <th className="py-2.5 px-2 w-[20%] text-center">Scope</th>
+                                            <th className="py-2.5 px-3 w-[14%] text-center">Ket</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {activeMaintenance.map((m, i) => (
-                                            <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
-                                                <td className="text-[10px] py-2 px-2 font-mono font-bold text-primary">{m.item}</td>
-                                                <td className="text-[10px] py-2 px-1 text-slate-300">{capFirst(m.uraian)}</td>
-                                                <td className="text-[10px] py-2 px-1 text-center text-slate-400">{humanizeScope(m.scope)}</td>
-                                                <td className="text-center py-2 px-2">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${m.status === 'OK' ? 'bg-emerald-500/20 text-emerald-400' : m.status === 'IP' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>{m.status}</span>
+                                            <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                                                <td className="text-[10.5px] py-2.5 px-3 font-mono font-extrabold text-cyan-400">{m.item}</td>
+                                                <td className="text-[11.5px] py-2.5 px-2 text-white font-medium">{capFirst(m.uraian)}</td>
+                                                <td className="text-[10.5px] py-2.5 px-2 text-center text-slate-300 font-bold">{humanizeScope(m.scope)}</td>
+                                                <td className="text-center py-2.5 px-3">
+                                                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                                        m.status === 'OK' 
+                                                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.1)]' 
+                                                            : m.status === 'IP' 
+                                                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.1)]' 
+                                                                : 'bg-blue-500/10 border-blue-500/30 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.1)]'
+                                                    }`}>{m.status}</span>
                                                 </td>
                                             </tr>
                                         ))}
                                         {activeMaintenance.length === 0 && (
-                                            <tr><td colSpan={4} className="text-center text-[10px] text-slate-500 italic py-4">Tidak ada maintenance aktif</td></tr>
+                                            <tr><td colSpan={4} className="text-center text-xs text-slate-400 font-medium italic py-6">Tidak ada maintenance aktif</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -634,24 +640,24 @@ export default function LaporanShiftPage() {
                             <div className="flex-1 overflow-y-auto">
                                 <table className="w-full border-collapse">
                                     <thead>
-                                        <tr className="text-[10px] text-red-300 font-bold uppercase bg-red-900/30 tracking-tighter text-center">
-                                            <th className="py-2 px-1 w-[10%] border-b border-red-800/40">Tgl</th>
-                                            <th className="py-2 px-1 w-[15%] border-b border-red-800/40">Item</th>
-                                            <th className="py-2 px-1 w-[45%] border-b border-red-800/40">Uraian</th>
-                                            <th className="py-2 px-2 w-[30%] border-b border-red-800/40">Scope</th>
+                                        <tr className="text-[9px] text-rose-100 font-extrabold uppercase bg-rose-950/60 tracking-wider text-center border-b border-rose-900/50">
+                                            <th className="py-2.5 px-2 w-[10%]">Tgl</th>
+                                            <th className="py-2.5 px-2 w-[15%]">Item</th>
+                                            <th className="py-2.5 px-2 w-[45%] text-left">Uraian</th>
+                                            <th className="py-2.5 px-3 w-[30%]">Scope</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center">
                                         {openCriticals.map((eq, i) => (
-                                            <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
-                                                <td className="text-[10px] py-2 px-1 text-slate-400">{eq.date}</td>
-                                                <td className="text-[10px] py-2 px-1 font-mono font-bold text-rose-400">{eq.item}</td>
-                                                <td className="text-[10px] py-2 px-1 text-left text-slate-300">{capFirst(eq.deskripsi)}</td>
-                                                <td className="text-[10px] py-2 px-2 text-slate-400">{humanizeScope(eq.scope)}</td>
+                                            <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                                                <td className="text-[10.5px] py-2.5 px-2 text-slate-300 font-bold">{eq.date}</td>
+                                                <td className="text-[10.5px] py-2.5 px-2 font-mono font-extrabold text-rose-400">{eq.item}</td>
+                                                <td className="text-[11.5px] py-2.5 px-2 text-left text-white font-medium">{capFirst(eq.deskripsi)}</td>
+                                                <td className="text-[10.5px] py-2.5 px-3 text-slate-300 font-bold">{humanizeScope(eq.scope)}</td>
                                             </tr>
                                         ))}
                                         {openCriticals.length === 0 && (
-                                            <tr><td colSpan={4} className="text-center text-[10px] text-slate-500 italic py-4">Tidak ada critical aktif</td></tr>
+                                            <tr><td colSpan={4} className="text-center text-xs text-slate-400 font-medium italic py-6">Tidak ada critical aktif</td></tr>
                                         )}
                                     </tbody>
                                 </table>

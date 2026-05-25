@@ -63,89 +63,108 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto light-scrollbar shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-rose-500 to-rose-600 rounded-t-2xl shadow-sm">
-                    <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>warning</span>
-                        <h2 className="text-base font-extrabold text-white tracking-wide">
-                            {initial?.item ? 'Edit Critical' : 'Tambah Critical'}
+                <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-rose-500 to-rose-600 shadow-sm flex-shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-white/10 rounded-xl flex items-center justify-center text-white">
+                            <span className="material-symbols-outlined font-black" style={{ fontSize: 20 }}>warning</span>
+                        </div>
+                        <h2 className="text-base font-black text-white tracking-wider">
+                            {initial?.item ? 'EDIT CRITICAL EQUIPMENT' : 'TAMBAH CRITICAL EQUIPMENT'}
                         </h2>
                     </div>
-                    <button onClick={onClose} className="text-rose-100 hover:text-white cursor-pointer transition-colors bg-white/10 hover:bg-white/20 p-1 rounded-lg">
-                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+                    <button onClick={onClose} className="text-rose-100 hover:text-white cursor-pointer transition-all bg-white/10 hover:bg-white/20 p-1.5 rounded-xl hover:scale-105 active:scale-95">
+                        <span className="material-symbols-outlined font-bold" style={{ fontSize: 18 }}>close</span>
                     </button>
                 </div>
 
                 {/* Body */}
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="p-6 md:p-8 overflow-y-auto light-scrollbar flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    {/* Section 1 */}
+                    <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mb-1">
+                        <span className="w-5 h-5 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-[10px] font-black text-rose-500">01</span>
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Detail Peralatan & Temuan Masalah</span>
+                    </div>
+
                     {/* Item */}
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">No Item + Deskripsi</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={setItem} light={true} />
                     </div>
 
                     {/* Deskripsi */}
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Deskripsi Masalah</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Deskripsi Masalah</label>
                         <textarea
                             value={deskripsi}
                             onChange={e => setDeskripsi(e.target.value)}
                             rows={3}
-                            placeholder="Jelaskan kondisi critical..."
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none resize-none transition-all shadow-sm placeholder-gray-600"
+                            placeholder="Jelaskan kondisi critical secara detail..."
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-bold placeholder-slate-400 focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none resize-none transition-all shadow-sm"
                         />
                     </div>
 
                     {/* Scope */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Scope HAR</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Scope HAR</label>
                         <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="Pilih scope HAR" />
                     </div>
 
-                    {/* Notif SAP */}
-                    <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Notif SAP</label>
-                        <input
-                            type="text"
-                            value={notif}
-                            onChange={e => setNotif(e.target.value)}
-                            placeholder="Nomor notifikasi SAP (opsional)"
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none transition-all shadow-sm placeholder-gray-600"
-                        />
+                    {/* Section 2 */}
+                    <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mt-3 mb-1">
+                        <span className="w-5 h-5 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-[10px] font-black text-rose-500">02</span>
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">PIC & Administrasi</span>
                     </div>
 
                     {/* Penanggung Jawab */}
-                    <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Penanggung Jawab</label>
-                        <div className="flex gap-2">
+                    <div className="md:col-span-2">
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
+                        <div className="flex gap-3">
                             {FOREMAN_OPTIONS.map(f => {
                                 const active = foreman === f.value;
                                 const activeClass = f.value === 'foreman_turbin' 
-                                    ? 'bg-teal-50 border-teal-500 text-teal-700 shadow-sm' 
-                                    : 'bg-orange-50 border-orange-500 text-orange-700 shadow-sm';
+                                    ? 'border-teal-500 bg-teal-50/50 text-teal-700 ring-4 ring-teal-500/10 shadow-sm' 
+                                    : 'border-orange-500 bg-orange-50/50 text-orange-700 ring-4 ring-orange-500/10 shadow-sm';
+                                const icon = f.value === 'foreman_turbin' ? 'wind_power' : 'heat_pump';
                                 return (
                                     <button
                                         key={f.value}
                                         type="button"
                                         onClick={() => setForeman(f.value as ForemanType)}
-                                        className={`flex-1 py-2.5 px-3 rounded-xl border text-sm font-bold transition-all cursor-pointer text-center ${
+                                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-extrabold transition-all cursor-pointer select-none active:scale-[0.98] ${
                                             active
                                                 ? activeClass
-                                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
                                         }`}
                                     >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{icon}</span>
                                         {f.label}
+                                        {active && (
+                                            <span className="material-symbols-outlined text-[16px] font-black ml-0.5">check_circle</span>
+                                        )}
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
 
+                    {/* Notif SAP */}
+                    <div>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Notif SAP</label>
+                        <input
+                            type="text"
+                            value={notif}
+                            onChange={e => setNotif(e.target.value)}
+                            placeholder="Nomor notifikasi SAP (opsional)"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-bold placeholder-slate-400 focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all shadow-sm"
+                        />
+                    </div>
+
                     {/* Yang Melaporkan */}
                     <div>
-                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">Yang Melaporkan</label>
+                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Yang Melaporkan</label>
                         <OperatorCombobox
                             value={reportedBy}
                             onChange={setReportedBy}
@@ -156,32 +175,37 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
 
                     {/* Error */}
                     {err && (
-                        <div className="md:col-span-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-4 py-3 rounded-xl flex items-center gap-2 shadow-sm">
-                            <span className="material-symbols-outlined text-rose-500" style={{ fontSize: 16 }}>error</span>
+                        <div className="md:col-span-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-4 py-3 rounded-xl flex items-center gap-2 shadow-sm animate-shake">
+                            <span className="material-symbols-outlined text-rose-500 font-bold" style={{ fontSize: 16 }}>error</span>
                             {err}
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-2xl">
+                <div className="flex gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl flex-shrink-0">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-black bg-white text-sm font-bold hover:bg-gray-50 hover:text-gray-700 transition-colors cursor-pointer shadow-sm"
+                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-800 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98"
                     >
                         Batal
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={saving}
-                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 text-white text-sm font-bold hover:from-rose-500 hover:to-rose-400 transition-all shadow-md shadow-rose-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 text-white text-sm font-bold hover:from-rose-500 hover:to-rose-400 hover:shadow-lg active:scale-98 transition-all shadow-md shadow-rose-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                     >
                         {saving ? (
                             <>
-                                <span className="material-symbols-outlined animate-spin" style={{ fontSize: 16 }}>progress_activity</span>
+                                <span className="material-symbols-outlined animate-spin font-bold" style={{ fontSize: 16 }}>progress_activity</span>
                                 Menyimpan...
                             </>
-                        ) : 'Simpan Critical'}
+                        ) : (
+                            <>
+                                <span className="material-symbols-outlined font-bold" style={{ fontSize: 18 }}>save</span>
+                                Simpan Critical
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

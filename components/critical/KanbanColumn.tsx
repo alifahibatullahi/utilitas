@@ -325,25 +325,25 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
             {headerExtra}
 
             {/* Cards container */}
-            <div className="flex-1 p-2 overflow-y-auto light-scrollbar min-h-[200px]">
+            <div className={`flex-1 p-2 min-h-[200px] flex flex-col ${status === 'IP' ? 'overflow-hidden' : 'overflow-y-auto light-scrollbar'}`}>
                 {status === 'IP' ? (
-                    <div className="space-y-4">
+                    <div className="flex flex-col gap-3 h-full overflow-hidden">
                         {/* Section: Shift Ini */}
-                        <div className="flex flex-col gap-1.5">
-                            <div className="px-1.5 py-0.5 flex items-center gap-1.5 opacity-90">
-                                <span className="material-symbols-outlined text-amber-500" style={{ fontSize: 13 }}>pending</span>
-                                <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Shift Ini</span>
-                                <span className="ml-auto text-[9px] font-black text-amber-500 bg-amber-100/50 px-1.5 py-0.5 rounded-md border border-amber-250/30">
-                                    {items.length} Pekerjaan
+                        <div className="flex-1 flex flex-col min-h-0 bg-amber-50/20 border border-amber-200/60 rounded-2xl p-2.5 shadow-sm">
+                            <div className="flex items-center gap-1.5 pb-2 border-b border-amber-200/40 mb-2 px-1">
+                                <span className="material-symbols-outlined text-amber-500 font-bold" style={{ fontSize: 14 }}>pending</span>
+                                <span className="text-[10px] font-black text-amber-800 uppercase tracking-wider">Pekerjaan Shift Ini</span>
+                                <span className="ml-auto text-[9px] font-black text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-full border border-amber-250/30">
+                                    {items.length}
                                 </span>
                             </div>
-                            <DroppableSection id="IP" className="p-2 rounded-2xl min-h-[100px] space-y-1.5 border border-dashed border-amber-250 bg-amber-50/20">
+                            <DroppableSection id="IP" className="flex-1 overflow-y-auto light-scrollbar space-y-2 pr-0.5">
                                 <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
                                     {renderGroups(items, 'curr', true)}
                                     {items.length === 0 && (
-                                        <div className="flex flex-col items-center justify-center py-6 text-amber-600/50 text-xs">
+                                        <div className="h-full flex flex-col items-center justify-center py-6 text-amber-600/40 text-xs">
                                             <span className="material-symbols-outlined text-2xl">pending</span>
-                                            <span className="mt-1">Belum ada pekerjaan di shift ini</span>
+                                            <span className="mt-1 font-bold">Belum ada pekerjaan shift ini</span>
                                         </div>
                                     )}
                                 </SortableContext>
@@ -351,24 +351,24 @@ export default function KanbanColumn({ status, items, prevItems = [], hiddenFutu
                         </div>
 
                         {/* Section: Shift Sebelumnya */}
-                        <div className="flex flex-col gap-1.5 pt-3 border-t border-slate-200/60">
-                            <div className="px-1.5 py-0.5 flex items-center gap-1.5 opacity-90">
-                                <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 13 }}>history</span>
-                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Shift Sebelumnya</span>
-                                <span className="ml-auto text-[9px] font-black text-slate-500 bg-slate-200/50 px-1.5 py-0.5 rounded-md border border-slate-300/40">
-                                    {prevItems.length} Pekerjaan
+                        <div className="flex-1 flex flex-col min-h-0 bg-slate-105/40 border border-slate-200/80 rounded-2xl p-2.5 shadow-sm">
+                            <div className="flex items-center gap-1.5 pb-2 border-b border-slate-250 mb-2 px-1">
+                                <span className="material-symbols-outlined text-slate-500 font-bold" style={{ fontSize: 14 }}>history</span>
+                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Pekerjaan Shift Sebelumnya</span>
+                                <span className="ml-auto text-[9px] font-black text-slate-500 bg-slate-200/50 px-2 py-0.5 rounded-full border border-slate-300/40">
+                                    {prevItems.length}
                                 </span>
                             </div>
                             {!readOnly && prevItems.length > 0 && (
-                                <p className="px-1.5 text-[9px] italic text-slate-500">Drag ke <span className="font-bold text-amber-700">Shift Ini</span> untuk lanjut kerja</p>
+                                <p className="px-1 text-[9px] italic text-slate-500 mb-1.5">Drag ke box atas untuk Lanjut Kerja</p>
                             )}
-                            <DroppableSection id="IP_PREV" className="p-2 rounded-2xl min-h-[100px] space-y-1.5 border border-dashed border-slate-200 bg-slate-50/50">
+                            <DroppableSection id="IP_PREV" className="flex-1 overflow-y-auto light-scrollbar space-y-2 pr-0.5">
                                 <SortableContext items={prevItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                                     {renderGroups(prevItems, 'prev', true)}
                                     {prevItems.length === 0 && (
-                                        <div className="flex flex-col items-center justify-center py-6 text-slate-400 text-xs">
+                                        <div className="h-full flex flex-col items-center justify-center py-6 text-slate-400 text-xs">
                                             <span className="material-symbols-outlined text-2xl">history</span>
-                                            <span className="mt-1">Tidak ada carry-forward sebelumnya</span>
+                                            <span className="mt-1 font-bold">Tidak ada carry-forward</span>
                                         </div>
                                     )}
                                 </SortableContext>

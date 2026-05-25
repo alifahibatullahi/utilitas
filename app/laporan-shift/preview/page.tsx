@@ -385,23 +385,27 @@ export default function PreviewPdfPage() {
                                     </div>
                                     <table className="w-full border-collapse text-left">
                                         <thead>
-                                            <tr className="text-xs text-green-900 font-bold uppercase bg-green-100 tracking-tighter">
-                                                <th className="py-2 px-1 w-[10%] border-b border-green-200 text-center">Tgl</th>
-                                                <th className="py-2 px-3 w-[15%] border-b border-green-200">Item</th>
-                                                <th className="py-2 px-1 w-[45%] border-b border-green-200">Uraian</th>
-                                                <th className="py-2 px-1 w-[15%] border-b border-green-200 text-center">Scope</th>
-                                                <th className="py-2 px-3 w-[15%] border-b border-green-200 text-center">Ket</th>
+                                            <tr className="text-xs text-green-950 font-black uppercase bg-green-100 tracking-wider">
+                                                <th className="py-2.5 px-2 w-[10%] border-b border-green-200 text-center">Tgl</th>
+                                                <th className="py-2.5 px-3 w-[15%] border-b border-green-200">Item</th>
+                                                <th className="py-2.5 px-2 w-[45%] border-b border-green-200">Uraian</th>
+                                                <th className="py-2.5 px-2 w-[15%] border-b border-green-200 text-center">Scope</th>
+                                                <th className="py-2.5 px-3 w-[15%] border-b border-green-200 text-center">Ket</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-slate-800">
+                                        <tbody className="text-slate-950">
                                             {r.maintenance.map((m, i) => (
-                                                <tr key={i} className="border-b border-slate-200">
-                                                    <td className="text-xs py-2 text-center font-medium">{m.date}</td>
-                                                    <td className="text-xs py-2 px-3 font-mono font-bold">{m.item}</td>
-                                                    <td className="text-xs py-2 whitespace-normal break-words font-medium">{m.uraian}</td>
-                                                    <td className="text-xs py-2 font-bold text-slate-600 text-center">{m.scope}</td>
-                                                    <td className="text-center py-2">
-                                                        <span className={`px-2 py-1 rounded font-black text-[9px] shadow-sm ${m.status === 'OK' ? 'bg-green-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>{m.status}</span>
+                                                <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
+                                                    <td className="text-xs py-2.5 text-center font-bold text-slate-900">{m.date}</td>
+                                                    <td className="text-xs py-2.5 px-3 font-mono font-extrabold text-blue-700">{m.item}</td>
+                                                    <td className="text-xs py-2.5 px-2 whitespace-normal break-words font-semibold text-slate-900">{m.uraian}</td>
+                                                    <td className="text-xs py-2.5 px-2 font-bold text-slate-800 text-center">{m.scope}</td>
+                                                    <td className="text-center py-2.5 px-3">
+                                                        <span className={`px-2 py-0.5 rounded font-black text-[9px] shadow-sm border ${
+                                                            m.status === 'OK' 
+                                                                ? 'bg-green-500/10 border-green-500/25 text-green-700' 
+                                                                : 'bg-yellow-400/15 border-yellow-400/25 text-yellow-800'
+                                                        }`}>{m.status}</span>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -413,7 +417,7 @@ export default function PreviewPdfPage() {
                             {/* Critical Equipment */}
                             <section className="flex-grow flex flex-col">
                                 <div className="flex items-center gap-2 mb-3">
-                                    <div className="w-1.5 h-4 bg-red-600 rounded-full"></div>
+                                    <div className="w-1.5 h-4 bg-red-650 rounded-full"></div>
                                     <h3 className="text-xxs font-bold text-slate-800 uppercase tracking-widest">Critical Equipment</h3>
                                 </div>
                                 <div className="bg-red-50/30 rounded-lg border border-red-100 overflow-hidden flex-grow shadow-sm">
@@ -422,20 +426,20 @@ export default function PreviewPdfPage() {
                                     </div>
                                     <table className="w-full border-collapse">
                                         <thead>
-                                            <tr className="text-xs text-red-900 font-bold uppercase tracking-tighter text-center bg-red-100">
-                                                <th className="py-2 px-1 w-[10%] border-b border-red-200">Tgl</th>
-                                                <th className="py-2 px-1 w-[15%] border-b border-red-200">Item</th>
-                                                <th className="py-2 px-1 w-[40%] border-b border-red-200">Uraian</th>
-                                                <th className="py-2 px-3 w-[35%] border-b border-red-200 text-center">Scope</th>
+                                            <tr className="text-xs text-red-950 font-black uppercase tracking-wider text-center bg-red-100">
+                                                <th className="py-2.5 px-2 w-[10%] border-b border-red-200">Tgl</th>
+                                                <th className="py-2.5 px-2 w-[15%] border-b border-red-200">Item</th>
+                                                <th className="py-2.5 px-2 w-[40%] border-b border-red-200">Uraian</th>
+                                                <th className="py-2.5 px-3 w-[35%] border-b border-red-200 text-center">Scope</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-center text-slate-800">
+                                        <tbody className="text-center text-slate-950">
                                             {r.criticalEquipment.map((eq, i) => (
-                                                <tr key={i} className="border-b border-slate-200">
-                                                    <td className="text-xs py-2 font-medium">{eq.date}</td>
-                                                    <td className="text-xs py-2 font-mono font-bold">{eq.item}</td>
-                                                    <td className="text-xs py-2 text-left px-2 whitespace-normal break-words font-medium">{eq.uraian}</td>
-                                                    <td className="text-xs py-2 font-bold text-slate-600 text-center">{eq.scope}</td>
+                                                <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
+                                                    <td className="text-xs py-2.5 font-bold text-slate-900">{eq.date}</td>
+                                                    <td className="text-xs py-2.5 font-mono font-extrabold text-red-600">{eq.item}</td>
+                                                    <td className="text-xs py-2.5 text-left px-2 whitespace-normal break-words font-semibold text-slate-900">{eq.uraian}</td>
+                                                    <td className="text-xs py-2.5 font-bold text-slate-800 text-center">{eq.scope}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

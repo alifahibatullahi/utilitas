@@ -47,8 +47,8 @@ export function PublishReportModal({
     canReview = false,
     reviewerName = '',
 }: Props) {
-    // Tab default = 'review' (untuk shift). Tab 'text' & 'pdf' tetap ada.
-    const [tab, setTab] = useState<'review' | 'pdf' | 'text'>(kind === 'shift' ? 'review' : 'text');
+    // Tab review sementara coming soon — default ke 'text'.
+    const [tab, setTab] = useState<'review' | 'pdf' | 'text'>('text');
     const [text, setText] = useState('');
     const [loadingText, setLoadingText] = useState(false);
     const [sending, setSending] = useState(false);
@@ -178,16 +178,10 @@ export function PublishReportModal({
         setSending(true);
         setResults(null);
         try {
-            // Step 0: persist approval (status=approved + reviewed_by + reviewed_at).
-            // Hanya untuk shift kind, dan kalau canReview true & reviewerName ada.
-            if (kind === 'shift' && canReview && reviewerName && reportId) {
-                const supabase = createClient();
-                await supabase.from('shift_reports').update({
-                    status: 'approved',
-                    reviewed_by: reviewerName,
-                    reviewed_at: new Date().toISOString(),
-                }).eq('id', reportId);
-            }
+            // TODO: Persist approval (status=approved + reviewed_by + reviewed_at)
+            // saat fitur Review Summary diaktifkan. Sementara skip — tab review = coming soon.
+            // Suppress unused vars warning.
+            void canReview; void reviewerName;
             const res = await fetch(`/api/whatsapp/publish-${kind === 'shift' ? 'shift' : 'daily'}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -273,17 +267,18 @@ export function PublishReportModal({
                 {/* Tabs Wrapper */}
                 <div className="px-6 pt-4">
                     <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 flex gap-2">
-                        {/* Review Summary — hanya untuk shift kind */}
+                        {/* Review Summary — hanya untuk shift kind, sementara COMING SOON */}
                         {kind === 'shift' && (
                             <button
                                 onClick={() => setTab('review')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
                                     ${tab === 'review'
                                         ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)]'
                                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                             >
                                 <span className="material-symbols-outlined text-base">fact_check</span>
                                 Review Summary
+                                <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">SOON</span>
                             </button>
                         )}
                         <button
@@ -383,34 +378,27 @@ export function PublishReportModal({
 
                 {/* Body Content */}
                 <div className="flex-1 overflow-y-auto p-6">
-                    {/* Review Summary — preview hasil yang akan di-publish.
-                        Pakai content yang sama dengan tab Text (rendered by server) supaya
-                        reviewer lihat persis apa yang akan dikirim. Tampilan read-only. */}
+                    {/* Review Summary — sementara coming soon (placeholder) */}
                     {tab === 'review' && kind === 'shift' && (
-                        <div className="space-y-4">
-                            <div className="bg-emerald-500/5 border border-emerald-500/30 rounded-2xl p-4 flex items-start gap-3">
-                                <span className="material-symbols-outlined text-emerald-400 mt-0.5">verified</span>
-                                <div className="flex-1 text-xs text-slate-300 leading-relaxed">
-                                    <p className="font-bold text-emerald-300 mb-1">Review laporan sebelum di-publish</p>
-                                    <p>Pastikan parameter operasi, supervisor, foreman, dan catatan sudah benar. Klik <span className="text-emerald-300 font-bold">&quot;Setujui &amp; Publish&quot;</span> untuk approve laporan dan langsung kirim ke WhatsApp washift.</p>
-                                </div>
-                            </div>
-                            <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
-                                {loadingText ? (
-                                    <div className="flex flex-col items-center justify-center py-20 gap-3">
-                                        <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
-                                        <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat summary...</span>
+                        <div className="space-y-4 py-12">
+                            <div className="max-w-md mx-auto">
+                                <div className="bg-slate-950/60 border border-slate-800/80 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
+                                    <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.15)] border border-emerald-500/30">
+                                        <span className="material-symbols-outlined text-4xl">fact_check</span>
                                     </div>
-                                ) : (
-                                    <pre className="text-xs sm:text-sm text-slate-100 font-mono whitespace-pre-wrap break-words leading-relaxed">{text || '(template kosong)'}</pre>
-                                )}
-                            </div>
-                            {!canReview && (
-                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-start gap-2 text-xs text-amber-200">
-                                    <span className="material-symbols-outlined text-amber-400" style={{ fontSize: 18 }}>lock</span>
-                                    <span>Approve hanya bisa dilakukan oleh supervisor / foreman / admin. Operator biasa tidak bisa klik &quot;Setujui &amp; Publish&quot;.</span>
+                                    <div className="space-y-2">
+                                        <h3 className="text-base font-extrabold text-emerald-300 uppercase tracking-wider">Coming Soon</h3>
+                                        <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
+                                            Fitur review summary supervisor/foreman sebelum publish sedang dalam pengembangan.
+                                            Untuk sementara, gunakan tab <span className="text-cyan-300 font-bold">Text Washift</span> untuk publish langsung.
+                                        </p>
+                                    </div>
+                                    <span className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest">
+                                        <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                        Fitur dalam pengembangan
+                                    </span>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     )}
                     {tab === 'text' && (
@@ -492,41 +480,24 @@ export function PublishReportModal({
                     >
                         Tutup
                     </button>
-                    {(() => {
-                        const needReview = kind === 'shift';
-                        const reviewBlocked = needReview && !canReview;
-                        const pdfBlocked = tab === 'pdf';
-                        const noText = loadingText || !text.trim();
-                        const disabled = sending || noText || pdfBlocked || reviewBlocked;
-                        const tooltip = pdfBlocked
-                            ? 'PDF ke management belum tersedia (coming soon)'
-                            : reviewBlocked
-                                ? 'Hanya supervisor / foreman / admin yang bisa approve & publish'
-                                : undefined;
-                        const label = pdfBlocked
-                            ? 'PDF Coming Soon'
-                            : (needReview ? 'Setujui & Publish' : 'Publish Laporan');
-                        return (
-                            <button
-                                onClick={publish}
-                                disabled={disabled}
-                                title={tooltip}
-                                className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all duration-300 shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-                            >
-                                {sending ? (
-                                    <>
-                                        <span className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
-                                        Mengirim Laporan...
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-symbols-outlined text-sm">{reviewBlocked ? 'lock' : 'publish'}</span>
-                                        {label}
-                                    </>
-                                )}
-                            </button>
-                        );
-                    })()}
+                    <button
+                        onClick={publish}
+                        disabled={sending || loadingText || !text.trim() || tab === 'pdf' || tab === 'review'}
+                        title={tab === 'pdf' ? 'PDF ke management belum tersedia (coming soon)' : tab === 'review' ? 'Review summary belum tersedia (coming soon)' : undefined}
+                        className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all duration-300 shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                        {sending ? (
+                            <>
+                                <span className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                                Mengirim Laporan...
+                            </>
+                        ) : (
+                            <>
+                                <span className="material-symbols-outlined text-sm">publish</span>
+                                {tab === 'pdf' ? 'PDF Coming Soon' : tab === 'review' ? 'Review Coming Soon' : 'Publish Laporan'}
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
         </div>

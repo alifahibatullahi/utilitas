@@ -102,7 +102,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [submitting, setSubmitting] = useState(false);
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [waPreview, setWaPreview] = useState<{ target: string; label: string; ok: boolean; message: string }[] | null>(null);
+    const [waPreview, setWaPreview] = useState<{
+        reportId: string;
+        items: { target: string; label: string; message: string; status: 'pending' | 'sent' | 'failed' }[];
+        sending: boolean;
+    } | null>(null);
     const lastSubmittedReportId = useRef<string | null>(null);
     const skipNextClear = useRef(false);
 
@@ -649,21 +653,41 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
 
-                // Notify Utilitas 2 & SU 3A and show preview when panel_turbin saves harian
+                // Build WA preview for Utilitas 2 & SU 3A when panel_turbin saves harian
                 if (station === 'panel_turbin' && result?.reportId) {
-                    void (async () => {
-                        try {
-                            const res = await fetch('/api/whatsapp/notify-turbin-save', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ type: 'harian', date, reportId: result.reportId }),
-                            });
-                            const data = await res.json();
-                            if (data.results?.length > 0) setWaPreview(data.results);
-                        } catch (err) {
-                            console.warn('[harian] notify-turbin-save failed:', err);
-                        }
-                    })();
+                    const fmt = (v: number | string | null | undefined) => {
+                        if (v == null) return '-';
+                        const n = Number(v);
+                        if (isNaN(n)) return '-';
+                        return Number.isInteger(n) ? String(n) : n.toFixed(1);
+                    };
+                    setWaPreview({
+                        reportId: result.reportId,
+                        sending: false,
+                        items: [
+                            {
+                                target: 'utilitas_2', label: 'Utilitas 2', status: 'pending',
+                                message: [
+                                    `⚡ *Laporan Power Harian*`,
+                                    `Tanggal: ${date}`,
+                                    '',
+                                    `Totalizer Pabrik 2 : ${fmt(powerForSubmit.power_pabrik2_totalizer)} MWh`,
+                                    `Selisih (hari ini − kemarin): ${fmt(powerForSubmit.selisih_pabrik2)} MWh`,
+                                ].join('\n'),
+                            },
+                            {
+                                target: 'su_3a', label: 'SU 3A', status: 'pending',
+                                message: [
+                                    `🔥 *Distribusi Steam Pabrik 3 — Harian*`,
+                                    `Tanggal: ${date}`,
+                                    '',
+                                    `Flow jam 00:00   : ${fmt(steamWithCalcs.mps_3a_00)} t/h`,
+                                    `Totalizer 24 jam : ${fmt(steamWithCalcs.mps_3a_24)} ton`,
+                                    `Selisih (hari ini − kemarin): ${fmt(steamWithCalcs.selisih_mps_3a)} ton`,
+                                ].join('\n'),
+                            },
+                        ],
+                    });
                 }
             }
             clearInterval(progressInterval);
@@ -730,35 +754,84 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             )}
 
             {/* WA Preview Dialog */}
-            {waPreview && waPreview.length > 0 && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setWaPreview(null)}>
+            {waPreview && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !waPreview.sending && setWaPreview(null)}>
                     <div className="bg-[#0d1520] border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-[90vw] max-h-[80vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-white font-bold text-lg flex items-center gap-2">
                                 <span className="material-symbols-outlined text-emerald-400">chat</span>
-                                Notifikasi WhatsApp Terkirim
+                                {waPreview.items.some(i => i.status !== 'pending') ? 'Hasil Kirim WhatsApp' : 'Preview Notifikasi WhatsApp'}
                             </h3>
-                            <button onClick={() => setWaPreview(null)} className="text-slate-400 hover:text-white transition-colors">
+                            <button onClick={() => !waPreview.sending && setWaPreview(null)} className="text-slate-400 hover:text-white transition-colors">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
                         <div className="space-y-4">
-                            {waPreview.map((item, i) => (
+                            {waPreview.items.map((item, i) => (
                                 <div key={i} className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className={`inline-block w-2 h-2 rounded-full ${item.ok ? 'bg-emerald-400' : 'bg-red-400'}`}></span>
+                                        <span className={`inline-block w-2 h-2 rounded-full ${
+                                            item.status === 'sent' ? 'bg-emerald-400' :
+                                            item.status === 'failed' ? 'bg-red-400' : 'bg-slate-400'
+                                        }`}></span>
                                         <span className="text-sm font-semibold text-white">{item.label}</span>
-                                        <span className={`text-xs px-2 py-0.5 rounded ${item.ok ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
-                                            {item.ok ? 'Terkirim' : 'Gagal'}
-                                        </span>
+                                        {item.status !== 'pending' && (
+                                            <span className={`text-xs px-2 py-0.5 rounded ${item.status === 'sent' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+                                                {item.status === 'sent' ? 'Terkirim' : 'Gagal'}
+                                            </span>
+                                        )}
                                     </div>
                                     <pre className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.message}</pre>
                                 </div>
                             ))}
                         </div>
-                        <button onClick={() => setWaPreview(null)} className="mt-4 w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors">
-                            Tutup
-                        </button>
+                        <div className="flex gap-3 mt-4">
+                            {waPreview.items.every(i => i.status === 'pending') ? (
+                                <>
+                                    <button onClick={() => setWaPreview(null)} className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors">
+                                        Batal
+                                    </button>
+                                    <button
+                                        disabled={waPreview.sending}
+                                        onClick={async () => {
+                                            setWaPreview(prev => prev ? { ...prev, sending: true } : null);
+                                            try {
+                                                const res = await fetch('/api/whatsapp/notify-turbin-save', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ type: 'harian', date, reportId: waPreview.reportId }),
+                                                });
+                                                const data = await res.json();
+                                                const sent = (data.results ?? []) as { target: string; ok: boolean }[];
+                                                setWaPreview(prev => prev ? {
+                                                    ...prev, sending: false,
+                                                    items: prev.items.map(it => {
+                                                        const r = sent.find(s => s.target === it.target);
+                                                        return { ...it, status: r ? (r.ok ? 'sent' : 'failed') : 'failed' };
+                                                    }),
+                                                } : null);
+                                            } catch {
+                                                setWaPreview(prev => prev ? {
+                                                    ...prev, sending: false,
+                                                    items: prev.items.map(it => ({ ...it, status: 'failed' as const })),
+                                                } : null);
+                                            }
+                                        }}
+                                        className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        {waPreview.sending ? (
+                                            <><span className="material-symbols-outlined animate-spin text-lg">progress_activity</span> Mengirim...</>
+                                        ) : (
+                                            <><span className="material-symbols-outlined text-lg">send</span> Kirim ke WhatsApp</>
+                                        )}
+                                    </button>
+                                </>
+                            ) : (
+                                <button onClick={() => setWaPreview(null)} className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors">
+                                    Tutup
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

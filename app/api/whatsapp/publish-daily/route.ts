@@ -41,9 +41,9 @@ export async function GET(req: NextRequest) {
             id, date, notes,
             daily_report_steam (prod_boiler_a_00, prod_boiler_b_00, inlet_turbine_00, mps_i_00, mps_3a_00),
             daily_report_power (gen_00, power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie),
-            daily_report_coal (total_boiler_a_24, total_boiler_b_24, stock_batubara),
+            daily_report_coal (total_boiler_a_24, total_boiler_b_24),
             daily_report_turbine_misc (temp_furnace_a, temp_furnace_b, thrust_bearing_temp, gi_sum_p),
-            daily_report_stock_tank (rcw_level_00, demin_level_00)
+            daily_report_stock_tank (rcw_level_00, demin_level_00, stock_batubara)
         `)
         .eq('id', reportId)
         .single();
@@ -449,7 +449,7 @@ function buildDailyReviewSummary(report: any, maintenance: any[], critical: any[
             rcw: tank.rcw_level_00 ?? null,
             demin: tank.demin_level_00 ?? null,
         } : null,
-        stockBatubara: coal?.stock_batubara ?? null,
+        stockBatubara: tank?.stock_batubara ?? null,
         notes: (report.notes as string) ?? '',
         maintenance: maintenance.map(m => ({
             item: String(m.item ?? '-'),

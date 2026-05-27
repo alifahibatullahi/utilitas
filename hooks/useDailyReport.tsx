@@ -253,21 +253,30 @@ export function useDailyReport(date: string) {
         // row terjamin ada, panggil RPC `merge_daily_station_filler` yang melakukan
         // atomic JSONB merge di DB — race-proof walau N station submit bersamaan.
 
+        // Station-scoped: kalau submit datang dari operator station (bukan foreman full),
+        // JANGAN overwrite field-field foreman di parent daily_reports — biar operator
+        // station hanya tulis child table mereka tanpa ganggu data foreman.
+        const isStationScoped = !!reportData.station_filler;
+
+        const parentPayload: Record<string, unknown> = {
+            date,
+            status: 'draft' as ReportStatus,
+            ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
+        };
+        if (!isStationScoped) {
+            // Hanya foreman/admin (no station) yang boleh tulis ringkasan + catatan.
+            parentPayload.produksi_steam_a = reportData.produksi_steam_a ?? null;
+            parentPayload.produksi_steam_b = reportData.produksi_steam_b ?? null;
+            parentPayload.konsumsi_batubara = reportData.konsumsi_batubara ?? null;
+            parentPayload.load_mw = reportData.load_mw ?? null;
+            parentPayload.notes = reportData.notes || null;
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: dr, error: drError } = await supabase
             .from('daily_reports')
-            .upsert({
-                date,
-                produksi_steam_a: reportData.produksi_steam_a ?? null,
-                produksi_steam_b: reportData.produksi_steam_b ?? null,
-                konsumsi_batubara: reportData.konsumsi_batubara ?? null,
-                load_mw: reportData.load_mw ?? null,
-                notes: reportData.notes || null,
-                status: 'draft' as ReportStatus,
-                ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
-                // station_fillers di-handle via RPC setelah parent confirmed (lihat di bawah).
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any, { onConflict: 'date' })
+            .upsert(parentPayload as any, { onConflict: 'date' })
             .select()
             .single();
 

@@ -266,31 +266,10 @@ function InputShiftPageInner() {
     const [lastStock, setLastStock] = useState<{ phosphate: number | null; amine: number | null; hydrazine: number | null }>({ phosphate: null, amine: null, hydrazine: null });
     const [catatan, setCatatan] = useState<string>('');
 
-    // Auto-inject untuk Catatan Operasional: tiap auto-line (solar/ash/bunker berasap)
-    // di-append ke textarea SEKALI per session. Setelah di-append, user bebas edit/hapus —
-    // kita tidak re-add walau line tetap "aktif" di state (sesuai user spec: catatan
-    // automatis = sama dengan input manual yang lain). Tracker di-reset di clear-effect
-    // saat user ganti tanggal/shift.
+    // Tracker auto-inject Catatan Operasional. Diisi tiap kali auto-line baru muncul.
+    // Setelah di-append, user bebas edit/hapus — kita tidak re-add walau line tetap "aktif"
+    // di state. Tracker di-reset di clear-effect saat user ganti tanggal/shift.
     const autoInjectedRef = useRef<Set<string>>(new Set());
-    useEffect(() => {
-        const lines = buildAutoCatatanLines({
-            solarIn: [...savedSolarEntries, ...solarEntries],
-            solarOut: [...savedOutSolarEntries, ...outSolarEntries],
-            ash: [...savedAshEntries, ...ashEntries],
-            coalBunker,
-        });
-        const newLines = lines.filter(l => !autoInjectedRef.current.has(l));
-        if (newLines.length === 0) return;
-        newLines.forEach(l => autoInjectedRef.current.add(l));
-        setCatatan(prev => {
-            // Skip baris yang KEBETULAN sudah ada di textarea (mis. baris yang sama persis
-            // sebelumnya dari DB) supaya tidak duplikat.
-            const toAppend = newLines.filter(l => !prev.includes(l));
-            if (toAppend.length === 0) return prev;
-            const sep = prev && !prev.endsWith('\n') ? '\n' : '';
-            return prev + sep + toAppend.join('\n');
-        });
-    }, [solarEntries, outSolarEntries, savedSolarEntries, savedOutSolarEntries, ashEntries, savedAshEntries, coalBunker]);
 
     // Shift mapping: button order matches chronological report time
     // 06.00 → shift malam (night shift makes 06.00 report)
@@ -309,6 +288,33 @@ function InputShiftPageInner() {
 
     // Auto-kalkulasi grup dari pola jadwal shift
     const currentGroup = getGroupForShift(selectedDate, shiftMap[selectedShift]);
+
+    // Auto-inject Catatan Operasional: tiap auto-line baru di-append ke textarea sekali
+    // per session. Setelah di-track di autoInjectedRef, user bebas edit/hapus tanpa kita
+    // re-add. Dipasang setelah `bunkerBerasapSince` dideklarasi (TDZ-safe).
+    useEffect(() => {
+        const lines = buildAutoCatatanLines({
+            solarIn: [...savedSolarEntries, ...solarEntries],
+            solarOut: [...savedOutSolarEntries, ...outSolarEntries],
+            ash: [...savedAshEntries, ...ashEntries],
+            coalBunker,
+            berasapSince: bunkerBerasapSince,
+            currentDate: selectedDate,
+            currentShift: shiftMap[selectedShift],
+        });
+        const newLines = lines.filter(l => !autoInjectedRef.current.has(l));
+        if (newLines.length === 0) return;
+        newLines.forEach(l => autoInjectedRef.current.add(l));
+        setCatatan(prev => {
+            // Skip baris yang KEBETULAN sudah ada di textarea (mis. baris yang sama persis
+            // sebelumnya dari DB) supaya tidak duplikat.
+            const toAppend = newLines.filter(l => !prev.includes(l));
+            if (toAppend.length === 0) return prev;
+            const sep = prev && !prev.endsWith('\n') ? '\n' : '';
+            return prev + sep + toAppend.join('\n');
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [solarEntries, outSolarEntries, savedSolarEntries, savedOutSolarEntries, ashEntries, savedAshEntries, coalBunker, bunkerBerasapSince, selectedDate, selectedShift]);
 
     // ─── Grace period & submit guard ─────────────────────────────────────────────
     // Shift: submit allowed sampai shift end + 2 jam.
@@ -863,13 +869,34 @@ function InputShiftPageInner() {
                 ? { ...generatorGi, ...Object.fromEntries(GEN_OUTPUT_FIELDS.map(k => [k, 0])) }
                 : generatorGi;
 
-            // Catatan operasional disimpan apa adanya — auto-line untuk solar/ash/bunker
-            // sudah di-inject ke textarea via useEffect (lihat auto-inject section), dan user
-            // bisa edit bebas.
+            // Catatan operasional: safety-net sebelum save — hitung ulang auto-line dari
+            // state sekarang dan pastikan masuk ke textarea. Ini menjamin walau user belum
+            // pernah buka tab Catatan Operasional, atau useEffect timing aneh, auto-line
+            // ter-include di laporan. Line yang user sudah delete (autoInjectedRef.has)
+            // tidak di-re-add.
+            const finalAutoLines = buildAutoCatatanLines({
+                solarIn: [...savedSolarEntries, ...solarEntries],
+                solarOut: [...savedOutSolarEntries, ...outSolarEntries],
+                ash: [...savedAshEntries, ...ashEntries],
+                coalBunker,
+                berasapSince: bunkerBerasapSince,
+                currentDate: selectedDate,
+                currentShift: shiftMap[selectedShift],
+            });
+            let catatanForSubmit = catatan;
+            for (const line of finalAutoLines) {
+                if (autoInjectedRef.current.has(line)) continue;       // user mungkin sudah delete
+                if (catatanForSubmit.includes(line)) continue;          // sudah ada di textarea
+                autoInjectedRef.current.add(line);
+                const sep = catatanForSubmit && !catatanForSubmit.endsWith('\n') ? '\n' : '';
+                catatanForSubmit = catatanForSubmit + sep + line;
+            }
+            if (catatanForSubmit !== catatan) setCatatan(catatanForSubmit);
+
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
                 supervisor: supervisor || operator?.name || 'Operator',
-                catatan: catatan || null,
+                catatan: catatanForSubmit || null,
                 created_by: operator?.supabaseId || '',
                 boilerA: { ...finalBoilerA, batubara_ton: batubaraA, selisih_steam: selisihSteamA, selisih_bfw: selisihBfwA },
                 boilerB: { ...finalBoilerB, batubara_ton: batubaraB, selisih_steam: selisihSteamB, selisih_bfw: selisihBfwB },

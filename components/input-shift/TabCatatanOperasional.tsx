@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card } from './SharedComponents';
 import type { AshUnloadingEntry } from './TabESP';
+import type { BunkerBerasapInfo } from '@/hooks/useShiftReport';
 
 interface SolarInEntry { id?: string; tanggal: string; jumlah: number | null; perusahaan: string }
 interface SolarOutEntry { id?: string; tanggal: string; jumlah: number | null; tujuan: string }
@@ -29,6 +30,23 @@ export interface AutoCatatanInput {
     solarOut: SolarOutEntry[];
     ash: AshUnloadingEntry[];
     coalBunker: Record<string, number | string | null>;
+    /** Hasil dari useBunkerBerasapHistory — kunci dari shift terakhir saat bunker mulai berasap.
+     *  Kalau bunker baru pertama kali dilaporkan berasap di shift sekarang, value-nya null →
+     *  fallback ke currentDate + currentShift. */
+    berasapSince?: BunkerBerasapInfo;
+    currentDate?: string;        // YYYY-MM-DD, fallback "sejak shift ini"
+    currentShift?: string;       // 'malam' | 'pagi' | 'sore'
+}
+
+const SHIFT_LABEL: Record<string, string> = { malam: 'Shift Malam', pagi: 'Shift Pagi', sore: 'Shift Sore' };
+
+/** Format DD/MM Shift X dari date+shift (idem TabCoalBunker.formatBerasapSince). */
+function formatSince(info: { date: string; shift: string } | null | undefined): string {
+    if (!info || !info.date) return '';
+    const d = new Date(info.date + 'T00:00:00');
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month} ${SHIFT_LABEL[info.shift] || info.shift}`;
 }
 
 /** Build daftar auto-line dari state live (entries + bunker berasap). */
@@ -52,7 +70,17 @@ export function buildAutoCatatanLines(p: AutoCatatanInput): string[] {
     }
     for (const k of BUNKER_KEYS) {
         const st = String(p.coalBunker[`status_bunker_${k}`] ?? 'running').toLowerCase();
-        if (st === 'berasap') lines.push(`Bunker ${k.toUpperCase()} berasap`);
+        if (st !== 'berasap') continue;
+        // Cari kapan pertama kali berasap. Kalau ada history → pakai itu. Kalau tidak ada
+        // (bunker baru pertama dilaporkan berasap di shift ini) → fallback ke currentDate/Shift.
+        const histKey = `status_bunker_${k}`;
+        const hist = p.berasapSince?.[histKey];
+        const since = hist
+            ? formatSince(hist)
+            : (p.currentDate && p.currentShift ? formatSince({ date: p.currentDate, shift: p.currentShift }) : '');
+        lines.push(since
+            ? `Bunker ${k.toUpperCase()} berasap sejak ${since}`
+            : `Bunker ${k.toUpperCase()} berasap`);
     }
     return lines;
 }

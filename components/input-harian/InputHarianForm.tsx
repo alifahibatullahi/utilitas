@@ -491,6 +491,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 prod_total_00: N(steam.prod_boiler_a_00) + N(steam.prod_boiler_b_00),
                 internal_ubb_24: N(steam.inlet_turbine_24) - N(steam.fully_condens_24),
                 internal_ubb_00: N(steam.inlet_turbine_00) - N(steam.co_gen_00),
+                // Flow & totalizer steam Pabrik 3 (MPS 3A) — dipakai juga di pesan WA SU 3A.
+                // Field aslinya datang dari spread `...steam` tapi TS widening hilang
+                // index signature, jadi di-shadow eksplisit di sini.
+                mps_3a_00: steam.mps_3a_00 ?? null,
+                mps_3a_24: steam.mps_3a_24 ?? null,
                 lps_ii_24: 0,
                 lps_3a_24: 0,
                 lps_ii_00: 0,

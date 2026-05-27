@@ -1309,26 +1309,15 @@ function InputShiftPageInner() {
                                         {group ? `Group ${group}` : 'Off'}
                                     </span>
 
-                                    {/* Tanggal (Date Picker) - Swapped to Row 1 */}
+                                    {/* Tanggal (Date Picker) — input native cover seluruh box.
+                                        Pendekatan mobile-first: input transparan menutupi seluruh kotak,
+                                        semua tap masuk ke input → OS otomatis buka native date dialog
+                                        (tidak perlu showPicker yang kurang reliable di mobile).
+                                        Label/text/icon di-pointer-events-none supaya tidak intercept tap.
+                                        Untuk desktop browser yang tidak auto-buka picker, fallback
+                                        onClick di input call showPicker(). */}
                                     <div
-                                        onClick={() => {
-                                            // onClick lebih reliabel daripada onMouseDown di mobile —
-                                            // touch tidak selalu fire mousedown, tapi pasti fire click.
-                                            // showPicker() butuh user-gesture; click handler satisfy itu.
-                                            // Fallback: kalau showPicker tidak ada (browser lama) atau
-                                            // throw, fokus + click ke input native sebagai pengganti.
-                                            const el = dateInputRef.current;
-                                            if (!el) return;
-                                            try {
-                                                if (typeof el.showPicker === 'function') {
-                                                    el.showPicker();
-                                                    return;
-                                                }
-                                            } catch { /* showPicker bisa throw kalau bukan user gesture */ }
-                                            el.focus();
-                                            el.click();
-                                        }}
-                                        className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-2.5 pr-7 py-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px] cursor-pointer focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}
+                                        className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-2.5 pr-7 py-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px] focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}
                                     >
                                         <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none pointer-events-none">Tanggal</span>
                                         <div className="relative w-full flex items-center h-5 overflow-hidden">
@@ -1338,19 +1327,25 @@ function InputShiftPageInner() {
                                             <span className="hidden sm:inline text-xs lg:text-sm font-black text-blue-100 select-none whitespace-nowrap pointer-events-none">
                                                 {formattedDate || selectedDate}
                                             </span>
-                                            {/* Input native — hanya untuk hold value & jadi picker target.
-                                                pointer-events-none supaya semua tap kena parent div → onClick
-                                                memanggil showPicker (kompatibel desktop + mobile). */}
-                                            <input
-                                                ref={dateInputRef}
-                                                type="date"
-                                                value={selectedDate}
-                                                onChange={e => setSelectedDate(e.target.value)}
-                                                tabIndex={-1}
-                                                className="absolute inset-0 opacity-0 pointer-events-none w-full h-full bg-transparent border-none outline-none ring-0 appearance-none [color-scheme:dark]"
-                                            />
                                         </div>
                                         <span className="material-symbols-outlined text-[18px] text-blue-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
+                                        {/* Input native overlay seluruh box (bukan cuma inner display).
+                                            Transparan tapi tetap menerima tap → mobile buka native picker. */}
+                                        <input
+                                            ref={dateInputRef}
+                                            type="date"
+                                            value={selectedDate}
+                                            onChange={e => setSelectedDate(e.target.value)}
+                                            onClick={() => {
+                                                // Desktop fallback: panggil showPicker biar Chrome/Firefox
+                                                // langsung buka picker tanpa harus klik calendar icon kecil.
+                                                // Mobile sudah auto-open dari OS, tapi showPicker no-op aman.
+                                                const el = dateInputRef.current;
+                                                if (!el) return;
+                                                try { el.showPicker?.(); } catch { /* ignore */ }
+                                            }}
+                                            className="absolute inset-0 opacity-0 w-full h-full bg-transparent border-none outline-none ring-0 appearance-none cursor-pointer [color-scheme:dark]"
+                                        />
                                         {isToday && inputMode === 'shift' && (
                                             <span className="absolute -top-1 -right-1 flex h-2 w-2 pointer-events-none">
                                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>

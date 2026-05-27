@@ -249,17 +249,9 @@ export function useDailyReport(date: string) {
         const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const validCreatedBy = reportData.created_by && UUID_REGEX.test(reportData.created_by) ? reportData.created_by : null;
 
-        // Merge station_fillers — fetch existing dulu supaya tidak overwrite station lain.
-        let mergedStationFillers: Record<string, string> | undefined;
-        if (reportData.station_filler) {
-            const { data: existing } = await supabase
-                .from('daily_reports')
-                .select('station_fillers')
-                .eq('date', date)
-                .maybeSingle();
-            const current = (existing?.station_fillers as Record<string, string> | null) ?? {};
-            mergedStationFillers = { ...current, [reportData.station_filler.station]: reportData.station_filler.name };
-        }
+        // station_fillers TIDAK lagi di-merge client-side (race-prone). Setelah parent
+        // row terjamin ada, panggil RPC `merge_daily_station_filler` yang melakukan
+        // atomic JSONB merge di DB — race-proof walau N station submit bersamaan.
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: dr, error: drError } = await supabase
@@ -273,7 +265,7 @@ export function useDailyReport(date: string) {
                 notes: reportData.notes || null,
                 status: 'draft' as ReportStatus,
                 ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
-                ...(mergedStationFillers ? { station_fillers: mergedStationFillers } : {}),
+                // station_fillers di-handle via RPC setelah parent confirmed (lihat di bawah).
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any, { onConflict: 'date' })
             .select()
@@ -282,6 +274,19 @@ export function useDailyReport(date: string) {
         if (drError || !dr) return { error: drError?.message || 'Failed to create daily report' };
 
         const reportId = (dr as Record<string, unknown>).id as string;
+
+        // ─── Atomic merge station_fillers via RPC (race-proof) ───
+        if (reportData.station_filler && reportId) {
+            const { error: rpcErr } = await supabase.rpc('merge_daily_station_filler', {
+                p_report_id: reportId,
+                p_station: reportData.station_filler.station,
+                p_name: reportData.station_filler.name,
+            });
+            if (rpcErr) {
+                console.warn('[submitDailyReport] merge_daily_station_filler RPC failed:', rpcErr.message);
+                // Non-fatal.
+            }
+        }
 
         // Upsert child tables
         const childTables = [

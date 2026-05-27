@@ -847,18 +847,9 @@ export function useShiftReport(date: string, shift: ShiftType) {
             return partialColsMap[table] ?? null;
         };
 
-        // Merge station_fillers — fetch existing dulu supaya tidak overwrite station lain.
-        let mergedStationFillers: Record<string, string> | undefined;
-        if (reportData.station_filler) {
-            const { data: existing } = await supabase
-                .from('shift_reports')
-                .select('station_fillers')
-                .eq('date', date)
-                .eq('shift', shift)
-                .maybeSingle();
-            const current = (existing?.station_fillers as Record<string, string> | null) ?? {};
-            mergedStationFillers = { ...current, [reportData.station_filler.station]: reportData.station_filler.name };
-        }
+        // station_fillers TIDAK lagi di-merge client-side (race-prone). Setelah parent
+        // row terjamin ada, kita panggil RPC `merge_shift_station_filler` yang melakukan
+        // atomic JSONB merge di DB — race-proof walau N station submit bersamaan.
 
         // ─── Parent shift_reports: INSERT vs UPDATE eksplisit ───
         // Station-scope: pada UPDATE jangan overwrite supervisor/catatan/group_name.
@@ -879,7 +870,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 updatePayload.supervisor = reportData.supervisor;
                 updatePayload.catatan = reportData.catatan || null;
             }
-            if (mergedStationFillers) updatePayload.station_fillers = mergedStationFillers;
+            // station_fillers di-handle via RPC setelah parent confirmed (lihat di bawah).
             if (validCreatedBy && !isStationScoped) updatePayload.created_by = validCreatedBy;
 
             if (Object.keys(updatePayload).length > 0) {
@@ -903,7 +894,8 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 status: 'draft' as ReportStatus,
                 catatan: isStationScoped ? null : (reportData.catatan || null),
                 ...(validCreatedBy ? { created_by: validCreatedBy } : {}),
-                ...(mergedStationFillers ? { station_fillers: mergedStationFillers } : {}),
+                // station_fillers di-handle via RPC setelah parent confirmed.
+                // Default kolom '{}'::jsonb dari DDL — aman tanpa di-explicit-set.
             };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const r = await supabase.from('shift_reports').insert(insertPayload as any).select('id').single();
@@ -925,7 +917,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
                         updatePayload.supervisor = reportData.supervisor;
                         updatePayload.catatan = reportData.catatan || null;
                     }
-                    if (mergedStationFillers) updatePayload.station_fillers = mergedStationFillers;
+                    // station_fillers via RPC setelah parent confirmed.
                     if (Object.keys(updatePayload).length > 0) {
                         const r2 = await supabase
                             .from('shift_reports')
@@ -944,6 +936,20 @@ export function useShiftReport(date: string, shift: ShiftType) {
         }
 
         if (srError || !sr) return { error: srError?.message || 'Failed to create report' };
+
+        // ─── Atomic merge station_fillers via RPC (race-proof) ───
+        // Sekarang reportId sudah pasti ada. Panggil RPC kalau ada station_filler diisi.
+        if (reportData.station_filler && sr?.id) {
+            const { error: rpcErr } = await supabase.rpc('merge_shift_station_filler', {
+                p_report_id: sr.id,
+                p_station: reportData.station_filler.station,
+                p_name: reportData.station_filler.name,
+            });
+            if (rpcErr) {
+                console.warn('[submitReport] merge_shift_station_filler RPC failed:', rpcErr.message);
+                // Non-fatal: data operasional tetap tersimpan, hanya audit name yang miss.
+            }
+        }
 
         const reportId = (sr as Record<string, unknown>).id as string;
         console.log('[submitReport] reportId:', reportId);

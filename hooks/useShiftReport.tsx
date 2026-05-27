@@ -1162,7 +1162,6 @@ export function useShiftReport(date: string, shift: ShiftType) {
             }
         })();
 
-
         if (errors.length > 0) {
             console.error('Child table errors:', errors);
             return { error: errors.join('; '), reportId };

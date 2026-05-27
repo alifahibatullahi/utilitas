@@ -73,6 +73,7 @@ function InputShiftPageInner() {
     const [submitting, setSubmitting] = useState(false);
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [waPreview, setWaPreview] = useState<{ target: string; label: string; ok: boolean; message: string }[] | null>(null);
 
     // ENDING convention untuk malam (malam D = submit di hari D). detectCurrentShift handle ini:
     // - h<7 : malam D=today (shift sedang berjalan, akan submit hari ini)
@@ -948,6 +949,23 @@ function InputShiftPageInner() {
                 setUserModified(false);
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
+
+                // Notify Utilitas 2 & SU 3A and show preview when panel_turbin saves
+                if (station === 'panel_turbin' && result?.reportId) {
+                    void (async () => {
+                        try {
+                            const res = await fetch('/api/whatsapp/notify-turbin-save', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ type: 'shift', date: selectedDate, shift: shiftMap[selectedShift], reportId: result.reportId }),
+                            });
+                            const data = await res.json();
+                            if (data.results?.length > 0) setWaPreview(data.results);
+                        } catch (err) {
+                            console.warn('[handleSubmit] notify-turbin-save failed:', err);
+                        }
+                    })();
+                }
                 // Refresh saved data
                 const spb = createClient();
                 spb.from('ash_unloadings').select('id, silo, perusahaan, tujuan, ritase')
@@ -1105,6 +1123,40 @@ function InputShiftPageInner() {
                             </span>
                             {toast.message}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* WA Preview Dialog */}
+            {waPreview && waPreview.length > 0 && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setWaPreview(null)}>
+                    <div className="bg-[#0d1520] border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-[90vw] max-h-[80vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                                <span className="material-symbols-outlined text-emerald-400">chat</span>
+                                Notifikasi WhatsApp Terkirim
+                            </h3>
+                            <button onClick={() => setWaPreview(null)} className="text-slate-400 hover:text-white transition-colors">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            {waPreview.map((item, i) => (
+                                <div key={i} className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className={`inline-block w-2 h-2 rounded-full ${item.ok ? 'bg-emerald-400' : 'bg-red-400'}`}></span>
+                                        <span className="text-sm font-semibold text-white">{item.label}</span>
+                                        <span className={`text-xs px-2 py-0.5 rounded ${item.ok ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+                                            {item.ok ? 'Terkirim' : 'Gagal'}
+                                        </span>
+                                    </div>
+                                    <pre className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.message}</pre>
+                                </div>
+                            ))}
+                        </div>
+                        <button onClick={() => setWaPreview(null)} className="mt-4 w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors">
+                            Tutup
+                        </button>
                     </div>
                 </div>
             )}

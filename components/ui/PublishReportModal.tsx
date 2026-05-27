@@ -172,12 +172,12 @@ export function PublishReportModal({
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Auto-adjust textarea height to fit content without internal scrollbar.
-    // Pakai requestAnimationFrame supaya measurement scrollHeight terjadi SETELAH
-    // browser paint — fix bug "scrollbar tidak muncul saat pertama buka modal"
-    // (sebelumnya scrollHeight diukur sebelum text ter-render, hasil height = 0/kecil).
+    // Auto-adjust textarea height SEKALI saat template baru di-load (atau saat user
+    // pindah ke tab Text). TIDAK fire pada setiap keystroke — sebelumnya `text` ada
+    // di deps array menyebabkan height reset + scroll jump tiap kali user ketik.
+    // User yang lagi edit tetap nyaman scroll natively kalau konten melewati height.
     useEffect(() => {
-        if (tab !== 'text' || !open) return;
+        if (tab !== 'text' || !open || loadingText) return;
         let cancelled = false;
         const raf = requestAnimationFrame(() => {
             if (cancelled || !textareaRef.current) return;
@@ -185,7 +185,7 @@ export function PublishReportModal({
             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
         });
         return () => { cancelled = true; cancelAnimationFrame(raf); };
-    }, [text, tab, open, loadingText]);
+    }, [tab, open, loadingText]);
 
     // Reusable: re-fetch template body dari server. Dipanggil saat modal open AND
     // setiap kali dropdown supervisor/foreman berubah supaya template auto-refresh.
@@ -474,11 +474,11 @@ export function PublishReportModal({
                                                 {copied ? 'Tersalin' : 'Salin Teks'}
                                             </button>
                                         </div>
-                                        <textarea 
+                                        <textarea
                                             ref={textareaRef}
-                                            value={text} 
-                                            onChange={e => setText(e.target.value)} 
-                                            className="w-full bg-transparent border-none text-[11.5px] md:text-xs font-mono focus:outline-none focus:ring-0 text-slate-200 resize-none overflow-hidden leading-relaxed min-h-[200px]" 
+                                            value={text}
+                                            onChange={e => setText(e.target.value)}
+                                            className="w-full bg-transparent border-none text-[11.5px] md:text-xs font-mono focus:outline-none focus:ring-0 text-slate-200 resize-y overflow-y-auto leading-relaxed min-h-[200px]"
                                             placeholder="Tulis laporan di sini..."
                                         />
                                     </div>

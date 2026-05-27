@@ -1311,11 +1311,22 @@ function InputShiftPageInner() {
 
                                     {/* Tanggal (Date Picker) - Swapped to Row 1 */}
                                     <div
-                                        onMouseDown={e => {
-                                            // mousedown lebih cepat dari click (tidak menunggu mouseup).
-                                            // Cegah default supaya tidak fokus ke parent div, lalu langsung buka picker.
-                                            e.preventDefault();
-                                            dateInputRef.current?.showPicker?.();
+                                        onClick={() => {
+                                            // onClick lebih reliabel daripada onMouseDown di mobile —
+                                            // touch tidak selalu fire mousedown, tapi pasti fire click.
+                                            // showPicker() butuh user-gesture; click handler satisfy itu.
+                                            // Fallback: kalau showPicker tidak ada (browser lama) atau
+                                            // throw, fokus + click ke input native sebagai pengganti.
+                                            const el = dateInputRef.current;
+                                            if (!el) return;
+                                            try {
+                                                if (typeof el.showPicker === 'function') {
+                                                    el.showPicker();
+                                                    return;
+                                                }
+                                            } catch { /* showPicker bisa throw kalau bukan user gesture */ }
+                                            el.focus();
+                                            el.click();
                                         }}
                                         className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-2.5 pr-7 py-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px] cursor-pointer focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}
                                     >
@@ -1328,7 +1339,8 @@ function InputShiftPageInner() {
                                                 {formattedDate || selectedDate}
                                             </span>
                                             {/* Input native — hanya untuk hold value & jadi picker target.
-                                                pointer-events-none supaya semua klik kena parent div → langsung showPicker. */}
+                                                pointer-events-none supaya semua tap kena parent div → onClick
+                                                memanggil showPicker (kompatibel desktop + mobile). */}
                                             <input
                                                 ref={dateInputRef}
                                                 type="date"

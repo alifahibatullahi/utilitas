@@ -31,8 +31,8 @@ function getShiftWindowIso(date: string, shift: string): { start: string; end: s
     return { start: `${prevDate}T23:00:00+07:00`, end: `${date}T07:00:00+07:00` };
 }
 
-// GET — returns the suggested text body for the Washift channel.
-// Modal calls this to pre-fill the editable textarea.
+// GET — returns the suggested text body for the Washift channel + structured summary
+// untuk Review tab. Modal calls this to pre-fill review cards & editable textarea.
 export async function GET(req: NextRequest) {
     const reportId = req.nextUrl.searchParams.get('reportId');
     if (!reportId) return NextResponse.json({ error: 'reportId required' }, { status: 400 });
@@ -42,12 +42,13 @@ export async function GET(req: NextRequest) {
         .from('shift_reports')
         .select(`
             id, date, shift, group_name, supervisor, catatan,
-            shift_turbin (flow_steam, press_steam, vacuum, stream_days, thrust_bearing),
+            shift_turbin (flow_steam, press_steam, temp_steam, vacuum, stream_days, thrust_bearing),
             shift_generator_gi (gen_load, gen_tegangan, gen_frequensi, gi_sum_p),
-            shift_boiler (boiler, press_steam, flow_steam, batubara_ton, temp_furnace, temp_flue_gas),
-            shift_steam_dist (pabrik1_flow, pabrik3a_flow),
-            shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie),
-            shift_tankyard (tk_rcw, tk_demin)
+            shift_boiler (boiler, press_steam, flow_steam, temp_steam, batubara_ton, temp_furnace, temp_flue_gas, status_boiler),
+            shift_steam_dist (pabrik1_flow, pabrik2_flow, pabrik3a_flow, pabrik3b_flow),
+            shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie, power_pabrik3b),
+            shift_tankyard (tk_rcw, tk_demin),
+            shift_personnel (turbin_karu, boiler_karu)
         `)
         .eq('id', reportId)
         .single();
@@ -58,22 +59,31 @@ export async function GET(req: NextRequest) {
     const win = getShiftWindowIso(report.date as string, report.shift as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
-        .select('item, uraian, scope, status, tipe, keterangan')
+        .select('item, uraian, scope, status, tipe, keterangan, updated_at')
         .in('status', ['IP', 'OK'])
         .gte('updated_at', win.start)
         .lte('updated_at', win.end)
         .neq('item', 'NOTE')
         .order('item', { ascending: true });
 
-    const summary = buildShiftSummary(report, maintenance ?? []);
+    // Critical equipment di window shift yang sama
+    const { data: critical } = await supabase
+        .from('critical_equipment')
+        .select('date, item, deskripsi, scope, foreman')
+        .gte('date', (report.date as string))
+        .lte('date', (report.date as string))
+        .order('item', { ascending: true });
+
+    const summaryText = buildShiftSummary(report, maintenance ?? []);
     const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
     const text = await renderTemplate(supabase, 'shift_share', {
         shift: shiftLabel,
         group: report.group_name as string,
         date: formatDateHariTanggal(report.date as string),
-        summary,
+        summary: summaryText,
     });
-    return NextResponse.json({ text });
+    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? []);
+    return NextResponse.json({ text, summary });
 }
 
 /** Format "2026-05-23" → "Senin, 23 Mei 2026". Parse local agar tidak ke-shift TZ. */
@@ -468,4 +478,162 @@ function buildShiftSummary(report: any, maintenance: any[]): string {
 
 function escapeHtml(s: string): string {
     return s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]!));
+}
+
+// ────────────────── Structured JSON Summary untuk Review tab di PublishReportModal ──────────────────
+// Dipakai untuk render kartu mini per area di tab Review Summary. Sumber data sama dengan
+// buildShiftSummary text, tapi lebih kaya field (semua angka raw, status, dst) supaya
+// modal bisa render flexible.
+
+export interface ShiftReviewSummary {
+    header: {
+        date: string;            // YYYY-MM-DD
+        dateHumanized: string;   // "Senin, 26 Mei 2026"
+        shift: string;
+        group: string;
+        supervisor: string | null;
+        foremanBoiler: string | null;
+        foremanTurbin: string | null;
+    };
+    boilerA: BoilerSummary | null;
+    boilerB: BoilerSummary | null;
+    turbin: TurbinSummary | null;
+    steamDist: SteamDistSummary | null;
+    power: PowerSummary | null;
+    tankLevels: { rcw: number | null; demin: number | null } | null;
+    catatan: string;
+    maintenance: MaintItem[];
+    critical: CriticalItem[];
+}
+interface BoilerSummary {
+    flow: number | null;
+    pressSteam: number | null;
+    tempSteam: number | null;
+    tempFurnace: number | null;
+    tempFlueGas: number | null;
+    batubara: number | null;
+    status: string | null;
+}
+interface TurbinSummary {
+    flowSteam: number | null;
+    pressSteam: number | null;
+    tempSteam: number | null;
+    thrustBearing: number | null;
+    vacuum: number | null;
+    streamDays: number | null;
+}
+interface SteamDistSummary {
+    pabrik1: number | null;
+    pabrik2: number | null;
+    pabrik3a: number | null;
+    pabrik3b: number | null;
+}
+interface PowerSummary {
+    stgUbb: number | null;
+    internalUbb: number | null;
+    pabrik2: number | null;
+    pabrik3a: number | null;
+    pabrik3b: number | null;
+    piu: number | null;
+    pln: number | null;
+}
+interface MaintItem {
+    item: string;
+    uraian: string;
+    scope: string;
+    tipe: string;
+    status: string;
+}
+interface CriticalItem {
+    date: string;
+    item: string;
+    deskripsi: string;
+    scope: string;
+    foreman: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[]): ShiftReviewSummary {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
+    const turbin = first(report.shift_turbin);
+    const gen = first(report.shift_generator_gi);
+    const steamDist = first(report.shift_steam_dist);
+    const powerDist = first(report.shift_power_dist);
+    const tankyard = first(report.shift_tankyard);
+    const personnel = first(report.shift_personnel);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const boilers: any[] = (report.shift_boiler ?? []);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const boilerA = boilers.find((b: any) => b.boiler === 'A');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const boilerB = boilers.find((b: any) => b.boiler === 'B');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const toBoilerSummary = (b: any | undefined): BoilerSummary | null => b ? {
+        flow: b.flow_steam ?? null,
+        pressSteam: b.press_steam ?? null,
+        tempSteam: b.temp_steam ?? null,
+        tempFurnace: b.temp_furnace ?? null,
+        tempFlueGas: b.temp_flue_gas ?? null,
+        batubara: b.batubara_ton ?? null,
+        status: b.status_boiler ?? null,
+    } : null;
+
+    return {
+        header: {
+            date: report.date as string,
+            dateHumanized: formatDateHariTanggal(report.date as string),
+            shift: (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1),
+            group: report.group_name as string,
+            supervisor: (report.supervisor as string | null) ?? null,
+            foremanBoiler: personnel?.boiler_karu ?? null,
+            foremanTurbin: personnel?.turbin_karu ?? null,
+        },
+        boilerA: toBoilerSummary(boilerA),
+        boilerB: toBoilerSummary(boilerB),
+        turbin: turbin ? {
+            flowSteam: turbin.flow_steam ?? null,
+            pressSteam: turbin.press_steam ?? null,
+            tempSteam: turbin.temp_steam ?? null,
+            thrustBearing: turbin.thrust_bearing ?? null,
+            vacuum: turbin.vacuum ?? null,
+            streamDays: turbin.stream_days ?? null,
+        } : null,
+        steamDist: steamDist ? {
+            pabrik1: steamDist.pabrik1_flow ?? null,
+            pabrik2: steamDist.pabrik2_flow ?? null,
+            pabrik3a: steamDist.pabrik3a_flow ?? null,
+            pabrik3b: steamDist.pabrik3b_flow ?? null,
+        } : null,
+        power: (gen || powerDist) ? {
+            stgUbb: gen?.gen_load ?? null,
+            internalUbb: powerDist?.power_ubb ?? null,
+            pabrik2: powerDist?.power_pabrik2 ?? null,
+            pabrik3a: powerDist?.power_pabrik3a ?? null,
+            // Pabrik 3B = revamping (legacy column power_pabrik3b kosong)
+            pabrik3b: powerDist?.power_revamping ?? null,
+            piu: powerDist?.power_pie ?? null,
+            pln: gen?.gi_sum_p ?? null,
+        } : null,
+        tankLevels: tankyard ? {
+            rcw: tankyard.tk_rcw ?? null,
+            demin: tankyard.tk_demin ?? null,
+        } : null,
+        catatan: (report.catatan as string) ?? '',
+        maintenance: maintenance.map(m => ({
+            item: String(m.item ?? '-'),
+            uraian: String(m.uraian ?? '-'),
+            scope: String(m.scope ?? '-'),
+            tipe: String(m.tipe ?? '-'),
+            status: String(m.status ?? '-'),
+        })),
+        critical: critical.map(c => ({
+            date: String(c.date ?? '-'),
+            item: String(c.item ?? '-'),
+            deskripsi: String(c.deskripsi ?? '-'),
+            scope: String(c.scope ?? '-'),
+            foreman: String(c.foreman ?? '-'),
+        })),
+    };
 }

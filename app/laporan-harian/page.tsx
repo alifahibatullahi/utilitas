@@ -121,7 +121,7 @@ function BarChartDark({ bars, height = 'h-32' }: { bars: { label: string; value:
 const HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export default function LaporanHarianPage() {
-    const { operator } = useOperator();
+    const { operator, canReviewReport } = useOperator();
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState('2026-03-15');
     const [publishOpen, setPublishOpen] = useState(false);
@@ -850,9 +850,10 @@ export default function LaporanHarianPage() {
                         Lihat Preview
                     </button>
                     <button onClick={() => setPublishOpen(true)}
+                        title="Review ringkasan laporan sebelum kirim ke WhatsApp"
                         className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(16,185,129,0.5)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.7)] hover:scale-105">
-                        <span className="material-symbols-outlined text-lg">publish</span>
-                        Publish Laporan Harian
+                        <span className="material-symbols-outlined text-lg">fact_check</span>
+                        Review / Publish
                     </button>
                 </div>
             )}
@@ -864,6 +865,8 @@ export default function LaporanHarianPage() {
                 reportDate={selectedDate}
                 reportGroup={r.group}
                 initialSupervisor={r.supervisor || ''}
+                canReview={canReviewReport}
+                reviewerName={operator?.name ?? ''}
             />
         </div>
     );

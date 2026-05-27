@@ -4,6 +4,50 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 
+// ── Structured summary types (mirror dari server endpoints publish-{shift|daily}) ──
+interface ShiftReviewSummary {
+    header: {
+        date: string;
+        dateHumanized: string;
+        shift: string;
+        group: string;
+        supervisor: string | null;
+        foremanBoiler: string | null;
+        foremanTurbin: string | null;
+    };
+    boilerA: { flow: number | null; pressSteam: number | null; tempSteam: number | null; tempFurnace: number | null; tempFlueGas: number | null; batubara: number | null; status: string | null } | null;
+    boilerB: { flow: number | null; pressSteam: number | null; tempSteam: number | null; tempFurnace: number | null; tempFlueGas: number | null; batubara: number | null; status: string | null } | null;
+    turbin: { flowSteam: number | null; pressSteam: number | null; tempSteam: number | null; thrustBearing: number | null; vacuum: number | null; streamDays: number | null } | null;
+    steamDist: { pabrik1: number | null; pabrik2: number | null; pabrik3a: number | null; pabrik3b: number | null } | null;
+    power: { stgUbb: number | null; internalUbb: number | null; pabrik2: number | null; pabrik3a: number | null; pabrik3b: number | null; piu: number | null; pln: number | null } | null;
+    tankLevels: { rcw: number | null; demin: number | null } | null;
+    catatan: string;
+    maintenance: Array<{ item: string; uraian: string; scope: string; tipe: string; status: string }>;
+    critical: Array<{ date: string; item: string; deskripsi: string; scope: string; foreman: string }>;
+}
+
+interface DailyReviewSummary {
+    header: { date: string; dateHumanized: string };
+    boilerA: { flow: number | null; batubara: number | null; tempFurnace: number | null } | null;
+    boilerB: { flow: number | null; batubara: number | null; tempFurnace: number | null } | null;
+    turbin: { inletFlow: number | null; thrustBearing: number | null } | null;
+    steamDist: { pabrik1: number | null; pabrik3: number | null } | null;
+    power: { stgUbb: number | null; internalUbb: number | null; pabrik2: number | null; pabrik3a: number | null; pabrik3b: number | null; piu: number | null; pln: number | null } | null;
+    tankLevels: { rcw: number | null; demin: number | null } | null;
+    stockBatubara: number | null;
+    notes: string;
+    maintenance: Array<{ item: string; uraian: string; scope: string; tipe: string; status: string }>;
+    critical: Array<{ date: string; item: string; deskripsi: string; scope: string; foreman: string }>;
+}
+
+/** Format number untuk display — null/NaN → '-', integer no decimal, else 1 decimal. */
+function fmt(v: number | null | undefined): string {
+    if (v == null) return '-';
+    const n = Number(v);
+    if (isNaN(n)) return '-';
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
 interface Props {
     kind: 'shift' | 'daily';
     reportId: string;
@@ -47,9 +91,11 @@ export function PublishReportModal({
     canReview = false,
     reviewerName = '',
 }: Props) {
-    // Tab review sementara coming soon — default ke 'text'.
-    const [tab, setTab] = useState<'review' | 'pdf' | 'text'>('text');
+    // Default ke tab Review Summary — reviewer scan kartu dulu sebelum publish.
+    const [tab, setTab] = useState<'review' | 'pdf' | 'text'>('review');
     const [text, setText] = useState('');
+    // Structured summary untuk review tab. Union karena kind shift vs daily struktur beda.
+    const [summary, setSummary] = useState<ShiftReviewSummary | DailyReviewSummary | null>(null);
     const [loadingText, setLoadingText] = useState(false);
     const [sending, setSending] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -150,6 +196,7 @@ export function PublishReportModal({
             const res = await fetch(`/api/whatsapp/publish-${kind === 'shift' ? 'shift' : 'daily'}?reportId=${reportId}`);
             const d = await res.json();
             if (d.text) setText(d.text);
+            if (d.summary) setSummary(d.summary);
         } catch (err) {
             console.warn('text fetch failed', err);
         } finally {
@@ -175,13 +222,29 @@ export function PublishReportModal({
     };
 
     const publish = async () => {
+        if (!reportId) return;
         setSending(true);
         setResults(null);
         try {
-            // TODO: Persist approval (status=approved + reviewed_by + reviewed_at)
-            // saat fitur Review Summary diaktifkan. Sementara skip — tab review = coming soon.
-            // Suppress unused vars warning.
-            void canReview; void reviewerName;
+            // 1. Persist approval ke parent table (shift_reports / daily_reports).
+            //    status=approved + reviewed_by + reviewed_at=now().
+            //    Sementara: tidak gate by canReview — siapa pun yang klik button ini = reviewer.
+            //    canReview tetap diteruskan dari parent untuk future-proof.
+            void canReview;
+            const supabase = createClient();
+            const reviewedAt = new Date().toISOString();
+            const reviewedByValue = reviewerName || 'Operator';
+            const parentTable = kind === 'shift' ? 'shift_reports' : 'daily_reports';
+            const { error: approveErr } = await supabase
+                .from(parentTable)
+                .update({ status: 'approved', reviewed_by: reviewedByValue, reviewed_at: reviewedAt })
+                .eq('id', reportId);
+            if (approveErr) {
+                console.warn(`[PublishReportModal] approve persist failed (${parentTable}):`, approveErr.message);
+                // Tetap lanjut publish — DB persist optional, jangan blokir kirim WA.
+            }
+
+            // 2. Kirim ke endpoint publish (WA washift + PDF management).
             const res = await fetch(`/api/whatsapp/publish-${kind === 'shift' ? 'shift' : 'daily'}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -267,20 +330,17 @@ export function PublishReportModal({
                 {/* Tabs Wrapper */}
                 <div className="px-6 pt-4">
                     <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 flex gap-2">
-                        {/* Review Summary — hanya untuk shift kind, sementara COMING SOON */}
-                        {kind === 'shift' && (
-                            <button
-                                onClick={() => setTab('review')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
-                                    ${tab === 'review'
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)]'
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-base">fact_check</span>
-                                Review Summary
-                                <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">SOON</span>
-                            </button>
-                        )}
+                        {/* Review Summary — default tab untuk shift maupun harian. Reviewer scan dulu di sini. */}
+                        <button
+                            onClick={() => setTab('review')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
+                                ${tab === 'review'
+                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)]'
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
+                        >
+                            <span className="material-symbols-outlined text-base">fact_check</span>
+                            Review Summary
+                        </button>
                         <button
                             onClick={() => setTab('text')}
                             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer
@@ -378,28 +438,18 @@ export function PublishReportModal({
 
                 {/* Body Content */}
                 <div className="flex-1 overflow-y-auto p-6">
-                    {/* Review Summary — sementara coming soon (placeholder) */}
-                    {tab === 'review' && kind === 'shift' && (
-                        <div className="space-y-4 py-12">
-                            <div className="max-w-md mx-auto">
-                                <div className="bg-slate-950/60 border border-slate-800/80 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
-                                    <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.15)] border border-emerald-500/30">
-                                        <span className="material-symbols-outlined text-4xl">fact_check</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <h3 className="text-base font-extrabold text-emerald-300 uppercase tracking-wider">Coming Soon</h3>
-                                        <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
-                                            Fitur review summary supervisor/foreman sebelum publish sedang dalam pengembangan.
-                                            Untuk sementara, gunakan tab <span className="text-cyan-300 font-bold">Text Washift</span> untuk publish langsung.
-                                        </p>
-                                    </div>
-                                    <span className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest">
-                                        <span className="material-symbols-outlined text-[12px]">schedule</span>
-                                        Fitur dalam pengembangan
-                                    </span>
-                                </div>
+                    {/* Review Summary — kartu mini per area untuk reviewer scan. */}
+                    {tab === 'review' && (
+                        loadingText || !summary ? (
+                            <div className="flex flex-col items-center justify-center py-20 gap-3">
+                                <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
+                                <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat ringkasan...</span>
                             </div>
-                        </div>
+                        ) : kind === 'shift' ? (
+                            <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
+                        ) : (
+                            <ReviewSummaryDaily summary={summary as DailyReviewSummary} />
+                        )
                     )}
                     {tab === 'text' && (
                         <div className="space-y-4">
@@ -482,8 +532,8 @@ export function PublishReportModal({
                     </button>
                     <button
                         onClick={publish}
-                        disabled={sending || loadingText || !text.trim() || tab === 'pdf' || tab === 'review'}
-                        title={tab === 'pdf' ? 'PDF ke management belum tersedia (coming soon)' : tab === 'review' ? 'Review summary belum tersedia (coming soon)' : undefined}
+                        disabled={sending || loadingText || !text.trim() || !reportId || tab === 'pdf'}
+                        title={tab === 'pdf' ? 'PDF ke management belum tersedia (coming soon)' : !reportId ? 'Laporan belum disimpan' : 'Setujui isi laporan dan kirim ke WhatsApp + PDF management'}
                         className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all duration-300 shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
                     >
                         {sending ? (
@@ -493,13 +543,287 @@ export function PublishReportModal({
                             </>
                         ) : (
                             <>
-                                <span className="material-symbols-outlined text-sm">publish</span>
-                                {tab === 'pdf' ? 'PDF Coming Soon' : tab === 'review' ? 'Review Coming Soon' : 'Publish Laporan'}
+                                <span className="material-symbols-outlined text-sm">check_circle</span>
+                                {tab === 'pdf' ? 'PDF Coming Soon' : 'Setujui & Publish'}
                             </>
                         )}
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ──────────── Review Summary Components — kartu mini per area ────────────
+
+function ReviewCard({ title, icon, color = 'slate', children }: { title: string; icon: string; color?: 'slate' | 'amber' | 'cyan' | 'purple' | 'emerald' | 'rose'; children: React.ReactNode }) {
+    const colorMap: Record<string, string> = {
+        slate: 'border-slate-700/60 text-slate-300',
+        amber: 'border-amber-500/40 text-amber-300',
+        cyan: 'border-cyan-500/40 text-cyan-300',
+        purple: 'border-purple-500/40 text-purple-300',
+        emerald: 'border-emerald-500/40 text-emerald-300',
+        rose: 'border-rose-500/40 text-rose-300',
+    };
+    return (
+        <div className={`bg-slate-950/50 border ${colorMap[color]} rounded-xl p-3 space-y-2 shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)]`}>
+            <div className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${colorMap[color].split(' ').slice(1).join(' ')}`}>
+                <span className="material-symbols-outlined text-[14px]">{icon}</span>
+                {title}
+            </div>
+            <div className="space-y-1 text-[11px] text-slate-200">{children}</div>
+        </div>
+    );
+}
+
+function Row({ label, value, unit }: { label: string; value: string | number | null | undefined; unit?: string }) {
+    return (
+        <div className="flex items-baseline justify-between gap-2">
+            <span className="text-slate-400 text-[10px]">{label}</span>
+            <span className="font-mono font-bold text-slate-100">
+                {value == null || value === '' ? '—' : value}
+                {unit && value != null && value !== '' && <span className="ml-1 text-[10px] text-slate-400 font-normal">{unit}</span>}
+            </span>
+        </div>
+    );
+}
+
+function StatusBadge({ value }: { value: string | null }) {
+    if (!value) return <span className="text-slate-500">—</span>;
+    const v = value.toLowerCase();
+    const colorMap: Record<string, string> = {
+        running: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
+        standby: 'bg-slate-500/15 text-slate-300 border-slate-500/40',
+        maintenance: 'bg-blue-500/15 text-blue-300 border-blue-500/40',
+        berasap: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
+        shutdown: 'bg-rose-500/15 text-rose-300 border-rose-500/40',
+    };
+    return (
+        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${colorMap[v] ?? colorMap.standby}`}>
+            {value}
+        </span>
+    );
+}
+
+function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
+    return (
+        <div className="space-y-4">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 mb-1">Header Laporan</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-[11px]">
+                    <Row label="Tanggal" value={summary.header.dateHumanized} />
+                    <Row label="Shift" value={summary.header.shift} />
+                    <Row label="Grup" value={summary.header.group} />
+                    <Row label="Supervisor" value={summary.header.supervisor} />
+                    <Row label="Foreman Boiler" value={summary.header.foremanBoiler} />
+                    <Row label="Foreman Turbin" value={summary.header.foremanTurbin} />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Boiler A */}
+                <ReviewCard title="Boiler A" icon="factory" color="rose">
+                    <Row label="Flow Steam" value={fmt(summary.boilerA?.flow)} unit="t/h" />
+                    <Row label="Press Steam" value={fmt(summary.boilerA?.pressSteam)} unit="bar" />
+                    <Row label="Temp Steam" value={fmt(summary.boilerA?.tempSteam)} unit="°C" />
+                    <Row label="Temp Furnace" value={fmt(summary.boilerA?.tempFurnace)} unit="°C" />
+                    <Row label="Batubara" value={fmt(summary.boilerA?.batubara)} unit="ton" />
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                        <span className="text-slate-400 text-[10px]">Status</span>
+                        <StatusBadge value={summary.boilerA?.status ?? null} />
+                    </div>
+                </ReviewCard>
+
+                {/* Boiler B */}
+                <ReviewCard title="Boiler B" icon="factory" color="purple">
+                    <Row label="Flow Steam" value={fmt(summary.boilerB?.flow)} unit="t/h" />
+                    <Row label="Press Steam" value={fmt(summary.boilerB?.pressSteam)} unit="bar" />
+                    <Row label="Temp Steam" value={fmt(summary.boilerB?.tempSteam)} unit="°C" />
+                    <Row label="Temp Furnace" value={fmt(summary.boilerB?.tempFurnace)} unit="°C" />
+                    <Row label="Batubara" value={fmt(summary.boilerB?.batubara)} unit="ton" />
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                        <span className="text-slate-400 text-[10px]">Status</span>
+                        <StatusBadge value={summary.boilerB?.status ?? null} />
+                    </div>
+                </ReviewCard>
+
+                {/* Turbin */}
+                <ReviewCard title="Turbin" icon="mode_fan" color="cyan">
+                    <Row label="Flow Steam" value={fmt(summary.turbin?.flowSteam)} unit="t/h" />
+                    <Row label="Press Steam" value={fmt(summary.turbin?.pressSteam)} unit="bar" />
+                    <Row label="Temp Steam" value={fmt(summary.turbin?.tempSteam)} unit="°C" />
+                    <Row label="Thrust Bearing" value={fmt(summary.turbin?.thrustBearing)} unit="°C" />
+                    <Row label="Vacuum" value={fmt(summary.turbin?.vacuum)} />
+                    <Row label="Stream Days" value={fmt(summary.turbin?.streamDays)} unit="hari" />
+                </ReviewCard>
+
+                {/* Distribusi Steam */}
+                <ReviewCard title="Distribusi Steam" icon="water_drop" color="cyan">
+                    <Row label="Pabrik 1" value={fmt(summary.steamDist?.pabrik1)} unit="t/h" />
+                    <Row label="Pabrik 2" value={fmt(summary.steamDist?.pabrik2)} unit="t/h" />
+                    <Row label="Pabrik 3A" value={fmt(summary.steamDist?.pabrik3a)} unit="t/h" />
+                    <Row label="Pabrik 3B" value={fmt(summary.steamDist?.pabrik3b)} unit="t/h" />
+                </ReviewCard>
+
+                {/* Power */}
+                <ReviewCard title="Power" icon="bolt" color="amber">
+                    <Row label="STG UBB" value={fmt(summary.power?.stgUbb)} unit="MW" />
+                    <Row label="Internal UBB" value={fmt(summary.power?.internalUbb)} unit="MW" />
+                    <Row label="Pabrik 2" value={fmt(summary.power?.pabrik2)} unit="MW" />
+                    <Row label="Pabrik 3A" value={fmt(summary.power?.pabrik3a)} unit="MW" />
+                    <Row label="Pabrik 3B" value={fmt(summary.power?.pabrik3b)} unit="MW" />
+                    <Row label="PIU" value={fmt(summary.power?.piu)} unit="MW" />
+                    <Row label="PLN" value={fmt(summary.power?.pln)} unit="MW" />
+                </ReviewCard>
+
+                {/* Tank Levels */}
+                <ReviewCard title="Tank Level" icon="water" color="emerald">
+                    <Row label="RCW" value={fmt(summary.tankLevels?.rcw)} unit="m³" />
+                    <Row label="Demin" value={fmt(summary.tankLevels?.demin)} unit="m³" />
+                </ReviewCard>
+            </div>
+
+            {/* Catatan Shift */}
+            <ReviewCard title="Catatan Shift" icon="sticky_note_2" color="amber">
+                {summary.catatan.trim() ? (
+                    <pre className="text-[11px] text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">{summary.catatan}</pre>
+                ) : (
+                    <p className="text-[11px] text-slate-500 italic">Tidak ada catatan.</p>
+                )}
+            </ReviewCard>
+
+            {/* Maintenance */}
+            <ReviewCard title={`Maintenance (${summary.maintenance.length})`} icon="build" color="slate">
+                {summary.maintenance.length === 0 ? (
+                    <p className="text-[11px] text-slate-500 italic">Tidak ada item maintenance.</p>
+                ) : (
+                    <ul className="space-y-1">
+                        {summary.maintenance.map((m, i) => (
+                            <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
+                                <span className="font-mono font-bold text-slate-300">{i + 1}.</span>
+                                <span className="font-bold text-slate-200">{m.item}</span>
+                                <span className="text-slate-400">·</span>
+                                <span className="text-slate-300">{m.scope}</span>
+                                <span className="text-slate-400">·</span>
+                                <span className="text-slate-300 flex-1 min-w-0">{m.uraian}</span>
+                                <StatusBadge value={m.status} />
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </ReviewCard>
+
+            {/* Critical Equipment */}
+            {summary.critical.length > 0 && (
+                <ReviewCard title={`Critical Equipment (${summary.critical.length})`} icon="warning" color="rose">
+                    <ul className="space-y-1">
+                        {summary.critical.map((c, i) => (
+                            <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
+                                <span className="font-mono text-slate-400">{c.date}</span>
+                                <span className="font-bold text-slate-200">{c.item}</span>
+                                <span className="text-slate-400">·</span>
+                                <span className="text-slate-300">{c.scope}</span>
+                                <span className="text-slate-400">·</span>
+                                <span className="text-slate-300 flex-1 min-w-0">{c.deskripsi}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </ReviewCard>
+            )}
+        </div>
+    );
+}
+
+function ReviewSummaryDaily({ summary }: { summary: DailyReviewSummary }) {
+    return (
+        <div className="space-y-4">
+            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 mb-1">Header Laporan Harian</div>
+                <div className="text-[11px]">
+                    <Row label="Tanggal" value={summary.header.dateHumanized} />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ReviewCard title="Boiler A" icon="factory" color="rose">
+                    <Row label="Flow Steam (00:00)" value={fmt(summary.boilerA?.flow)} unit="t/h" />
+                    <Row label="Batubara 24h" value={fmt(summary.boilerA?.batubara)} unit="ton" />
+                    <Row label="Temp Furnace" value={fmt(summary.boilerA?.tempFurnace)} unit="°C" />
+                </ReviewCard>
+                <ReviewCard title="Boiler B" icon="factory" color="purple">
+                    <Row label="Flow Steam (00:00)" value={fmt(summary.boilerB?.flow)} unit="t/h" />
+                    <Row label="Batubara 24h" value={fmt(summary.boilerB?.batubara)} unit="ton" />
+                    <Row label="Temp Furnace" value={fmt(summary.boilerB?.tempFurnace)} unit="°C" />
+                </ReviewCard>
+                <ReviewCard title="Turbin" icon="mode_fan" color="cyan">
+                    <Row label="Inlet Flow" value={fmt(summary.turbin?.inletFlow)} unit="t/h" />
+                    <Row label="Thrust Bearing" value={fmt(summary.turbin?.thrustBearing)} unit="°C" />
+                </ReviewCard>
+                <ReviewCard title="Distribusi Steam" icon="water_drop" color="cyan">
+                    <Row label="Pabrik 1" value={fmt(summary.steamDist?.pabrik1)} unit="t/h" />
+                    <Row label="Pabrik 3" value={fmt(summary.steamDist?.pabrik3)} unit="t/h" />
+                </ReviewCard>
+                <ReviewCard title="Power" icon="bolt" color="amber">
+                    <Row label="STG UBB" value={fmt(summary.power?.stgUbb)} unit="MW" />
+                    <Row label="Internal UBB" value={fmt(summary.power?.internalUbb)} unit="MW" />
+                    <Row label="Pabrik 2" value={fmt(summary.power?.pabrik2)} unit="MW" />
+                    <Row label="Pabrik 3A" value={fmt(summary.power?.pabrik3a)} unit="MW" />
+                    <Row label="Pabrik 3B" value={fmt(summary.power?.pabrik3b)} unit="MW" />
+                    <Row label="PIU" value={fmt(summary.power?.piu)} unit="MW" />
+                    <Row label="PLN" value={fmt(summary.power?.pln)} unit="MW" />
+                </ReviewCard>
+                <ReviewCard title="Tank & Stock" icon="water" color="emerald">
+                    <Row label="RCW" value={fmt(summary.tankLevels?.rcw)} unit="m³" />
+                    <Row label="Demin" value={fmt(summary.tankLevels?.demin)} unit="m³" />
+                    <Row label="Stock Batubara" value={fmt(summary.stockBatubara)} unit="ton" />
+                </ReviewCard>
+            </div>
+
+            <ReviewCard title="Catatan Harian" icon="sticky_note_2" color="amber">
+                {summary.notes.trim() ? (
+                    <pre className="text-[11px] text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">{summary.notes}</pre>
+                ) : (
+                    <p className="text-[11px] text-slate-500 italic">Tidak ada catatan.</p>
+                )}
+            </ReviewCard>
+
+            <ReviewCard title={`Maintenance (${summary.maintenance.length})`} icon="build" color="slate">
+                {summary.maintenance.length === 0 ? (
+                    <p className="text-[11px] text-slate-500 italic">Tidak ada item maintenance.</p>
+                ) : (
+                    <ul className="space-y-1">
+                        {summary.maintenance.map((m, i) => (
+                            <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
+                                <span className="font-mono font-bold text-slate-300">{i + 1}.</span>
+                                <span className="font-bold text-slate-200">{m.item}</span>
+                                <span className="text-slate-400">·</span>
+                                <span className="text-slate-300">{m.scope}</span>
+                                <span className="text-slate-400">·</span>
+                                <span className="text-slate-300 flex-1 min-w-0">{m.uraian}</span>
+                                <StatusBadge value={m.status} />
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </ReviewCard>
+
+            {summary.critical.length > 0 && (
+                <ReviewCard title={`Critical Equipment (${summary.critical.length})`} icon="warning" color="rose">
+                    <ul className="space-y-1">
+                        {summary.critical.map((c, i) => (
+                            <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
+                                <span className="font-mono text-slate-400">{c.date}</span>
+                                <span className="font-bold text-slate-200">{c.item}</span>
+                                <span className="text-slate-400">·</span>
+                                <span className="text-slate-300">{c.scope}</span>
+                                <span className="text-slate-400">·</span>
+                                <span className="text-slate-300 flex-1 min-w-0">{c.deskripsi}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </ReviewCard>
+            )}
         </div>
     );
 }

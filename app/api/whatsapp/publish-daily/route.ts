@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
             id, date, notes,
             daily_report_steam (prod_boiler_a_00, prod_boiler_b_00, inlet_turbine_00, mps_i_00, mps_3a_00),
             daily_report_power (gen_00, power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie),
-            daily_report_coal (total_boiler_a_24, total_boiler_b_24),
+            daily_report_coal (total_boiler_a_24, total_boiler_b_24, stock_batubara),
             daily_report_turbine_misc (temp_furnace_a, temp_furnace_b, thrust_bearing_temp, gi_sum_p),
             daily_report_stock_tank (rcw_level_00, demin_level_00)
         `)
@@ -54,19 +54,27 @@ export async function GET(req: NextRequest) {
     const win = getOperationalDayWindowIso(report.date as string);
     const { data: maintenance } = await supabase
         .from('maintenance_logs')
-        .select('item, uraian, scope, status, tipe, keterangan')
+        .select('item, uraian, scope, status, tipe, keterangan, updated_at')
         .in('status', ['IP', 'OK'])
         .gte('updated_at', win.start)
         .lte('updated_at', win.end)
         .neq('item', 'NOTE')
         .order('item', { ascending: true });
 
-    const summary = buildDailySummary(report, maintenance ?? []);
+    // Critical equipment di tanggal harian ini
+    const { data: critical } = await supabase
+        .from('critical_equipment')
+        .select('date, item, deskripsi, scope, foreman')
+        .eq('date', report.date as string)
+        .order('item', { ascending: true });
+
+    const summaryText = buildDailySummary(report, maintenance ?? []);
     const text = await renderTemplate(supabase, 'daily_share', {
         date: formatDateHariTanggal(report.date as string),
-        summary,
+        summary: summaryText,
     });
-    return NextResponse.json({ text });
+    const summary = buildDailyReviewSummary(report, maintenance ?? [], critical ?? []);
+    return NextResponse.json({ text, summary });
 }
 
 /** Format "2026-05-23" → "Senin, 23 Mei 2026". */
@@ -373,6 +381,91 @@ function buildDailySummary(report: any, maintenance: any[]): string {
     }
 
     return lines.join('\n');
+}
+
+// ────────────────── Structured JSON Summary untuk Review tab (harian) ──────────────────
+
+export interface DailyReviewSummary {
+    header: { date: string; dateHumanized: string };
+    boilerA: { flow: number | null; batubara: number | null; tempFurnace: number | null } | null;
+    boilerB: { flow: number | null; batubara: number | null; tempFurnace: number | null } | null;
+    turbin: { inletFlow: number | null; thrustBearing: number | null } | null;
+    steamDist: { pabrik1: number | null; pabrik3: number | null } | null;
+    power: {
+        stgUbb: number | null; internalUbb: number | null;
+        pabrik2: number | null; pabrik3a: number | null; pabrik3b: number | null;
+        piu: number | null; pln: number | null;
+    } | null;
+    tankLevels: { rcw: number | null; demin: number | null } | null;
+    stockBatubara: number | null;
+    notes: string;
+    maintenance: Array<{ item: string; uraian: string; scope: string; tipe: string; status: string }>;
+    critical: Array<{ date: string; item: string; deskripsi: string; scope: string; foreman: string }>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildDailyReviewSummary(report: any, maintenance: any[], critical: any[]): DailyReviewSummary {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
+    const stm  = first(report.daily_report_steam);
+    const pwr  = first(report.daily_report_power);
+    const coal = first(report.daily_report_coal);
+    const turb = first(report.daily_report_turbine_misc);
+    const tank = first(report.daily_report_stock_tank);
+
+    return {
+        header: {
+            date: report.date as string,
+            dateHumanized: formatDateHariTanggal(report.date as string),
+        },
+        boilerA: (stm || coal || turb) ? {
+            flow: stm?.prod_boiler_a_00 ?? null,
+            batubara: coal?.total_boiler_a_24 ?? null,
+            tempFurnace: turb?.temp_furnace_a ?? null,
+        } : null,
+        boilerB: (stm || coal || turb) ? {
+            flow: stm?.prod_boiler_b_00 ?? null,
+            batubara: coal?.total_boiler_b_24 ?? null,
+            tempFurnace: turb?.temp_furnace_b ?? null,
+        } : null,
+        turbin: (stm || turb) ? {
+            inletFlow: stm?.inlet_turbine_00 ?? null,
+            thrustBearing: turb?.thrust_bearing_temp ?? null,
+        } : null,
+        steamDist: stm ? {
+            pabrik1: stm.mps_i_00 ?? null,
+            pabrik3: stm.mps_3a_00 ?? null,
+        } : null,
+        power: (pwr || turb) ? {
+            stgUbb: pwr?.gen_00 ?? null,
+            internalUbb: pwr?.power_ubb ?? null,
+            pabrik2: pwr?.power_pabrik2 ?? null,
+            pabrik3a: pwr?.power_pabrik3a ?? null,
+            pabrik3b: pwr?.power_revamping ?? null,
+            piu: pwr?.power_pie ?? null,
+            pln: turb?.gi_sum_p ?? null,
+        } : null,
+        tankLevels: tank ? {
+            rcw: tank.rcw_level_00 ?? null,
+            demin: tank.demin_level_00 ?? null,
+        } : null,
+        stockBatubara: coal?.stock_batubara ?? null,
+        notes: (report.notes as string) ?? '',
+        maintenance: maintenance.map(m => ({
+            item: String(m.item ?? '-'),
+            uraian: String(m.uraian ?? '-'),
+            scope: String(m.scope ?? '-'),
+            tipe: String(m.tipe ?? '-'),
+            status: String(m.status ?? '-'),
+        })),
+        critical: critical.map(c => ({
+            date: String(c.date ?? '-'),
+            item: String(c.item ?? '-'),
+            deskripsi: String(c.deskripsi ?? '-'),
+            scope: String(c.scope ?? '-'),
+            foreman: String(c.foreman ?? '-'),
+        })),
+    };
 }
 
 function escapeHtml(s: string): string {

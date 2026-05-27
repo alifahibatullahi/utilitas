@@ -73,7 +73,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
 
     // Daftar operator lengkap untuk picker "Diisi oleh" (lintas grup)
-    const { operators } = useOperator();
+    const { operators, canReviewReport } = useOperator();
 
     // Per-station filler — default ke operator login, bisa di-override saat swap shift.
     const [fillerName, setFillerName] = useState(() => {
@@ -895,11 +895,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 <button
                                     onClick={() => setPublishOpen(true)}
                                     disabled={publishDisabled}
-                                    title={!report?.id ? 'Submit laporan dulu sebelum publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Publish ke WhatsApp'}
+                                    title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
                                     className={`flex items-center justify-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
                                 >
-                                    <span className="material-symbols-outlined text-[18px]">send</span>
-                                    PUBLISH LAPORAN{isAdmin && !allTabsComplete ? ' (Admin)' : ''}
+                                    <span className="material-symbols-outlined text-[18px]">fact_check</span>
+                                    REVIEW / PUBLISH{isAdmin && !allTabsComplete ? ' (Admin)' : ''}
                                 </button>
                             );
                         })()}
@@ -1092,6 +1092,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 reportDate={date}
                 reportGroup={groupName ?? undefined}
                 initialSupervisor={(totalizer.kasi_name as string) || supervisorName || ''}
+                canReview={canReviewReport}
+                reviewerName={operator?.name ?? ''}
             />
         </>
     );

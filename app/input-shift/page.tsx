@@ -1431,8 +1431,11 @@ function InputShiftPageInner() {
                         )}
                     </div>
 
-                    {/* Status banner — penting untuk operator pengganti yang akses link lama */}
-                    {(isReportSubmitted || isLocked) && (
+                    {/* Status banner — penting untuk operator pengganti yang akses link lama.
+                        HANYA tampil di mode SHIFT — status di sini baca dari shift_reports.
+                        Untuk mode HARIAN, banner equivalent ada di dalam InputHarianForm
+                        (baca daily_reports.status sendiri biar tidak salah tampil). */}
+                    {inputMode === 'shift' && (isReportSubmitted || isLocked) && (
                         <div className={`mt-3 px-4 py-2.5 rounded-lg border flex items-center gap-2.5 text-sm font-bold ${
                             isLocked
                                 ? 'bg-red-500/15 border-red-500/40 text-red-300'
@@ -1443,9 +1446,9 @@ function InputShiftPageInner() {
                             </span>
                             <span>
                                 {isBeforeStart
-                                    ? `Window submit ${inputMode === 'shift' ? SHIFT_LABELS[selectedShift].toLowerCase() : 'laporan harian'} belum dibuka (mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
+                                    ? `Window submit ${SHIFT_LABELS[selectedShift].toLowerCase()} belum dibuka (mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
                                 : isPastDeadline
-                                    ? `Window submit ${inputMode === 'shift' ? SHIFT_LABELS[selectedShift].toLowerCase() : 'laporan harian'} sudah berakhir (deadline ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
+                                    ? `Window submit ${SHIFT_LABELS[selectedShift].toLowerCase()} sudah berakhir (deadline ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
                                     : `Laporan ini sudah disubmit. Submit ulang akan mengganti data. Deadline koreksi: ${submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
                             </span>
                         </div>

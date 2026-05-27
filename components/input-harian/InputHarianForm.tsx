@@ -867,6 +867,36 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 </div>
             )}
 
+            {/* Status banner — penting untuk operator pengganti yang akses link lama.
+                Status dibaca dari daily_reports (bukan shift_reports) supaya tidak salah
+                tampil. "sudah disubmit" hanya muncul kalau laporan harian benar-benar
+                sudah submitted/approved untuk tanggal ini. */}
+            {(() => {
+                const dailyStatus = (report?.status as 'draft' | 'submitted' | 'approved' | undefined) ?? null;
+                const isDailySubmitted = dailyStatus === 'submitted' || dailyStatus === 'approved';
+                if (!isDailySubmitted && !isHarianLocked) return null;
+                return (
+                    <div className={`mb-4 px-4 py-2.5 rounded-lg border flex items-center gap-2.5 text-sm font-bold ${
+                        isHarianLocked
+                            ? 'bg-red-500/15 border-red-500/40 text-red-300'
+                            : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                    }`}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                            {isHarianLocked ? 'lock' : 'warning'}
+                        </span>
+                        <span>
+                            {isHarianBeforeStart && submitWindowStart
+                                ? `Window submit laporan harian belum dibuka (mulai ${submitWindowStart.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
+                            : isHarianPastEnd && submitWindowEnd
+                                ? `Window submit laporan harian sudah berakhir (deadline ${submitWindowEnd.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
+                            : submitWindowEnd
+                                ? `Laporan ini sudah disubmit. Submit ulang akan mengganti data. Deadline koreksi: ${submitWindowEnd.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                                : 'Laporan ini sudah disubmit. Submit ulang akan mengganti data.'}
+                        </span>
+                    </div>
+                );
+            })()}
+
             <div className="flex flex-col lg:flex-row gap-6 w-full max-w-full">
                 {/* Left Sidebar */}
                 <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4">

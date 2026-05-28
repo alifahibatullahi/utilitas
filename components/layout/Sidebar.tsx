@@ -18,6 +18,7 @@ const ICON_MAP: Record<string, string> = {
     campaign: 'campaign',
     history: 'history',
     draft: 'draft',
+    sync: 'sync',
 };
 
 interface SidebarProps {

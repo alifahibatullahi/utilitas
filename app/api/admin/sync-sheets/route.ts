@@ -15,7 +15,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/whatsapp';
-import { fetchShiftRow, fetchDailyRow } from '@/lib/google-sheets';
+import { getSheetRows, fromIndonesianDate, SHEET_TABS } from '@/lib/google-sheets';
 import { rowToShiftReport } from '@/lib/sheets-mapper';
 import { parseDailyRowSelisih } from './daily-parser';
 
@@ -99,6 +99,40 @@ export async function POST(req: NextRequest) {
     }
 }
 
+// ─── Sheet bulk fetch (1 call per tab, with retry-on-429) ─────────────────────
+
+async function fetchTabWithRetry(tab: string, attempts = 3): Promise<string[][]> {
+    let lastErr: unknown = null;
+    for (let i = 0; i < attempts; i++) {
+        try {
+            return await getSheetRows(tab);
+        } catch (err) {
+            lastErr = err;
+            const msg = err instanceof Error ? err.message : String(err);
+            // Quota exceeded → exponential backoff
+            if (/quota|429|rateLimitExceeded/i.test(msg) && i < attempts - 1) {
+                await new Promise(r => setTimeout(r, 1000 * (i + 1) * 2));
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+// Build a Map<isoDate, row> from a sheet tab's data rows.
+function indexByDate(rows: string[][]): Map<string, string[]> {
+    const map = new Map<string, string[]>();
+    for (const row of rows) {
+        const dateStr = (row[1] ?? '').trim();
+        if (!dateStr) continue;
+        const iso = fromIndonesianDate(dateStr);
+        if (!iso) continue;
+        map.set(iso, row);
+    }
+    return map;
+}
+
 // ─── SHIFT sync ───────────────────────────────────────────────────────────────
 
 async function syncShifts(supabase: SupabaseClient, dryRun: boolean): Promise<ShiftResult[]> {
@@ -146,9 +180,21 @@ async function syncShifts(supabase: SupabaseClient, dryRun: boolean): Promise<Sh
     let runningA = baselineA;
     let runningB = baselineB;
 
+    // Bulk-fetch each shift tab ONCE (3 API calls total) then look up locally.
+    const [pagiRows, soreRows, malamRows] = await Promise.all([
+        fetchTabWithRetry(SHEET_TABS.pagi),
+        fetchTabWithRetry(SHEET_TABS.sore),
+        fetchTabWithRetry(SHEET_TABS.malam),
+    ]);
+    const tabIndex: Record<ShiftType, Map<string, string[]>> = {
+        pagi: indexByDate(pagiRows),
+        sore: indexByDate(soreRows),
+        malam: indexByDate(malamRows),
+    };
+
     // Iterate forward through shifts, stop after today.
     while (!isAfterToday(cur.date)) {
-        const sheetRow = await fetchShiftRow(cur.shift, cur.date);
+        const sheetRow = tabIndex[cur.shift].get(cur.date) ?? null;
         if (!sheetRow) {
             results.push({ date: cur.date, shift: cur.shift, action: 'sheet_not_found', raw_totalizer_steam_a: null, raw_totalizer_steam_b: null, batubara_a: null, batubara_b: null });
             cur = nextShift(cur.date, cur.shift);
@@ -331,8 +377,12 @@ async function syncDaily(supabase: SupabaseClient, dryRun: boolean): Promise<Dai
     const results: DailyResult[] = [];
     let curDate = nextDate(baseline.date);
 
+    // Bulk-fetch LHUBB tab ONCE (1 API call) then look up locally.
+    const lhubbRows = await fetchTabWithRetry(SHEET_TABS.harian);
+    const lhubbIndex = indexByDate(lhubbRows);
+
     while (!isAfterToday(curDate)) {
-        const sheetRow = await fetchDailyRow(curDate);
+        const sheetRow = lhubbIndex.get(curDate) ?? null;
         if (!sheetRow) {
             results.push({ date: curDate, action: 'sheet_not_found', fields: {} });
             curDate = nextDate(curDate);

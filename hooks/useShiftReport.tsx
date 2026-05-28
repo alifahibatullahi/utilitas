@@ -810,14 +810,17 @@ export function useShiftReport(date: string, shift: ShiftType) {
 
         // ─── Station scope mapping ───
         // Tabel yang DI-OWNED penuh oleh tiap station (DELETE+INSERT seperti normal).
+        // CATATAN: panel_boiler_a/b + bunker share shift_coal_bunker → di-handle via
+        // STATION_PARTIAL_COLS (UPDATE per kolom, bukan DELETE+INSERT) supaya tidak
+        // saling overwrite.
         const STATION_OWNS_TABLES: Record<string, string[]> = {
-            panel_boiler: ['shift_boiler'],          // legacy: keduanya
-            panel_boiler_a: ['shift_boiler'],        // row-level filter via STATION_OWNS_BOILER_ROW
-            panel_boiler_b: ['shift_boiler'],
+            panel_boiler: ['shift_boiler', 'shift_coal_bunker'],   // legacy: keduanya + full bunker
+            panel_boiler_a: ['shift_boiler', 'shift_coal_bunker'], // row A + partial cols A/B/C
+            panel_boiler_b: ['shift_boiler', 'shift_coal_bunker'], // row B + partial cols D/E/F
             panel_turbin: ['shift_turbin', 'shift_steam_dist', 'shift_generator_gi', 'shift_power_dist'],
             handling: ['shift_esp_handling'],
             esp: ['shift_esp_handling'],
-            bunker: ['shift_coal_bunker'],
+            bunker: ['shift_coal_bunker'],                          // hanya bunker_* + status_bunker_*
             lapangan_boiler: ['shift_water_quality', 'shift_tankyard'],
             lapangan_turbin: [],
         };
@@ -827,10 +830,36 @@ export function useShiftReport(date: string, shift: ShiftType) {
             panel_boiler_a: ['A'],
             panel_boiler_b: ['B'],
         };
-        // Kolom yang dimiliki station di SHARED table (partial update — bukan delete+insert).
+        // Kolom yang dimiliki station di SHARED table (partial UPDATE — bukan DELETE+INSERT).
+        // shift_coal_bunker dibagi 3 grup:
+        //   - panel_boiler_a → feeder A/B/C (totalizer + status + selisih)
+        //   - panel_boiler_b → feeder D/E/F
+        //   - bunker         → bunker level A-F + status_bunker_*
+        // panel_boiler (legacy full) tetap pakai DELETE+INSERT karena owns full table.
         const STATION_PARTIAL_COLS: Record<string, Record<string, string[]>> = {
             handling: { shift_esp_handling: ['hopper', 'conveyor', 'unloading_a', 'unloading_b', 'loading', 'pf1', 'pf2'] },
             esp:      { shift_esp_handling: ['esp_a1', 'esp_a2', 'esp_a3', 'esp_b1', 'esp_b2', 'esp_b3', 'silo_a', 'silo_b'] },
+            panel_boiler_a: {
+                shift_coal_bunker: [
+                    'feeder_a', 'feeder_b', 'feeder_c',
+                    'status_feeder_a', 'status_feeder_b', 'status_feeder_c',
+                    'selisih_feeder_a', 'selisih_feeder_b', 'selisih_feeder_c',
+                ],
+            },
+            panel_boiler_b: {
+                shift_coal_bunker: [
+                    'feeder_d', 'feeder_e', 'feeder_f',
+                    'status_feeder_d', 'status_feeder_e', 'status_feeder_f',
+                    'selisih_feeder_d', 'selisih_feeder_e', 'selisih_feeder_f',
+                ],
+            },
+            bunker: {
+                shift_coal_bunker: [
+                    'bunker_a', 'bunker_b', 'bunker_c', 'bunker_d', 'bunker_e', 'bunker_f',
+                    'status_bunker_a', 'status_bunker_b', 'status_bunker_c',
+                    'status_bunker_d', 'status_bunker_e', 'status_bunker_f',
+                ],
+            },
         };
 
         const stationKey = reportData.station ?? null;
@@ -1113,7 +1142,14 @@ export function useShiftReport(date: string, shift: ShiftType) {
             await saveChild('shift_personnel', reportData.personnel as Record<string, unknown>);
         }
         if (canWriteTable('shift_coal_bunker') && reportData.coalBunker && Object.keys(reportData.coalBunker).length > 0) {
-            await saveChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>);
+            const partial = getPartialCols('shift_coal_bunker');
+            if (partial) {
+                // panel_boiler_a/b + bunker share shift_coal_bunker → partial column update
+                // (mereka tulis kolom berbeda: feeder A/B/C, feeder D/E/F, level + status).
+                await savePartialChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>, partial);
+            } else {
+                await saveChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>);
+            }
         }
         if (canWriteTable('shift_water_quality') && reportData.waterQuality && Object.keys(reportData.waterQuality).length > 0) {
             await saveChild('shift_water_quality', reportData.waterQuality);

@@ -248,7 +248,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         const result: Record<string, number | string | null> = {};
         for (const [k, v] of Object.entries(obj)) {
             if (skip.has(k)) continue;
-            if (v !== null && v !== undefined) result[k] = v as number | string | null;
+            if (v === null || v === undefined) continue;
+            // PostgreSQL numeric returns as STRING via Supabase REST (precision preservation).
+            // Normalize numeric-looking strings to number supaya downstream code yang assume
+            // number (mis. arithmetic, hasVal checks) tidak gagal.
+            if (typeof v === 'string' && v !== '' && /^-?\d+(\.\d+)?$/.test(v)) {
+                const n = Number(v);
+                if (!isNaN(n)) {
+                    result[k] = n;
+                    continue;
+                }
+            }
+            result[k] = v as number | string | null;
         }
         return result;
     };

@@ -401,6 +401,7 @@ export const NAV_ITEMS: NavItem[] = [
     { id: 'laporan-harian', label: 'Laporan Harian', icon: 'daily', path: '/laporan-harian', roles: 'all' },
     { id: 'history', label: 'History Data', icon: 'trend', path: '/history', roles: 'all' },
     { id: 'admin-wa-hub', label: 'WhatsApp Hub', icon: 'forum', path: '/admin/notification-log', roles: ['admin'] },
+    { id: 'admin-sync-sheets', label: 'Sync Sheets', icon: 'sync', path: '/admin/sync-sheets', roles: ['admin'] },
     { id: 'maintenance-broadcast', label: 'Broadcast Maintenance', icon: 'campaign', path: '/critical/broadcast', roles: ['admin', 'supervisor', 'foreman_boiler', 'foreman_turbin'] },
 ];
 

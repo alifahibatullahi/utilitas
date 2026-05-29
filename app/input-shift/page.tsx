@@ -981,6 +981,17 @@ function InputShiftPageInner() {
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
 
+                // Notif "siap dipublish ke Washift": fire-and-forget. Endpoint cek
+                // apakah semua parameter washift sudah lengkap + dedup (1x per shift),
+                // lalu kirim ke grup shift yang sedang dinas. Aman dipanggil tiap save.
+                if (result?.reportId) {
+                    fetch('/api/whatsapp/notify-ready', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ date: selectedDate, shift: shiftMap[selectedShift], reportId: result.reportId }),
+                    }).catch(() => { /* non-blocking */ });
+                }
+
                 // Build WA preview for Utilitas 2 & SU 3A when panel_turbin saves
                 if (station === 'panel_turbin' && result?.reportId) {
                     const fmt = (v: number | string | null | undefined) => {

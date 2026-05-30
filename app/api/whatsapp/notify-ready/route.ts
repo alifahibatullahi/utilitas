@@ -5,6 +5,7 @@ import {
     getWhatsappGroup,
     logNotification,
     buildDeepLink,
+    buildOperasiParams,
 } from '@/lib/whatsapp';
 import { getGroupForShift } from '@/lib/constants';
 
@@ -15,13 +16,6 @@ import { getGroupForShift } from '@/lib/constants';
 // hanya terkirim 1x per shift saat parameter baru saja lengkap.
 
 const NOTIF_KIND = 'report_ready_shift';
-
-function fmtNum(v: unknown, decimals = 1): string {
-    if (v == null) return '-';
-    const n = Number(v);
-    if (isNaN(n)) return '-';
-    return Number.isInteger(n) ? String(n) : n.toFixed(decimals);
-}
 
 function shiftLabel(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -64,9 +58,9 @@ export async function POST(req: NextRequest) {
         .from('shift_reports')
         .select(`
             id,
-            shift_boiler (boiler, press_steam, temp_steam, flow_steam, batubara_ton, status_boiler),
+            shift_boiler (boiler, press_steam, temp_steam, flow_steam, batubara_ton, temp_furnace, status_boiler),
             shift_turbin (press_steam, temp_steam, flow_steam, vacuum, thrust_bearing),
-            shift_generator_gi (gen_load),
+            shift_generator_gi (gen_load, gi_sum_p),
             shift_steam_dist (pabrik1_flow, pabrik2_flow, pabrik3a_flow, pabrik3b_flow),
             shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie),
             shift_tankyard (tk_rcw, tk_demin)
@@ -91,7 +85,6 @@ export async function POST(req: NextRequest) {
     const gen = first(report.shift_generator_gi);
     const sd = first(report.shift_steam_dist);
     const pd = first(report.shift_power_dist);
-    const ty = first(report.shift_tankyard);
 
     const missing: string[] = [];
     if (!boilerFilled(boilerA)) missing.push('Boiler A');
@@ -120,12 +113,9 @@ export async function POST(req: NextRequest) {
         `Tanggal: ${date}  •  Grup ${groupLetter}`,
         '',
         'Semua parameter washift sudah terisi:',
-        `• Boiler A : Flow ${fmtNum(boilerA?.flow_steam)} t/h`,
-        `• Boiler B : Flow ${fmtNum(boilerB?.flow_steam)} t/h`,
-        `• Turbin   : Flow ${fmtNum(turbin.flow_steam)} t/h, Vacuum ${fmtNum(turbin.vacuum)}`,
-        `• Power    : UBB ${fmtNum(pd.power_ubb)} / P2 ${fmtNum(pd.power_pabrik2)} / P3A ${fmtNum(pd.power_pabrik3a)} MW`,
-        `• STG UBB  : ${fmtNum(gen.gen_load)} MW`,
-        `• Level    : RCW ${fmtNum(ty?.tk_rcw)} / Demin ${fmtNum(ty?.tk_demin)}`,
+        '',
+        // Parameter identik dengan ringkasan yang dipublish ke Washift (helper bersama).
+        buildOperasiParams(report),
         '',
         'Mohon Foreman/Supervisor review & publish:',
         link,

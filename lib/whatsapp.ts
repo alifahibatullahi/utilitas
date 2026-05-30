@@ -132,6 +132,88 @@ export async function logNotification(
     if (error) console.warn('[whatsapp] logNotification error:', error);
 }
 
+// ─── Shared report formatting ───
+
+/** Format angka: null/undefined → '-', integer → tanpa decimal, selain itu fixed `decimals`. */
+function fmtNum(v: unknown, decimals = 1): string {
+    if (v == null) return '-';
+    const n = Number(v);
+    if (isNaN(n)) return '-';
+    return Number.isInteger(n) ? String(n) : n.toFixed(decimals);
+}
+
+// Membangun blok "PARAMETER OPERASI" (Boiler A&B / Turbin / Distribusi Steam /
+// Power / Level RCW & Demin). Dipakai bersama oleh ringkasan publish washift
+// (publish-shift) dan notif "siap dipublish" (notify-ready) supaya parameter di
+// kedua pesan SELALU identik. Field di-akses lewat `first` agar tahan terhadap
+// PostgREST yang return object (1-1) maupun array (1-many).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function buildOperasiParams(report: any): string {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const first = (x: any) => (Array.isArray(x) ? x[0] : (x ?? undefined));
+    const turbin = first(report.shift_turbin);
+    const gen = first(report.shift_generator_gi);
+    const steamDist = first(report.shift_steam_dist);
+    const powerDist = first(report.shift_power_dist);
+    const tankyard = first(report.shift_tankyard);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const boilers: any[] = [...(report.shift_boiler ?? [])].sort((a, b) => (a.boiler ?? '').localeCompare(b.boiler ?? ''));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const boilerA = boilers.find((b: any) => b.boiler === 'A');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const boilerB = boilers.find((b: any) => b.boiler === 'B');
+
+    const lines: string[] = [];
+    lines.push('━━━ *PARAMETER OPERASI* ━━━');
+
+    // Boiler A & B — unit di setiap value supaya konsisten kalau salah satu kosong.
+    if (boilerA || boilerB) {
+        lines.push('');
+        lines.push('*Boiler A & B*');
+        lines.push(`  Flow Steam     : A ${fmtNum(boilerA?.flow_steam)} t/h | B ${fmtNum(boilerB?.flow_steam)} t/h`);
+        lines.push(`  Total Batubara : A ${fmtNum(boilerA?.batubara_ton)} Ton | B ${fmtNum(boilerB?.batubara_ton)} Ton`);
+        lines.push(`  Temp. Furnace  : A ${fmtNum(boilerA?.temp_furnace)} °C | B ${fmtNum(boilerB?.temp_furnace)} °C`);
+    }
+
+    // Turbin
+    if (turbin) {
+        lines.push('');
+        lines.push('*Turbin*');
+        lines.push(`  Steam Inlet         : ${fmtNum(turbin.flow_steam)} t/h`);
+        lines.push(`  Temp. Thrust Bearing: ${fmtNum(turbin.thrust_bearing)} °C`);
+    }
+
+    // Distribusi Steam
+    if (steamDist) {
+        lines.push('');
+        lines.push('*Distribusi Steam*');
+        lines.push(`  Pabrik 1 : ${fmtNum(steamDist.pabrik1_flow)} t/h`);
+        lines.push(`  Pabrik 3 : ${fmtNum(steamDist.pabrik3a_flow)} t/h`);
+    }
+
+    // Power
+    if (gen || powerDist) {
+        lines.push('');
+        lines.push('*Power*');
+        lines.push(`  STG UBB     : ${fmtNum(gen?.gen_load)} MW`);
+        lines.push(`  Internal UBB: ${fmtNum(powerDist?.power_ubb)} MW`);
+        lines.push(`  Pabrik 2    : ${fmtNum(powerDist?.power_pabrik2)} MW`);
+        lines.push(`  Pabrik 3A   : ${fmtNum(powerDist?.power_pabrik3a)} MW`);
+        lines.push(`  Pabrik 3B   : ${fmtNum(powerDist?.power_revamping)} MW`);
+        lines.push(`  PIU         : ${fmtNum(powerDist?.power_pie)} MW`);
+        lines.push(`  PLN         : ${fmtNum(gen?.gi_sum_p)} MW`);
+    }
+
+    // Tank Yard — Level RCW & Demin
+    if (tankyard) {
+        lines.push('');
+        lines.push(`Level RCW   : ${fmtNum(tankyard.tk_rcw)} m³`);
+        lines.push(`Level Demin : ${fmtNum(tankyard.tk_demin)} m³`);
+    }
+
+    return lines.join('\n');
+}
+
 // ─── Deep links & WIB time helpers ───
 
 export function buildDeepLink(path: string, params: Record<string, string>): string {

@@ -7,6 +7,7 @@ import {
     getWhatsappGroup,
     logNotification,
     renderTemplate,
+    buildOperasiParams,
 } from '@/lib/whatsapp';
 import { htmlToPdf } from '@/lib/pdf';
 import { uploadToR2 } from '@/lib/r2';
@@ -92,14 +93,6 @@ function formatDateHariTanggal(isoDate: string): string {
     if (!y || !m || !d) return isoDate ?? '';
     const dt = new Date(y, m - 1, d);
     return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-/** Format angka: kalau null/undefined → '-', kalau integer → tampilkan tanpa decimal. */
-function fmtNum(v: number | null | undefined, decimals = 1): string {
-    if (v == null || v === undefined) return '-';
-    const n = Number(v);
-    if (isNaN(n)) return '-';
-    return Number.isInteger(n) ? String(n) : n.toFixed(decimals);
 }
 
 interface PublishBody {
@@ -388,67 +381,12 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
 // (e.g. "*Laporan Shift {{shift}} — {{date}}*").
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildShiftSummary(report: any, maintenance: any[]): string {
-    // PostgREST nested SELECT untuk 1-to-1 relation return single object, untuk 1-to-many
-    // return array. Helper untuk ambil first regardless.
-    const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
-    const turbin = first(report.shift_turbin);
-    const gen = first(report.shift_generator_gi);
-    const steamDist = first(report.shift_steam_dist);
-    const powerDist = first(report.shift_power_dist);
-    const tankyard = first(report.shift_tankyard);
-    const boilers = (report.shift_boiler ?? []).sort((a: any, b: any) => (a.boiler ?? '').localeCompare(b.boiler ?? ''));
-    const boilerA = boilers.find((b: any) => b.boiler === 'A');
-    const boilerB = boilers.find((b: any) => b.boiler === 'B');
-
     const lines: string[] = [];
     lines.push(`Supervisor: ${report.supervisor ?? '-'}`);
     lines.push('');
-    lines.push('━━━ *PARAMETER OPERASI* ━━━');
-
-    // Boiler A & B — unit di setiap value supaya konsisten kalau salah satu kosong.
-    if (boilerA || boilerB) {
-        lines.push('');
-        lines.push('*Boiler A & B*');
-        lines.push(`  Flow Steam     : A ${fmtNum(boilerA?.flow_steam)} t/h | B ${fmtNum(boilerB?.flow_steam)} t/h`);
-        lines.push(`  Total Batubara : A ${fmtNum(boilerA?.batubara_ton)} Ton | B ${fmtNum(boilerB?.batubara_ton)} Ton`);
-        lines.push(`  Temp. Furnace  : A ${fmtNum(boilerA?.temp_furnace)} °C | B ${fmtNum(boilerB?.temp_furnace)} °C`);
-    }
-
-    // Turbin
-    if (turbin) {
-        lines.push('');
-        lines.push('*Turbin*');
-        lines.push(`  Steam Inlet         : ${fmtNum(turbin.flow_steam)} t/h`);
-        lines.push(`  Temp. Thrust Bearing: ${fmtNum(turbin.thrust_bearing)} °C`);
-    }
-
-    // Distribusi Steam
-    if (steamDist) {
-        lines.push('');
-        lines.push('*Distribusi Steam*');
-        lines.push(`  Pabrik 1 : ${fmtNum(steamDist.pabrik1_flow)} t/h`);
-        lines.push(`  Pabrik 3 : ${fmtNum(steamDist.pabrik3a_flow)} t/h`);
-    }
-
-    // Power
-    if (gen || powerDist) {
-        lines.push('');
-        lines.push('*Power*');
-        lines.push(`  STG UBB     : ${fmtNum(gen?.gen_load)} MW`);
-        lines.push(`  Internal UBB: ${fmtNum(powerDist?.power_ubb)} MW`);
-        lines.push(`  Pabrik 2    : ${fmtNum(powerDist?.power_pabrik2)} MW`);
-        lines.push(`  Pabrik 3A   : ${fmtNum(powerDist?.power_pabrik3a)} MW`);
-        lines.push(`  Pabrik 3B   : ${fmtNum(powerDist?.power_revamping)} MW`);
-        lines.push(`  PIU         : ${fmtNum(powerDist?.power_pie)} MW`);
-        lines.push(`  PLN         : ${fmtNum(gen?.gi_sum_p)} MW`);
-    }
-
-    // Tank Yard — Level RCW & Demin
-    if (tankyard) {
-        lines.push('');
-        lines.push(`Level RCW   : ${fmtNum(tankyard.tk_rcw)} m³`);
-        lines.push(`Level Demin : ${fmtNum(tankyard.tk_demin)} m³`);
-    }
+    // Blok parameter operasi dibangun oleh helper bersama (lib/whatsapp) supaya
+    // identik dengan notif "siap dipublish".
+    lines.push(buildOperasiParams(report));
 
     lines.push('');
     lines.push('━━━ *MAINTENANCE* ━━━');

@@ -48,6 +48,33 @@ function fmt(v: number | null | undefined): string {
     return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
+/** Convert scope slug (e.g. "bengkel_las") jadi label readable (e.g. "Bengkel Las"). */
+function humanizeScope(slug: string | null | undefined): string {
+    if (!slug) return '-';
+    return slug.split(/[_\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+/** Capitalize huruf pertama. Trim whitespace di depan. */
+function capFirst(s: string | null | undefined): string {
+    if (!s) return '';
+    const t = s.trimStart();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function HeaderTile({ label, value, icon, className = '' }: { label: string; value: string | null | undefined; icon: string; className?: string }) {
+    return (
+        <div className={`flex flex-col bg-slate-950/45 rounded-xl p-2.5 border border-slate-800/60 shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)] ${className}`}>
+            <span className="text-slate-400 text-[9px] uppercase tracking-wider font-extrabold flex items-center gap-1.5 select-none">
+                <span className="material-symbols-outlined text-[12px] text-slate-500">{icon}</span>
+                {label}
+            </span>
+            <span className="font-bold text-slate-100 text-[11.5px] mt-1 leading-tight truncate" title={value || '—'}>
+                {value || '—'}
+            </span>
+        </div>
+    );
+}
+
 interface Props {
     kind: 'shift' | 'daily';
     reportId: string;
@@ -305,30 +332,32 @@ export function PublishReportModal({
                 <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-500" />
 
                 {/* Header */}
-                <div className="flex items-start justify-between p-4 sm:p-6 border-b border-slate-800/80">
-                    <div className="space-y-1">
-                        <h3 className="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400">
+                <div className="p-4 sm:p-6 border-b border-slate-800/80 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg sm:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400">
                             Publish Laporan {kindLabel}
                         </h3>
-                        <p className="text-xs text-text-secondary leading-relaxed flex flex-wrap items-center gap-1.5">
-                            Klik <span className="font-semibold text-slate-200">Publish</span> untuk kirim PDF ke grup 
-                            <span className="inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold">
-                                <span className="material-symbols-outlined text-[10px]">group</span>{pdfGroupKey}
-                            </span> 
-                            dan teks ke 
-                            <span className="inline-flex items-center gap-1 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold">
-                                <span className="material-symbols-outlined text-[10px]">chat</span>{washiftKey}
-                            </span> 
-                            sekaligus.
-                        </p>
+                        <button 
+                            onClick={onClose} 
+                            disabled={sending} 
+                            className="text-slate-450 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/60 transition-all duration-200 disabled:opacity-30 flex items-center justify-center flex-shrink-0 cursor-pointer"
+                        >
+                            <span className="material-symbols-outlined text-lg">close</span>
+                        </button>
                     </div>
-                    <button 
-                        onClick={onClose} 
-                        disabled={sending} 
-                        className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/60 transition-all duration-200 disabled:opacity-30 flex items-center justify-center"
-                    >
-                        <span className="material-symbols-outlined text-lg">close</span>
-                    </button>
+                    <div className="text-[11px] sm:text-xs text-slate-400 leading-relaxed space-y-2">
+                        <span>Klik tombol <strong className="text-slate-200">Setujui &amp; Publish</strong> untuk mendistribusikan laporan ke saluran berikut:</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl">
+                            <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-3 py-1.5 rounded-xl font-bold text-[10px]">
+                                <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+                                <span>PDF &rarr; <strong className="text-white font-mono">{pdfGroupKey}</strong></span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 px-3 py-1.5 rounded-xl font-bold text-[10px]">
+                                <span className="material-symbols-outlined text-[14px]">chat</span>
+                                <span>WA &rarr; <strong className="text-white font-mono">{washiftKey}</strong></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Tabs Wrapper — Review Summary + Teks Washift digabung di tab 'review'. */}
@@ -368,10 +397,12 @@ export function PublishReportModal({
                             <span className="material-symbols-outlined text-[14px] text-blue-400">badge</span>
                             Penanggung Jawab Laporan
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                        <div className={`grid grid-cols-1 ${kind === 'shift' ? 'sm:grid-cols-3' : 'max-w-md'} gap-2 sm:gap-3`}>
                             {/* Supervisor Dropdown */}
                             <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
-                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Supervisor</label>
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                                    {kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
+                                </label>
                                 <div className="relative flex items-center">
                                     <select
                                         value={supervisor}
@@ -389,45 +420,49 @@ export function PublishReportModal({
                                 </div>
                             </div>
 
-                            {/* Foreman Turbin Dropdown */}
-                            <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
-                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Turbin</label>
-                                <div className="relative flex items-center">
-                                    <select
-                                        value={foremanTurbin}
-                                        onChange={e => { const v = e.target.value; setForemanTurbin(v); persistChange('foreman_turbin', v); }}
-                                        className="w-full bg-transparent border-none p-0 text-xs font-black text-indigo-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
-                                    >
-                                        <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
-                                        {foremanTurbinOptions.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
-                                                {op.name}{op.group ? ` (Group ${op.group})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
-                                </div>
-                            </div>
+                            {kind === 'shift' && (
+                                <>
+                                    {/* Foreman Turbin Dropdown */}
+                                    <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Turbin</label>
+                                        <div className="relative flex items-center">
+                                            <select
+                                                value={foremanTurbin}
+                                                onChange={e => { const v = e.target.value; setForemanTurbin(v); persistChange('foreman_turbin', v); }}
+                                                className="w-full bg-transparent border-none p-0 text-xs font-black text-indigo-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
+                                            >
+                                                <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
+                                                {foremanTurbinOptions.map(op => (
+                                                    <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
+                                                        {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
+                                        </div>
+                                    </div>
 
-                            {/* Foreman Boiler Dropdown */}
-                            <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
-                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Boiler</label>
-                                <div className="relative flex items-center">
-                                    <select
-                                        value={foremanBoiler}
-                                        onChange={e => { const v = e.target.value; setForemanBoiler(v); persistChange('foreman_boiler', v); }}
-                                        className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
-                                    >
-                                        <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
-                                        {foremanBoilerOptions.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
-                                                {op.name}{op.group ? ` (Group ${op.group})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
-                                </div>
-                            </div>
+                                    {/* Foreman Boiler Dropdown */}
+                                    <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Boiler</label>
+                                        <div className="relative flex items-center">
+                                            <select
+                                                value={foremanBoiler}
+                                                onChange={e => { const v = e.target.value; setForemanBoiler(v); persistChange('foreman_boiler', v); }}
+                                                className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
+                                            >
+                                                <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
+                                                {foremanBoilerOptions.map(op => (
+                                                    <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
+                                                        {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -444,7 +479,7 @@ export function PublishReportModal({
                                 {kind === 'shift' ? (
                                     <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
                                 ) : (
-                                    <ReviewSummaryDaily summary={summary as DailyReviewSummary} />
+                                    <ReviewSummaryDaily summary={summary as DailyReviewSummary} supervisor={supervisor} />
                                 )}
 
                                 {/* Pesan ke Washift — editable, tepat di bawah ringkasan supaya
@@ -551,21 +586,27 @@ export function PublishReportModal({
 // ──────────── Review Summary Components — kartu mini per area ────────────
 
 function ReviewCard({ title, icon, color = 'slate', children }: { title: string; icon: string; color?: 'slate' | 'amber' | 'cyan' | 'purple' | 'emerald' | 'rose'; children: React.ReactNode }) {
-    const colorMap: Record<string, string> = {
-        slate: 'border-slate-700/60 text-slate-300',
-        amber: 'border-amber-500/40 text-amber-300',
-        cyan: 'border-cyan-500/40 text-cyan-300',
-        purple: 'border-purple-500/40 text-purple-300',
-        emerald: 'border-emerald-500/40 text-emerald-300',
-        rose: 'border-rose-500/40 text-rose-300',
+    const colorMap: Record<string, { border: string; text: string; bg: string; accent: string }> = {
+        slate: { border: 'border-slate-800/80', text: 'text-slate-350', bg: 'bg-slate-950/40', accent: 'bg-slate-600' },
+        amber: { border: 'border-amber-500/25', text: 'text-amber-300', bg: 'bg-slate-950/40', accent: 'bg-amber-500' },
+        cyan: { border: 'border-cyan-500/25', text: 'text-cyan-300', bg: 'bg-slate-950/40', accent: 'bg-cyan-500' },
+        purple: { border: 'border-purple-500/25', text: 'text-purple-300', bg: 'bg-slate-950/40', accent: 'bg-purple-500' },
+        emerald: { border: 'border-emerald-500/25', text: 'text-emerald-300', bg: 'bg-slate-950/40', accent: 'bg-emerald-500' },
+        rose: { border: 'border-rose-500/25', text: 'text-rose-300', bg: 'bg-slate-950/40', accent: 'bg-rose-500' },
     };
+    const c = colorMap[color] || colorMap.slate;
     return (
-        <div className={`bg-slate-950/50 border ${colorMap[color]} rounded-xl p-3 space-y-2 shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)]`}>
-            <div className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${colorMap[color].split(' ').slice(1).join(' ')}`}>
-                <span className="material-symbols-outlined text-[14px]">{icon}</span>
-                {title}
+        <div className={`relative ${c.bg} border ${c.border} rounded-2xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col justify-between`}>
+            {/* Left Accent Strip */}
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${c.accent}`} />
+            
+            <div className="pl-1.5 space-y-3">
+                <div className={`text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 ${c.text}`}>
+                    <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                    {title}
+                </div>
+                <div className="space-y-1.5 text-[11.5px] text-slate-200">{children}</div>
             </div>
-            <div className="space-y-1 text-[11px] text-slate-200">{children}</div>
         </div>
     );
 }
@@ -603,15 +644,18 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
     return (
         <div className="space-y-4">
             {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl p-3">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 mb-1">Header Laporan</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-[11px]">
-                    <Row label="Tanggal" value={summary.header.dateHumanized} />
-                    <Row label="Shift" value={summary.header.shift} />
-                    <Row label="Grup" value={summary.header.group} />
-                    <Row label="Supervisor" value={summary.header.supervisor} />
-                    <Row label="Foreman Boiler" value={summary.header.foremanBoiler} />
-                    <Row label="Foreman Turbin" value={summary.header.foremanTurbin} />
+            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl p-4 shadow-[0_4px_20px_rgba(16,185,129,0.05)]">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-3 flex items-center gap-1.5 select-none">
+                    <span className="material-symbols-outlined text-[14px]">info</span>
+                    Informasi Laporan Shift
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <HeaderTile label="Tanggal" value={summary.header.dateHumanized} icon="calendar_today" className="col-span-2 sm:col-span-1" />
+                    <HeaderTile label="Shift" value={summary.header.shift} icon="schedule" className="col-span-1" />
+                    <HeaderTile label="Grup" value={summary.header.group} icon="group" className="col-span-1" />
+                    <HeaderTile label="Supervisor" value={summary.header.supervisor} icon="supervisor_account" className="col-span-2 sm:col-span-1" />
+                    <HeaderTile label="Foreman Boiler" value={summary.header.foremanBoiler} icon="construction" className="col-span-2 sm:col-span-1" />
+                    <HeaderTile label="Foreman Turbin" value={summary.header.foremanTurbin} icon="settings" className="col-span-2 sm:col-span-1" />
                 </div>
             </div>
 
@@ -619,7 +663,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 {/* Boiler A */}
                 <ReviewCard title="Boiler A" icon="factory" color="rose">
                     <Row label="Flow Steam" value={fmt(summary.boilerA?.flow)} unit="t/h" />
-                    <Row label="Press Steam" value={fmt(summary.boilerA?.pressSteam)} unit="bar" />
+                    <Row label="Press Steam" value={fmt(summary.boilerA?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.boilerA?.tempSteam)} unit="°C" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerA?.tempFurnace)} unit="°C" />
                     <Row label="Batubara" value={fmt(summary.boilerA?.batubara)} unit="ton" />
@@ -632,7 +676,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 {/* Boiler B */}
                 <ReviewCard title="Boiler B" icon="factory" color="purple">
                     <Row label="Flow Steam" value={fmt(summary.boilerB?.flow)} unit="t/h" />
-                    <Row label="Press Steam" value={fmt(summary.boilerB?.pressSteam)} unit="bar" />
+                    <Row label="Press Steam" value={fmt(summary.boilerB?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.boilerB?.tempSteam)} unit="°C" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerB?.tempFurnace)} unit="°C" />
                     <Row label="Batubara" value={fmt(summary.boilerB?.batubara)} unit="ton" />
@@ -645,10 +689,10 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 {/* Turbin */}
                 <ReviewCard title="Turbin" icon="mode_fan" color="cyan">
                     <Row label="Flow Steam" value={fmt(summary.turbin?.flowSteam)} unit="t/h" />
-                    <Row label="Press Steam" value={fmt(summary.turbin?.pressSteam)} unit="bar" />
+                    <Row label="Press Steam" value={fmt(summary.turbin?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.turbin?.tempSteam)} unit="°C" />
                     <Row label="Thrust Bearing" value={fmt(summary.turbin?.thrustBearing)} unit="°C" />
-                    <Row label="Vacuum" value={fmt(summary.turbin?.vacuum)} />
+                    <Row label="Vacuum" value={summary.turbin?.vacuum ?? null} unit="MPa" />
                     <Row label="Stream Days" value={fmt(summary.turbin?.streamDays)} unit="hari" />
                 </ReviewCard>
 
@@ -692,50 +736,59 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 {summary.maintenance.length === 0 ? (
                     <p className="text-[11px] text-slate-500 italic">Tidak ada item maintenance.</p>
                 ) : (
-                    <ul className="space-y-1">
+                    <div className="space-y-2.5 divide-y divide-slate-800/55">
                         {summary.maintenance.map((m, i) => (
-                            <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
-                                <span className="font-mono font-bold text-slate-300">{i + 1}.</span>
-                                <span className="font-bold text-slate-200">{m.item}</span>
-                                <span className="text-slate-400">·</span>
-                                <span className="text-slate-300">{m.scope}</span>
-                                <span className="text-slate-400">·</span>
-                                <span className="text-slate-300 flex-1 min-w-0">{m.uraian}</span>
-                                <StatusBadge value={m.status} />
-                            </li>
+                            <div key={i} className={`flex flex-col gap-1.5 text-[11px] ${i > 0 ? 'pt-2.5' : ''}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-mono font-extrabold text-slate-400 text-[10px]">{String(i + 1).padStart(2, '0')}.</span>
+                                        <span className="font-mono font-black text-cyan-400 text-[11px]">{m.item}</span>
+                                        <span className="text-[9px] bg-slate-800/70 text-slate-300 px-2 py-0.5 rounded font-bold uppercase">{humanizeScope(m.scope)}</span>
+                                    </div>
+                                    <StatusBadge value={m.status} />
+                                </div>
+                                <div className="text-slate-300 pl-5 leading-normal font-medium">{capFirst(m.uraian)}</div>
+                            </div>
                         ))}
-                    </ul>
+                    </div>
                 )}
             </ReviewCard>
 
             {/* Critical Equipment */}
             {summary.critical.length > 0 && (
                 <ReviewCard title={`Critical Equipment (${summary.critical.length})`} icon="warning" color="rose">
-                    <ul className="space-y-1">
+                    <div className="space-y-2.5 divide-y divide-slate-800/55">
                         {summary.critical.map((c, i) => (
-                            <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
-                                <span className="font-mono text-slate-400">{c.date}</span>
-                                <span className="font-bold text-slate-200">{c.item}</span>
-                                <span className="text-slate-400">·</span>
-                                <span className="text-slate-300">{c.scope}</span>
-                                <span className="text-slate-400">·</span>
-                                <span className="text-slate-300 flex-1 min-w-0">{c.deskripsi}</span>
-                            </li>
+                            <div key={i} className={`flex flex-col gap-1.5 text-[11px] ${i > 0 ? 'pt-2.5' : ''}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-mono text-[9px] text-slate-300 bg-slate-900 border border-slate-800/80 px-1.5 py-0.5 rounded font-bold">{c.date}</span>
+                                        <span className="font-mono font-black text-rose-400 text-[11px]">{c.item}</span>
+                                        <span className="text-[9px] bg-slate-800/70 text-slate-300 px-2 py-0.5 rounded font-bold uppercase">{humanizeScope(c.scope)}</span>
+                                    </div>
+                                </div>
+                                <div className="text-slate-300 pl-1 leading-normal font-medium">{capFirst(c.deskripsi)}</div>
+                            </div>
                         ))}
-                    </ul>
+                    </div>
                 </ReviewCard>
             )}
         </div>
     );
 }
 
-function ReviewSummaryDaily({ summary }: { summary: DailyReviewSummary }) {
+function ReviewSummaryDaily({ summary, supervisor }: { summary: DailyReviewSummary; supervisor?: string }) {
     return (
         <div className="space-y-4">
-            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl p-3">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 mb-1">Header Laporan Harian</div>
-                <div className="text-[11px]">
-                    <Row label="Tanggal" value={summary.header.dateHumanized} />
+            {/* Header Laporan Harian */}
+            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl p-4 shadow-[0_4px_20px_rgba(16,185,129,0.05)]">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-3 flex items-center gap-1.5 select-none">
+                    <span className="material-symbols-outlined text-[14px]">info</span>
+                    Informasi Laporan Harian
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <HeaderTile label="Tanggal" value={summary.header.dateHumanized} icon="calendar_today" className="col-span-1" />
+                    <HeaderTile label="Kasi / Supervisor" value={supervisor} icon="supervisor_account" className="col-span-1" />
                 </div>
             </div>
 
@@ -786,36 +839,40 @@ function ReviewSummaryDaily({ summary }: { summary: DailyReviewSummary }) {
                 {summary.maintenance.length === 0 ? (
                     <p className="text-[11px] text-slate-500 italic">Tidak ada item maintenance.</p>
                 ) : (
-                    <ul className="space-y-1">
+                    <div className="space-y-2.5 divide-y divide-slate-800/55">
                         {summary.maintenance.map((m, i) => (
-                            <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
-                                <span className="font-mono font-bold text-slate-300">{i + 1}.</span>
-                                <span className="font-bold text-slate-200">{m.item}</span>
-                                <span className="text-slate-400">·</span>
-                                <span className="text-slate-300">{m.scope}</span>
-                                <span className="text-slate-400">·</span>
-                                <span className="text-slate-300 flex-1 min-w-0">{m.uraian}</span>
-                                <StatusBadge value={m.status} />
-                            </li>
+                            <div key={i} className={`flex flex-col gap-1.5 text-[11px] ${i > 0 ? 'pt-2.5' : ''}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-mono font-extrabold text-slate-400 text-[10px]">{String(i + 1).padStart(2, '0')}.</span>
+                                        <span className="font-mono font-black text-cyan-400 text-[11px]">{m.item}</span>
+                                        <span className="text-[9px] bg-slate-800/70 text-slate-300 px-2 py-0.5 rounded font-bold uppercase">{humanizeScope(m.scope)}</span>
+                                    </div>
+                                    <StatusBadge value={m.status} />
+                                </div>
+                                <div className="text-slate-300 pl-5 leading-normal font-medium">{capFirst(m.uraian)}</div>
+                            </div>
                         ))}
-                    </ul>
+                    </div>
                 )}
             </ReviewCard>
 
             {summary.critical.length > 0 && (
                 <ReviewCard title={`Critical Equipment (${summary.critical.length})`} icon="warning" color="rose">
-                    <ul className="space-y-1">
+                    <div className="space-y-2.5 divide-y divide-slate-800/55">
                         {summary.critical.map((c, i) => (
-                            <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
-                                <span className="font-mono text-slate-400">{c.date}</span>
-                                <span className="font-bold text-slate-200">{c.item}</span>
-                                <span className="text-slate-400">·</span>
-                                <span className="text-slate-300">{c.scope}</span>
-                                <span className="text-slate-400">·</span>
-                                <span className="text-slate-300 flex-1 min-w-0">{c.deskripsi}</span>
-                            </li>
+                            <div key={i} className={`flex flex-col gap-1.5 text-[11px] ${i > 0 ? 'pt-2.5' : ''}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-mono text-[9px] text-slate-300 bg-slate-900 border border-slate-800/80 px-1.5 py-0.5 rounded font-bold">{c.date}</span>
+                                        <span className="font-mono font-black text-rose-400 text-[11px]">{c.item}</span>
+                                        <span className="text-[9px] bg-slate-800/70 text-slate-300 px-2 py-0.5 rounded font-bold uppercase">{humanizeScope(c.scope)}</span>
+                                    </div>
+                                </div>
+                                <div className="text-slate-300 pl-1 leading-normal font-medium">{capFirst(c.deskripsi)}</div>
+                            </div>
                         ))}
-                    </ul>
+                    </div>
                 </ReviewCard>
             )}
         </div>

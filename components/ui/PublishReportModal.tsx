@@ -15,8 +15,8 @@ interface ShiftReviewSummary {
         foremanBoiler: string | null;
         foremanTurbin: string | null;
     };
-    boilerA: { flow: number | null; pressSteam: number | null; tempSteam: number | null; tempFurnace: number | null; tempFlueGas: number | null; batubara: number | null; status: string | null } | null;
-    boilerB: { flow: number | null; pressSteam: number | null; tempSteam: number | null; tempFurnace: number | null; tempFlueGas: number | null; batubara: number | null; status: string | null } | null;
+    boilerA: { flow: number | null; pressSteam: number | null; tempSteam: number | null; tempFurnace: number | null; tempFlueGas: number | null; batubara: number | null; consumptionRate: number | null; status: string | null } | null;
+    boilerB: { flow: number | null; pressSteam: number | null; tempSteam: number | null; tempFurnace: number | null; tempFlueGas: number | null; batubara: number | null; consumptionRate: number | null; status: string | null } | null;
     turbin: { flowSteam: number | null; pressSteam: number | null; tempSteam: number | null; thrustBearing: number | null; vacuum: number | null; streamDays: number | null } | null;
     steamDist: { pabrik1: number | null; pabrik2: number | null; pabrik3a: number | null; pabrik3b: number | null } | null;
     power: { stgUbb: number | null; internalUbb: number | null; pabrik2: number | null; pabrik3a: number | null; pabrik3b: number | null; piu: number | null; pln: number | null } | null;
@@ -346,15 +346,16 @@ export function PublishReportModal({
                         </button>
                     </div>
                     <div className="text-[11px] sm:text-xs text-slate-400 leading-relaxed space-y-2">
-                        <span>Klik tombol <strong className="text-slate-200">Setujui &amp; Publish</strong> untuk mendistribusikan laporan ke saluran berikut:</span>
+                        <span>Klik tombol <strong className="text-slate-200">Setujui &amp; Kirim ke washift</strong> untuk mengirim teks laporan ke:</span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl">
-                            <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-3 py-1.5 rounded-xl font-bold text-[10px]">
-                                <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
-                                <span>PDF &rarr; <strong className="text-white font-mono">{pdfGroupKey}</strong></span>
-                            </div>
                             <div className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 px-3 py-1.5 rounded-xl font-bold text-[10px]">
                                 <span className="material-symbols-outlined text-[14px]">chat</span>
                                 <span>WA &rarr; <strong className="text-white font-mono">{washiftKey}</strong></span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-slate-500/10 border border-slate-500/20 text-slate-400 px-3 py-1.5 rounded-xl font-bold text-[10px]">
+                                <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+                                <span>PDF &rarr; <strong className="font-mono">{pdfGroupKey}</strong></span>
+                                <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">SOON</span>
                             </div>
                         </div>
                     </div>
@@ -479,7 +480,7 @@ export function PublishReportModal({
                                 {kind === 'shift' ? (
                                     <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
                                 ) : (
-                                    <ReviewSummaryDaily summary={summary as DailyReviewSummary} supervisor={supervisor} />
+                                    <ReviewSummaryDaily summary={summary as DailyReviewSummary} />
                                 )}
 
                                 {/* Pesan ke Washift — editable, tepat di bawah ringkasan supaya
@@ -562,7 +563,7 @@ export function PublishReportModal({
                     <button
                         onClick={publish}
                         disabled={sending || loadingText || !text.trim() || !reportId || tab === 'pdf'}
-                        title={tab === 'pdf' ? 'PDF ke management belum tersedia (coming soon)' : !reportId ? 'Laporan belum disimpan' : 'Setujui isi laporan dan kirim ke WhatsApp + PDF management'}
+                        title={tab === 'pdf' ? 'PDF ke management belum tersedia (coming soon)' : !reportId ? 'Laporan belum disimpan' : `Setujui isi laporan dan kirim teks ke ${washiftKey}`}
                         className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all duration-300 shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
                     >
                         {sending ? (
@@ -573,7 +574,7 @@ export function PublishReportModal({
                         ) : (
                             <>
                                 <span className="material-symbols-outlined text-sm">check_circle</span>
-                                {tab === 'pdf' ? 'PDF Coming Soon' : 'Setujui & Publish'}
+                                {tab === 'pdf' ? 'PDF Coming Soon' : 'Setujui & Kirim ke washift'}
                             </>
                         )}
                     </button>
@@ -653,9 +654,6 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                     <HeaderTile label="Tanggal" value={summary.header.dateHumanized} icon="calendar_today" className="col-span-2 sm:col-span-1" />
                     <HeaderTile label="Shift" value={summary.header.shift} icon="schedule" className="col-span-1" />
                     <HeaderTile label="Grup" value={summary.header.group} icon="group" className="col-span-1" />
-                    <HeaderTile label="Supervisor" value={summary.header.supervisor} icon="supervisor_account" className="col-span-2 sm:col-span-1" />
-                    <HeaderTile label="Foreman Boiler" value={summary.header.foremanBoiler} icon="construction" className="col-span-2 sm:col-span-1" />
-                    <HeaderTile label="Foreman Turbin" value={summary.header.foremanTurbin} icon="settings" className="col-span-2 sm:col-span-1" />
                 </div>
             </div>
 
@@ -667,6 +665,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                     <Row label="Temp Steam" value={fmt(summary.boilerA?.tempSteam)} unit="°C" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerA?.tempFurnace)} unit="°C" />
                     <Row label="Batubara" value={fmt(summary.boilerA?.batubara)} unit="ton" />
+                    <Row label="Cons. Rate" value={summary.boilerA?.consumptionRate != null ? summary.boilerA.consumptionRate.toFixed(3) : null} unit="ton/ton" />
                     <div className="flex items-center justify-between gap-2 pt-1">
                         <span className="text-slate-400 text-[10px]">Status</span>
                         <StatusBadge value={summary.boilerA?.status ?? null} />
@@ -680,6 +679,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                     <Row label="Temp Steam" value={fmt(summary.boilerB?.tempSteam)} unit="°C" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerB?.tempFurnace)} unit="°C" />
                     <Row label="Batubara" value={fmt(summary.boilerB?.batubara)} unit="ton" />
+                    <Row label="Cons. Rate" value={summary.boilerB?.consumptionRate != null ? summary.boilerB.consumptionRate.toFixed(3) : null} unit="ton/ton" />
                     <div className="flex items-center justify-between gap-2 pt-1">
                         <span className="text-slate-400 text-[10px]">Status</span>
                         <StatusBadge value={summary.boilerB?.status ?? null} />
@@ -693,7 +693,6 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                     <Row label="Temp Steam" value={fmt(summary.turbin?.tempSteam)} unit="°C" />
                     <Row label="Thrust Bearing" value={fmt(summary.turbin?.thrustBearing)} unit="°C" />
                     <Row label="Vacuum" value={summary.turbin?.vacuum ?? null} unit="MPa" />
-                    <Row label="Stream Days" value={fmt(summary.turbin?.streamDays)} unit="hari" />
                 </ReviewCard>
 
                 {/* Distribusi Steam */}
@@ -777,7 +776,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
     );
 }
 
-function ReviewSummaryDaily({ summary, supervisor }: { summary: DailyReviewSummary; supervisor?: string }) {
+function ReviewSummaryDaily({ summary }: { summary: DailyReviewSummary }) {
     return (
         <div className="space-y-4">
             {/* Header Laporan Harian */}
@@ -786,9 +785,8 @@ function ReviewSummaryDaily({ summary, supervisor }: { summary: DailyReviewSumma
                     <span className="material-symbols-outlined text-[14px]">info</span>
                     Informasi Laporan Harian
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <HeaderTile label="Tanggal" value={summary.header.dateHumanized} icon="calendar_today" className="col-span-1" />
-                    <HeaderTile label="Kasi / Supervisor" value={supervisor} icon="supervisor_account" className="col-span-1" />
+                <div className="grid grid-cols-1 gap-2.5 max-w-sm">
+                    <HeaderTile label="Tanggal" value={summary.header.dateHumanized} icon="calendar_today" />
                 </div>
             </div>
 

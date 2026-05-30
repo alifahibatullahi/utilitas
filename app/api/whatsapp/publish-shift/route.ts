@@ -32,6 +32,23 @@ function getShiftWindowIso(date: string, shift: string): { start: string; end: s
     return { start: `${prevDate}T23:00:00+07:00`, end: `${date}T07:00:00+07:00` };
 }
 
+/**
+ * Shift kronologis sebelumnya (sinkron dengan getPreviousShift di hooks/useShiftReport):
+ * malam → sore (kemarin), pagi → malam (hari sama), sore → pagi (hari sama).
+ * Dipakai untuk ambil totalizer_steam shift sebelumnya → hitung consumption rate.
+ */
+function getPreviousShift(date: string, shift: string): { prevDate: string; prevShift: string } {
+    if (shift === 'malam') {
+        const d = new Date(date + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const prevDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        return { prevDate, prevShift: 'sore' };
+    }
+    if (shift === 'pagi') return { prevDate: date, prevShift: 'malam' };
+    return { prevDate: date, prevShift: 'pagi' };
+}
+
 // GET — returns the suggested text body for the Washift channel + structured summary
 // untuk Review tab. Modal calls this to pre-fill review cards & editable textarea.
 export async function GET(req: NextRequest) {
@@ -45,7 +62,7 @@ export async function GET(req: NextRequest) {
             id, date, shift, group_name, supervisor, catatan,
             shift_turbin (flow_steam, press_steam, temp_steam, vacuum, stream_days, thrust_bearing),
             shift_generator_gi (gen_load, gen_tegangan, gen_frequensi, gi_sum_p),
-            shift_boiler (boiler, press_steam, flow_steam, temp_steam, batubara_ton, temp_furnace, temp_flue_gas, status_boiler),
+            shift_boiler (boiler, press_steam, flow_steam, temp_steam, batubara_ton, temp_furnace, temp_flue_gas, totalizer_steam, status_boiler),
             shift_steam_dist (pabrik1_flow, pabrik2_flow, pabrik3a_flow, pabrik3b_flow),
             shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie, power_pabrik3b),
             shift_tankyard (tk_rcw, tk_demin),
@@ -83,7 +100,25 @@ export async function GET(req: NextRequest) {
         date: formatDateHariTanggal(report.date as string),
         summary: summaryText,
     });
-    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? []);
+    // Totalizer steam shift sebelumnya per boiler → untuk hitung consumption rate
+    // (batubara_ton / produksi steam), sinkron dengan kalkulasi di form TabBoiler.
+    const prev = getPreviousShift(report.date as string, report.shift as string);
+    const { data: prevReport } = await supabase
+        .from('shift_reports')
+        .select('shift_boiler (boiler, totalizer_steam)')
+        .eq('date', prev.prevDate)
+        .eq('shift', prev.prevShift)
+        .maybeSingle();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prevBoilers: any[] = (prevReport?.shift_boiler as any[]) ?? [];
+    const prevTotalizer = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        A: (prevBoilers.find((b: any) => b.boiler === 'A')?.totalizer_steam as number | null) ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        B: (prevBoilers.find((b: any) => b.boiler === 'B')?.totalizer_steam as number | null) ?? null,
+    };
+
+    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer);
     return NextResponse.json({ text, summary });
 }
 
@@ -450,6 +485,7 @@ interface BoilerSummary {
     tempFurnace: number | null;
     tempFlueGas: number | null;
     batubara: number | null;
+    consumptionRate: number | null;   // batubara_ton / produksi steam (selisih totalizer vs shift sebelumnya)
     status: string | null;
 }
 interface TurbinSummary {
@@ -491,7 +527,7 @@ interface CriticalItem {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[]): ShiftReviewSummary {
+function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }): ShiftReviewSummary {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
     const turbin = first(report.shift_turbin);
@@ -507,14 +543,26 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const boilerB = boilers.find((b: any) => b.boiler === 'B');
 
+    // Consumption rate = batubara_ton / produksi steam (selisih totalizer vs shift
+    // sebelumnya). null kalau totalizer/prev tidak valid (mis. shift pertama / shutdown).
+    const consumptionRate = (b: { batubara_ton?: number | null; totalizer_steam?: number | null } | undefined, prevTot: number | null): number | null => {
+        const batubara = Number(b?.batubara_ton);
+        const now = Number(b?.totalizer_steam);
+        const prev = Number(prevTot);
+        if (!Number.isFinite(batubara) || !Number.isFinite(now) || !Number.isFinite(prev) || prev <= 0) return null;
+        const produksi = now - prev;
+        return produksi > 0 ? batubara / produksi : null;
+    };
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const toBoilerSummary = (b: any | undefined): BoilerSummary | null => b ? {
+    const toBoilerSummary = (b: any | undefined, prevTot: number | null): BoilerSummary | null => b ? {
         flow: b.flow_steam ?? null,
         pressSteam: b.press_steam ?? null,
         tempSteam: b.temp_steam ?? null,
         tempFurnace: b.temp_furnace ?? null,
         tempFlueGas: b.temp_flue_gas ?? null,
         batubara: b.batubara_ton ?? null,
+        consumptionRate: consumptionRate(b, prevTot),
         status: b.status_boiler ?? null,
     } : null;
 
@@ -528,8 +576,8 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
             foremanBoiler: personnel?.boiler_karu ?? null,
             foremanTurbin: personnel?.turbin_karu ?? null,
         },
-        boilerA: toBoilerSummary(boilerA),
-        boilerB: toBoilerSummary(boilerB),
+        boilerA: toBoilerSummary(boilerA, prevTotalizer.A),
+        boilerB: toBoilerSummary(boilerB, prevTotalizer.B),
         turbin: turbin ? {
             flowSteam: turbin.flow_steam ?? null,
             pressSteam: turbin.press_steam ?? null,

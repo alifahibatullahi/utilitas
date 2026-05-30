@@ -91,8 +91,9 @@ export function PublishReportModal({
     canReview = false,
     reviewerName = '',
 }: Props) {
-    // Default ke tab Review Summary — reviewer scan kartu dulu sebelum publish.
-    const [tab, setTab] = useState<'review' | 'pdf' | 'text'>('review');
+    // Default ke tab Review — kartu ringkasan + teks Washift digabung dalam 1 view
+    // (stacked, scrollable) supaya di HP semua info terlihat tanpa pindah tab.
+    const [tab, setTab] = useState<'review' | 'pdf'>('review');
     const [text, setText] = useState('');
     // Structured summary untuk review tab. Union karena kind shift vs daily struktur beda.
     const [summary, setSummary] = useState<ShiftReviewSummary | DailyReviewSummary | null>(null);
@@ -177,7 +178,7 @@ export function PublishReportModal({
     // di deps array menyebabkan height reset + scroll jump tiap kali user ketik.
     // User yang lagi edit tetap nyaman scroll natively kalau konten melewati height.
     useEffect(() => {
-        if (tab !== 'text' || !open || loadingText) return;
+        if (tab !== 'review' || !open || loadingText) return;
         let cancelled = false;
         const raf = requestAnimationFrame(() => {
             if (cancelled || !textareaRef.current) return;
@@ -272,7 +273,7 @@ export function PublishReportModal({
 
     return (
         <div 
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300" 
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center z-50 p-2 sm:p-4 transition-all duration-300"
             onClick={() => !sending && onClose()}
         >
             <div 
@@ -301,7 +302,7 @@ export function PublishReportModal({
                 <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-500" />
 
                 {/* Header */}
-                <div className="flex items-start justify-between p-6 border-b border-slate-800/80">
+                <div className="flex items-start justify-between p-4 sm:p-6 border-b border-slate-800/80">
                     <div className="space-y-1">
                         <h3 className="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400">
                             Publish Laporan {kindLabel}
@@ -327,46 +328,36 @@ export function PublishReportModal({
                     </button>
                 </div>
 
-                {/* Tabs Wrapper */}
-                <div className="px-6 pt-4">
+                {/* Tabs Wrapper — Review Summary + Teks Washift digabung di tab 'review'. */}
+                <div className="px-4 sm:px-6 pt-4">
                     <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 flex gap-2">
-                        {/* Review Summary — default tab untuk shift maupun harian. Reviewer scan dulu di sini. */}
+                        {/* Review & Teks — kartu ringkasan + textarea pesan Washift dalam satu view. */}
                         <button
                             onClick={() => setTab('review')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
+                            className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
                                 ${tab === 'review'
                                     ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)]'
                                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                         >
                             <span className="material-symbols-outlined text-base">fact_check</span>
-                            Review Summary
-                        </button>
-                        <button
-                            onClick={() => setTab('text')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer
-                                ${tab === 'text'
-                                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.25)]'
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                        >
-                            <span className="material-symbols-outlined text-base">chat</span>
-                            Text ke {washiftKey}
+                            Review &amp; Teks
                         </button>
                         <button
                             onClick={() => setTab('pdf')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
+                            className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
                                 ${tab === 'pdf'
                                     ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.25)]'
                                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                         >
                             <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-                            PDF ke {pdfGroupKey}
+                            PDF<span className="hidden sm:inline">&nbsp;ke {pdfGroupKey}</span>
                             <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">SOON</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Personnel Selection */}
-                <div className="px-6 pt-4">
+                <div className="px-4 sm:px-6 pt-4">
                     <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-4 space-y-3">
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
                             <span className="material-symbols-outlined text-[14px] text-blue-400">badge</span>
@@ -437,43 +428,44 @@ export function PublishReportModal({
                 </div>
 
                 {/* Body Content */}
-                <div className="flex-1 overflow-y-auto p-6">
-                    {/* Review Summary — kartu mini per area untuk reviewer scan. */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                    {/* Review & Teks — kartu ringkasan + pesan Washift digabung dalam satu view. */}
                     {tab === 'review' && (
                         loadingText || !summary ? (
                             <div className="flex flex-col items-center justify-center py-20 gap-3">
                                 <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
                                 <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat ringkasan...</span>
                             </div>
-                        ) : kind === 'shift' ? (
-                            <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
                         ) : (
-                            <ReviewSummaryDaily summary={summary as DailyReviewSummary} />
-                        )
-                    )}
-                    {tab === 'text' && (
-                        <div className="space-y-4">
-                            <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
-                                {loadingText ? (
-                                    <div className="flex flex-col items-center justify-center py-20 gap-3">
-                                        <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
-                                        <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat template...</span>
-                                    </div>
+                            <div className="space-y-5">
+                                {/* Kartu ringkasan per area */}
+                                {kind === 'shift' ? (
+                                    <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
                                 ) : (
-                                    <div className="flex flex-col">
-                                        <div className="flex justify-end mb-3">
-                                            <button 
-                                                onClick={copyToClipboard}
-                                                disabled={loadingText || !text}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-40 active:scale-95 border text-[10px] font-bold uppercase tracking-wider
-                                                    ${copied 
-                                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]' 
-                                                        : 'bg-slate-900 border-slate-800 hover:border-slate-700/80 text-slate-400 hover:text-white hover:scale-105 shadow-sm'}`}
-                                            >
-                                                <span className="material-symbols-outlined text-[13px]">{copied ? 'check' : 'content_copy'}</span>
-                                                {copied ? 'Tersalin' : 'Salin Teks'}
-                                            </button>
+                                    <ReviewSummaryDaily summary={summary as DailyReviewSummary} />
+                                )}
+
+                                {/* Pesan ke Washift — editable, tepat di bawah ringkasan supaya
+                                    reviewer langsung lihat & koreksi sebelum publish. */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-[14px] text-cyan-400">chat</span>
+                                            Pesan ke {washiftKey}
                                         </div>
+                                        <button
+                                            onClick={copyToClipboard}
+                                            disabled={loadingText || !text}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-40 active:scale-95 border text-[10px] font-bold uppercase tracking-wider
+                                                ${copied
+                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                                                    : 'bg-slate-900 border-slate-800 hover:border-slate-700/80 text-slate-400 hover:text-white hover:scale-105 shadow-sm'}`}
+                                        >
+                                            <span className="material-symbols-outlined text-[13px]">{copied ? 'check' : 'content_copy'}</span>
+                                            {copied ? 'Tersalin' : 'Salin'}
+                                        </button>
+                                    </div>
+                                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
                                         <textarea
                                             ref={textareaRef}
                                             value={text}
@@ -482,9 +474,9 @@ export function PublishReportModal({
                                             placeholder="Tulis laporan di sini..."
                                         />
                                     </div>
-                                )}
+                                </div>
                             </div>
-                        </div>
+                        )
                     )}
 
                     {tab === 'pdf' && (
@@ -512,7 +504,7 @@ export function PublishReportModal({
 
                 {/* Results Section */}
                 {results && (
-                    <div className="px-6 pb-4 space-y-2.5">
+                    <div className="px-4 sm:px-6 pb-4 space-y-2.5">
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Laporan Publikasi</div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <ResultRow label="📄 PDF ke Grup" res={results.pdf} extra={results.pdf?.pdfUrl} />
@@ -522,7 +514,7 @@ export function PublishReportModal({
                 )}
 
                 {/* Footer / Actions */}
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-800/80 bg-slate-950/20">
+                <div className="flex items-center justify-end gap-3 p-4 sm:p-6 border-t border-slate-800/80 bg-slate-950/20">
                     <button 
                         onClick={onClose} 
                         disabled={sending} 

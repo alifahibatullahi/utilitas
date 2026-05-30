@@ -106,7 +106,8 @@ export async function POST(req: NextRequest) {
     if (!group) return NextResponse.json({ ready: true, skipped: 'no_group_configured', groupKey });
 
     // 4. Susun pesan ringkas parameter washift + link review/publish.
-    const link = buildDeepLink('/input-shift', { shift, date });
+    // review=1 → halaman input-shift auto-buka modal Review/Publish untuk Foreman/Supervisor.
+    const link = buildDeepLink('/input-shift', { shift, date, review: '1' });
     const sc = shiftLabel(shift);
     const msg = [
         `✅ *Laporan Shift ${sc} siap dipublish ke Washift*`,

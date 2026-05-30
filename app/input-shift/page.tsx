@@ -175,6 +175,10 @@ function InputShiftPageInner() {
             if (target) setSelectedShift(target);
         }
         if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) setSelectedDate(qDate);
+        // Notif "siap dipublish" mengirim ?review=1 → tandai untuk auto-buka modal
+        // Review/Publish setelah report shift/tanggal target ke-load.
+        const qReview = searchParams?.get('review');
+        if (qReview === '1' || qReview === 'publish') autoReviewRef.current = true;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -279,6 +283,20 @@ function InputShiftPageInner() {
     const SHIFT_LABELS: Record<number, string> = { 1: 'Shift Malam 06.00', 2: 'Shift Pagi 14.00', 3: 'Shift Sore 22.00' };
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
     const [publishOpen, setPublishOpen] = useState(false);
+    // Deep-link ?review=1 (dari notif "siap dipublish") → auto-buka modal Review/Publish
+    // begitu report target selesai di-load. Sekali pakai supaya bisa ditutup tanpa re-open.
+    const autoReviewRef = useRef(false);
+    // Auto-buka modal Review/Publish begitu report target (sesuai shift+tanggal di URL)
+    // selesai di-load. Guard date/shift mencegah modal terbuka untuk report default
+    // yang sempat ke-load sebelum prefill jalan.
+    useEffect(() => {
+        if (!autoReviewRef.current) return;
+        if (inputMode !== 'shift' || !report?.id) return;
+        if (report.date !== selectedDate || report.shift !== shiftMap[selectedShift]) return;
+        setPublishOpen(true);
+        autoReviewRef.current = false;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [report, selectedDate, selectedShift, inputMode]);
     const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift]);

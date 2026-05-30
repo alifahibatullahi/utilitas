@@ -746,7 +746,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
             </div>
 
-            {/* Catatan Shift + data internal (tidak dikirim ke Washift) */}
+            {/* Catatan Shift + detail tambahan (unloading silo, solar, bunker berasap) — ikut ke washift */}
             <ReviewCard title="Catatan Shift" icon="sticky_note_2" color="amber">
                 {summary.catatan.trim() ? (
                     <pre className="text-[11px] text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">{summary.catatan}</pre>
@@ -757,8 +757,8 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 {summary.internal && (
                     <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-2.5">
                         <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[12px]">lock</span>
-                            Data Internal · tidak dikirim ke Washift
+                            <span className="material-symbols-outlined text-[12px]">inventory_2</span>
+                            Detail Catatan Shift
                         </div>
                         <InternalList
                             title="Unloading Silo (Fly Ash)"

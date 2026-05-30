@@ -93,7 +93,16 @@ export async function GET(req: NextRequest) {
         .lte('date', (report.date as string))
         .order('item', { ascending: true });
 
-    const summaryText = buildShiftSummary(report, maintenance ?? []);
+    // Data tambahan catatan shift (unloading silo, kedatangan & permintaan solar).
+    // By date+shift. Sekarang ikut ke teks washift (Catatan Shift) DAN Review.
+    const [{ data: ashRows }, { data: solarInRows }, { data: solarOutRows }] = await Promise.all([
+        supabase.from('ash_unloadings').select('silo, perusahaan, tujuan, ritase').eq('date', report.date).eq('shift', report.shift),
+        supabase.from('solar_unloadings').select('supplier, liters').eq('date', report.date).eq('shift', report.shift),
+        supabase.from('solar_usages').select('tujuan, liters').eq('date', report.date).eq('shift', report.shift),
+    ]);
+    const internal = { ash: ashRows ?? [], solarIn: solarInRows ?? [], solarOut: solarOutRows ?? [] };
+
+    const summaryText = buildShiftSummary(report, maintenance ?? [], internal);
     const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
     const text = await renderTemplate(supabase, 'shift_share', {
         shift: shiftLabel,
@@ -117,19 +126,6 @@ export async function GET(req: NextRequest) {
         A: (prevBoilers.find((b: any) => b.boiler === 'A')?.totalizer_steam as number | null) ?? null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         B: (prevBoilers.find((b: any) => b.boiler === 'B')?.totalizer_steam as number | null) ?? null,
-    };
-
-    // Data internal (hanya untuk Review, TIDAK dikirim ke Washift): unloading silo,
-    // kedatangan & permintaan solar. By date+shift (bukan FK ke report).
-    const [{ data: ashRows }, { data: solarInRows }, { data: solarOutRows }] = await Promise.all([
-        supabase.from('ash_unloadings').select('silo, perusahaan, tujuan, ritase').eq('date', report.date).eq('shift', report.shift),
-        supabase.from('solar_unloadings').select('supplier, liters').eq('date', report.date).eq('shift', report.shift),
-        supabase.from('solar_usages').select('tujuan, liters').eq('date', report.date).eq('shift', report.shift),
-    ]);
-    const internal = {
-        ash: ashRows ?? [],
-        solarIn: solarInRows ?? [],
-        solarOut: solarOutRows ?? [],
     };
 
     const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal);
@@ -429,7 +425,7 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
 // parameters + maintenance + catatan shift. The template provides the header
 // (e.g. "*Laporan Shift {{shift}} — {{date}}*").
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftSummary(report: any, maintenance: any[]): string {
+function buildShiftSummary(report: any, maintenance: any[], internal: { ash: any[]; solarIn: any[]; solarOut: any[] }): string {
     const lines: string[] = [];
     lines.push(`Supervisor: ${report.supervisor ?? '-'}`);
     lines.push('');
@@ -454,10 +450,36 @@ function buildShiftSummary(report: any, maintenance: any[]): string {
         });
     }
 
-    if (report.catatan) {
+    // CATATAN SHIFT = catatan free-text + data tambahan (unloading silo, solar,
+    // bunker berasap). Semua ikut dikirim ke washift.
+    const catatanBody: string[] = [];
+    if (report.catatan) catatanBody.push(String(report.catatan));
+
+    const coal = Array.isArray(report.shift_coal_bunker) ? report.shift_coal_bunker[0] : report.shift_coal_bunker;
+    const bunkerBerasap = coal
+        ? ['a', 'b', 'c', 'd', 'e', 'f'].filter(k => String(coal[`status_bunker_${k}`] ?? '').toLowerCase() === 'berasap').map(k => k.toUpperCase())
+        : [];
+
+    if (internal.ash.length > 0) {
+        catatanBody.push('', '*Unloading Silo:*');
+        internal.ash.forEach(a => catatanBody.push(`  Silo ${a.silo ?? '-'} · ${a.perusahaan ?? '-'} → ${a.tujuan ?? '-'} · ${a.ritase ?? 0} rit`));
+    }
+    if (internal.solarIn.length > 0) {
+        catatanBody.push('', '*Kedatangan Solar:*');
+        internal.solarIn.forEach(s => catatanBody.push(`  ${s.supplier ?? '-'} · ${s.liters ?? '-'} L`));
+    }
+    if (internal.solarOut.length > 0) {
+        catatanBody.push('', '*Permintaan Solar:*');
+        internal.solarOut.forEach(s => catatanBody.push(`  ${s.tujuan ?? '-'} · ${s.liters ?? '-'} L`));
+    }
+    if (bunkerBerasap.length > 0) {
+        catatanBody.push('', `*Bunker Berasap:* ${bunkerBerasap.join(', ')}`);
+    }
+
+    if (catatanBody.length > 0) {
         lines.push('');
         lines.push('━━━ *CATATAN SHIFT* ━━━');
-        lines.push(report.catatan);
+        lines.push(...catatanBody);
     }
 
     return lines.join('\n');

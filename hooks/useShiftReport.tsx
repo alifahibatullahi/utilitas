@@ -818,10 +818,13 @@ export function useShiftReport(date: string, shift: ShiftType) {
             panel_boiler_a: ['shift_boiler', 'shift_coal_bunker'], // row A + partial cols A/B/C
             panel_boiler_b: ['shift_boiler', 'shift_coal_bunker'], // row B + partial cols D/E/F
             panel_turbin: ['shift_turbin', 'shift_steam_dist', 'shift_generator_gi', 'shift_power_dist'],
-            handling: ['shift_esp_handling'],
+            // handling: kartu Loading (shift_esp_handling) + kartu Tankyard / Level Tank
+            // (shift_tankyard). Tankyard di-edit di TabHandling, jadi station handling yang
+            // owns shift_tankyard (sebelumnya keliru di lapangan_boiler → level tank tidak tersimpan).
+            handling: ['shift_esp_handling', 'shift_tankyard'],
             esp: ['shift_esp_handling'],
             bunker: ['shift_coal_bunker'],                          // hanya bunker_* + status_bunker_*
-            lapangan_boiler: ['shift_water_quality', 'shift_tankyard'],
+            lapangan_boiler: ['shift_water_quality'],
             lapangan_turbin: [],
         };
         // Row-level filter untuk shift_boiler (multi-row by `boiler` column).

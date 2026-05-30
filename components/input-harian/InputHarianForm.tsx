@@ -126,6 +126,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
     const [publishOpen, setPublishOpen] = useState(false);
 
+    // Deep-link ?review=1 (dari notif "siap dipublish" harian) → auto-buka modal
+    // Review/Publish begitu report harian selesai di-load. Sekali pakai (bisa ditutup
+    // tanpa re-open). Hanya non-station mode (link notif tidak membawa station).
+    const autoReviewRef = useRef(searchParams?.get('review') === '1' && !stationParam);
+    useEffect(() => {
+        if (!autoReviewRef.current || !report?.id) return;
+        setPublishOpen(true);
+        autoReviewRef.current = false;
+    }, [report?.id]);
+
     // Restore filler dari report.station_fillers[station] kalau ada — kalau belum, default
     // ke operator login (saat user pertama buka station view).
     useEffect(() => {
@@ -668,6 +678,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 }
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
+
+                // Notif "siap dipublish" harian (LHUBB): fire-and-forget. Endpoint cek
+                // kelengkapan + dedup (1x per hari), lalu kirim ke grup pengisi LHUBB.
+                if (result?.reportId) {
+                    fetch('/api/whatsapp/notify-ready-daily', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ date, reportId: result.reportId }),
+                    }).catch(() => { /* non-blocking */ });
+                }
 
                 // Build WA preview for Utilitas 2 & SU 3A when panel_turbin saves harian
                 if (station === 'panel_turbin' && result?.reportId) {

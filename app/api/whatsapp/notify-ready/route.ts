@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
         `✅ *Laporan Shift ${sc} siap dipublish ke Washift*`,
         `Tanggal: ${date}  •  Grup ${groupLetter}`,
         '',
-        'Semua parameter washift sudah terisi. Mohon Foreman/Supervisor review & publish:',
+        'Semua parameter Shift sudah terisi. Mohon Foreman/Supervisor review & publish:',
         link,
     ].join('\n');
 

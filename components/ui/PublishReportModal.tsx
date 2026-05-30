@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 
@@ -173,20 +173,23 @@ export function PublishReportModal({
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Auto-adjust textarea height SEKALI saat template baru di-load (atau saat user
-    // pindah ke tab Text). TIDAK fire pada setiap keystroke — sebelumnya `text` ada
-    // di deps array menyebabkan height reset + scroll jump tiap kali user ketik.
-    // User yang lagi edit tetap nyaman scroll natively kalau konten melewati height.
+    // Grow textarea ke tinggi konten penuh supaya TIDAK ada scroll-dalam — body modal
+    // jadi satu-satunya scroll container, jadi scroll di HP halus & seluruh teks
+    // terlihat. Dipanggil saat template di-load (effect) dan tiap user ketik (onChange).
+    const autoSizeTextarea = useCallback(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+    }, []);
+
+    // Sizing awal saat template selesai di-load. Saat user ketik, sizing dilakukan
+    // langsung di onChange (lihat textarea) supaya tidak ada scroll-jump per keystroke.
     useEffect(() => {
         if (tab !== 'review' || !open || loadingText) return;
-        let cancelled = false;
-        const raf = requestAnimationFrame(() => {
-            if (cancelled || !textareaRef.current) return;
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        });
-        return () => { cancelled = true; cancelAnimationFrame(raf); };
-    }, [tab, open, loadingText]);
+        const raf = requestAnimationFrame(autoSizeTextarea);
+        return () => cancelAnimationFrame(raf);
+    }, [tab, open, loadingText, autoSizeTextarea]);
 
     // Reusable: re-fetch template body dari server. Dipanggil saat modal open AND
     // setiap kali dropdown supervisor/foreman berubah supaya template auto-refresh.
@@ -356,14 +359,16 @@ export function PublishReportModal({
                     </div>
                 </div>
 
-                {/* Personnel Selection */}
-                <div className="px-4 sm:px-6 pt-4">
-                    <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                {/* Body Content */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                    {/* Penanggung Jawab Laporan — ikut scroll (bukan fixed) supaya tidak
+                        makan tinggi modal di HP; kompak di layar kecil. */}
+                    <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-3 sm:p-4 space-y-2.5 mb-4 sm:mb-5">
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
                             <span className="material-symbols-outlined text-[14px] text-blue-400">badge</span>
                             Penanggung Jawab Laporan
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                             {/* Supervisor Dropdown */}
                             <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
                                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Supervisor</label>
@@ -408,7 +413,7 @@ export function PublishReportModal({
                             <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
                                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Boiler</label>
                                 <div className="relative flex items-center">
-                                    <select 
+                                    <select
                                         value={foremanBoiler}
                                         onChange={e => { const v = e.target.value; setForemanBoiler(v); persistChange('foreman_boiler', v); }}
                                         className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
@@ -425,10 +430,7 @@ export function PublishReportModal({
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Body Content */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                     {/* Review & Teks — kartu ringkasan + pesan Washift digabung dalam satu view. */}
                     {tab === 'review' && (
                         loadingText || !summary ? (
@@ -469,8 +471,8 @@ export function PublishReportModal({
                                         <textarea
                                             ref={textareaRef}
                                             value={text}
-                                            onChange={e => setText(e.target.value)}
-                                            className="w-full bg-transparent border-none text-[11.5px] md:text-xs font-mono focus:outline-none focus:ring-0 text-slate-200 resize-y overflow-y-auto leading-relaxed min-h-[200px]"
+                                            onChange={e => { setText(e.target.value); autoSizeTextarea(); }}
+                                            className="w-full bg-transparent border-none text-xs sm:text-[13px] font-mono focus:outline-none focus:ring-0 text-slate-200 resize-none overflow-hidden leading-relaxed min-h-[240px]"
                                             placeholder="Tulis laporan di sini..."
                                         />
                                     </div>

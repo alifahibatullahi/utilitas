@@ -280,12 +280,16 @@ export function getGroupShiftOnDate(group: 'A' | 'B' | 'C' | 'D', dateStr: strin
 export function getGroupForShift(dateStr: string, shiftType: 'malam' | 'pagi' | 'sore'): string {
     const shiftLetter: Record<string, string> = { malam: 'M', pagi: 'P', sore: 'S' };
     const letter = shiftLetter[shiftType];
-    // Shift malam (23:00–07:00) dikerjakan oleh grup yang jadwalnya 'M' pada hari sebelumnya
+    // Shift malam (23:00–07:00 hari D) dikerjakan oleh grup yang jadwalnya 'M' pada hari D-1.
+    // Hitung D-1 lewat UTC murni supaya hasilnya TIDAK bergeser saat server bukan WIB
+    // (Vercel jalan di UTC). Sebelumnya pakai 'T00:00:00+07:00' + getDate() lokal → di
+    // server UTC tanggal lookup mundur 1 hari ekstra, jadi salah grup.
     let lookupDate = dateStr;
     if (shiftType === 'malam') {
-        const d = new Date(dateStr + 'T00:00:00+07:00');
-        d.setDate(d.getDate() - 1);
-        lookupDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const prev = new Date(Date.UTC(y, m - 1, d - 1));
+        const pad = (n: number) => String(n).padStart(2, '0');
+        lookupDate = `${prev.getUTCFullYear()}-${pad(prev.getUTCMonth() + 1)}-${pad(prev.getUTCDate())}`;
     }
     for (const group of ['A', 'B', 'C', 'D'] as const) {
         if (getGroupShiftOnDate(group, lookupDate) === letter) return group;

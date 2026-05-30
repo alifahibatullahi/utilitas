@@ -66,7 +66,8 @@ export async function GET(req: NextRequest) {
             shift_steam_dist (pabrik1_flow, pabrik2_flow, pabrik3a_flow, pabrik3b_flow),
             shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie, power_pabrik3b),
             shift_tankyard (tk_rcw, tk_demin),
-            shift_personnel (turbin_karu, boiler_karu)
+            shift_personnel (turbin_karu, boiler_karu),
+            shift_coal_bunker (status_bunker_a, status_bunker_b, status_bunker_c, status_bunker_d, status_bunker_e, status_bunker_f)
         `)
         .eq('id', reportId)
         .single();
@@ -118,7 +119,20 @@ export async function GET(req: NextRequest) {
         B: (prevBoilers.find((b: any) => b.boiler === 'B')?.totalizer_steam as number | null) ?? null,
     };
 
-    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer);
+    // Data internal (hanya untuk Review, TIDAK dikirim ke Washift): unloading silo,
+    // kedatangan & permintaan solar. By date+shift (bukan FK ke report).
+    const [{ data: ashRows }, { data: solarInRows }, { data: solarOutRows }] = await Promise.all([
+        supabase.from('ash_unloadings').select('silo, perusahaan, tujuan, ritase').eq('date', report.date).eq('shift', report.shift),
+        supabase.from('solar_unloadings').select('supplier, liters').eq('date', report.date).eq('shift', report.shift),
+        supabase.from('solar_usages').select('tujuan, liters').eq('date', report.date).eq('shift', report.shift),
+    ]);
+    const internal = {
+        ash: ashRows ?? [],
+        solarIn: solarInRows ?? [],
+        solarOut: solarOutRows ?? [],
+    };
+
+    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal);
     return NextResponse.json({ text, summary });
 }
 
@@ -477,6 +491,13 @@ export interface ShiftReviewSummary {
     catatan: string;
     maintenance: MaintItem[];
     critical: CriticalItem[];
+    // Data internal (Review only — tidak dikirim ke Washift).
+    internal: {
+        ashUnloadings: { silo: string; perusahaan: string; tujuan: string; ritase: number }[];
+        solarMasuk: { supplier: string; liters: number }[];
+        solarKeluar: { tujuan: string; liters: number }[];
+        bunkerBerasap: string[];
+    };
 }
 interface BoilerSummary {
     flow: number | null;
@@ -527,7 +548,7 @@ interface CriticalItem {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }): ShiftReviewSummary {
+function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }, internal: { ash: any[]; solarIn: any[]; solarOut: any[] }): ShiftReviewSummary {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
     const turbin = first(report.shift_turbin);
@@ -536,6 +557,11 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
     const powerDist = first(report.shift_power_dist);
     const tankyard = first(report.shift_tankyard);
     const personnel = first(report.shift_personnel);
+    const coal = first(report.shift_coal_bunker);
+    // Bunker (A–F) yang berstatus 'berasap'.
+    const bunkerBerasap = coal
+        ? ['a', 'b', 'c', 'd', 'e', 'f'].filter(k => String(coal[`status_bunker_${k}`] ?? '').toLowerCase() === 'berasap').map(k => k.toUpperCase())
+        : [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const boilers: any[] = (report.shift_boiler ?? []);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -621,5 +647,22 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
             scope: String(c.scope ?? '-'),
             foreman: String(c.foreman ?? '-'),
         })),
+        internal: {
+            ashUnloadings: (internal.ash ?? []).map(a => ({
+                silo: String(a.silo ?? '-'),
+                perusahaan: String(a.perusahaan ?? '-'),
+                tujuan: String(a.tujuan ?? '-'),
+                ritase: Number(a.ritase ?? 0),
+            })),
+            solarMasuk: (internal.solarIn ?? []).map(s => ({
+                supplier: String(s.supplier ?? '-'),
+                liters: Number(s.liters ?? 0),
+            })),
+            solarKeluar: (internal.solarOut ?? []).map(s => ({
+                tujuan: String(s.tujuan ?? '-'),
+                liters: Number(s.liters ?? 0),
+            })),
+            bunkerBerasap,
+        },
     };
 }

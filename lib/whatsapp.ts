@@ -147,8 +147,10 @@ function fmtNum(v: unknown, decimals = 1): string {
 // (publish-shift) dan notif "siap dipublish" (notify-ready) supaya parameter di
 // kedua pesan SELALU identik. Field di-akses lewat `first` agar tahan terhadap
 // PostgREST yang return object (1-1) maupun array (1-many).
+// `tankLevels` (opsional) meng-override Level RCW/Demin dengan data TERAKHIR dari
+// tabel tank_levels (bukan dari shift_tankyard report).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildOperasiParams(report: any): string {
+export function buildOperasiParams(report: any, tankLevels?: { rcw: number | null; demin: number | null }): string {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const first = (x: any) => (Array.isArray(x) ? x[0] : (x ?? undefined));
     const turbin = first(report.shift_turbin);
@@ -204,11 +206,14 @@ export function buildOperasiParams(report: any): string {
         lines.push(`  PLN         : ${fmtNum(gen?.gi_sum_p)} MW`);
     }
 
-    // Tank Yard — Level RCW & Demin
-    if (tankyard) {
+    // Tank Yard — Level RCW & Demin. Pakai data terakhir dari tank_levels kalau
+    // disediakan (tankLevels), kalau tidak fallback ke shift_tankyard report.
+    const rcw = tankLevels ? tankLevels.rcw : (tankyard?.tk_rcw ?? null);
+    const demin = tankLevels ? tankLevels.demin : (tankyard?.tk_demin ?? null);
+    if (tankLevels || tankyard) {
         lines.push('');
-        lines.push(`Level RCW   : ${fmtNum(tankyard.tk_rcw)} m³`);
-        lines.push(`Level Demin : ${fmtNum(tankyard.tk_demin)} m³`);
+        lines.push(`Level RCW   : ${fmtNum(rcw)} m³`);
+        lines.push(`Level Demin : ${fmtNum(demin)} m³`);
     }
 
     return lines.join('\n');

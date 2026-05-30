@@ -102,7 +102,18 @@ export async function GET(req: NextRequest) {
     ]);
     const internal = { ash: ashRows ?? [], solarIn: solarInRows ?? [], solarOut: solarOutRows ?? [] };
 
-    const summaryText = buildShiftSummary(report, maintenance ?? [], internal);
+    // Level RCW & Demin diambil dari data TERAKHIR di tank_levels (bukan shift_tankyard).
+    const { data: tankRows } = await supabase
+        .from('tank_levels')
+        .select('tank_id, level_m3, created_at')
+        .in('tank_id', ['RCW', 'DEMIN'])
+        .order('created_at', { ascending: false });
+    const latestTank = {
+        rcw: (tankRows?.find(t => t.tank_id === 'RCW')?.level_m3 as number | null) ?? null,
+        demin: (tankRows?.find(t => t.tank_id === 'DEMIN')?.level_m3 as number | null) ?? null,
+    };
+
+    const summaryText = buildShiftSummary(report, maintenance ?? [], internal, latestTank);
     const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
     const text = await renderTemplate(supabase, 'shift_share', {
         shift: shiftLabel,
@@ -128,7 +139,7 @@ export async function GET(req: NextRequest) {
         B: (prevBoilers.find((b: any) => b.boiler === 'B')?.totalizer_steam as number | null) ?? null,
     };
 
-    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal);
+    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal, latestTank);
     return NextResponse.json({ text, summary });
 }
 
@@ -425,13 +436,13 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
 // parameters + maintenance + catatan shift. The template provides the header
 // (e.g. "*Laporan Shift {{shift}} — {{date}}*").
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftSummary(report: any, maintenance: any[], internal: { ash: any[]; solarIn: any[]; solarOut: any[] }): string {
+function buildShiftSummary(report: any, maintenance: any[], internal: { ash: any[]; solarIn: any[]; solarOut: any[] }, latestTank: { rcw: number | null; demin: number | null }): string {
     const lines: string[] = [];
     lines.push(`Supervisor: ${report.supervisor ?? '-'}`);
     lines.push('');
-    // Blok parameter operasi dibangun oleh helper bersama (lib/whatsapp) supaya
-    // identik dengan notif "siap dipublish".
-    lines.push(buildOperasiParams(report));
+    // Blok parameter operasi dibangun oleh helper bersama (lib/whatsapp).
+    // Level RCW/Demin pakai data terakhir dari tank_levels.
+    lines.push(buildOperasiParams(report, latestTank));
 
     lines.push('');
     lines.push('━━━ *MAINTENANCE* ━━━');
@@ -478,7 +489,7 @@ function buildShiftSummary(report: any, maintenance: any[], internal: { ash: any
 
     if (catatanBody.length > 0) {
         lines.push('');
-        lines.push('━━━ *CATATAN SHIFT* ━━━');
+        lines.push('━━━ *CATATAN OPERASIONAL* ━━━');
         lines.push(...catatanBody);
     }
 
@@ -570,14 +581,13 @@ interface CriticalItem {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }, internal: { ash: any[]; solarIn: any[]; solarOut: any[] }): ShiftReviewSummary {
+function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }, internal: { ash: any[]; solarIn: any[]; solarOut: any[] }, latestTank: { rcw: number | null; demin: number | null }): ShiftReviewSummary {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
     const turbin = first(report.shift_turbin);
     const gen = first(report.shift_generator_gi);
     const steamDist = first(report.shift_steam_dist);
     const powerDist = first(report.shift_power_dist);
-    const tankyard = first(report.shift_tankyard);
     const personnel = first(report.shift_personnel);
     const coal = first(report.shift_coal_bunker);
     // Bunker (A–F) yang berstatus 'berasap'.
@@ -650,10 +660,8 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
             piu: powerDist?.power_pie ?? null,
             pln: gen?.gi_sum_p ?? null,
         } : null,
-        tankLevels: tankyard ? {
-            rcw: tankyard.tk_rcw ?? null,
-            demin: tankyard.tk_demin ?? null,
-        } : null,
+        // Level RCW/Demin dari data terakhir di tank_levels (bukan shift_tankyard).
+        tankLevels: { rcw: latestTank.rcw, demin: latestTank.demin },
         catatan: (report.catatan as string) ?? '',
         maintenance: maintenance.map(m => ({
             item: String(m.item ?? '-'),

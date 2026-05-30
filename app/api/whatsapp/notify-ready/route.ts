@@ -5,7 +5,6 @@ import {
     getWhatsappGroup,
     logNotification,
     buildDeepLink,
-    buildOperasiParams,
 } from '@/lib/whatsapp';
 import { getGroupForShift } from '@/lib/constants';
 
@@ -109,16 +108,13 @@ export async function POST(req: NextRequest) {
     // review=1 → halaman input-shift auto-buka modal Review/Publish untuk Foreman/Supervisor.
     const link = buildDeepLink('/input-shift', { shift, date, review: '1' });
     const sc = shiftLabel(shift);
+    // Pesan ringkas: tanpa isian parameter — cukup info + link untuk Foreman/Supervisor
+    // membuka halaman Review/Publish.
     const msg = [
         `✅ *Laporan Shift ${sc} siap dipublish ke Washift*`,
         `Tanggal: ${date}  •  Grup ${groupLetter}`,
         '',
-        'Semua parameter washift sudah terisi:',
-        '',
-        // Parameter identik dengan ringkasan yang dipublish ke Washift (helper bersama).
-        buildOperasiParams(report),
-        '',
-        'Mohon Foreman/Supervisor review & publish:',
+        'Semua parameter washift sudah terisi. Mohon Foreman/Supervisor review & publish:',
         link,
     ].join('\n');
 

@@ -122,6 +122,84 @@ function pickValidCols(table: string, data: Record<string, unknown>): Record<str
     return result;
 }
 
+// ─── Kepemilikan kolom per station (laporan harian) ───
+// Saat submit datang dari station view (?station=<id> → station_filler diisi), HANYA
+// kolom milik station tsb yang ditulis (partial UPDATE). Kolom milik station lain di
+// row child yang sama TIDAK disentuh — jadi tidak saling overwrite walau beberapa station
+// menulis tabel yang sama. Contoh tabel berbagi:
+//   - daily_report_steam        : Boiler (prod_boiler_*) + Turbin (inlet/mps/condens)
+//   - daily_report_turbine_misc : Boiler (furnace/status_boiler/CR) + Turbin (gen/gi/status_turbin)
+//                                 + PIU (totalizer_export/import/gi)
+//   - daily_report_stock_tank   : Boiler (bfw_*) + Handling (rcw/demin/solar) + ESP (silo/fly_ash)
+//   - daily_report_totalizer    : Handling (tot_* konsumsi) + foreman (group/kasi/totalizer_1..5)
+// Tabel yang TIDAK ada di map sebuah station → di-skip total untuk station itu.
+// Submit non-station (foreman/admin) → ownsMap null → tulis penuh (upsert) seperti biasa.
+const BOILER_OWNS_COLS: Record<string, string[]> = {
+    daily_report_steam: [
+        'prod_boiler_a_24', 'prod_boiler_a_00', 'prod_boiler_b_24', 'prod_boiler_b_00',
+        'prod_total_24', 'prod_total_00',
+        'selisih_prod_boiler_a', 'selisih_prod_boiler_b',
+    ],
+    daily_report_coal: [
+        'coal_a_24', 'coal_b_24', 'coal_c_24', 'total_boiler_a_24',
+        'coal_d_24', 'coal_e_24', 'coal_f_24', 'total_boiler_b_24', 'grand_total_24',
+        'coal_a_00', 'coal_b_00', 'coal_c_00', 'total_boiler_a_00',
+        'coal_d_00', 'coal_e_00', 'coal_f_00', 'total_boiler_b_00', 'grand_total_00',
+        'selisih_coal_a', 'selisih_coal_b', 'selisih_coal_c',
+        'selisih_coal_d', 'selisih_coal_e', 'selisih_coal_f',
+    ],
+    daily_report_stock_tank: ['bfw_boiler_a', 'bfw_boiler_b', 'flow_bfw_a', 'flow_bfw_b', 'bfw_total'],
+    // consumption_rate murni turunan data boiler (coal ÷ steam prod), jadi di-own Boiler.
+    daily_report_turbine_misc: [
+        'temp_furnace_a', 'temp_furnace_b', 'status_boiler_a', 'status_boiler_b',
+        'consumption_rate_a', 'consumption_rate_b', 'consumption_rate_avg',
+    ],
+};
+const STATION_OWNS_COLS: Record<string, Record<string, string[]>> = {
+    panel_boiler: BOILER_OWNS_COLS,
+    panel_boiler_a: BOILER_OWNS_COLS,
+    panel_boiler_b: BOILER_OWNS_COLS,
+    panel_turbin: {
+        daily_report_steam: [
+            'inlet_turbine_24', 'inlet_turbine_00', 'mps_i_24', 'mps_i_00',
+            'mps_3a_24', 'mps_3a_00', 'lps_ii_24', 'lps_3a_24', 'lps_ii_00', 'lps_3a_00',
+            'fully_condens_24', 'fully_condens_00', 'co_gen_00',
+            'internal_ubb_24', 'internal_ubb_00',
+            'selisih_inlet_turbine', 'selisih_mps_i', 'selisih_mps_3a',
+            'selisih_lps_ii', 'selisih_lps_3a', 'selisih_fully_condens',
+        ],
+        // Power: panel_turbin owns seluruh tabel.
+        daily_report_power: VALID_COLS.daily_report_power,
+        daily_report_turbine_misc: [
+            'steam_inlet_press', 'steam_inlet_temp', 'thrust_bearing_temp', 'axial_displacement',
+            'gen_ampere', 'gen_amp_react', 'gen_cos_phi', 'gen_tegangan', 'gen_frequensi',
+            'gi_sum_p', 'gi_sum_q', 'gi_cos_phi', 'status_turbin',
+        ],
+    },
+    handling: {
+        daily_report_stock_tank: [
+            'rcw_level_00', 'demin_level_00',
+            'solar_tank_a', 'solar_tank_b', 'solar_tank_total',
+            'solar_boiler', 'solar_bengkel', 'solar_3b', 'kedatangan_solar',
+        ],
+        daily_report_totalizer: [
+            'tot_rcw_1a', 'tot_demin', 'tot_demin_pb1', 'tot_demin_pb3',
+            'tot_hydrant', 'tot_basin', 'tot_service',
+            'konsumsi_demin', 'konsumsi_rcw',
+            'penerimaan_demin_3a', 'penerimaan_demin_1b', 'penerimaan_rcw_1a',
+        ],
+    },
+    esp: {
+        daily_report_stock_tank: ['silo_a_pct', 'silo_b_pct', 'unloading_fly_ash_a', 'unloading_fly_ash_b'],
+    },
+    lapangan_turbin: {
+        daily_report_turbine_misc: ['totalizer_export', 'totalizer_import', 'totalizer_gi'],
+    },
+    // bunker & lapangan_boiler: tidak punya tab di laporan harian → tidak own kolom apa pun.
+    bunker: {},
+    lapangan_boiler: {},
+};
+
 export function useDailyReport(date: string) {
     const [report, setReport] = useState<DailyReportData | null>(null);
     const [prevReport, setPrevReport] = useState<DailyReportData | null>(null);
@@ -257,6 +335,11 @@ export function useDailyReport(date: string) {
         // JANGAN overwrite field-field foreman di parent daily_reports — biar operator
         // station hanya tulis child table mereka tanpa ganggu data foreman.
         const isStationScoped = !!reportData.station_filler;
+        // Kepemilikan kolom per station (lihat STATION_OWNS_COLS). Saat station-scoped,
+        // tiap child table hanya di-update pada kolom owned (partial), tabel non-owned di-skip.
+        const stationKey = reportData.station_filler?.station ?? null;
+        const ownsMap: Record<string, string[]> | null =
+            isStationScoped && stationKey ? (STATION_OWNS_COLS[stationKey] ?? {}) : null;
 
         const parentPayload: Record<string, unknown> = {
             date,
@@ -272,7 +355,6 @@ export function useDailyReport(date: string) {
             parentPayload.notes = reportData.notes || null;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: dr, error: drError } = await supabase
             .from('daily_reports')
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -309,18 +391,87 @@ export function useDailyReport(date: string) {
         ] as const;
 
         const childErrors: string[] = [];
+        // Subset daily_report_stock_tank yang benar-benar ditulis — dipakai untuk sync ke
+        // tank_levels (hanya kalau level tank ikut tersimpan).
+        let writtenStockTank: Record<string, unknown> = {};
+
+        // Partial UPDATE untuk station-scoped: select row existing → update hanya kolom owned,
+        // atau insert kalau belum ada (race insert → 23505 → re-select + update).
+        // Dynamic table name → typed client tidak bisa infer. Builder fresh tiap call
+        // (PostgrestQueryBuilder me-mutate url-nya, jadi jangan di-reuse antar operasi).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tbl = (t: string): any => supabase.from(t);
+        async function savePartialDaily(table: string, subset: Record<string, unknown>) {
+            const { data: existing } = await tbl(table).select('id').eq('daily_report_id', reportId).maybeSingle();
+            if (existing) {
+                const { error } = await tbl(table).update(subset).eq('id', (existing as { id: string }).id);
+                if (error) childErrors.push(`${table}: ${error.message}`);
+                return;
+            }
+            const { error: insErr } = await tbl(table).insert({ daily_report_id: reportId, ...subset });
+            if (insErr) {
+                if ((insErr as { code?: string }).code === '23505') {
+                    // Race: row dibuat station lain barusan → re-select + update kolom owned.
+                    const { data: now } = await tbl(table).select('id').eq('daily_report_id', reportId).maybeSingle();
+                    if (now) {
+                        const { error: updErr } = await tbl(table).update(subset).eq('id', (now as { id: string }).id);
+                        if (updErr) childErrors.push(`${table}: ${updErr.message}`);
+                        return;
+                    }
+                }
+                childErrors.push(`${table}: ${insErr.message}`);
+            }
+        }
 
         for (const { key, table } of childTables) {
             const childData = reportData[key];
-            if (childData) {
-                const filtered = pickValidCols(table, childData as Record<string, unknown>);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const { error: childErr } = await supabase.from(table).upsert({
-                    daily_report_id: reportId,
-                    ...filtered,
-                } as any, { onConflict: 'daily_report_id' });
+            if (!childData) continue;
+            const filtered = pickValidCols(table, childData as Record<string, unknown>);
+
+            if (ownsMap) {
+                // Station-scoped → hanya tulis kolom owned (partial). Tabel non-owned di-skip.
+                const owned = ownsMap[table];
+                if (!owned || owned.length === 0) continue;
+                const subset: Record<string, unknown> = {};
+                for (const c of owned) {
+                    if (c in filtered) subset[c] = filtered[c];
+                }
+                if (Object.keys(subset).length === 0) continue;
+                if (table === 'daily_report_stock_tank') writtenStockTank = subset;
+                await savePartialDaily(table, subset);
+            } else {
+                // Foreman/admin full submit → tulis penuh (upsert) seperti semula.
+                if (table === 'daily_report_stock_tank') writtenStockTank = filtered;
+                const { error: childErr } = await tbl(table).upsert(
+                    { daily_report_id: reportId, ...filtered },
+                    { onConflict: 'daily_report_id' },
+                );
                 if (childErr) childErrors.push(`${table}: ${childErr.message}`);
             }
+        }
+
+        // ─── Sync level tank ke tank_levels (real-time monitoring di /tank-level) ───
+        // Hanya jalan kalau level tank benar-benar ikut tersimpan (station Handling atau
+        // submit penuh). Mirror perilaku laporan shift (shift_tankyard → tank_levels).
+        const tankMappings: { tank_id: string; value: unknown; capacity_m3: number }[] = [
+            { tank_id: 'DEMIN', value: writtenStockTank.demin_level_00, capacity_m3: 1250 },
+            { tank_id: 'RCW',   value: writtenStockTank.rcw_level_00,   capacity_m3: 5000 },
+            // SOLAR: operator input level 0-200 m³ (solar_tank_a) — skala sama dengan
+            // tk_solar_ab di laporan shift, jadi kapasitas 200 supaya % konsisten di /tank-level.
+            { tank_id: 'SOLAR', value: writtenStockTank.solar_tank_a, capacity_m3: 200 },
+        ];
+        for (const { tank_id, value, capacity_m3 } of tankMappings) {
+            if (value == null) continue;
+            const level_m3 = Number(value);
+            if (isNaN(level_m3)) continue;
+            const level_pct = Math.min(100, Math.max(0, (level_m3 / capacity_m3) * 100));
+            await supabase.from('tank_levels').insert({
+                tank_id,
+                level_pct,
+                level_m3,
+                operator_name: 'Laporan Harian',
+                note: null,
+            } as Record<string, unknown>);
         }
 
         if (childErrors.length > 0) return { error: childErrors.join('; '), reportId };

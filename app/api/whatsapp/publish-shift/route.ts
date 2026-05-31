@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
         demin: (tankRows?.find(t => t.tank_id === 'DEMIN')?.level_m3 as number | null) ?? null,
     };
 
-    const summaryText = buildShiftSummary(report, maintenance ?? [], internal, latestTank);
+    const summaryText = buildShiftSummary(report, maintenance ?? [], latestTank);
     const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
     const text = await renderTemplate(supabase, 'shift_share', {
         shift: shiftLabel,
@@ -139,8 +139,57 @@ export async function GET(req: NextRequest) {
         B: (prevBoilers.find((b: any) => b.boiler === 'B')?.totalizer_steam as number | null) ?? null,
     };
 
-    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal, latestTank);
+    // Kapan tiap bunker MULAI berasap (untuk teks "Bunker X berasap sejak ...").
+    const berasapSince = await fetchBunkerBerasapSince(supabase, report.date as string, report.shift as string);
+    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal, latestTank, berasapSince);
     return NextResponse.json({ text, summary });
+}
+
+const SHIFT_LABEL_PUBLISH: Record<string, string> = { malam: 'Shift Malam', pagi: 'Shift Pagi', sore: 'Shift Sore' };
+
+/** Format {date,shift} → "DD/MM Shift X" (idem TabCatatanOperasional.formatSince). */
+function formatBerasapSince(info: { date: string; shift: string } | null | undefined): string {
+    if (!info || !info.date) return '';
+    const [y, m, d] = info.date.split('-').map(Number);
+    if (!y || !m || !d) return '';
+    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')} ${SHIFT_LABEL_PUBLISH[info.shift] || info.shift}`;
+}
+
+/** Hitung kapan tiap bunker mulai berasap (walk-back shift-shift berturut berstatus Berasap).
+ *  Mirror useBunkerBerasapHistory: lihat shift-shift SEBELUM shift saat ini. null = bunker
+ *  baru pertama dilaporkan berasap di shift ini (pemanggil fallback ke date/shift sekarang). */
+async function fetchBunkerBerasapSince(
+    supabase: ReturnType<typeof createAdminClient>,
+    date: string,
+    shift: string,
+): Promise<Record<string, { date: string; shift: string } | null>> {
+    const BUNKER_KEYS = ['status_bunker_a', 'status_bunker_b', 'status_bunker_c', 'status_bunker_d', 'status_bunker_e', 'status_bunker_f'];
+    const { data } = await supabase
+        .from('shift_reports')
+        .select('date, shift, shift_coal_bunker(status_bunker_a, status_bunker_b, status_bunker_c, status_bunker_d, status_bunker_e, status_bunker_f)')
+        .lte('date', date)
+        .order('date', { ascending: false })
+        .limit(30);
+    const shiftOrder: Record<string, number> = { sore: 2, pagi: 1, malam: 0 };
+    const sorted = ((data ?? []) as { date: string; shift: string; shift_coal_bunker: Record<string, string | null>[] | Record<string, string | null> | null }[])
+        .filter(r => {
+            if (r.date === date && r.shift === shift) return false;                                   // exclude current
+            if (r.date === date && (shiftOrder[r.shift] ?? 0) >= (shiftOrder[shift] ?? 0)) return false; // exclude future same-date
+            return true;
+        })
+        .sort((a, b) => a.date !== b.date ? b.date.localeCompare(a.date) : (shiftOrder[b.shift] || 0) - (shiftOrder[a.shift] || 0));
+    const result: Record<string, { date: string; shift: string } | null> = {};
+    for (const key of BUNKER_KEYS) {
+        let since: { date: string; shift: string } | null = null;
+        for (const r of sorted) {
+            const cb = Array.isArray(r.shift_coal_bunker) ? r.shift_coal_bunker[0] : r.shift_coal_bunker;
+            if (!cb) break;
+            if (String(cb[key] ?? '').toLowerCase() === 'berasap') since = { date: r.date, shift: r.shift };
+            else break;
+        }
+        result[key] = since;
+    }
+    return result;
 }
 
 /** Format "2026-05-23" → "Senin, 23 Mei 2026". Parse local agar tidak ke-shift TZ. */
@@ -436,7 +485,7 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
 // parameters + maintenance + catatan shift. The template provides the header
 // (e.g. "*Laporan Shift {{shift}} — {{date}}*").
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftSummary(report: any, maintenance: any[], internal: { ash: any[]; solarIn: any[]; solarOut: any[] }, latestTank: { rcw: number | null; demin: number | null }): string {
+function buildShiftSummary(report: any, maintenance: any[], latestTank: { rcw: number | null; demin: number | null }): string {
     const lines: string[] = [];
     lines.push(`Supervisor: ${report.supervisor ?? '-'}`);
     lines.push('');
@@ -461,36 +510,14 @@ function buildShiftSummary(report: any, maintenance: any[], internal: { ash: any
         });
     }
 
-    // CATATAN SHIFT = catatan free-text + data tambahan (unloading silo, solar,
-    // bunker berasap). Semua ikut dikirim ke washift.
-    const catatanBody: string[] = [];
-    if (report.catatan) catatanBody.push(String(report.catatan));
-
-    const coal = Array.isArray(report.shift_coal_bunker) ? report.shift_coal_bunker[0] : report.shift_coal_bunker;
-    const bunkerBerasap = coal
-        ? ['a', 'b', 'c', 'd', 'e', 'f'].filter(k => String(coal[`status_bunker_${k}`] ?? '').toLowerCase() === 'berasap').map(k => k.toUpperCase())
-        : [];
-
-    if (internal.ash.length > 0) {
-        catatanBody.push('', '*Unloading Silo:*');
-        internal.ash.forEach(a => catatanBody.push(`  Silo ${a.silo ?? '-'} · ${a.perusahaan ?? '-'} → ${a.tujuan ?? '-'} · ${a.ritase ?? 0} rit`));
-    }
-    if (internal.solarIn.length > 0) {
-        catatanBody.push('', '*Kedatangan Solar:*');
-        internal.solarIn.forEach(s => catatanBody.push(`  ${s.supplier ?? '-'} · ${s.liters ?? '-'} L`));
-    }
-    if (internal.solarOut.length > 0) {
-        catatanBody.push('', '*Permintaan Solar:*');
-        internal.solarOut.forEach(s => catatanBody.push(`  ${s.tujuan ?? '-'} · ${s.liters ?? '-'} L`));
-    }
-    if (bunkerBerasap.length > 0) {
-        catatanBody.push('', `*Bunker Berasap:* ${bunkerBerasap.join(', ')}`);
-    }
-
-    if (catatanBody.length > 0) {
+    // CATATAN OPERASIONAL = catatan free-text saja. Baris aktivitas (unloading silo,
+    // kedatangan/permintaan solar, "Bunker X berasap sejak ...") sudah otomatis dimasukkan
+    // ke dalam catatan via buildAutoCatatanLines saat input, dan hanya muncul kalau aktivitas
+    // itu benar-benar terjadi. Jadi tidak perlu blok terpisah di sini (menghindari duplikasi).
+    if (report.catatan && String(report.catatan).trim()) {
         lines.push('');
         lines.push('━━━ *CATATAN OPERASIONAL* ━━━');
-        lines.push(...catatanBody);
+        lines.push(String(report.catatan));
     }
 
     return lines.join('\n');
@@ -581,7 +608,7 @@ interface CriticalItem {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }, internal: { ash: any[]; solarIn: any[]; solarOut: any[] }, latestTank: { rcw: number | null; demin: number | null }): ShiftReviewSummary {
+function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }, internal: { ash: any[]; solarIn: any[]; solarOut: any[] }, latestTank: { rcw: number | null; demin: number | null }, berasapSince: Record<string, { date: string; shift: string } | null>): ShiftReviewSummary {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
     const turbin = first(report.shift_turbin);
@@ -590,9 +617,17 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
     const powerDist = first(report.shift_power_dist);
     const personnel = first(report.shift_personnel);
     const coal = first(report.shift_coal_bunker);
-    // Bunker (A–F) yang berstatus 'berasap'.
+    // Bunker (A–F) berstatus 'berasap' → teks "Bunker X berasap sejak DD/MM Shift Y".
+    // "sejak" = shift pertama streak berasap (dari history); fallback ke shift ini kalau
+    // baru pertama dilaporkan. Idem buildAutoCatatanLines supaya konsisten dengan catatan.
     const bunkerBerasap = coal
-        ? ['a', 'b', 'c', 'd', 'e', 'f'].filter(k => String(coal[`status_bunker_${k}`] ?? '').toLowerCase() === 'berasap').map(k => k.toUpperCase())
+        ? ['a', 'b', 'c', 'd', 'e', 'f']
+            .filter(k => String(coal[`status_bunker_${k}`] ?? '').toLowerCase() === 'berasap')
+            .map(k => {
+                const since = berasapSince[`status_bunker_${k}`] ?? { date: report.date as string, shift: report.shift as string };
+                const s = formatBerasapSince(since);
+                return s ? `Bunker ${k.toUpperCase()} berasap sejak ${s}` : `Bunker ${k.toUpperCase()} berasap`;
+            })
         : [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const boilers: any[] = (report.shift_boiler ?? []);

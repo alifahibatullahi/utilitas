@@ -650,18 +650,16 @@ function StatusBadge({ value }: { value: string | null }) {
 
 // Sub-list untuk data internal di kartu Catatan Shift (unloading silo / solar).
 function InternalList({ title, rows }: { title: string; rows: string[] }) {
+    // Sembunyikan total kalau tidak ada aktivitas (hanya tampil saat ada kejadian).
+    if (rows.length === 0) return null;
     return (
         <div>
             <div className="text-[10px] font-bold text-slate-300">{title}</div>
-            {rows.length === 0 ? (
-                <p className="text-[10px] text-slate-500 italic">— tidak ada —</p>
-            ) : (
-                <ul className="space-y-0.5 mt-0.5">
-                    {rows.map((r, i) => (
-                        <li key={i} className="text-[10px] text-slate-200 font-mono">{r}</li>
-                    ))}
-                </ul>
-            )}
+            <ul className="space-y-0.5 mt-0.5">
+                {rows.map((r, i) => (
+                    <li key={i} className="text-[10px] text-slate-200 font-mono">{r}</li>
+                ))}
+            </ul>
         </div>
     );
 }
@@ -754,32 +752,27 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                     <p className="text-[11px] text-slate-500 italic">Tidak ada catatan.</p>
                 )}
 
-                {summary.internal && (
-                    <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-2.5">
-                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[12px]">inventory_2</span>
-                            Detail Catatan Operasional
+                {summary.internal && (() => {
+                    const ashRows = summary.internal.ashUnloadings.map(a => `Silo ${a.silo} · ${a.perusahaan} → ${a.tujuan} · ${a.ritase} rit`);
+                    const solarInRows = summary.internal.solarMasuk.map(s => `${s.supplier} · ${fmt(s.liters)} L`);
+                    const solarOutRows = summary.internal.solarKeluar.map(s => `${s.tujuan} · ${fmt(s.liters)} L`);
+                    // bunkerBerasap sudah berformat "Bunker X berasap sejak DD/MM Shift Y" dari API.
+                    const berasapRows = summary.internal.bunkerBerasap;
+                    // Sembunyikan seluruh blok kalau tidak ada aktivitas apa pun.
+                    if (!ashRows.length && !solarInRows.length && !solarOutRows.length && !berasapRows.length) return null;
+                    return (
+                        <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-2.5">
+                            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">inventory_2</span>
+                                Detail Catatan Operasional
+                            </div>
+                            <InternalList title="Unloading Silo (Fly Ash)" rows={ashRows} />
+                            <InternalList title="Kedatangan Solar" rows={solarInRows} />
+                            <InternalList title="Permintaan Solar" rows={solarOutRows} />
+                            <InternalList title="Bunker Berasap" rows={berasapRows} />
                         </div>
-                        <InternalList
-                            title="Unloading Silo (Fly Ash)"
-                            rows={summary.internal.ashUnloadings.map(a => `Silo ${a.silo} · ${a.perusahaan} → ${a.tujuan} · ${a.ritase} rit`)}
-                        />
-                        <InternalList
-                            title="Kedatangan Solar"
-                            rows={summary.internal.solarMasuk.map(s => `${s.supplier} · ${fmt(s.liters)} L`)}
-                        />
-                        <InternalList
-                            title="Permintaan Solar"
-                            rows={summary.internal.solarKeluar.map(s => `${s.tujuan} · ${fmt(s.liters)} L`)}
-                        />
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-bold text-slate-300">Bunker Berasap</span>
-                            <span className={`font-mono font-bold text-[10px] ${summary.internal.bunkerBerasap.length ? 'text-amber-300' : 'text-slate-500'}`}>
-                                {summary.internal.bunkerBerasap.length ? summary.internal.bunkerBerasap.join(', ') : '— tidak ada —'}
-                            </span>
-                        </div>
-                    </div>
-                )}
+                    );
+                })()}
             </ReviewCard>
 
             {/* Maintenance */}

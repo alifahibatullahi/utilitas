@@ -274,7 +274,7 @@ export function shiftReportToRow(
     row[COL.boiler_temp_bfw] = n(bB.temp_bfw || bA.temp_bfw); // shared col BV — prefer B, fallback A, skip 0
     row[COL.boiler_temp_furnace_b] = n(bB.temp_furnace);
     row[COL.boiler_temp_flue_gas_b] = n(bB.temp_flue_gas);
-    row[COL.boiler_excess_air_b] = n(bB.excess_air);
+    row[COL.boiler_excess_air_b] = n(bB.o2);           // CB — O2 boiler B
     row[COL.boiler_air_heater_b] = n(bB.air_heater_ti113);
     row[COL.boiler_batubara_b] = n(bB.batubara_ton);
     row[COL.boiler_solar_b] = n(bB.solar_m3);
@@ -464,7 +464,7 @@ export function rowToShiftReport(row: string[]): ShiftRowParsed {
             temp_bfw: parseNum(c(COL.boiler_temp_bfw)),
             temp_furnace: parseNum(c(COL.boiler_temp_furnace_a)),
             temp_flue_gas: parseNum(c(COL.boiler_temp_flue_gas_a)),
-            excess_air: parseNum(c(COL.boiler_excess_air_a)),
+            o2: parseNum(c(COL.boiler_excess_air_a)),            // CA — O2 boiler A
             air_heater_ti113: parseNum(c(COL.boiler_air_heater_a)),
             batubara_ton: parseNum(c(COL.boiler_batubara_a)),
             solar_m3: parseNum(c(COL.boiler_solar_a)),
@@ -482,7 +482,7 @@ export function rowToShiftReport(row: string[]): ShiftRowParsed {
             temp_bfw: parseNum(c(COL.boiler_temp_bfw)),
             temp_furnace: parseNum(c(COL.boiler_temp_furnace_b)),
             temp_flue_gas: parseNum(c(COL.boiler_temp_flue_gas_b)),
-            excess_air: parseNum(c(COL.boiler_excess_air_b)),
+            o2: parseNum(c(COL.boiler_excess_air_b)),            // CB — O2 boiler B
             air_heater_ti113: parseNum(c(COL.boiler_air_heater_b)),
             batubara_ton: parseNum(c(COL.boiler_batubara_b)),
             solar_m3: parseNum(c(COL.boiler_solar_b)),

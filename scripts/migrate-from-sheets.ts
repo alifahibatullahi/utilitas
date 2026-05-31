@@ -419,7 +419,7 @@ async function saveShiftRow(f: string[], shift: 'pagi' | 'sore' | 'malam', date:
             temp_bfw:        parseNum(f[SC.boiler_temp_bfw]),            // BV shared
             temp_furnace:    parseNum(f[SC.boiler_temp_furnace_a]),
             temp_flue_gas:   parseNum(f[SC.boiler_temp_flue_gas_a]),
-            excess_air:      parseNum(f[SC.boiler_excess_air_a]),
+            o2:              parseNum(f[SC.boiler_excess_air_a]),   // CA — O2 boiler A
             air_heater_ti113:parseNum(f[SC.boiler_air_heater_a]),
             batubara_ton:    parseNum(f[SC.boiler_batubara_a]),          // CE — total batubara
             solar_m3:        parseNum(f[SC.boiler_solar_a]),
@@ -441,7 +441,7 @@ async function saveShiftRow(f: string[], shift: 'pagi' | 'sore' | 'malam', date:
             temp_bfw:        parseNum(f[SC.boiler_temp_bfw]),            // BV shared
             temp_furnace:    parseNum(f[SC.boiler_temp_furnace_b]),
             temp_flue_gas:   parseNum(f[SC.boiler_temp_flue_gas_b]),
-            excess_air:      parseNum(f[SC.boiler_excess_air_b]),
+            o2:              parseNum(f[SC.boiler_excess_air_b]),   // CB — O2 boiler B
             air_heater_ti113:parseNum(f[SC.boiler_air_heater_b]),
             batubara_ton:    parseNum(f[SC.boiler_batubara_b]),          // CF — total batubara
             solar_m3:        parseNum(f[SC.boiler_solar_b]),

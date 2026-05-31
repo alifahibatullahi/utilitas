@@ -90,12 +90,12 @@ export const PARAMETERS: ParameterDef[] = [
         extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'A')?.temp_flue_gas ?? null
     },
     {
-        id: 'boiler_a_excess_air',
-        label: 'Excess Air Boiler A',
+        id: 'boiler_a_o2',
+        label: 'O2 Boiler A',
         group: 'Boiler A',
         unit: '%',
         source: 'shift',
-        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'A')?.excess_air ?? null
+        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'A')?.o2 ?? null
     },
     {
         id: 'boiler_a_batubara_ton',
@@ -210,12 +210,12 @@ export const PARAMETERS: ParameterDef[] = [
         extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'B')?.temp_flue_gas ?? null
     },
     {
-        id: 'boiler_b_excess_air',
-        label: 'Excess Air Boiler B',
+        id: 'boiler_b_o2',
+        label: 'O2 Boiler B',
         group: 'Boiler B',
         unit: '%',
         source: 'shift',
-        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'B')?.excess_air ?? null
+        extract: (r) => r.shift_boiler?.find((b: any) => b.boiler === 'B')?.o2 ?? null
     },
     {
         id: 'boiler_b_batubara_ton',

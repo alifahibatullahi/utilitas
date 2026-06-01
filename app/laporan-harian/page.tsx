@@ -470,9 +470,9 @@ export default function LaporanHarianPage() {
                                     <div>Stock Hydrazine</div>
                                 </div>
                                 <div className="grid grid-cols-3 text-center font-bold text-lg text-white">
-                                    <div>{r.stockPhosphat} <span className="text-[10px] font-normal text-slate-500">pc</span></div>
-                                    <div>{r.stockAmine} <span className="text-[10px] font-normal text-slate-500">pc</span></div>
-                                    <div>{r.stockHydrazine} <span className="text-[10px] font-normal text-slate-500">pc</span></div>
+                                    <div>{r.stockPhosphat} <span className="text-[10px] font-normal text-slate-500">pcs</span></div>
+                                    <div>{r.stockAmine} <span className="text-[10px] font-normal text-slate-500">pcs</span></div>
+                                    <div>{r.stockHydrazine} <span className="text-[10px] font-normal text-slate-500">pcs</span></div>
                                 </div>
                             </div>
 

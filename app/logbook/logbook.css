@@ -72,19 +72,19 @@
     color: #000000;
 }
 .lb-doclogo {
-    width: 190px;
+    width: 220px;
     background: #ffffff;
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     padding: 6px 8px;
 }
 .lb-doclogo img {
-    height: 32px;
+    height: 46px;
     width: auto;
-    max-width: 50px;
+    max-width: 68px;
     object-fit: contain;
 }
 .lb-doctitle {
@@ -101,7 +101,7 @@
 .lb-doctitle .t2 { font-size: 11px; font-weight: 700; }
 .lb-doctitle .t3 { font-size: 11px; font-weight: 600; }
 .lb-docmeta {
-    width: 190px;
+    width: 220px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -138,22 +138,22 @@
     font-size: 11px;
 }
 
-/* Band sub-header dokumen (Turbin / Generator) */
+/* Band sub-header dokumen (Turbin / Generator) — warna sama dgn judul section */
 .lb-subdoc td {
     padding: 0;
-    background: #ffffff;
+    background: #e8e8e8;
 }
 .lb-subdoc-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: center;
+    gap: 16px;
     padding: 5px 10px;
 }
 .lb-subdoc-title {
     font-size: 12px;
     font-weight: 800;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
 }
 .lb-subdoc-doc {
     font-size: 11px;

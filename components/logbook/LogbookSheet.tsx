@@ -292,9 +292,9 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                 ))}
             </tr>
 
-            {/* PA / SA (pengganti Bottom Slug) */}
+            {/* Primary Air / Secondary Air (pengganti Bottom Slug) */}
             <tr>
-                <td className="lb-name">PA / SA</td>
+                <td className="lb-name" style={{ whiteSpace: 'normal' }}>Primary Air / Secondary Air</td>
                 <td className="lb-unit">%</td>
                 {cols.map((c, i) => (
                     <td key={i} colSpan={3}><Val>{pair(c.pa, c.sa)}</Val></td>
@@ -303,32 +303,44 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
         </>
     );
 
-    // ── Render Chemical Dosing (kolom 24.00 kosong) ──
-    const renderChemical = (cols: ChemCol[]) => (
-        <>
-            <tr className="lb-section">
-                <td colSpan={14}>CHEMICAL DOSING</td>
-            </tr>
-            <TimeRow />
-            {CHEMICALS.map((ch) => (
-                <Fragment key={ch.key}>
-                    <tr>
-                        <td className="lb-name" rowSpan={2}>{ch.name}</td>
-                        <td className="lb-unit">Level / Stroke</td>
-                        {cols.map((c, i) => (
-                            <td key={i} colSpan={3}><Val>{pair(c[ch.key].level, c[ch.key].stroke)}</Val></td>
-                        ))}
-                    </tr>
-                    <tr>
-                        <td className="lb-unit">Konsumsi</td>
-                        {cols.map((c, i) => (
-                            <td key={i} colSpan={3}><Val>{pair(c[ch.key].air, c[ch.key].chem)}</Val></td>
-                        ))}
-                    </tr>
-                </Fragment>
-            ))}
-        </>
-    );
+    // ── Render Chemical Dosing (hanya 3 kolom shift; tanpa kolom 24.00) ──
+    const renderChemical = (cols: ChemCol[]) => {
+        const c3 = cols.slice(0, 3);
+        return (
+            <>
+                <tr className="lb-section">
+                    <td colSpan={14}>CHEMICAL DOSING</td>
+                </tr>
+                <tr className="lb-time">
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    {['06.00', '14.00', '22.00'].map((t) => (
+                        <td key={t} colSpan={3}>{t}</td>
+                    ))}
+                    <td colSpan={3}>&nbsp;</td>
+                </tr>
+                {CHEMICALS.map((ch) => (
+                    <Fragment key={ch.key}>
+                        <tr>
+                            <td className="lb-name" rowSpan={2}>{ch.name}</td>
+                            <td className="lb-unit">Level / Stroke</td>
+                            {c3.map((c, i) => (
+                                <td key={i} colSpan={3}><Val>{pair(c[ch.key].level, c[ch.key].stroke)}</Val></td>
+                            ))}
+                            <td colSpan={3}>&nbsp;</td>
+                        </tr>
+                        <tr>
+                            <td className="lb-unit">Konsumsi</td>
+                            {c3.map((c, i) => (
+                                <td key={i} colSpan={3}><Val>{pair(c[ch.key].air, c[ch.key].chem)}</Val></td>
+                            ))}
+                            <td colSpan={3}>&nbsp;</td>
+                        </tr>
+                    </Fragment>
+                ))}
+            </>
+        );
+    };
 
     // ── Render Turbin ──
     const renderTurbin = (cols: TurbinCol[]) => (
@@ -434,8 +446,8 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                     <img src="/logo/logo-PG-agro-trans-small-removebg-preview.png" alt="Petrokimia Gresik" />
                 </div>
                 <div className="lb-doctitle">
-                    <div className="t1">LOG BOOK LAPORAN HARIAN PANEL BOILER A &amp; B</div>
-                    <div className="t2">UNIT UTILITAS BATUBARA - DEPARTEMEN OPERASI PABRIK III B</div>
+                    <div className="t1">LOG BOOK LAPORAN HARIAN UTILITAS BATUBARA</div>
+                    <div className="t2">DEPARTEMEN OPERASI PABRIK III B - KOMPARTEMEN OPERASI III</div>
                     <div className="t3">Nomor Dokumen : PG-LB-50-5004</div>
                 </div>
                 <div className="lb-docmeta">

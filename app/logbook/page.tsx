@@ -37,6 +37,15 @@ function boilerOf(row: Row, L: 'A' | 'B') {
 function first(arr: Row): Row {
     return Array.isArray(arr) ? (arr[0] ?? null) : (arr ?? null);
 }
+// Unloading ash silo → "2A" (silo A 2 rit), "2B" (silo B 2 rit), "2A & 1B" (keduanya)
+function formatUnloading(a: string | number | null | undefined, b: string | number | null | undefined): string | null {
+    const na = Number(a) || 0;
+    const nb = Number(b) || 0;
+    const parts: string[] = [];
+    if (na > 0) parts.push(`${na}A`);
+    if (nb > 0) parts.push(`${nb}B`);
+    return parts.length ? parts.join(' & ') : null;
+}
 
 export default function LogbookPage() {
     const { operator, loading: authLoading } = useOperator();
@@ -162,7 +171,7 @@ export default function LogbookPage() {
                 bunkerDEF: [cb?.bunker_d ?? null, cb?.bunker_e ?? null, cb?.bunker_f ?? null],
                 trafoA: [esp?.esp_a1 ?? null, esp?.esp_a2 ?? null, esp?.esp_a3 ?? null],
                 trafoB: [esp?.esp_b1 ?? null, esp?.esp_b2 ?? null, esp?.esp_b3 ?? null],
-                silo: [esp?.silo_a ?? null, esp?.silo_b ?? null, esp?.unloading_a ?? null],
+                silo: [esp?.silo_a ?? null, esp?.silo_b ?? null, formatUnloading(esp?.unloading_a, esp?.unloading_b)],
                 solar: tank?.tk_solar_ab ?? null,
                 demin: tank?.tk_demin ?? null,
                 rcw: tank?.tk_rcw ?? null,
@@ -171,7 +180,6 @@ export default function LogbookPage() {
 
         // ── Bottom daily column (24.00) ──
         const bottomDailyCol = (): BottomCol => {
-            const unl = (dTank?.unloading_fly_ash_a ?? 0) + (dTank?.unloading_fly_ash_b ?? 0);
             return {
                 loading: null,
                 conveyor: null,
@@ -180,7 +188,7 @@ export default function LogbookPage() {
                 bunkerDEF: [null, null, null],
                 trafoA: [null, null, null],
                 trafoB: [null, null, null],
-                silo: [dTank?.silo_a_pct ?? null, dTank?.silo_b_pct ?? null, unl || null],
+                silo: [dTank?.silo_a_pct ?? null, dTank?.silo_b_pct ?? null, formatUnloading(dTank?.unloading_fly_ash_a, dTank?.unloading_fly_ash_b)],
                 solar: dTank?.solar_tank_total ?? null,
                 demin: dTank?.demin_level_00 ?? null,
                 rcw: dTank?.rcw_level_00 ?? null,

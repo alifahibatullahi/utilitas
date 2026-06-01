@@ -279,14 +279,23 @@ export function shiftReportToRow(
     row[COL.boiler_batubara_b] = n(bB.batubara_ton);
     row[COL.boiler_solar_b] = n(bB.solar_m3);
     row[COL.boiler_stream_days_b] = n(bB.stream_days);
-    // Coal Feeders — flow dari boiler tab (CK-CP)
+    // Coal Feeders — flow dari boiler tab (CK-CP).
+    // Saat feeder TIDAK running (status di-set & bukan 'running' — mis. standby / emergency
+    // standby / not standby), flow yang ditulis ke Sheets dipaksa 0. Mirror perilaku form
+    // (TabBoiler auto-zero feeder_X_flow saat non-running), tapi dijadikan jaminan di layer
+    // export supaya tetap 0 walau flow di DB sempat terisi sebelum status diubah.
     const cb = data.coalBunker ?? {};
-    row[COL.feeder_a] = n(bA.feeder_a_flow);
-    row[COL.feeder_b] = n(bA.feeder_b_flow);
-    row[COL.feeder_c] = n(bA.feeder_c_flow);
-    row[COL.feeder_d] = n(bB.feeder_d_flow);
-    row[COL.feeder_e] = n(bB.feeder_e_flow);
-    row[COL.feeder_f] = n(bB.feeder_f_flow);
+    const feederFlow = (statusKey: string, flow: number | null | undefined): CellValue => {
+        const st = cb[statusKey];
+        const notRunning = typeof st === 'string' && st !== '' && st.toLowerCase() !== 'running';
+        return notRunning ? 0 : n(flow);
+    };
+    row[COL.feeder_a] = feederFlow('status_feeder_a', bA.feeder_a_flow);
+    row[COL.feeder_b] = feederFlow('status_feeder_b', bA.feeder_b_flow);
+    row[COL.feeder_c] = feederFlow('status_feeder_c', bA.feeder_c_flow);
+    row[COL.feeder_d] = feederFlow('status_feeder_d', bB.feeder_d_flow);
+    row[COL.feeder_e] = feederFlow('status_feeder_e', bB.feeder_e_flow);
+    row[COL.feeder_f] = feederFlow('status_feeder_f', bB.feeder_f_flow);
     // Bunkers
     row[COL.bunker_a] = n(cb.bunker_a as number | null);
     row[COL.bunker_b] = n(cb.bunker_b as number | null);

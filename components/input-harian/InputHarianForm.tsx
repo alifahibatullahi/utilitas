@@ -119,6 +119,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
 
+    // Total Via Laut (kolom DN / formula) dibaca live dari Google Sheets untuk tanggal ini.
+    const [lautTotalSheet, setLautTotalSheet] = useState<string | null>(null);
+
     const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string }[]>([]);
     const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
     const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
@@ -204,6 +207,22 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     );
                 });
         }, [date]);
+
+    // Total Via Laut: baca kolom DN (formula) dari Google Sheets untuk tanggal LHUBB ini.
+    useEffect(() => {
+        let stale = false;
+        setLautTotalSheet(null);
+        fetch(`/api/sheets/read?type=daily_report&date=${date}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(j => {
+                if (stale || !j?.found || !Array.isArray(j?.data?.raw)) return;
+                const raw = j.data.raw[117]; // DN = laut_total_ton (formula di sheet)
+                const v = raw == null ? '' : String(raw).trim();
+                setLautTotalSheet(v && v !== '-' ? v : null);
+            })
+            .catch(() => { /* non-blocking — biarkan tampil 0 */ });
+        return () => { stale = true; };
+    }, [date]);
 
     // ─── Solar delete handlers ───
     const handleEditSolarUnloading = async (id: string, fields: { liters: number; supplier: string }) => {
@@ -581,17 +600,31 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 unloading_fly_ash_b: unloadingB || null,
             };
 
-            const prevCT = prevCoalTransfer || {};
+            // Total tidak lagi dihitung app. Kolom total PB2/PB3/Darat (DC–DF, DI–DJ, DL)
+            // ditulis 0 ke sheet; total via laut (DN) adalah formula di sheet (mapper skip,
+            // ditampilkan di form via read sheet). Form hanya mengumpulkan input harian.
             const calcTransfer = {
                 ...coalTransfer,
-                pb2_total_pf1_rit: N(prevCT.pb2_total_pf1_rit) + N(coalTransfer.pb2_pf1_rit),
-                pb2_total_pf1_ton: N(prevCT.pb2_total_pf1_ton) + N(coalTransfer.pb2_pf1_ton),
-                pb2_total_pf2_rit: N(prevCT.pb2_total_pf2_rit) + N(coalTransfer.pb2_pf2_rit),
-                pb2_total_pf2_ton: N(prevCT.pb2_total_pf2_ton) + N(coalTransfer.pb2_pf2_ton),
-                pb3_total_calc_rit: N(prevCT.pb3_total_calc_rit) + N(coalTransfer.pb3_calc_rit),
-                pb3_total_calc_ton: N(prevCT.pb3_total_calc_ton) + N(coalTransfer.pb3_calc_ton),
-                darat_total_ton: N(prevCT.darat_total_ton) + N(coalTransfer.darat_24_ton),
-                laut_total_ton: N(prevCT.laut_total_ton) + N(coalTransfer.laut_24_ton),
+                // Input harian: default 0 (kalau belum diisi → 0, bukan kosong) supaya tersimpan
+                // & ditulis 0 ke sheet.
+                pb2_pf1_rit: N(coalTransfer.pb2_pf1_rit),
+                pb2_pf1_ton: N(coalTransfer.pb2_pf1_ton),
+                pb2_pf2_rit: N(coalTransfer.pb2_pf2_rit),
+                pb2_pf2_ton: N(coalTransfer.pb2_pf2_ton),
+                pb3_calc_rit: N(coalTransfer.pb3_calc_rit),
+                pb3_calc_ton: N(coalTransfer.pb3_calc_ton),
+                darat_24_ton: N(coalTransfer.darat_24_ton),
+                laut_24_ton: N(coalTransfer.laut_24_ton),
+                // Total: app tidak hitung lagi. PB2/PB3/Darat (DC–DF, DI–DJ, DL) ditulis 0.
+                // Total via laut (DN) = formula di sheet (mapper skip), tampil di form via read.
+                pb2_total_pf1_rit: 0,
+                pb2_total_pf1_ton: 0,
+                pb2_total_pf2_rit: 0,
+                pb2_total_pf2_ton: 0,
+                pb3_total_calc_rit: 0,
+                pb3_total_calc_ton: 0,
+                darat_total_ton: 0,
+                laut_total_ton: 0,
             };
 
             // Boiler shutdown → semua flow/furnace = 0 sebelum disimpan
@@ -756,12 +789,14 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             case 'Chemical':
                 return visitedTabs.has('Chemical');
             case 'Stock BB':
-                return hasVal(coalTransfer, ['pb2_pf1_rit', 'pb2_pf1_ton', 'pb2_pf2_rit', 'pb2_pf2_ton', 'pb3_calc_rit', 'pb3_calc_ton', 'darat_24_ton', 'laut_24_ton']);
+                // Semua field opsional dengan default 0 (diisi hanya kalau ada aktivitas) →
+                // tab dianggap lengkap setelah dikunjungi.
+                return visitedTabs.has('Stock BB');
             case 'Silo & Fly Ash': 
                 return hasVal(stockTank, ['silo_a_pct', 'silo_b_pct']);
             default: return false;
         }
-    }, [steam, power, coal, turbineMisc, stockTank, coalTransfer, visitedTabs]);
+    }, [steam, power, turbineMisc, stockTank, visitedTabs]);
 
     // Semua tab visible (sesuai station kalau ada) sudah lengkap → tombol Publish aktif.
     const allTabsComplete = useMemo(
@@ -1117,6 +1152,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     onCoalTransferChange: makeNumberHandler(setCoalTransfer),
                                     onTotalizerChange: makeMixedHandler(setTotalizer),
                                     crA, crB,
+                                    lautTotalSheet,
                                     solarUnloadings,
                                     solarUsages,
                                     onDeleteSolarUnloading: handleDeleteSolarUnloading,

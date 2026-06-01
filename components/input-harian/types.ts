@@ -30,6 +30,10 @@ export interface DailyTabProps {
     crA: number;
     crB: number;
 
+    /** Total Via Laut — nilai kolom DN (formula) dari Google Sheets pada tanggal LHUBB yang
+     *  sama. Diisi InputHarianForm via /api/sheets/read. Display-only di TabStockBatubara. */
+    lautTotalSheet?: string | number | null;
+
     // Solar and Ash unloadings from shift reports (deletable in daily)
     solarUnloadings?: { id?: string; date: string; liters: number; supplier: string }[];
     solarUsages?: { id?: string; date: string; shift: string; liters: number; tujuan: string }[];

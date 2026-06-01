@@ -403,6 +403,7 @@ export const NAV_ITEMS: NavItem[] = [
     { id: 'critical', label: 'Critical & Maint', icon: 'warning', path: '/critical', roles: 'all' },
     { id: 'laporan-shift', label: 'Laporan Shift', icon: 'report', path: '/laporan-shift', roles: 'all' },
     { id: 'laporan-harian', label: 'Laporan Harian', icon: 'daily', path: '/laporan-harian', roles: 'all' },
+    { id: 'logbook', label: 'Logbook Buku', icon: 'report', path: '/logbook', roles: 'all' },
     { id: 'history', label: 'History Data', icon: 'trend', path: '/history', roles: 'all' },
     { id: 'admin-wa-hub', label: 'WhatsApp Hub', icon: 'forum', path: '/admin/notification-log', roles: ['admin'] },
     { id: 'admin-sync-sheets', label: 'Sync Sheets', icon: 'sync', path: '/admin/sync-sheets', roles: ['admin'] },

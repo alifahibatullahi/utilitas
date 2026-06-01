@@ -88,12 +88,16 @@ export async function POST(req: NextRequest) {
 
     // 4. Pesan ringkas (tanpa isian parameter) + link review/publish harian.
     const link = buildDeepLink('/input-shift', { mode: 'harian', date, review: '1' });
+    const logbookLink = buildDeepLink('/logbook', { date });
     const msg = [
         `✅ *Laporan Harian (LHUBB) siap dipublish*`,
         `Tanggal: ${date}  •  Grup ${groupLetter}`,
         '',
         'Semua parameter harian sudah terisi. Mohon Foreman/Supervisor review & publish:',
         link,
+        '',
+        '📖 Review via E-Logbook:',
+        logbookLink,
     ].join('\n');
 
     const send = await sendFonnteGroup(group.fonnte_target, msg);

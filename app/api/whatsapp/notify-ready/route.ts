@@ -107,15 +107,19 @@ export async function POST(req: NextRequest) {
     // 4. Susun pesan ringkas parameter washift + link review/publish.
     // review=1 → halaman input-shift auto-buka modal Review/Publish untuk Foreman/Supervisor.
     const link = buildDeepLink('/input-shift', { shift, date, review: '1' });
+    const logbookLink = buildDeepLink('/logbook', { date });
     const sc = shiftLabel(shift);
     // Pesan ringkas: tanpa isian parameter — cukup info + link untuk Foreman/Supervisor
-    // membuka halaman Review/Publish.
+    // membuka halaman Review/Publish + link E-Logbook untuk review tampilan buku.
     const msg = [
         `✅ *Laporan Shift ${sc} siap dipublish ke Washift*`,
         `Tanggal: ${date}  •  Grup ${groupLetter}`,
         '',
         'Semua parameter Shift sudah terisi. Mohon Foreman/Supervisor review & publish:',
         link,
+        '',
+        '📖 Review via E-Logbook:',
+        logbookLink,
     ].join('\n');
 
     const send = await sendFonnteGroup(group.fonnte_target, msg);

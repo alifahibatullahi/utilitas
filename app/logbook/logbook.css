@@ -198,6 +198,8 @@
 
 /* ─── PRINT ─── */
 @media print {
+    /* Reset zoom-to-fit saat cetak supaya ukuran penuh */
+    .lb-fit { zoom: 1 !important; }
     body * { visibility: hidden !important; }
     .lb-paper, .lb-paper * { visibility: visible !important; }
     .lb-paper {

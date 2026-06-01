@@ -844,6 +844,12 @@ export default function LaporanHarianPage() {
             {/* Floating Action Buttons */}
             {report?.id && (
                 <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3">
+                    <button onClick={() => window.open(`/logbook?date=${selectedDate}`, '_blank')}
+                        title="Review tampilan buku (E-Logbook)"
+                        className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(0,0,0,0.4)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">menu_book</span>
+                        E-Logbook
+                    </button>
                     <button onClick={() => window.open('/laporan-harian/preview', '_blank')}
                         className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(37,99,235,0.5)] hover:shadow-[0_4px_32px_rgba(37,99,235,0.7)] hover:scale-105">
                         <span className="material-symbols-outlined text-lg">visibility</span>

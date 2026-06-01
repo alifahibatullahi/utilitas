@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
@@ -53,11 +53,31 @@ export default function LogbookPage() {
     const [selectedDate, setSelectedDate] = useState<string>(todayWIB());
     const [shiftMap, setShiftMap] = useState<Record<string, Row>>({});
 
+    // Zoom-to-fit untuk HP: lembar dirancang ~1010px, di-skala agar muat lebar layar
+    // (tetap bisa pinch-zoom browser untuk lihat detail).
+    const fitRef = useRef<HTMLDivElement>(null);
+    const [zoom, setZoom] = useState(1);
+    useEffect(() => {
+        const el = fitRef.current;
+        if (!el) return;
+        const calc = () => setZoom(Math.min(1, el.clientWidth / 1010));
+        calc();
+        const ro = new ResizeObserver(calc);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+
     const { report: daily } = useDailyReport(selectedDate);
 
     useEffect(() => {
         if (!authLoading && !operator) router.push('/');
     }, [authLoading, operator, router]);
+
+    // Buka tanggal dari query param ?date=YYYY-MM-DD (mis. dari link E-Logbook di WA)
+    useEffect(() => {
+        const p = new URLSearchParams(window.location.search).get('date');
+        if (p && /^\d{4}-\d{2}-\d{2}$/.test(p)) setSelectedDate(p);
+    }, []);
 
     // Fetch shift data untuk hari D dan D-1 (D-1 dibutuhkan untuk delta kolom malam)
     useEffect(() => {
@@ -385,9 +405,11 @@ export default function LogbookPage() {
                 </button>
             </div>
 
-            {/* Lembar buku */}
-            <div className="overflow-x-auto">
-                <LogbookSheet data={data} tanggal={`${hariStr}, ${formatDate(selectedDate)}`} />
+            {/* Lembar buku — zoom-to-fit di layar kecil */}
+            <div ref={fitRef} className="overflow-x-auto">
+                <div className="lb-fit" style={{ zoom }}>
+                    <LogbookSheet data={data} tanggal={`${hariStr}, ${formatDate(selectedDate)}`} />
+                </div>
             </div>
         </div>
     );

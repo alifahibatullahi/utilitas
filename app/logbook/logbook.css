@@ -130,6 +130,36 @@
     font-size: 12px;
 }
 
+/* Sub-band kelompok di dalam Generator (OUTPUT GENERATOR / Power Gi-PKG / PIE) */
+.lb-subsection {
+    background: #f0f0f0;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    font-size: 11px;
+}
+
+/* Band sub-header dokumen (Turbin / Generator) */
+.lb-subdoc td {
+    padding: 0;
+    background: #ffffff;
+}
+.lb-subdoc-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 10px;
+}
+.lb-subdoc-title {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+.lb-subdoc-doc {
+    font-size: 11px;
+    font-weight: 600;
+}
+
 /* Header jam */
 .lb-time {
     font-weight: 800;

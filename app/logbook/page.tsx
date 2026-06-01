@@ -6,7 +6,7 @@ import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { createClient } from '@/lib/supabase/client';
 import { todayWIB } from '@/lib/utils';
-import LogbookSheet, { type LogbookData, type BoilerCol, type BottomCol } from '@/components/logbook/LogbookSheet';
+import LogbookSheet, { type LogbookData, type BoilerCol, type BottomCol, type ChemCol, type TurbinCol, type GenCol } from '@/components/logbook/LogbookSheet';
 import './logbook.css';
 
 const HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -21,7 +21,12 @@ const SHIFT_SELECT = `date, shift,
     shift_boiler(boiler, press_steam, temp_steam, flow_steam, totalizer_steam, flow_bfw, temp_bfw, totalizer_bfw, bfw_press, temp_furnace, temp_flue_gas, air_heater_ti113, o2, batubara_ton, steam_drum_press, primary_air, secondary_air, feeder_a_flow, feeder_b_flow, feeder_c_flow, feeder_d_flow, feeder_e_flow, feeder_f_flow),
     shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f, bunker_a, bunker_b, bunker_c, bunker_d, bunker_e, bunker_f),
     shift_esp_handling(esp_a1, esp_a2, esp_a3, esp_b1, esp_b2, esp_b3, silo_a, silo_b, unloading_a, unloading_b, loading, hopper, conveyor),
-    shift_tankyard(tk_rcw, tk_demin, tk_solar_ab)`;
+    shift_tankyard(tk_rcw, tk_demin, tk_solar_ab),
+    shift_turbin(totalizer_steam_inlet, totalizer_condensate, flow_steam, flow_cond, hpo_durasi),
+    shift_steam_dist(pabrik1_totalizer, pabrik1_flow, pabrik2_totalizer, pabrik2_flow, pabrik3a_totalizer, pabrik3a_flow, pabrik3b_flow),
+    shift_generator_gi(gen_load, gen_ampere, gen_tegangan, gen_amp_react, gen_frequensi, gen_cos_phi, gi_sum_p, gi_sum_q, gi_cos_phi),
+    shift_power_dist(power_ubb, power_ubb_totalizer, power_pabrik2, power_pabrik2_totalizer, power_pabrik3a, power_pabrik3a_totalizer, power_revamping, power_revamping_totalizer, power_pie, power_pie_totalizer, power_stg_ubb_totalizer),
+    shift_water_quality(phosphate_level_tanki, phosphate_stroke_pompa, phosphate_penambahan_air, phosphate_penambahan_chemical, phosphate_b_level_tanki, phosphate_b_stroke_pompa, phosphate_b_penambahan_air, phosphate_b_penambahan_chemical, amine_level_tanki, amine_stroke_pompa, amine_penambahan_air, amine_penambahan_chemical, hydrazine_level_tanki, hydrazine_stroke_pompa, hydrazine_penambahan_air, hydrazine_penambahan_chemical)`;
 
 function delta(cur: number | null | undefined, prev: number | null | undefined): number | null {
     return (cur != null && prev != null) ? cur - prev : null;
@@ -84,6 +89,7 @@ export default function LogbookPage() {
         const dTurb = first(daily?.daily_report_turbine_misc);
         const dTank = first(daily?.daily_report_stock_tank);
         const dTot = first(daily?.daily_report_totalizer);
+        const dPower = first(daily?.daily_report_power);
 
         // ── Boiler shift column (i = 0..2) ──
         const boilerShiftCol = (i: number, L: 'A' | 'B'): BoilerCol => {
@@ -184,10 +190,124 @@ export default function LogbookPage() {
             };
         };
 
+        // ── Chemical Dosing shift column (i = 0..2) ──
+        const emptyChemRow = { level: null, stroke: null, air: null, chem: null };
+        const chemShiftCol = (i: number): ChemCol => {
+            const wq = first(shiftAtCol(i)?.shift_water_quality);
+            const mk = (p: string) => ({
+                level: wq?.[`${p}_level_tanki`] ?? null,
+                stroke: wq?.[`${p}_stroke_pompa`] ?? null,
+                air: wq?.[`${p}_penambahan_air`] ?? null,
+                chem: wq?.[`${p}_penambahan_chemical`] ?? null,
+            });
+            return { phosA: mk('phosphate'), phosB: mk('phosphate_b'), amine: mk('amine'), hydrazine: mk('hydrazine') };
+        };
+        // Chemical Dosing tidak ada di laporan harian → kolom 24.00 kosong
+        const chemEmptyCol = (): ChemCol => ({ phosA: emptyChemRow, phosB: emptyChemRow, amine: emptyChemRow, hydrazine: emptyChemRow });
+
+        // ── Turbin shift column (i = 0..2) ──
+        const turbinShiftCol = (i: number): TurbinCol => {
+            const row = shiftAtCol(i);
+            const prevRow = prevAtCol(i);
+            const t = first(row?.shift_turbin);
+            const pt = first(prevRow?.shift_turbin);
+            const sd = first(row?.shift_steam_dist);
+            const psd = first(prevRow?.shift_steam_dist);
+            return {
+                steamTurbin: { fq: t?.totalizer_steam_inlet ?? null, ton: delta(t?.totalizer_steam_inlet, pt?.totalizer_steam_inlet), flow: t?.flow_steam ?? null },
+                mpsPb1: { fq: sd?.pabrik1_totalizer ?? null, ton: delta(sd?.pabrik1_totalizer, psd?.pabrik1_totalizer), flow: sd?.pabrik1_flow ?? null },
+                lpsPb2: { fq: sd?.pabrik2_totalizer ?? null, ton: delta(sd?.pabrik2_totalizer, psd?.pabrik2_totalizer), flow: sd?.pabrik2_flow ?? null },
+                lpsPb3: { fq: sd?.pabrik3a_totalizer ?? null, ton: delta(sd?.pabrik3a_totalizer, psd?.pabrik3a_totalizer), flow: sd?.pabrik3a_flow ?? null },
+                mpsPb3: { fq: null, ton: null, flow: sd?.pabrik3b_flow ?? null },
+                mpsRevamp: { fq: null, ton: null, flow: null },
+                steamCond: { fq: t?.totalizer_condensate ?? null, ton: delta(t?.totalizer_condensate, pt?.totalizer_condensate), flow: t?.flow_cond ?? null },
+                hpo: t?.hpo_durasi ?? null,
+            };
+        };
+        // ── Turbin daily column (24.00) ──
+        const turbinDailyCol = (): TurbinCol => {
+            const dd = (k: string) => ({ fq: dSteam?.[`${k}_24`] ?? null, ton: dSteam?.[`selisih_${k}`] ?? null, flow: dSteam?.[`${k}_00`] ?? null });
+            return {
+                steamTurbin: dd('inlet_turbine'),
+                mpsPb1: dd('mps_i'),
+                lpsPb2: dd('lps_ii'),
+                lpsPb3: dd('lps_3a'),
+                mpsPb3: dd('mps_3a'),
+                mpsRevamp: { fq: null, ton: null, flow: null },
+                steamCond: dd('fully_condens'),
+                hpo: null,
+            };
+        };
+
+        // ── Generator shift column (i = 0..2) ──
+        const generatorShiftCol = (i: number): GenCol => {
+            const row = shiftAtCol(i);
+            const prevRow = prevAtCol(i);
+            const g = first(row?.shift_generator_gi);
+            const pd = first(row?.shift_power_dist);
+            const ppd = first(prevRow?.shift_power_dist);
+            const distTot = (k: string, mwKey: string) => ({
+                fq: pd?.[`power_${k}_totalizer`] ?? null,
+                ton: delta(pd?.[`power_${k}_totalizer`], ppd?.[`power_${k}_totalizer`]),
+                flow: pd?.[mwKey] ?? null,
+            });
+            return {
+                busBar1: distTot('ubb', 'power_ubb'),
+                busBar2: { fq: null, ton: null, flow: null },
+                pabrik2: distTot('pabrik2', 'power_pabrik2'),
+                pabrik3: distTot('pabrik3a', 'power_pabrik3a'),
+                pja: { fq: null, ton: null, flow: null },
+                revamping: distTot('revamping', 'power_revamping'),
+                piu: distTot('pie', 'power_pie'),
+                genOut: { fq: pd?.power_stg_ubb_totalizer ?? null, ton: delta(pd?.power_stg_ubb_totalizer, ppd?.power_stg_ubb_totalizer), flow: g?.gen_load ?? null },
+                current: g?.gen_ampere ?? null,
+                voltage: g?.gen_tegangan ?? null,
+                q: g?.gen_amp_react ?? null,
+                pf: g?.gen_cos_phi ?? null,
+                sumP: g?.gi_sum_p ?? null,
+                sumQ: g?.gi_sum_q ?? null,
+                cosO: g?.gi_cos_phi ?? null,
+                pMwh: null,
+                qMvarh: null,
+                delivered: null,
+                received: null,
+                dr: null,
+            };
+        };
+        // ── Generator daily column (24.00) ──
+        const generatorDailyCol = (): GenCol => {
+            const dd = (tot: string, sel: string, act: string) => ({ fq: dPower?.[tot] ?? null, ton: dPower?.[sel] ?? null, flow: dPower?.[act] ?? null });
+            return {
+                busBar1: dd('internal_bus1_24', 'selisih_ubb', 'internal_bus1_00'),
+                busBar2: { fq: dPower?.internal_bus2_24 ?? null, ton: null, flow: dPower?.internal_bus2_00 ?? null },
+                pabrik2: dd('dist_ii_24', 'selisih_pabrik2', 'dist_ii_00'),
+                pabrik3: dd('dist_3a_24', 'selisih_pabrik3a', 'dist_3a_00'),
+                pja: { fq: dPower?.pja_24 ?? null, ton: null, flow: dPower?.pja_00 ?? null },
+                revamping: dd('dist_3b_24', 'selisih_revamping', 'dist_3b_00'),
+                piu: dd('pie_pln_24', 'selisih_pie', 'pie_pln_00'),
+                genOut: dd('gen_24', 'selisih_stg_ubb', 'gen_00'),
+                current: null,
+                voltage: null,
+                q: null,
+                pf: null,
+                sumP: null,
+                sumQ: null,
+                cosO: null,
+                pMwh: null,
+                qMvarh: null,
+                delivered: dTurb?.totalizer_import ?? null,
+                received: dTurb?.totalizer_export ?? null,
+                dr: dTurb?.pie_dr ?? null,
+            };
+        };
+
         return {
             boilerA: [boilerShiftCol(0, 'A'), boilerShiftCol(1, 'A'), boilerShiftCol(2, 'A'), boilerDailyCol('A')],
             boilerB: [boilerShiftCol(0, 'B'), boilerShiftCol(1, 'B'), boilerShiftCol(2, 'B'), boilerDailyCol('B')],
             bottom: [bottomShiftCol(0), bottomShiftCol(1), bottomShiftCol(2), bottomDailyCol()],
+            chemical: [chemShiftCol(0), chemShiftCol(1), chemShiftCol(2), chemEmptyCol()],
+            turbin: [turbinShiftCol(0), turbinShiftCol(1), turbinShiftCol(2), turbinDailyCol()],
+            generator: [generatorShiftCol(0), generatorShiftCol(1), generatorShiftCol(2), generatorDailyCol()],
         };
     }, [shiftMap, daily, selectedDate]);
 

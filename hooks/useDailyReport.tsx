@@ -82,7 +82,7 @@ const VALID_COLS: Record<string, string[]> = {
         'temp_furnace_a', 'temp_furnace_b',
         'axial_displacement', 'thrust_bearing_temp', 'steam_inlet_press', 'steam_inlet_temp',
         'consumption_rate_a', 'consumption_rate_b', 'consumption_rate_avg',
-        'totalizer_gi', 'totalizer_export', 'totalizer_import',
+        'totalizer_gi', 'totalizer_export', 'totalizer_import', 'pie_dr',
         'gen_ampere', 'gen_amp_react', 'gen_cos_phi', 'gen_tegangan', 'gen_frequensi',
         'gi_sum_p', 'gi_sum_q', 'gi_cos_phi',
         'status_boiler_a', 'status_boiler_b', 'status_turbin',

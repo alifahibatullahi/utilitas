@@ -1,10 +1,11 @@
 /* ───────────────────────────────────────────────────────────
-   LogbookSheet — render lembar buku PG-LB-50-5004 (read-only).
-   Murni presentational: terima LogbookData yang sudah dipetakan
-   di halaman, lalu render satu <table> dengan 4 kolom waktu
-   (06.00 / 14.00 / 22.00 / 24.00) yang sejajar dari atas (Boiler A),
-   tengah (Boiler B), sampai blok bawah — persis lembar fisik.
+   LogbookSheet — render lembar buku (read-only) dalam 1 halaman:
+   Boiler A → Boiler B → Handling/ESP/Coal Bunker → Chemical Dosing
+   (PG-LB-50-5004) → Turbin (PG-LB-50-5007) → Generator (PG-LS-50-5008).
+   Satu <table> 14 leaf-kolom (name, unit, + 4 waktu × 3 sub) supaya
+   semua kolom waktu sejajar. Tanggal hanya 1 di header atas.
    ─────────────────────────────────────────────────────────── */
+import { Fragment } from 'react';
 
 export type Cell = string | number | null | undefined;
 
@@ -48,10 +49,63 @@ export interface BottomCol {
     rcwTot?: Cell;
 }
 
+// ── Chemical Dosing ──
+export interface ChemRow {
+    level: Cell;
+    stroke: Cell;
+    air: Cell;
+    chem: Cell;
+}
+export interface ChemCol {
+    phosA: ChemRow;
+    phosB: ChemRow;
+    amine: ChemRow;
+    hydrazine: ChemRow;
+}
+
+// ── Turbin (FQ | 8 Jam | F) ──
+export interface TurbinCol {
+    steamTurbin: BoilerTotRow;
+    mpsPb1: BoilerTotRow;
+    lpsPb2: BoilerTotRow;
+    lpsPb3: BoilerTotRow;
+    mpsPb3: BoilerTotRow;
+    mpsRevamp: BoilerTotRow;
+    steamCond: BoilerTotRow;
+    hpo: Cell;
+}
+
+// ── Generator (Total | 8 Jam | Act) ──
+export interface GenCol {
+    busBar1: BoilerTotRow;
+    busBar2: BoilerTotRow;
+    pabrik2: BoilerTotRow;
+    pabrik3: BoilerTotRow;
+    pja: BoilerTotRow;
+    revamping: BoilerTotRow;
+    piu: BoilerTotRow;
+    genOut: BoilerTotRow;
+    current: Cell;
+    voltage: Cell;
+    q: Cell;
+    pf: Cell;
+    sumP: Cell;
+    sumQ: Cell;
+    cosO: Cell;
+    pMwh: Cell;
+    qMvarh: Cell;
+    delivered: Cell;
+    received: Cell;
+    dr: Cell;
+}
+
 export interface LogbookData {
     boilerA: BoilerCol[]; // panjang 4 (06/14/22/24)
     boilerB: BoilerCol[];
     bottom: BottomCol[];
+    chemical: ChemCol[];
+    turbin: TurbinCol[];
+    generator: GenCol[];
 }
 
 export interface LogbookSheetProps {
@@ -84,8 +138,84 @@ function Val({ children }: { children: string }) {
     return <span className="lb-val">{children}</span>;
 }
 
+// Baris header waktu untuk tiap section (06.00/14.00/22.00/24.00)
+function TimeRow() {
+    return (
+        <tr className="lb-time">
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            {TIMES.map((t) => (
+                <td key={t} colSpan={3}>{t}</td>
+            ))}
+        </tr>
+    );
+}
+
+// Band sub-header dokumen (judul + Nomor Dokumen) untuk Turbin & Generator
+function SubDoc({ title, doc }: { title: string; doc: string }) {
+    return (
+        <tr className="lb-subdoc">
+            <td colSpan={14}>
+                <div className="lb-subdoc-inner">
+                    <span className="lb-subdoc-title">{title}</span>
+                    <span className="lb-subdoc-doc">Nomor Dokumen : {doc}</span>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+const TURBIN_ROWS: { name: string; key: keyof Omit<TurbinCol, 'hpo'> }[] = [
+    { name: 'Steam Turbin', key: 'steamTurbin' },
+    { name: 'MPS ke PB-1', key: 'mpsPb1' },
+    { name: 'LPS ke PB-2', key: 'lpsPb2' },
+    { name: 'LPS ke PB-3', key: 'lpsPb3' },
+    { name: 'MPS ke PB-3', key: 'mpsPb3' },
+    { name: 'MPS ke Revamp', key: 'mpsRevamp' },
+    { name: 'Steam Cond.', key: 'steamCond' },
+];
+
+type GenDistKey = 'busBar1' | 'busBar2' | 'pabrik2' | 'pabrik3' | 'pja' | 'revamping' | 'piu' | 'genOut';
+const GEN_DIST_ROWS: { name: string; key: GenDistKey }[] = [
+    { name: 'Bus Bar-1', key: 'busBar1' },
+    { name: 'Bus Bar-2', key: 'busBar2' },
+    { name: 'Pabrik 2', key: 'pabrik2' },
+    { name: 'Pabrik 3', key: 'pabrik3' },
+    { name: 'PJA', key: 'pja' },
+    { name: 'Revamping', key: 'revamping' },
+    { name: 'PIU', key: 'piu' },
+    { name: 'Gen. Out', key: 'genOut' },
+];
+
+type GenSingleKey = 'current' | 'voltage' | 'q' | 'pf' | 'sumP' | 'sumQ' | 'cosO' | 'pMwh' | 'qMvarh' | 'delivered' | 'received' | 'dr';
+const GEN_OUTPUT_SINGLE: { name: string; unit: string; key: GenSingleKey }[] = [
+    { name: 'Current', unit: 'A', key: 'current' },
+    { name: 'Voltage', unit: 'kV', key: 'voltage' },
+    { name: 'Q', unit: 'MVAR', key: 'q' },
+    { name: 'PF', unit: 'Cos θ', key: 'pf' },
+];
+const GEN_GI_SINGLE: { name: string; unit: string; key: GenSingleKey }[] = [
+    { name: 'Σ P', unit: 'MW', key: 'sumP' },
+    { name: 'Σ Q', unit: 'MVAR', key: 'sumQ' },
+    { name: 'Cos Ø', unit: '', key: 'cosO' },
+    { name: 'P', unit: 'MWh', key: 'pMwh' },
+    { name: 'Q', unit: 'MVARh', key: 'qMvarh' },
+];
+const GEN_PIE_SINGLE: { name: string; unit: string; key: GenSingleKey }[] = [
+    { name: 'Delivered', unit: 'Kwh', key: 'delivered' },
+    { name: 'Received', unit: 'Kwh', key: 'received' },
+    { name: 'D - R', unit: '', key: 'dr' },
+];
+
+const CHEMICALS: { name: string; key: keyof ChemCol }[] = [
+    { name: 'Phospat A', key: 'phosA' },
+    { name: 'Phospat B', key: 'phosB' },
+    { name: 'Amine', key: 'amine' },
+    { name: 'Hydrazine', key: 'hydrazine' },
+];
+
 export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
-    const { boilerA, boilerB, bottom } = data;
+    const { boilerA, boilerB, bottom, chemical, turbin, generator } = data;
 
     // ── Render satu blok boiler (4 kolom) ──
     const renderBoiler = (label: string, cols: BoilerCol[], feederLetters: string[]) => (
@@ -173,6 +303,124 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
         </>
     );
 
+    // ── Render Chemical Dosing (kolom 24.00 kosong) ──
+    const renderChemical = (cols: ChemCol[]) => (
+        <>
+            <tr className="lb-section">
+                <td colSpan={14}>CHEMICAL DOSING</td>
+            </tr>
+            <TimeRow />
+            {CHEMICALS.map((ch) => (
+                <Fragment key={ch.key}>
+                    <tr>
+                        <td className="lb-name" rowSpan={2}>{ch.name}</td>
+                        <td className="lb-unit">Level / Stroke</td>
+                        {cols.map((c, i) => (
+                            <td key={i} colSpan={3}><Val>{pair(c[ch.key].level, c[ch.key].stroke)}</Val></td>
+                        ))}
+                    </tr>
+                    <tr>
+                        <td className="lb-unit">Konsumsi</td>
+                        {cols.map((c, i) => (
+                            <td key={i} colSpan={3}><Val>{pair(c[ch.key].air, c[ch.key].chem)}</Val></td>
+                        ))}
+                    </tr>
+                </Fragment>
+            ))}
+        </>
+    );
+
+    // ── Render Turbin ──
+    const renderTurbin = (cols: TurbinCol[]) => (
+        <>
+            <SubDoc title="LOG BOOK PANEL TURBIN" doc="PG-LB-50-5007" />
+            <TimeRow />
+            <tr className="lb-tot-head">
+                <td className="lb-name">Totaliser</td>
+                <td className="lb-unit">&nbsp;</td>
+                {cols.map((_, i) => (
+                    <SectionTotHead key={i} is24={i === 3} firstLabel="FQ" midUnit="T" actLabel="F" actUnit="T/J" />
+                ))}
+            </tr>
+            {TURBIN_ROWS.map((row) => (
+                <tr key={row.key}>
+                    <td className="lb-name">{row.name}</td>
+                    <td className="lb-unit">&nbsp;</td>
+                    {cols.map((c, i) => (
+                        <TotCells key={i} row={c[row.key]} />
+                    ))}
+                </tr>
+            ))}
+            <tr>
+                <td className="lb-name">Durasi HPO</td>
+                <td className="lb-unit">&nbsp;</td>
+                {cols.map((c, i) => (
+                    <td key={i} colSpan={3}><Val>{f(c.hpo)}</Val></td>
+                ))}
+            </tr>
+        </>
+    );
+
+    // ── Render Generator ──
+    const renderGenerator = (cols: GenCol[]) => (
+        <>
+            <SubDoc title="LOG SHEET ELECTRIC GENERATOR" doc="PG-LS-50-5008" />
+            <TimeRow />
+            <tr className="lb-subsection">
+                <td colSpan={14}>OUTPUT GENERATOR</td>
+            </tr>
+            <tr className="lb-tot-head">
+                <td className="lb-name">Totalizer</td>
+                <td className="lb-unit">&nbsp;</td>
+                {cols.map((_, i) => (
+                    <SectionTotHead key={i} is24={i === 3} firstLabel="Total" midUnit="MWh" actLabel="Act" actUnit="MW" />
+                ))}
+            </tr>
+            {GEN_DIST_ROWS.map((row) => (
+                <tr key={row.key}>
+                    <td className="lb-name">{row.name}</td>
+                    <td className="lb-unit">&nbsp;</td>
+                    {cols.map((c, i) => (
+                        <TotCells key={i} row={c[row.key]} />
+                    ))}
+                </tr>
+            ))}
+            {GEN_OUTPUT_SINGLE.map((row) => (
+                <tr key={row.key}>
+                    <td className="lb-name">{row.name}</td>
+                    <td className="lb-unit">{row.unit}</td>
+                    {cols.map((c, i) => (
+                        <td key={i} colSpan={3}><Val>{f(c[row.key])}</Val></td>
+                    ))}
+                </tr>
+            ))}
+            <tr className="lb-subsection">
+                <td colSpan={14}>Power Gi - PKG</td>
+            </tr>
+            {GEN_GI_SINGLE.map((row) => (
+                <tr key={row.key}>
+                    <td className="lb-name">{row.name}</td>
+                    <td className="lb-unit">{row.unit}</td>
+                    {cols.map((c, i) => (
+                        <td key={i} colSpan={3}><Val>{f(c[row.key])}</Val></td>
+                    ))}
+                </tr>
+            ))}
+            <tr className="lb-subsection">
+                <td colSpan={14}>PIE</td>
+            </tr>
+            {GEN_PIE_SINGLE.map((row) => (
+                <tr key={row.key}>
+                    <td className="lb-name">{row.name}</td>
+                    <td className="lb-unit">{row.unit}</td>
+                    {cols.map((c, i) => (
+                        <td key={i} colSpan={3}><Val>{f(c[row.key])}</Val></td>
+                    ))}
+                </tr>
+            ))}
+        </>
+    );
+
     return (
         <div className="lb-paper">
             {/* Header dokumen */}
@@ -219,7 +467,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
 
                     {/* ── Blok bawah (shared) ── */}
                     <tr className="lb-section">
-                        <td colSpan={14}>&nbsp;</td>
+                        <td colSpan={14}>HANDLING / ESP / COAL BUNKER</td>
                     </tr>
                     <tr>
                         <td className="lb-name">Loading Batubara</td>
@@ -288,6 +536,11 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                             <td key={i} colSpan={3}><TankCell level={b.rcw} tot={i === 3 ? b.rcwTot : undefined} /></td>
                         ))}
                     </tr>
+
+                    {/* ── Section lanjutan ── */}
+                    {renderChemical(chemical)}
+                    {renderTurbin(turbin)}
+                    {renderGenerator(generator)}
                 </tbody>
             </table>
         </div>
@@ -300,6 +553,16 @@ function FQHeader({ is24 }: { is24: boolean }) {
             <td>FQ</td>
             <td>{is24 ? '24 Jam' : '8 Jam'}<br /><span className="lb-muted">Ton</span></td>
             <td>Flow<br /><span className="lb-muted">T/J</span></td>
+        </>
+    );
+}
+
+function SectionTotHead({ is24, firstLabel, midUnit, actLabel, actUnit }: { is24: boolean; firstLabel: string; midUnit: string; actLabel: string; actUnit: string }) {
+    return (
+        <>
+            <td>{firstLabel}</td>
+            <td>{is24 ? '24 Jam' : '8 Jam'}<br /><span className="lb-muted">{midUnit}</span></td>
+            <td>{actLabel}<br /><span className="lb-muted">{actUnit}</span></td>
         </>
     );
 }

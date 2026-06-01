@@ -49,6 +49,17 @@ export default function TabPIU({
                             />
                         )}
                     </div>
+                    <div>
+                        <InputField
+                            label="D - R"
+                            unit="MW"
+                            color="blue"
+                            name="pie_dr"
+                            value={tm.pie_dr}
+                            onChange={onTurbineMiscChange}
+                            textMode
+                        />
+                    </div>
                 </div>
             </Card>
         </div>

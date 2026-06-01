@@ -119,8 +119,10 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
 
-    // Total Via Laut (kolom DN / formula) dibaca live dari Google Sheets untuk tanggal ini.
+    // Nilai read-only dari Google Sheets untuk tanggal ini: Total Via Laut (kolom DN/formula)
+    // dan Stock Batubara (kolom DW / stock_batubara_rendal).
     const [lautTotalSheet, setLautTotalSheet] = useState<string | null>(null);
+    const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
 
     const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string }[]>([]);
     const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
@@ -208,19 +210,25 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 });
         }, [date]);
 
-    // Total Via Laut: baca kolom DN (formula) dari Google Sheets untuk tanggal LHUBB ini.
+    // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DN = total via laut
+    // (formula), DW = stock batubara (stock_batubara_rendal).
     useEffect(() => {
         let stale = false;
         setLautTotalSheet(null);
+        setStockBatubaraSheet(null);
         fetch(`/api/sheets/read?type=daily_report&date=${date}`)
             .then(r => (r.ok ? r.json() : null))
             .then(j => {
                 if (stale || !j?.found || !Array.isArray(j?.data?.raw)) return;
-                const raw = j.data.raw[117]; // DN = laut_total_ton (formula di sheet)
-                const v = raw == null ? '' : String(raw).trim();
-                setLautTotalSheet(v && v !== '-' ? v : null);
+                const pick = (idx: number) => {
+                    const raw = j.data.raw[idx];
+                    const v = raw == null ? '' : String(raw).trim();
+                    return v && v !== '-' ? v : null;
+                };
+                setLautTotalSheet(pick(117));      // DN = laut_total_ton (formula)
+                setStockBatubaraSheet(pick(126));  // DW = stock_batubara_rendal
             })
-            .catch(() => { /* non-blocking — biarkan tampil 0 */ });
+            .catch(() => { /* non-blocking — biarkan tampil default */ });
         return () => { stale = true; };
     }, [date]);
 
@@ -1153,6 +1161,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     onTotalizerChange: makeMixedHandler(setTotalizer),
                                     crA, crB,
                                     lautTotalSheet,
+                                    stockBatubaraSheet,
+                                    lhubbDate: date,
                                     solarUnloadings,
                                     solarUsages,
                                     onDeleteSolarUnloading: handleDeleteSolarUnloading,

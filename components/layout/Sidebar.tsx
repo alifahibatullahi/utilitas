@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { NAV_ITEMS, ROLE_LABELS, ROLE_DOT_COLORS } from '@/lib/constants';
@@ -47,18 +48,30 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const reportNav = filteredNav.filter(item => ['laporan-shift', 'laporan-harian', 'logbook'].includes(item.id));
     const systemNav = filteredNav.filter(item => ['history', 'admin-users', 'admin-wa-hub', 'admin-sync-sheets', 'maintenance-broadcast'].includes(item.id));
 
-    const handleNav = (item: any) => {
-        if (item.id === 'history') {
-            const a = document.createElement('a');
-            a.href = item.path;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        } else {
-            router.push(item.path);
-        }
+    // Nav item sebagai <Link> (anchor ber-href) supaya Ctrl/tengah-klik & "Open in
+    // new tab" berfungsi. Klik biasa tetap navigasi client-side. 'history' tetap
+    // dibuka di tab baru.
+    const NavLink = ({ item }: { item: typeof NAV_ITEMS[number] }) => {
+        const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
+        const openNewTab = item.id === 'history';
+        return (
+            <Link
+                href={item.path}
+                target={openNewTab ? '_blank' : undefined}
+                rel={openNewTab ? 'noopener noreferrer' : undefined}
+                title={collapsed ? item.label : undefined}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+                    transition-all duration-200 cursor-pointer
+                    ${isActive
+                        ? 'bg-primary/20 text-primary border border-primary/10'
+                        : 'text-text-secondary hover:bg-surface-highlight hover:text-white border border-transparent'
+                    }
+                    ${collapsed ? 'justify-center' : ''}`}
+            >
+                <span className="material-symbols-outlined">{ICON_MAP[item.icon] || 'circle'}</span>
+                {!collapsed && <span>{item.label}</span>}
+            </Link>
+        );
     };
 
     return (
@@ -86,26 +99,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-1">
-                {mainNav.map((item) => {
-                    const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
-                    return (
-                        <button
-                            key={item.id}
-                            onClick={() => handleNav(item)}
-                            title={collapsed ? item.label : undefined}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                                transition-all duration-200 cursor-pointer
-                                ${isActive
-                                    ? 'bg-primary/20 text-primary border border-primary/10'
-                                    : 'text-text-secondary hover:bg-surface-highlight hover:text-white border border-transparent'
-                                }
-                                ${collapsed ? 'justify-center' : ''}`}
-                        >
-                            <span className="material-symbols-outlined">{ICON_MAP[item.icon] || 'circle'}</span>
-                            {!collapsed && <span>{item.label}</span>}
-                        </button>
-                    );
-                })}
+                {mainNav.map((item) => <NavLink key={item.id} item={item} />)}
 
                 {reportNav.length > 0 && (
                     <>
@@ -114,26 +108,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                 <p className="text-xs font-bold text-text-secondary/50 uppercase tracking-wider">Reports</p>
                             </div>
                         )}
-                        {reportNav.map((item) => {
-                            const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => handleNav(item)}
-                                    title={collapsed ? item.label : undefined}
-                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                                        transition-all duration-200 cursor-pointer
-                                        ${isActive
-                                            ? 'bg-primary/20 text-primary border border-primary/10'
-                                            : 'text-text-secondary hover:bg-surface-highlight hover:text-white border border-transparent'
-                                        }
-                                        ${collapsed ? 'justify-center' : ''}`}
-                                >
-                                    <span className="material-symbols-outlined">{ICON_MAP[item.icon] || 'circle'}</span>
-                                    {!collapsed && <span>{item.label}</span>}
-                                </button>
-                            );
-                        })}
+                        {reportNav.map((item) => <NavLink key={item.id} item={item} />)}
                     </>
                 )}
 
@@ -144,26 +119,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                 <p className="text-xs font-bold text-text-secondary/50 uppercase tracking-wider">System</p>
                             </div>
                         )}
-                        {systemNav.map((item) => {
-                            const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => handleNav(item)}
-                                    title={collapsed ? item.label : undefined}
-                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                                        transition-all duration-200 cursor-pointer
-                                        ${isActive
-                                            ? 'bg-primary/20 text-primary border border-primary/10'
-                                            : 'text-text-secondary hover:bg-surface-highlight hover:text-white border border-transparent'
-                                        }
-                                        ${collapsed ? 'justify-center' : ''}`}
-                                >
-                                    <span className="material-symbols-outlined">{ICON_MAP[item.icon] || 'circle'}</span>
-                                    {!collapsed && <span>{item.label}</span>}
-                                </button>
-                            );
-                        })}
+                        {systemNav.map((item) => <NavLink key={item.id} item={item} />)}
                     </>
                 )}
             </nav>

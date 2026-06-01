@@ -1,6 +1,7 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { NAV_ITEMS } from '@/lib/constants';
 
@@ -18,7 +19,6 @@ const ICON_MAP: Record<string, string> = {
 
 export default function BottomTabBar() {
     const pathname = usePathname();
-    const router = useRouter();
     const { operator } = useOperator();
 
     if (!operator) return null;
@@ -34,9 +34,9 @@ export default function BottomTabBar() {
                 {mobileItems.map((item) => {
                     const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
                     return (
-                        <button
+                        <Link
                             key={item.id}
-                            onClick={() => router.push(item.path)}
+                            href={item.path}
                             className={`flex flex-col items-center gap-0.5 px-2 py-1 cursor-pointer transition-all duration-200
                                 ${isActive ? 'scale-105' : 'opacity-60'}`}
                         >
@@ -46,7 +46,7 @@ export default function BottomTabBar() {
                             <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : 'text-text-secondary'}`}>
                                 {item.label.split(' ')[0]}
                             </span>
-                        </button>
+                        </Link>
                     );
                 })}
             </div>

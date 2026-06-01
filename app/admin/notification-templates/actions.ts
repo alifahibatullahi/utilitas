@@ -6,6 +6,7 @@ import {
     buildDeepLink,
     buildStationLinksBlock,
     sendFonnteGroup,
+    FonnteAccount,
 } from '@/lib/whatsapp';
 
 export interface TemplateRow {
@@ -65,11 +66,11 @@ export async function renderTemplatePreview(key: string, overrides: PreviewVars 
     return { ok: true as const, body };
 }
 
-export async function sendTemplatePreview(target: string, key: string, overrides: PreviewVars = {}) {
+export async function sendTemplatePreview(target: string, key: string, overrides: PreviewVars = {}, account: FonnteAccount = 'notif') {
     if (!target) return { ok: false as const, error: 'target kosong' };
     const rendered = await renderTemplatePreview(key, overrides);
     if (!rendered.ok) return { ok: false as const, error: 'gagal render template' };
-    const send = await sendFonnteGroup(target, rendered.body);
+    const send = await sendFonnteGroup(target, rendered.body, account);
     return { ok: send.ok, status: send.status, body: send.body, error: send.error, preview: rendered.body };
 }
 

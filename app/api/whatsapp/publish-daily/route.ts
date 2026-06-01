@@ -161,7 +161,7 @@ async function sendPdf(supabase: ReturnType<typeof createAdminClient>, report: a
     try { pdfUrl = await uploadToR2(r2Key, pdfBuf, 'application/pdf'); }
     catch (err) { return { ok: false, error: `R2 upload gagal: ${err instanceof Error ? err.message : String(err)}` }; }
 
-    const send = await sendFonnteFile(group.fonnte_target, pdfUrl, undefined, filename);
+    const send = await sendFonnteFile(group.fonnte_target, pdfUrl, undefined, filename, 'publish');
     await logNotification(supabase, {
         kind: 'daily_share',
         target_date: report.date,
@@ -185,8 +185,8 @@ async function sendText(supabase: ReturnType<typeof createAdminClient>, message:
     if (!fonnteTarget) return { ok: false, error: 'Target kosong' };
 
     const send = isGroupKey
-        ? await sendFonnteGroup(fonnteTarget, message)
-        : await sendFonnteText(fonnteTarget, message);
+        ? await sendFonnteGroup(fonnteTarget, message, 'publish')
+        : await sendFonnteText(fonnteTarget, message, 'publish');
     await logNotification(supabase, {
         kind: 'daily_share',
         target_date: report.date,

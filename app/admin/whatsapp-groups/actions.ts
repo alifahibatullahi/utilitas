@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient, sendFonnteGroup } from '@/lib/whatsapp';
+import { createAdminClient, sendFonnteGroup, FonnteAccount } from '@/lib/whatsapp';
 
 export interface WhatsappGroupRow {
     id: string;
@@ -55,16 +55,16 @@ export async function deleteGroup(id: string) {
     return { ok: true };
 }
 
-export async function testSend(target: string) {
+export async function testSend(target: string, account: FonnteAccount = 'notif') {
     if (!target) return { ok: false, error: 'target kosong' };
-    const send = await sendFonnteGroup(target, '✅ Test PowerOps WhatsApp — koneksi OK.');
+    const send = await sendFonnteGroup(target, '✅ Test PowerOps WhatsApp — koneksi OK.', account);
     return { ok: send.ok, status: send.status, body: send.body, error: send.error };
 }
 
 // Generic send — for the Test Send hub panel, supports raw number/JID + custom message.
-export async function sendCustomMessage(target: string, message: string) {
+export async function sendCustomMessage(target: string, message: string, account: FonnteAccount = 'notif') {
     if (!target) return { ok: false, error: 'target kosong' };
     if (!message?.trim()) return { ok: false, error: 'pesan kosong' };
-    const send = await sendFonnteGroup(target, message);
+    const send = await sendFonnteGroup(target, message, account);
     return { ok: send.ok, status: send.status, body: send.body, error: send.error };
 }

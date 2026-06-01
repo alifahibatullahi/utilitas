@@ -15,6 +15,8 @@ type Mode = 'group' | 'manual';
 export default function TestSendPanel() {
     const [groups, setGroups] = useState<WhatsappGroupRow[]>([]);
     const [mode, setMode] = useState<Mode>('group');
+    // Akun Fonnte pengirim: 'notif' (reminder, default) atau 'publish' (washift/U2/SU3A).
+    const [account, setAccount] = useState<'notif' | 'publish'>('notif');
     const [target, setTarget] = useState('');
     const [manualTarget, setManualTarget] = useState('');
     const [message, setMessage] = useState('🧪 Test PowerOps WA — pesan dari hub admin.');
@@ -71,7 +73,7 @@ export default function TestSendPanel() {
     const sendDefault = async () => {
         if (!effectiveTarget) { setMsg('Target kosong.'); return; }
         setBusy(true); setMsg(null);
-        const res = await testSend(effectiveTarget);
+        const res = await testSend(effectiveTarget, account);
         setMsg(res.ok ? `✓ Test send terkirim (status ${res.status})` : `✗ Gagal: ${fmtErr(res)}`);
         setBusy(false);
     };
@@ -79,7 +81,7 @@ export default function TestSendPanel() {
     const sendCustom = async () => {
         if (!effectiveTarget || !message.trim()) { setMsg('Target & isi pesan wajib.'); return; }
         setBusy(true); setMsg(null);
-        const res = await sendCustomMessage(effectiveTarget, message);
+        const res = await sendCustomMessage(effectiveTarget, message, account);
         setMsg(res.ok ? `✓ Pesan custom terkirim (status ${res.status})` : `✗ Gagal: ${fmtErr(res)}`);
         setBusy(false);
     };
@@ -87,7 +89,7 @@ export default function TestSendPanel() {
     const sendTemplate = async () => {
         if (!effectiveTarget || !selectedKey) { setMsg('Target & template wajib.'); return; }
         setBusy(true); setMsg(null);
-        const res = await sendTemplatePreview(effectiveTarget, selectedKey, overrides);
+        const res = await sendTemplatePreview(effectiveTarget, selectedKey, overrides, account);
         setMsg(res.ok ? `✓ Template "${selectedKey}" terkirim (status ${res.status})` : `✗ Gagal: ${fmtErr(res)}`);
         setBusy(false);
     };
@@ -100,6 +102,16 @@ export default function TestSendPanel() {
             </div>
 
             <div className="bg-surface-dark rounded-xl border border-slate-800 p-5 space-y-4 max-w-2xl">
+                <div>
+                    <label className="block text-xs text-text-secondary uppercase mb-1.5">Akun Fonnte (pengirim)</label>
+                    <select value={account} onChange={e => setAccount(e.target.value as 'notif' | 'publish')}
+                        className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary">
+                        <option value="notif">Notif (reminder laporan — akun lama)</option>
+                        <option value="publish">Publish (washift / Utilitas 2 / SU 3A — akun baru)</option>
+                    </select>
+                    <p className="text-xs text-text-secondary mt-1">Menentukan nomor WA pengirim untuk semua tombol kirim di panel ini.</p>
+                </div>
+
                 <div className="flex gap-1 p-1 bg-surface-highlight/30 rounded-lg w-fit">
                     <button onClick={() => setMode('group')}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${mode === 'group' ? 'bg-primary text-white' : 'text-text-secondary hover:text-white'}`}>

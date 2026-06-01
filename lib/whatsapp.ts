@@ -17,11 +17,41 @@ export interface SendResult {
     error?: string;   // human-readable reason when ok=false
 }
 
-export async function sendFonnteText(to: string, message: string): Promise<SendResult> {
-    const token = process.env.FONNTE_TOKEN?.trim();
+// Dua akun Fonnte (dua device/nomor WA):
+//  - 'notif'   → FONNTE_TOKEN          : reminder isi laporan shift/harian (grup A–D), photo-bot.
+//  - 'publish' → FONNTE_TOKEN_PUBLISH  : publish laporan ke washift, Utilitas 2, SU 3A.
+export type FonnteAccount = 'notif' | 'publish';
+
+// notification_log.kind yang berasal dari akun PUBLISH — dipakai resend agar kirim
+// ulang lewat akun/nomor yang sama dengan pengiriman aslinya.
+const PUBLISH_KINDS = new Set(['shift_share', 'daily_share', 'turbin_save_shift', 'turbin_save_harian']);
+
+/** Tentukan akun Fonnte dari kind notification_log (untuk resend). Default 'notif'. */
+export function accountForKind(kind: string | null | undefined): FonnteAccount {
+    return kind && PUBLISH_KINDS.has(kind) ? 'publish' : 'notif';
+}
+
+/** Ambil token Fonnte untuk akun tertentu. Akun 'publish' fallback ke FONNTE_TOKEN
+ *  (dengan warning) kalau FONNTE_TOKEN_PUBLISH belum diset, supaya tidak gagal total. */
+function resolveFonnteToken(account: FonnteAccount): { token?: string; error?: string } {
+    const envName = account === 'publish' ? 'FONNTE_TOKEN_PUBLISH' : 'FONNTE_TOKEN';
+    const token = process.env[envName]?.trim();
+    if (token) return { token };
+    if (account === 'publish') {
+        const fallback = process.env.FONNTE_TOKEN?.trim();
+        if (fallback) {
+            console.warn('[whatsapp] FONNTE_TOKEN_PUBLISH not set, falling back to FONNTE_TOKEN');
+            return { token: fallback };
+        }
+    }
+    return { error: `${envName} belum diset di environment server` };
+}
+
+export async function sendFonnteText(to: string, message: string, account: FonnteAccount = 'notif'): Promise<SendResult> {
+    const { token, error: tokenError } = resolveFonnteToken(account);
     if (!token) {
-        console.warn('[whatsapp] FONNTE_TOKEN not set');
-        return { ok: false, error: 'FONNTE_TOKEN belum diset di environment server' };
+        console.warn('[whatsapp]', tokenError);
+        return { ok: false, error: tokenError };
     }
 
     try {
@@ -54,11 +84,11 @@ export async function sendFonnteText(to: string, message: string): Promise<SendR
 export const sendFonnteGroup = sendFonnteText;
 
 // Send a file (PDF/image/doc) by passing a public URL. Fonnte fetches the URL server-side.
-export async function sendFonnteFile(to: string, fileUrl: string, caption?: string, filename?: string): Promise<SendResult> {
-    const token = process.env.FONNTE_TOKEN?.trim();
+export async function sendFonnteFile(to: string, fileUrl: string, caption?: string, filename?: string, account: FonnteAccount = 'notif'): Promise<SendResult> {
+    const { token, error: tokenError } = resolveFonnteToken(account);
     if (!token) {
-        console.warn('[whatsapp] FONNTE_TOKEN not set');
-        return { ok: false, error: 'FONNTE_TOKEN belum diset di environment server' };
+        console.warn('[whatsapp]', tokenError);
+        return { ok: false, error: tokenError };
     }
 
     try {

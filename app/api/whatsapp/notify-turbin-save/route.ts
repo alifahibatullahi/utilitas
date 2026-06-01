@@ -76,7 +76,7 @@ async function sendShiftNotifications(supabase: any, reportId: string, date: str
             `STG UBB      : ${fmtNum(gen?.gen_load)} MW`,
         ].join('\n');
 
-        const send = await sendFonnteGroup(u2Group.fonnte_target, msg);
+        const send = await sendFonnteGroup(u2Group.fonnte_target, msg, 'publish');
         await logNotification(supabase, {
             kind: 'turbin_save_shift',
             target_date: date,
@@ -101,7 +101,7 @@ async function sendShiftNotifications(supabase: any, reportId: string, date: str
             `Selisih   : ${fmtNum(sd?.selisih_pabrik3a)} ton`,
         ].join('\n');
 
-        const send = await sendFonnteGroup(su3aGroup.fonnte_target, msg);
+        const send = await sendFonnteGroup(su3aGroup.fonnte_target, msg, 'publish');
         await logNotification(supabase, {
             kind: 'turbin_save_shift',
             target_date: date,
@@ -140,7 +140,7 @@ async function sendHarianNotifications(supabase: any, reportId: string, date: st
             `Selisih (hari ini − kemarin): ${fmtNum(pwr?.selisih_pabrik2)} MWh`,
         ].join('\n');
 
-        const send = await sendFonnteGroup(u2Group.fonnte_target, msg);
+        const send = await sendFonnteGroup(u2Group.fonnte_target, msg, 'publish');
         await logNotification(supabase, {
             kind: 'turbin_save_harian',
             target_date: date,
@@ -163,7 +163,7 @@ async function sendHarianNotifications(supabase: any, reportId: string, date: st
             `Selisih (hari ini − kemarin): ${fmtNum(stm?.selisih_mps_3a)} ton`,
         ].join('\n');
 
-        const send = await sendFonnteGroup(su3aGroup.fonnte_target, msg);
+        const send = await sendFonnteGroup(su3aGroup.fonnte_target, msg, 'publish');
         await logNotification(supabase, {
             kind: 'turbin_save_harian',
             target_date: date,

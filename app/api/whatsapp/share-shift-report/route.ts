@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const group = await getWhatsappGroup(supabase, groupKey);
     if (!group) return NextResponse.json({ error: `WhatsApp group "${groupKey}" not configured` }, { status: 400 });
 
-    const send = await sendFonnteGroup(group.fonnte_target, message);
+    const send = await sendFonnteGroup(group.fonnte_target, message, 'publish');
     await logNotification(supabase, {
         kind: 'shift_share',
         target_date: report.date as string,

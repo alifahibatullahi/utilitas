@@ -4,6 +4,7 @@ import {
     sendFonnteText,
     logNotification,
     nowWIB,
+    accountForKind,
 } from '@/lib/whatsapp';
 
 // Manual resend by admin from notification log page.
@@ -27,7 +28,8 @@ export async function POST(req: NextRequest) {
     if (error || !row) return NextResponse.json({ error: 'Log row not found' }, { status: 404 });
     if (!row.payload) return NextResponse.json({ error: 'Original payload empty' }, { status: 400 });
 
-    const send = await sendFonnteText(row.sent_to as string, row.payload as string);
+    // Kirim ulang lewat akun/nomor yang sama dengan pengiriman aslinya (berdasar kind).
+    const send = await sendFonnteText(row.sent_to as string, row.payload as string, accountForKind(row.kind as string));
     await logNotification(supabase, {
         kind: row.kind as string,
         target_date: (row.target_date as string) ?? nowWIB().date,

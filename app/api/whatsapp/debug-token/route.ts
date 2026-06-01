@@ -1,12 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Debug endpoint — TIDAK expose token value, hanya metadata.
-// Akses: GET /api/whatsapp/debug-token
-export async function GET() {
-    const raw = process.env.FONNTE_TOKEN;
+// Akses: GET /api/whatsapp/debug-token            → akun notif (FONNTE_TOKEN)
+//        GET /api/whatsapp/debug-token?account=publish → akun publish (FONNTE_TOKEN_PUBLISH)
+export async function GET(req: NextRequest) {
+    const account = req.nextUrl.searchParams.get('account') === 'publish' ? 'publish' : 'notif';
+    const envName = account === 'publish' ? 'FONNTE_TOKEN_PUBLISH' : 'FONNTE_TOKEN';
+    const raw = process.env[envName];
     const trimmed = raw?.trim();
 
     const info = {
+        account,
+        envName,
         present: !!raw,
         rawLength: raw?.length ?? 0,
         trimmedLength: trimmed?.length ?? 0,

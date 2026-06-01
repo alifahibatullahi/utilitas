@@ -97,7 +97,6 @@ export default function LogbookPage() {
         const dCoal = first(daily?.daily_report_coal);
         const dTurb = first(daily?.daily_report_turbine_misc);
         const dTank = first(daily?.daily_report_stock_tank);
-        const dTot = first(daily?.daily_report_totalizer);
         const dPower = first(daily?.daily_report_power);
 
         // ── Boiler shift column (i = 0..2) ──
@@ -180,21 +179,26 @@ export default function LogbookPage() {
 
         // ── Bottom daily column (24.00) ──
         const bottomDailyCol = (): BottomCol => {
+            // Loading Batubara 24.00 = total Malam + Pagi + Sore
+            const loadSum = [0, 1, 2].reduce((s, i) => {
+                const v = Number(first(shiftAtCol(i)?.shift_esp_handling)?.loading);
+                return s + (isFinite(v) ? v : 0);
+            }, 0);
+            // Conveyor / Hopper 24.00 = ikut shift Sore
+            const espSore = first(shiftAtCol(2)?.shift_esp_handling);
             return {
-                loading: null,
-                conveyor: null,
-                hopper: null,
-                bunkerABC: [null, null, null],
-                bunkerDEF: [null, null, null],
-                trafoA: [null, null, null],
-                trafoB: [null, null, null],
+                loading: loadSum || null,
+                conveyor: espSore?.conveyor ?? null,
+                hopper: espSore?.hopper ?? null,
+                bunkerABC: [dTank?.bunker_a ?? null, dTank?.bunker_b ?? null, dTank?.bunker_c ?? null],
+                bunkerDEF: [dTank?.bunker_d ?? null, dTank?.bunker_e ?? null, dTank?.bunker_f ?? null],
+                trafoA: [dTank?.trafo_a1 ?? null, dTank?.trafo_a2 ?? null, dTank?.trafo_a3 ?? null],
+                trafoB: [dTank?.trafo_b1 ?? null, dTank?.trafo_b2 ?? null, dTank?.trafo_b3 ?? null],
                 silo: [dTank?.silo_a_pct ?? null, dTank?.silo_b_pct ?? null, formatUnloading(dTank?.unloading_fly_ash_a, dTank?.unloading_fly_ash_b)],
+                // Tankyard: hanya level, tanpa total
                 solar: dTank?.solar_tank_total ?? null,
                 demin: dTank?.demin_level_00 ?? null,
                 rcw: dTank?.rcw_level_00 ?? null,
-                solarTot: null,
-                deminTot: dTot?.konsumsi_demin ?? null,
-                rcwTot: dTot?.konsumsi_rcw ?? null,
             };
         };
 

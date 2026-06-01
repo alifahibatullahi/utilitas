@@ -46,6 +46,21 @@ export default function TabSiloFlyAsh({
                     <InputField label="Level Silo B" name="silo_b_pct" value={stockTank.silo_b_pct} onChange={onStockTankChange} unit="%" color="emerald" />
                 </div>
 
+                {/* Level Bunker & Trafo (Jam 24.00) — untuk Logbook */}
+                <div className="h-px bg-slate-700/50 my-1" />
+                <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider mt-1">Level Bunker (Jam 24.00)</p>
+                <div className="grid grid-cols-3 gap-3">
+                    {['a', 'b', 'c', 'd', 'e', 'f'].map((k) => (
+                        <InputField key={k} label={`Bunker ${k.toUpperCase()}`} name={`bunker_${k}`} value={stockTank[`bunker_${k}`]} onChange={onStockTankChange} unit="%" color="emerald" />
+                    ))}
+                </div>
+                <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider mt-1">Trafo ESP (Jam 24.00)</p>
+                <div className="grid grid-cols-3 gap-3">
+                    {['a1', 'a2', 'a3', 'b1', 'b2', 'b3'].map((k) => (
+                        <InputField key={k} label={`Trafo ${k.toUpperCase()}`} name={`trafo_${k}`} value={stockTank[`trafo_${k}`]} onChange={onStockTankChange} color="emerald" />
+                    ))}
+                </div>
+
                 {/* Divider */}
                 <div className="h-px bg-slate-700/50 my-1" />
 

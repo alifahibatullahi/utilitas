@@ -95,6 +95,9 @@ const VALID_COLS: Record<string, string[]> = {
         'chemical_phosphat', 'chemical_amin', 'chemical_hydrasin',
         'silo_a_pct', 'silo_b_pct', 'unloading_fly_ash_a', 'unloading_fly_ash_b',
         'total_pf1', 'total_pf2',
+        // Level Bunker & Trafo ESP (Jam 24.00) — untuk logbook
+        'bunker_a', 'bunker_b', 'bunker_c', 'bunker_d', 'bunker_e', 'bunker_f',
+        'trafo_a1', 'trafo_a2', 'trafo_a3', 'trafo_b1', 'trafo_b2', 'trafo_b3',
     ],
     daily_report_coal_transfer: [
         'pb2_pf1_rit', 'pb2_pf1_ton', 'pb2_pf2_rit', 'pb2_pf2_ton',

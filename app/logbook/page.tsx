@@ -60,8 +60,9 @@ export default function LogbookPage() {
     useEffect(() => {
         const el = fitRef.current;
         if (!el) return;
-        // Skala muat lebar: mengecil di HP, dan membesar s/d 1.3× di monitor besar.
-        const calc = () => setZoom(Math.min(1.3, el.clientWidth / 1010));
+        // Tidak pernah mengecil (min 1×) — di HP tampil full lebar (scroll + pinch-zoom),
+        // dan membesar s/d 1.3× di monitor besar.
+        const calc = () => setZoom(Math.max(1, Math.min(1.3, el.clientWidth / 1010)));
         calc();
         const ro = new ResizeObserver(calc);
         ro.observe(el);

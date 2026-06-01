@@ -269,7 +269,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                         ))}
                     </tr>
                     <tr>
-                        <td className="lb-name" rowSpan={3}>Tanki</td>
+                        <td className="lb-name" rowSpan={3}>Tankyard</td>
                         <td className="lb-unit">Solar</td>
                         {bottom.map((b, i) => (
                             <td key={i} colSpan={3}><TankCell level={b.solar} tot={i === 3 ? b.solarTot : undefined} /></td>

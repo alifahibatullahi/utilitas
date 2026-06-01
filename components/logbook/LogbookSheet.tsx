@@ -62,6 +62,11 @@ export interface ChemCol {
     amine: ChemRow;
     hydrazine: ChemRow;
 }
+export interface ChemStock {
+    phosphate: Cell;
+    amine: Cell;
+    hydrazine: Cell;
+}
 
 // ── Turbin (FQ | 8 Jam | F) ──
 export interface TurbinCol {
@@ -104,6 +109,7 @@ export interface LogbookData {
     boilerB: BoilerCol[];
     bottom: BottomCol[];
     chemical: ChemCol[];
+    chemicalStock: ChemStock;
     turbin: TurbinCol[];
     generator: GenCol[];
 }
@@ -171,8 +177,8 @@ const TURBIN_ROWS: { name: string; key: keyof Omit<TurbinCol, 'hpo'> }[] = [
     { name: 'LPS ke PB-2', key: 'lpsPb2' },
     { name: 'LPS ke PB-3', key: 'lpsPb3' },
     { name: 'MPS ke PB-3', key: 'mpsPb3' },
-    { name: 'MPS ke Revamp', key: 'mpsRevamp' },
     { name: 'Steam Cond.', key: 'steamCond' },
+    { name: 'MPS ke Revamp', key: 'mpsRevamp' },
 ];
 
 type GenDistKey = 'busBar1' | 'busBar2' | 'pabrik2' | 'pabrik3' | 'pja' | 'revamping' | 'piu' | 'genOut';
@@ -207,15 +213,15 @@ const GEN_PIE_SINGLE: { name: string; unit: string; key: GenSingleKey }[] = [
     { name: 'D - R', unit: 'MWh', key: 'dr' },
 ];
 
-const CHEMICALS: { name: string; key: keyof ChemCol }[] = [
-    { name: 'Phospat A', key: 'phosA' },
+const CHEMICALS: { name: string; key: keyof ChemCol; stock?: keyof ChemStock }[] = [
+    { name: 'Phospat A', key: 'phosA', stock: 'phosphate' },
     { name: 'Phospat B', key: 'phosB' },
-    { name: 'Amine', key: 'amine' },
-    { name: 'Hydrazine', key: 'hydrazine' },
+    { name: 'Amine', key: 'amine', stock: 'amine' },
+    { name: 'Hydrazine', key: 'hydrazine', stock: 'hydrazine' },
 ];
 
 export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
-    const { boilerA, boilerB, bottom, chemical, turbin, generator } = data;
+    const { boilerA, boilerB, bottom, chemical, chemicalStock, turbin, generator } = data;
 
     // ── Render satu blok boiler (4 kolom) ──
     const renderBoiler = (label: string, cols: BoilerCol[], feederLetters: string[]) => (
@@ -295,7 +301,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
             {/* Primary Air / Secondary Air (pengganti Bottom Slug) */}
             <tr>
                 <td className="lb-name" style={{ whiteSpace: 'normal' }}>Primary Air / Secondary Air</td>
-                <td className="lb-unit">%</td>
+                <td className="lb-unit">Ton</td>
                 {cols.map((c, i) => (
                     <td key={i} colSpan={3}><Val>{pair(c.pa, c.sa)}</Val></td>
                 ))}
@@ -317,7 +323,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                     {['06.00', '14.00', '22.00'].map((t) => (
                         <td key={t} colSpan={3}>{t}</td>
                     ))}
-                    <td colSpan={3}>&nbsp;</td>
+                    <td colSpan={3}>Stock</td>
                 </tr>
                 {CHEMICALS.map((ch) => (
                     <Fragment key={ch.key}>
@@ -327,14 +333,13 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                             {c3.map((c, i) => (
                                 <td key={i} colSpan={3}><Val>{pair(c[ch.key].level, c[ch.key].stroke)}</Val></td>
                             ))}
-                            <td colSpan={3}>&nbsp;</td>
+                            <td colSpan={3} rowSpan={2}><Val>{ch.stock ? f(chemicalStock[ch.stock]) : ''}</Val></td>
                         </tr>
                         <tr>
                             <td className="lb-unit">Konsumsi</td>
                             {c3.map((c, i) => (
                                 <td key={i} colSpan={3}><Val>{pair(c[ch.key].air, c[ch.key].chem)}</Val></td>
                             ))}
-                            <td colSpan={3}>&nbsp;</td>
                         </tr>
                     </Fragment>
                 ))}
@@ -346,28 +351,30 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
     const renderTurbin = (cols: TurbinCol[]) => (
         <>
             <SubDoc title="LOG BOOK PANEL TURBIN" doc="PG-LB-50-5007" />
-            <TimeRow />
+            <tr className="lb-time">
+                <td colSpan={2}>&nbsp;</td>
+                {TIMES.map((t) => (
+                    <td key={t} colSpan={3}>{t}</td>
+                ))}
+            </tr>
             <tr className="lb-tot-head">
-                <td className="lb-name">Totaliser</td>
-                <td className="lb-unit">&nbsp;</td>
+                <td className="lb-name" colSpan={2}>Totaliser</td>
                 {cols.map((_, i) => (
                     <SectionTotHead key={i} is24={i === 3} firstLabel="FQ" midUnit="T" actLabel="F" actUnit="T/J" />
                 ))}
             </tr>
             {TURBIN_ROWS.map((row) => (
                 <tr key={row.key}>
-                    <td className="lb-name">{row.name}</td>
-                    <td className="lb-unit">&nbsp;</td>
+                    <td className="lb-name" colSpan={2}>{row.name}</td>
                     {cols.map((c, i) => (
                         <TotCells key={i} row={c[row.key]} />
                     ))}
                 </tr>
             ))}
             <tr>
-                <td className="lb-name">Durasi HPO</td>
-                <td className="lb-unit">&nbsp;</td>
+                <td className="lb-name" colSpan={2}>Durasi HPO</td>
                 {cols.map((c, i) => (
-                    <td key={i} colSpan={3}><Val>{f(c.hpo)}</Val></td>
+                    <td key={i} colSpan={3}><Val>{c.hpo != null && c.hpo !== '' ? `${f(c.hpo)} second` : ''}</Val></td>
                 ))}
             </tr>
         </>
@@ -407,7 +414,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                 </tr>
             ))}
             <tr className="lb-subsection">
-                <td colSpan={14}>Power Gi - PKG</td>
+                <td colSpan={14}>Power GI - PKG</td>
             </tr>
             {GEN_GI_SINGLE.map((row) => (
                 <tr key={row.key}>
@@ -419,7 +426,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                 </tr>
             ))}
             <tr className="lb-subsection">
-                <td colSpan={14}>PIE</td>
+                <td colSpan={14}>PIU</td>
             </tr>
             {GEN_PIE_SINGLE.map((row) => (
                 <tr key={row.key}>

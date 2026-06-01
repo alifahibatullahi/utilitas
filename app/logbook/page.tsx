@@ -26,7 +26,7 @@ const SHIFT_SELECT = `date, shift,
     shift_steam_dist(pabrik1_totalizer, pabrik1_flow, pabrik2_totalizer, pabrik2_flow, pabrik3a_totalizer, pabrik3a_flow, pabrik3b_flow),
     shift_generator_gi(gen_load, gen_ampere, gen_tegangan, gen_amp_react, gen_frequensi, gen_cos_phi, gi_sum_p, gi_sum_q, gi_cos_phi),
     shift_power_dist(power_ubb, power_ubb_totalizer, power_pabrik2, power_pabrik2_totalizer, power_pabrik3a, power_pabrik3a_totalizer, power_revamping, power_revamping_totalizer, power_pie, power_pie_totalizer, power_stg_ubb_totalizer),
-    shift_water_quality(phosphate_level_tanki, phosphate_stroke_pompa, phosphate_penambahan_air, phosphate_penambahan_chemical, phosphate_b_level_tanki, phosphate_b_stroke_pompa, phosphate_b_penambahan_air, phosphate_b_penambahan_chemical, amine_level_tanki, amine_stroke_pompa, amine_penambahan_air, amine_penambahan_chemical, hydrazine_level_tanki, hydrazine_stroke_pompa, hydrazine_penambahan_air, hydrazine_penambahan_chemical)`;
+    shift_water_quality(phosphate_level_tanki, phosphate_stroke_pompa, phosphate_penambahan_air, phosphate_penambahan_chemical, phosphate_b_level_tanki, phosphate_b_stroke_pompa, phosphate_b_penambahan_air, phosphate_b_penambahan_chemical, amine_level_tanki, amine_stroke_pompa, amine_penambahan_air, amine_penambahan_chemical, hydrazine_level_tanki, hydrazine_stroke_pompa, hydrazine_penambahan_air, hydrazine_penambahan_chemical, stock_phosphate, stock_amine, stock_hydrazine)`;
 
 function delta(cur: number | null | undefined, prev: number | null | undefined): number | null {
     return (cur != null && prev != null) ? cur - prev : null;
@@ -212,6 +212,13 @@ export default function LogbookPage() {
         };
         // Chemical Dosing tidak ada di laporan harian → kolom 24.00 kosong
         const chemEmptyCol = (): ChemCol => ({ phosA: emptyChemRow, phosB: emptyChemRow, amine: emptyChemRow, hydrazine: emptyChemRow });
+        // Stock chemical (jam 24.00) — ambil dari shift terbaru yang terisi (sore → pagi → malam)
+        const pickStock = (k: string) => {
+            const wqSore = first(shiftAtCol(2)?.shift_water_quality);
+            const wqPagi = first(shiftAtCol(1)?.shift_water_quality);
+            const wqMalam = first(shiftAtCol(0)?.shift_water_quality);
+            return wqSore?.[k] ?? wqPagi?.[k] ?? wqMalam?.[k] ?? null;
+        };
 
         // ── Turbin shift column (i = 0..2) ──
         const turbinShiftCol = (i: number): TurbinCol => {
@@ -316,6 +323,7 @@ export default function LogbookPage() {
             boilerB: [boilerShiftCol(0, 'B'), boilerShiftCol(1, 'B'), boilerShiftCol(2, 'B'), boilerDailyCol('B')],
             bottom: [bottomShiftCol(0), bottomShiftCol(1), bottomShiftCol(2), bottomDailyCol()],
             chemical: [chemShiftCol(0), chemShiftCol(1), chemShiftCol(2), chemEmptyCol()],
+            chemicalStock: { phosphate: pickStock('stock_phosphate'), amine: pickStock('stock_amine'), hydrazine: pickStock('stock_hydrazine') },
             turbin: [turbinShiftCol(0), turbinShiftCol(1), turbinShiftCol(2), turbinDailyCol()],
             generator: [generatorShiftCol(0), generatorShiftCol(1), generatorShiftCol(2), generatorDailyCol()],
         };

@@ -177,6 +177,13 @@
     background: #f7f7f7;
 }
 
+/* Label "Totalizer" pada Turbin — bold, lebih besar, rata tengah */
+.lb-table td.lb-tot-label {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 800;
+}
+
 .lb-muted { color: #000000; font-weight: 600; }
 
 /* Toolbar (tidak ikut tercetak) */

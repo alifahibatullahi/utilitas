@@ -213,11 +213,12 @@ const GEN_PIE_SINGLE: { name: string; unit: string; key: GenSingleKey }[] = [
     { name: 'D - R', unit: 'MWh', key: 'dr' },
 ];
 
-const CHEMICALS: { name: string; key: keyof ChemCol; stock?: keyof ChemStock }[] = [
-    { name: 'Phospat A', key: 'phosA', stock: 'phosphate' },
+const CHEMICALS: { name: string; key: keyof ChemCol; stock?: keyof ChemStock; stockLabel?: string; stockSpan?: number }[] = [
+    // Phosphate stock cuma 1 → sel stock-nya merge baris Phospat A + Phospat B (rowSpan 4).
+    { name: 'Phospat A', key: 'phosA', stock: 'phosphate', stockLabel: 'PHOSPATE', stockSpan: 4 },
     { name: 'Phospat B', key: 'phosB' },
-    { name: 'Amine', key: 'amine', stock: 'amine' },
-    { name: 'Hydrazine', key: 'hydrazine', stock: 'hydrazine' },
+    { name: 'Amine', key: 'amine', stock: 'amine', stockLabel: 'AMINE', stockSpan: 2 },
+    { name: 'Hydrazine', key: 'hydrazine', stock: 'hydrazine', stockLabel: 'HYDRAZINE', stockSpan: 2 },
 ];
 
 export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
@@ -333,7 +334,11 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                             {c3.map((c, i) => (
                                 <td key={i} colSpan={3}><Val>{pair(c[ch.key].level, c[ch.key].stroke)}</Val></td>
                             ))}
-                            <td colSpan={3} rowSpan={2}><Val>{ch.stock ? f(chemicalStock[ch.stock]) : ''}</Val></td>
+                            {ch.stock ? (
+                                <td colSpan={3} rowSpan={ch.stockSpan} style={{ textAlign: 'left' }}>
+                                    <span className="lb-val">{ch.stockLabel} . . . . {f(chemicalStock[ch.stock])} pcs</span>
+                                </td>
+                            ) : null}
                         </tr>
                         <tr>
                             <td className="lb-unit">Konsumsi</td>
@@ -358,7 +363,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                 ))}
             </tr>
             <tr className="lb-tot-head">
-                <td className="lb-name" colSpan={2}>Totaliser</td>
+                <td className="lb-name lb-tot-label" colSpan={2}>Totalizer</td>
                 {cols.map((_, i) => (
                     <SectionTotHead key={i} is24={i === 3} firstLabel="FQ" midUnit="T" actLabel="F" actUnit="T/J" />
                 ))}

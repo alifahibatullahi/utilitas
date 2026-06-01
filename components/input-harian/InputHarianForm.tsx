@@ -15,7 +15,8 @@ import TabChemical from './TabChemical';
 import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
-import { checkConsumptionRate, checkMaxMW, buildWarningPrompt } from '@/lib/report-validation';
+import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
+import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import type { DailyTabProps } from './types';
 
 type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
@@ -103,6 +104,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [submitting, setSubmitting] = useState(false);
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const { confirmWarnings, warningModal } = useWarningConfirm();
     const [waPreview, setWaPreview] = useState<{
         reportId: string;
         items: { target: string; label: string; message: string; status: 'pending' | 'sent' | 'failed' }[];
@@ -511,6 +513,33 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             setTimeout(() => setToast(null), 4000);
             return;
         }
+
+        // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
+        // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
+        // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.
+        {
+            const isSdA = turbineMisc.status_boiler_a === 'shutdown';
+            const isSdB = turbineMisc.status_boiler_b === 'shutdown';
+            const isTurbinSd = turbineMisc.status_turbin === 'shutdown';
+            const warnings: string[] = [];
+            const wA = checkConsumptionRate('Boiler A', coalTotalA, steamProdA, isSdA); if (wA) warnings.push(wA);
+            const wB = checkConsumptionRate('Boiler B', coalTotalB, steamProdB, isSdB); if (wB) warnings.push(wB);
+            const mwFields: [string, number | string | null | undefined][] = [
+                ['Load STG', isTurbinSd ? 0 : power.gen_00],
+                ['Σ P PLN (GI)', turbineMisc.gi_sum_p],
+                ['Internal UBB', power.power_ubb],
+                ['Pabrik 2', power.power_pabrik2],
+                ['Pabrik 3A', power.power_pabrik3a],
+                ['Pabrik 3B', power.power_revamping],
+                ['PIU', power.power_pie],
+            ];
+            for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
+            if (warnings.length > 0) {
+                const ok = await confirmWarnings(warnings);
+                if (!ok) return;
+            }
+        }
+
         setSubmitting(true);
         setSaveProgress(5);
         const progressInterval = setInterval(() => {
@@ -688,31 +717,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 tw.steam_inlet_temp = 0;
             }
 
-            // ─── Validasi nilai (peringatan sebelum simpan) ───
-            // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
-            // nilai berunit MW (Load STG / GI / Distribusi Power) maksimal 30 MW.
-            const warnings: string[] = [];
-            const wCrA = checkConsumptionRate('Boiler A', coalTotalA, steamProdA, isShutdownA);
-            if (wCrA) warnings.push(wCrA);
-            const wCrB = checkConsumptionRate('Boiler B', coalTotalB, steamProdB, isShutdownB);
-            if (wCrB) warnings.push(wCrB);
-            const mwFields: [string, number | string | null | undefined][] = [
-                ['Load STG', powerForSubmit.gen_00],
-                ['Σ P PLN (GI)', turbineMisc.gi_sum_p],
-                ['Internal UBB', powerForSubmit.power_ubb],
-                ['Pabrik 2', powerForSubmit.power_pabrik2],
-                ['Pabrik 3A', powerForSubmit.power_pabrik3a],
-                ['Pabrik 3B', powerForSubmit.power_revamping],
-                ['PIU', powerForSubmit.power_pie],
-            ];
-            for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
-            if (warnings.length > 0 && !window.confirm(buildWarningPrompt(warnings))) {
-                clearInterval(progressInterval);
-                setSaveProgress(null);
-                setSubmitting(false);
-                return;
-            }
-
             const result = await submitReport({
                 created_by: operator?.supabaseId ?? undefined,
                 notes: undefined,
@@ -840,6 +844,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
     return (
         <>
+            {/* Pop-up peringatan nilai tidak wajar */}
+            {warningModal}
             {/* Toast */}
             {toast && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">

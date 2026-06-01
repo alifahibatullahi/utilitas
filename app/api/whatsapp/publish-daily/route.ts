@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
         .eq('date', report.date as string)
         .order('item', { ascending: true });
 
-    const summaryText = buildDailySummary(report, maintenance ?? []);
+    const summaryText = buildDailySummary(report);
     const text = await renderTemplate(supabase, 'daily_share', {
         date: formatDateHariTanggal(report.date as string),
         summary: summaryText,
@@ -313,7 +313,7 @@ function buildDailyReportHtml(report: any, maintenance: any[]): string {
 
 // Returns the `{{summary}}` content for the daily_share template.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildDailySummary(report: any, maintenance: any[]): string {
+function buildDailySummary(report: any): string {
     const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
     const stm  = first(report.daily_report_steam);
     const pwr  = first(report.daily_report_power);
@@ -359,26 +359,9 @@ function buildDailySummary(report: any, maintenance: any[]): string {
     lines.push(`Level RCW   : ${fmtNum(tank?.rcw_level_00)} m³`);
     lines.push(`Level Demin : ${fmtNum(tank?.demin_level_00)} m³`);
 
-    lines.push('');
-    lines.push('━━━ *MAINTENANCE* ━━━');
-    if (maintenance.length === 0) {
-        lines.push('  (tidak ada item)');
-    } else {
-        const sorted = [...maintenance].sort((a, b) => String(a.item ?? '').localeCompare(String(b.item ?? '')));
-        // Format: "{No Item} {Deskripsi} - {Scope} {uraian} IP/OK"
-        sorted.forEach((m, i) => {
-            const rawItem = String(m.item ?? '-');
-            const itemDisplay = rawItem.includes(' - ') ? rawItem.replace(' - ', ' ') : rawItem;
-            const scopeLabel = m.scope ? String(m.scope).charAt(0).toUpperCase() + String(m.scope).slice(1) : '-';
-            lines.push(`${i + 1}. ${itemDisplay} - ${scopeLabel} ${m.uraian ?? '-'} ${m.status ?? '-'}`);
-        });
-    }
-
-    if (report.notes) {
-        lines.push('');
-        lines.push('━━━ *CATATAN HARIAN* ━━━');
-        lines.push(report.notes);
-    }
+    // CATATAN: Untuk sementara teks washift hanya berisi Parameter Operasi.
+    // Blok Maintenance & Catatan Harian sengaja tidak disertakan (atas permintaan).
+    // Data maintenance/catatan tetap dipakai untuk PDF & tab Review.
 
     return lines.join('\n');
 }

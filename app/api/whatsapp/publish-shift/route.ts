@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
         demin: (tankRows?.find(t => t.tank_id === 'DEMIN')?.level_m3 as number | null) ?? null,
     };
 
-    const summaryText = buildShiftSummary(report, maintenance ?? [], latestTank);
+    const summaryText = buildShiftSummary(report, latestTank);
     const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
     const text = await renderTemplate(supabase, 'shift_share', {
         shift: shiftLabel,
@@ -486,7 +486,7 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
 // parameters + maintenance + catatan shift. The template provides the header
 // (e.g. "*Laporan Shift {{shift}} — {{date}}*").
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftSummary(report: any, maintenance: any[], latestTank: { rcw: number | null; demin: number | null }): string {
+function buildShiftSummary(report: any, latestTank: { rcw: number | null; demin: number | null }): string {
     const lines: string[] = [];
     lines.push(`Supervisor: ${report.supervisor ?? '-'}`);
     lines.push('');
@@ -494,32 +494,9 @@ function buildShiftSummary(report: any, maintenance: any[], latestTank: { rcw: n
     // Level RCW/Demin pakai data terakhir dari tank_levels.
     lines.push(buildOperasiParams(report, latestTank));
 
-    lines.push('');
-    lines.push('━━━ *MAINTENANCE* ━━━');
-    if (maintenance.length === 0) {
-        lines.push('  (tidak ada item)');
-    } else {
-        // Sort by item ascending, then number sequentially.
-        // Format: "{No Item} {Deskripsi} - {Scope} {uraian} IP/OK"
-        // Item field disimpan sebagai "noItem - deskripsi" — split jadi 2, gabung dengan spasi.
-        const sorted = [...maintenance].sort((a, b) => String(a.item ?? '').localeCompare(String(b.item ?? '')));
-        sorted.forEach((m, i) => {
-            const rawItem = String(m.item ?? '-');
-            const itemDisplay = rawItem.includes(' - ') ? rawItem.replace(' - ', ' ') : rawItem;
-            const scopeLabel = m.scope ? String(m.scope).charAt(0).toUpperCase() + String(m.scope).slice(1) : '-';
-            lines.push(`${i + 1}. ${itemDisplay} - ${scopeLabel} ${m.uraian ?? '-'} ${m.status ?? '-'}`);
-        });
-    }
-
-    // CATATAN OPERASIONAL = catatan free-text saja. Baris aktivitas (unloading silo,
-    // kedatangan/permintaan solar, "Bunker X berasap sejak ...") sudah otomatis dimasukkan
-    // ke dalam catatan via buildAutoCatatanLines saat input, dan hanya muncul kalau aktivitas
-    // itu benar-benar terjadi. Jadi tidak perlu blok terpisah di sini (menghindari duplikasi).
-    if (report.catatan && String(report.catatan).trim()) {
-        lines.push('');
-        lines.push('━━━ *CATATAN OPERASIONAL* ━━━');
-        lines.push(String(report.catatan));
-    }
+    // CATATAN: Untuk sementara teks washift hanya berisi Parameter Operasi.
+    // Blok Maintenance & Catatan Operasional sengaja tidak disertakan (atas permintaan).
+    // Data maintenance/catatan tetap dipakai untuk PDF & tab Review.
 
     return lines.join('\n');
 }

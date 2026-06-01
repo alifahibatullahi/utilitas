@@ -55,7 +55,7 @@ const COL = {
     boiler_excess_air_a: 78, boiler_excess_air_b: 79,
     boiler_air_heater_a: 80, boiler_air_heater_b: 81,
     boiler_batubara_a: 82, boiler_batubara_b: 83,
-    boiler_solar_a: 84, boiler_solar_b: 85,
+    boiler_solar_a: 84, boiler_solar_b: 85,   // CG (Solar Usage A) / CH (Solar Usage B)
     boiler_stream_days_a: 86, boiler_stream_days_b: 87,
     // Coal Feeders 88-93
     feeder_a: 88, feeder_b: 89, feeder_c: 90,
@@ -94,6 +94,13 @@ type CellValue = string | number | null;
 
 function n(v: number | null | undefined): CellValue {
     return (v == null || v === 0) ? null : v;
+}
+
+/** Seperti n() tapi 0 TETAP ditulis sebagai 0 (bukan dikosongkan).
+ *  Hanya null/undefined yang jadi sel kosong. Dipakai untuk kolom yang
+ *  nilai 0-nya bermakna (mis. Solar Usage boiler CG/CH). */
+function nz(v: number | null | undefined): CellValue {
+    return v == null ? null : v;
 }
 
 function s(v: string | null | undefined): CellValue {
@@ -262,7 +269,7 @@ export function shiftReportToRow(
     row[COL.boiler_excess_air_a] = n(bA.o2);
     row[COL.boiler_air_heater_a] = n(bA.air_heater_ti113);
     row[COL.boiler_batubara_a] = n(bA.batubara_ton);
-    row[COL.boiler_solar_a] = n(bA.solar_m3);
+    row[COL.boiler_solar_a] = nz(bA.solar_m3);         // CG — Solar Usage boiler A (0 tetap ditulis)
     row[COL.boiler_stream_days_a] = n(bA.stream_days);
     // Boiler B
     const bB = data.boilerB ?? {};
@@ -277,7 +284,7 @@ export function shiftReportToRow(
     row[COL.boiler_excess_air_b] = n(bB.o2);           // CB — O2 boiler B
     row[COL.boiler_air_heater_b] = n(bB.air_heater_ti113);
     row[COL.boiler_batubara_b] = n(bB.batubara_ton);
-    row[COL.boiler_solar_b] = n(bB.solar_m3);
+    row[COL.boiler_solar_b] = nz(bB.solar_m3);         // CH — Solar Usage boiler B (0 tetap ditulis)
     row[COL.boiler_stream_days_b] = n(bB.stream_days);
     // Coal Feeders — flow dari boiler tab (CK-CP).
     // Saat feeder TIDAK running (status di-set & bukan 'running' — mis. standby / emergency
@@ -308,15 +315,15 @@ export function shiftReportToRow(
     const wq = data.waterQuality ?? {};
     row[COL.demin_1250_ph] = n(wq.demin_1250_ph);
     row[COL.demin_1250_conduct] = n(wq.demin_1250_conduct);
-    row[COL.demin_1250_th] = n(wq.demin_1250_th);
+    row[COL.demin_1250_th] = nz(wq.demin_1250_th);   // TH: 0 tetap ditulis
     row[COL.demin_1250_sio2] = n(wq.demin_1250_sio2);
     row[COL.demin_750_ph] = n(wq.demin_750_ph);
     row[COL.demin_750_conduct] = n(wq.demin_750_conduct);
-    row[COL.demin_750_th] = n(wq.demin_750_th);
+    row[COL.demin_750_th] = nz(wq.demin_750_th);     // TH: 0 tetap ditulis
     row[COL.demin_750_sio2] = n(wq.demin_750_sio2);
     row[COL.bfw_ph] = n(wq.bfw_ph);
     row[COL.bfw_conduct] = n(wq.bfw_conduct);
-    row[COL.bfw_th] = n(wq.bfw_th);
+    row[COL.bfw_th] = nz(wq.bfw_th);                 // TH: 0 tetap ditulis
     row[COL.bfw_sio2] = n(wq.bfw_sio2);
     row[COL.bfw_nh4] = n(wq.bfw_nh4);
     row[COL.bfw_chz] = n(wq.bfw_chz);
@@ -330,7 +337,7 @@ export function shiftReportToRow(
     row[COL.boiler_water_b_po4] = n(wq.boiler_water_b_po4);
     row[COL.product_steam_ph] = n(wq.product_steam_ph);
     row[COL.product_steam_conduct] = n(wq.product_steam_conduct);
-    row[COL.product_steam_th] = n(wq.product_steam_th);
+    row[COL.product_steam_th] = nz(wq.product_steam_th);  // TH: 0 tetap ditulis
     row[COL.product_steam_sio2] = n(wq.product_steam_sio2);
     row[COL.product_steam_nh4] = n(wq.product_steam_nh4);
     // Stock Chemical EG-EI (136-138): hanya untuk shift pagi

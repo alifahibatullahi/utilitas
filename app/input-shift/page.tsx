@@ -19,7 +19,8 @@ import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
 import { nowWIB, todayWIB } from '@/lib/utils';
-import { checkConsumptionRate, checkMaxMW, buildWarningPrompt } from '@/lib/report-validation';
+import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
+import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, type OperatorStation } from '@/lib/constants';
 
 function getGroupMalamOnDate(dateStr: string): string {
@@ -74,6 +75,7 @@ function InputShiftPageInner() {
     const [submitting, setSubmitting] = useState(false);
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const { confirmWarnings, warningModal } = useWarningConfirm();
     const [waPreview, setWaPreview] = useState<{
         reportId: string;
         items: { target: string; label: string; message: string; status: 'pending' | 'sent' | 'failed' }[];
@@ -785,6 +787,38 @@ function InputShiftPageInner() {
             setTimeout(() => setToast(null), 4000);
             return;
         }
+
+        // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
+        // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
+        // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.
+        {
+            const dSel = (cur: unknown, prev: unknown) => { const c = Number(cur) || 0, p = Number(prev) || 0; return p > 0 ? c - p : 0; };
+            const fSel = (key: string) => dSel(coalBunker[key], prevCoalBunker[key]);
+            const batubaraA = fSel('feeder_a') + fSel('feeder_b') + fSel('feeder_c');
+            const batubaraB = fSel('feeder_d') + fSel('feeder_e') + fSel('feeder_f');
+            const cSel = (cur: unknown, prev: unknown): number | null => { const c = Number(cur) || 0, p = Number(prev) || 0; return p > 0 ? c - p : null; };
+            const ssA = cSel(boilerA.totalizer_steam, prevBoilerA.totalizer_steam);
+            const ssB = cSel(boilerB.totalizer_steam, prevBoilerB.totalizer_steam);
+            const isTurbinSd = turbin.status_turbin === 'shutdown';
+            const warnings: string[] = [];
+            const wA = checkConsumptionRate('Boiler A', batubaraA, ssA, boilerA.status_boiler === 'shutdown'); if (wA) warnings.push(wA);
+            const wB = checkConsumptionRate('Boiler B', batubaraB, ssB, boilerB.status_boiler === 'shutdown'); if (wB) warnings.push(wB);
+            const mwFields: [string, number | string | null | undefined][] = [
+                ['Load STG (Generator)', isTurbinSd ? 0 : generatorGi.gen_load],
+                ['Σ P PLN (GI)', generatorGi.gi_sum_p],
+                ['Internal UBB', powerDist.power_ubb],
+                ['Pabrik 2', powerDist.power_pabrik2],
+                ['Pabrik 3A', powerDist.power_pabrik3a],
+                ['Pabrik 3B', powerDist.power_revamping],
+                ['PIU', powerDist.power_pie],
+            ];
+            for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
+            if (warnings.length > 0) {
+                const ok = await confirmWarnings(warnings);
+                if (!ok) return;
+            }
+        }
+
         setSubmitting(true);
         setSaveProgress(5);
         // Animate progress 5→85% while saving
@@ -911,31 +945,6 @@ function InputShiftPageInner() {
                 catatanForSubmit = catatanForSubmit + sep + line;
             }
             if (catatanForSubmit !== catatan) setCatatan(catatanForSubmit);
-
-            // ─── Validasi nilai (peringatan sebelum simpan) ───
-            // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
-            // nilai berunit MW (Generator/GI/Distribusi) maksimal 30 MW.
-            const warnings: string[] = [];
-            const wCrA = checkConsumptionRate('Boiler A', batubaraA, selisihSteamA, boilerA.status_boiler === 'shutdown');
-            if (wCrA) warnings.push(wCrA);
-            const wCrB = checkConsumptionRate('Boiler B', batubaraB, selisihSteamB, boilerB.status_boiler === 'shutdown');
-            if (wCrB) warnings.push(wCrB);
-            const mwFields: [string, number | string | null | undefined][] = [
-                ['Load STG (Generator)', finalGeneratorGi.gen_load],
-                ['Σ P PLN (GI)', finalGeneratorGi.gi_sum_p],
-                ['Internal UBB', powerDist.power_ubb],
-                ['Pabrik 2', powerDist.power_pabrik2],
-                ['Pabrik 3A', powerDist.power_pabrik3a],
-                ['Pabrik 3B', powerDist.power_revamping],
-                ['PIU', powerDist.power_pie],
-            ];
-            for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
-            if (warnings.length > 0 && !window.confirm(buildWarningPrompt(warnings))) {
-                clearInterval(progressInterval);
-                setSaveProgress(null);
-                setSubmitting(false);
-                return;
-            }
 
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
@@ -1165,6 +1174,8 @@ function InputShiftPageInner() {
 
     return (
         <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 flex flex-col gap-4 xl:h-full xl:overflow-hidden">
+            {/* Pop-up peringatan nilai tidak wajar */}
+            {warningModal}
             {/* Loading Overlay */}
             {submitting && (
                 <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">

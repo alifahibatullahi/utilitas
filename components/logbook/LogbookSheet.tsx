@@ -187,11 +187,12 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                 </div>
                 <div className="lb-doctitle">
                     <div className="t1">LOG BOOK LAPORAN HARIAN PANEL BOILER A &amp; B</div>
-                    <div className="t2">UNIT UTILITAS BATUBARA - DEPARTEMEN PRODUKSI III B</div>
+                    <div className="t2">UNIT UTILITAS BATUBARA - DEPARTEMEN OPERASI PABRIK III B</div>
                     <div className="t3">Nomor Dokumen : PG-LB-50-5004</div>
                 </div>
                 <div className="lb-docmeta">
-                    <div><b>Tanggal</b>&nbsp;{tanggal}</div>
+                    <div className="lb-meta-label">Tanggal</div>
+                    <div className="lb-meta-value">{tanggal}</div>
                 </div>
             </div>
 

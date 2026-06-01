@@ -129,6 +129,14 @@ function f(v: Cell): string {
     return v.toLocaleString('id-ID', { maximumFractionDigits: 2 });
 }
 
+// Sama seperti f() tapi tanpa pemisah ribuan (dipakai di PIU).
+function fPlain(v: Cell): string {
+    if (v === null || v === undefined || v === '') return '';
+    if (typeof v === 'string') return v;
+    if (!isFinite(v)) return '';
+    return v.toLocaleString('id-ID', { maximumFractionDigits: 2, useGrouping: false });
+}
+
 function pair(a: Cell, b: Cell): string {
     if ((a === null || a === undefined || a === '') && (b === null || b === undefined || b === '')) return '';
     return `${f(a)} / ${f(b)}`;
@@ -438,7 +446,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                     <td className="lb-name">{row.name}</td>
                     <td className="lb-unit">{row.unit}</td>
                     {cols.map((c, i) => (
-                        <td key={i} colSpan={3}><Val>{f(c[row.key])}</Val></td>
+                        <td key={i} colSpan={3}><Val>{fPlain(c[row.key])}</Val></td>
                     ))}
                 </tr>
             ))}

@@ -44,7 +44,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     // Group nav items
     const mainNav = filteredNav.filter(item => ['dashboard', 'tank-level', 'input-shift', 'critical'].includes(item.id));
-    const reportNav = filteredNav.filter(item => ['laporan-shift', 'laporan-harian'].includes(item.id));
+    const reportNav = filteredNav.filter(item => ['laporan-shift', 'laporan-harian', 'logbook'].includes(item.id));
     const systemNav = filteredNav.filter(item => ['history', 'admin-users', 'admin-wa-hub', 'admin-sync-sheets', 'maintenance-broadcast'].includes(item.id));
 
     const handleNav = (item: any) => {

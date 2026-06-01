@@ -9,8 +9,9 @@
     background: #ffffff;
     color: #000000;
     font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-    width: 100%;
-    max-width: 1000px;
+    /* Lebar TETAP (bukan 100%) supaya di HP tidak menyempit — tampil penuh,
+       user scroll/pinch-zoom untuk lihat detail. */
+    width: 1000px;
     margin: 0 auto;
     padding: 12px;
     box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);

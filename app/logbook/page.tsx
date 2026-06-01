@@ -379,12 +379,14 @@ export default function LogbookPage() {
                         const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
                         return (
                             <button key={iso} onClick={() => setSelectedDate(iso)}
-                                className={`flex flex-col items-center w-10 py-1 rounded-lg cursor-pointer transition-all
+                                title={isToday ? 'Hari ini' : undefined}
+                                className={`relative flex flex-col items-center w-10 py-1 rounded-lg cursor-pointer transition-all
                                     ${isActive ? 'bg-primary text-white shadow-[0_0_12px_rgba(43,124,238,0.35)]'
-                                        : isToday ? 'text-primary hover:bg-surface-highlight'
+                                        : isToday ? 'text-primary ring-1 ring-primary/50 hover:bg-surface-highlight'
                                             : 'text-text-secondary hover:text-white hover:bg-surface-highlight'}`}>
                                 <span className="text-[9px] font-semibold uppercase leading-none">{dayShort}</span>
                                 <span className={`text-sm font-bold leading-tight ${isActive ? 'text-white' : ''}`}>{d.getDate()}</span>
+                                <span className={`mt-0.5 w-1.5 h-1.5 rounded-full ${isToday ? (isActive ? 'bg-white' : 'bg-primary') : 'bg-transparent'}`} />
                             </button>
                         );
                     })}

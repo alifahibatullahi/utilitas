@@ -60,7 +60,8 @@ export default function LogbookPage() {
     useEffect(() => {
         const el = fitRef.current;
         if (!el) return;
-        const calc = () => setZoom(Math.min(1, el.clientWidth / 1010));
+        // Skala muat lebar: mengecil di HP, dan membesar s/d 1.3× di monitor besar.
+        const calc = () => setZoom(Math.min(1.3, el.clientWidth / 1010));
         calc();
         const ro = new ResizeObserver(calc);
         ro.observe(el);
@@ -360,7 +361,7 @@ export default function LogbookPage() {
     const formatDate = (d: string) => new Date(d + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'long', year: 'numeric' });
 
     return (
-        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1100px] mx-auto">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
             {/* Toolbar (tidak ikut print) */}
             <div className="lb-toolbar lb-no-print">
                 <button onClick={() => { const d = new Date(dateObj); d.setDate(d.getDate() - 7); setSelectedDate(toISO(d)); }}

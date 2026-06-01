@@ -335,8 +335,8 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
                                 <td key={i} colSpan={3}><Val>{pair(c[ch.key].level, c[ch.key].stroke)}</Val></td>
                             ))}
                             {ch.stock ? (
-                                <td colSpan={3} rowSpan={ch.stockSpan} style={{ textAlign: 'left' }}>
-                                    <span className="lb-val">{ch.stockLabel} . . . . {f(chemicalStock[ch.stock])} pcs</span>
+                                <td colSpan={3} rowSpan={ch.stockSpan}>
+                                    <span className="lb-val">{ch.stockLabel} : {f(chemicalStock[ch.stock])} pcs</span>
                                 </td>
                             ) : null}
                         </tr>

@@ -376,7 +376,7 @@ export default function LogbookPage() {
                         const iso = toISO(d);
                         const isActive = iso === selectedDate;
                         const isToday = iso === todayWIB();
-                        const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
+                        const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' });
                         return (
                             <button key={iso} onClick={() => setSelectedDate(iso)}
                                 title={isToday ? 'Hari ini' : undefined}

@@ -19,6 +19,7 @@ import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
 import { nowWIB, todayWIB } from '@/lib/utils';
+import { checkConsumptionRate, checkMaxMW, buildWarningPrompt } from '@/lib/report-validation';
 import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, type OperatorStation } from '@/lib/constants';
 
 function getGroupMalamOnDate(dateStr: string): string {
@@ -910,6 +911,31 @@ function InputShiftPageInner() {
                 catatanForSubmit = catatanForSubmit + sep + line;
             }
             if (catatanForSubmit !== catatan) setCatatan(catatanForSubmit);
+
+            // ─── Validasi nilai (peringatan sebelum simpan) ───
+            // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
+            // nilai berunit MW (Generator/GI/Distribusi) maksimal 30 MW.
+            const warnings: string[] = [];
+            const wCrA = checkConsumptionRate('Boiler A', batubaraA, selisihSteamA, boilerA.status_boiler === 'shutdown');
+            if (wCrA) warnings.push(wCrA);
+            const wCrB = checkConsumptionRate('Boiler B', batubaraB, selisihSteamB, boilerB.status_boiler === 'shutdown');
+            if (wCrB) warnings.push(wCrB);
+            const mwFields: [string, number | string | null | undefined][] = [
+                ['Load STG (Generator)', finalGeneratorGi.gen_load],
+                ['Σ P PLN (GI)', finalGeneratorGi.gi_sum_p],
+                ['Internal UBB', powerDist.power_ubb],
+                ['Pabrik 2', powerDist.power_pabrik2],
+                ['Pabrik 3A', powerDist.power_pabrik3a],
+                ['Pabrik 3B', powerDist.power_revamping],
+                ['PIU', powerDist.power_pie],
+            ];
+            for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
+            if (warnings.length > 0 && !window.confirm(buildWarningPrompt(warnings))) {
+                clearInterval(progressInterval);
+                setSaveProgress(null);
+                setSubmitting(false);
+                return;
+            }
 
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',

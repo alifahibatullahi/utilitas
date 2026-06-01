@@ -15,6 +15,7 @@ import TabChemical from './TabChemical';
 import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
+import { checkConsumptionRate, checkMaxMW, buildWarningPrompt } from '@/lib/report-validation';
 import type { DailyTabProps } from './types';
 
 type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
@@ -685,6 +686,31 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 tw.thrust_bearing_temp = 0;
                 tw.steam_inlet_press = 0;
                 tw.steam_inlet_temp = 0;
+            }
+
+            // ─── Validasi nilai (peringatan sebelum simpan) ───
+            // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
+            // nilai berunit MW (Load STG / GI / Distribusi Power) maksimal 30 MW.
+            const warnings: string[] = [];
+            const wCrA = checkConsumptionRate('Boiler A', coalTotalA, steamProdA, isShutdownA);
+            if (wCrA) warnings.push(wCrA);
+            const wCrB = checkConsumptionRate('Boiler B', coalTotalB, steamProdB, isShutdownB);
+            if (wCrB) warnings.push(wCrB);
+            const mwFields: [string, number | string | null | undefined][] = [
+                ['Load STG', powerForSubmit.gen_00],
+                ['Σ P PLN (GI)', turbineMisc.gi_sum_p],
+                ['Internal UBB', powerForSubmit.power_ubb],
+                ['Pabrik 2', powerForSubmit.power_pabrik2],
+                ['Pabrik 3A', powerForSubmit.power_pabrik3a],
+                ['Pabrik 3B', powerForSubmit.power_revamping],
+                ['PIU', powerForSubmit.power_pie],
+            ];
+            for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
+            if (warnings.length > 0 && !window.confirm(buildWarningPrompt(warnings))) {
+                clearInterval(progressInterval);
+                setSaveProgress(null);
+                setSubmitting(false);
+                return;
             }
 
             const result = await submitReport({

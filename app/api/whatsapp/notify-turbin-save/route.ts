@@ -17,6 +17,15 @@ function shiftLabel(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+const BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+/** Format "2026-05-23" → "23 Mei". Parse local agar tidak ke-shift TZ. */
+function formatTanggalBulan(isoDate: string): string {
+    const [, m, d] = (isoDate || '').split('-').map(Number);
+    if (!m || !d) return isoDate ?? '';
+    return `${d} ${BULAN_ID[m - 1] ?? ''}`.trim();
+}
+
 interface NotifyBody {
     type: 'shift' | 'harian';
     date: string;
@@ -97,8 +106,7 @@ async function sendShiftNotifications(supabase: any, reportId: string, date: str
             '',
             `Flow      : ${fmtNum(sd?.pabrik3a_flow)} t/h`,
             `Temperatur: ${fmtNum(sd?.pabrik3a_temp)} °C`,
-            `Totalizer : ${fmtNum(sd?.pabrik3a_totalizer)} ton`,
-            `Selisih   : ${fmtNum(sd?.selisih_pabrik3a)} ton`,
+            `Total Steam shift ${shiftLabel(shift)} : ${fmtNum(sd?.selisih_pabrik3a)} ton`,
         ].join('\n');
 
         const send = await sendFonnteGroup(su3aGroup.fonnte_target, msg, 'publish');
@@ -112,6 +120,24 @@ async function sendShiftNotifications(supabase: any, reportId: string, date: str
         });
         results.push({ target: 'su_3a', label: 'SU 3A', ok: send.ok, error: send.error, message: msg });
     }
+}
+
+/** Ambil temperatur Pabrik 3A terakhir: nilai non-null dari shift_steam_dist paling baru
+ *  (≤ tanggal laporan). Harian tidak menyimpan temperatur, jadi pakai data shift terbaru. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchLastPabrik3aTemp(supabase: any, date: string): Promise<number | null> {
+    const { data } = await supabase
+        .from('shift_reports')
+        .select('date, created_at, shift_steam_dist(pabrik3a_temp)')
+        .lte('date', date)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(10);
+    for (const r of data ?? []) {
+        const sd = Array.isArray(r.shift_steam_dist) ? r.shift_steam_dist[0] : r.shift_steam_dist;
+        if (sd?.pabrik3a_temp != null) return sd.pabrik3a_temp as number;
+    }
+    return null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -135,9 +161,7 @@ async function sendHarianNotifications(supabase: any, reportId: string, date: st
         const msg = [
             `⚡ *Laporan Power Harian*`,
             `Tanggal: ${date}`,
-            '',
-            `Totalizer Pabrik 2 : ${fmtNum(pwr?.power_pabrik2_totalizer)} MWh`,
-            `Selisih (hari ini − kemarin): ${fmtNum(pwr?.selisih_pabrik2)} MWh`,
+            `Total Pabrik 2: ${fmtNum(pwr?.selisih_pabrik2)} MWh`,
         ].join('\n');
 
         const send = await sendFonnteGroup(u2Group.fonnte_target, msg, 'publish');
@@ -154,13 +178,16 @@ async function sendHarianNotifications(supabase: any, reportId: string, date: st
     // --- SU 3A: Distribusi Steam Pabrik 3 harian ---
     const su3aGroup = await getWhatsappGroup(supabase, 'su_3a');
     if (su3aGroup) {
+        // Temperatur Pabrik 3A tidak ada di laporan harian — ambil dari data shift terakhir
+        // (entri shift_steam_dist non-null paling baru, ≤ tanggal laporan).
+        const lastTemp = await fetchLastPabrik3aTemp(supabase, date);
         const msg = [
             `🔥 *Distribusi Steam Pabrik 3 — Harian*`,
             `Tanggal: ${date}`,
             '',
-            `Flow jam 00:00   : ${fmtNum(stm?.mps_3a_00)} t/h`,
-            `Totalizer 24 jam : ${fmtNum(stm?.mps_3a_24)} ton`,
-            `Selisih (hari ini − kemarin): ${fmtNum(stm?.selisih_mps_3a)} ton`,
+            `Flow : ${fmtNum(stm?.mps_3a_00)} t/h`,
+            `Temperatur : ${fmtNum(lastTemp)} °C`,
+            `Total Steam ${formatTanggalBulan(date)} : ${fmtNum(stm?.selisih_mps_3a)} ton`,
         ].join('\n');
 
         const send = await sendFonnteGroup(su3aGroup.fonnte_target, msg, 'publish');

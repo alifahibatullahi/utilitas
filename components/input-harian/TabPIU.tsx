@@ -18,7 +18,7 @@ export default function TabPIU({
                     <div>
                         <InputField
                             label="Delivered (Import)"
-                            unit="Kwh"
+                            unit="MWh"
                             color="blue"
                             name="totalizer_import"
                             value={tm.totalizer_import}
@@ -35,7 +35,7 @@ export default function TabPIU({
                     <div>
                         <InputField
                             label="Received (Export)"
-                            unit="Kwh"
+                            unit="MWh"
                             color="blue"
                             name="totalizer_export"
                             value={tm.totalizer_export}
@@ -52,7 +52,7 @@ export default function TabPIU({
                     <div>
                         <InputField
                             label="D - R"
-                            unit="MW"
+                            unit="MWh"
                             color="blue"
                             name="pie_dr"
                             value={tm.pie_dr}

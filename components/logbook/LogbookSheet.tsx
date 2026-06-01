@@ -202,9 +202,9 @@ const GEN_GI_SINGLE: { name: string; unit: string; key: GenSingleKey }[] = [
     { name: 'Q', unit: 'MVARh', key: 'qMvarh' },
 ];
 const GEN_PIE_SINGLE: { name: string; unit: string; key: GenSingleKey }[] = [
-    { name: 'Delivered', unit: 'Kwh', key: 'delivered' },
-    { name: 'Received', unit: 'Kwh', key: 'received' },
-    { name: 'D - R', unit: '', key: 'dr' },
+    { name: 'Delivered', unit: 'MWh', key: 'delivered' },
+    { name: 'Received', unit: 'MWh', key: 'received' },
+    { name: 'D - R', unit: 'MWh', key: 'dr' },
 ];
 
 const CHEMICALS: { name: string; key: keyof ChemCol }[] = [

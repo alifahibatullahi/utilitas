@@ -217,8 +217,10 @@ export default function LogbookPage() {
                 steamTurbin: { fq: t?.totalizer_steam_inlet ?? null, ton: delta(t?.totalizer_steam_inlet, pt?.totalizer_steam_inlet), flow: t?.flow_steam ?? null },
                 mpsPb1: { fq: sd?.pabrik1_totalizer ?? null, ton: delta(sd?.pabrik1_totalizer, psd?.pabrik1_totalizer), flow: sd?.pabrik1_flow ?? null },
                 lpsPb2: { fq: sd?.pabrik2_totalizer ?? null, ton: delta(sd?.pabrik2_totalizer, psd?.pabrik2_totalizer), flow: sd?.pabrik2_flow ?? null },
-                lpsPb3: { fq: sd?.pabrik3a_totalizer ?? null, ton: delta(sd?.pabrik3a_totalizer, psd?.pabrik3a_totalizer), flow: sd?.pabrik3a_flow ?? null },
-                mpsPb3: { fq: null, ton: null, flow: sd?.pabrik3b_flow ?? null },
+                // "Pabrik 3" di tab Distribusi Steam = pabrik3a → dipetakan ke MPS ke PB-3.
+                // LPS ke PB-3 tidak punya sumber shift (hanya ada di harian) → kosong.
+                lpsPb3: { fq: null, ton: null, flow: null },
+                mpsPb3: { fq: sd?.pabrik3a_totalizer ?? null, ton: delta(sd?.pabrik3a_totalizer, psd?.pabrik3a_totalizer), flow: sd?.pabrik3a_flow ?? null },
                 mpsRevamp: { fq: null, ton: null, flow: null },
                 steamCond: { fq: t?.totalizer_condensate ?? null, ton: delta(t?.totalizer_condensate, pt?.totalizer_condensate), flow: t?.flow_cond ?? null },
                 hpo: t?.hpo_durasi ?? null,

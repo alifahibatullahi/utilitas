@@ -68,27 +68,25 @@
     align-items: stretch;
     border: 1px solid #000;
     margin-bottom: 0;
+    background: #ffffff;
+    color: #000000;
 }
 .lb-doclogo {
-    width: 86px;
+    width: 178px;
+    background: #ffffff;
     border-right: 1px solid #000;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 6px 4px;
-    text-align: center;
+    gap: 8px;
+    padding: 6px 8px;
 }
 .lb-doclogo img {
-    width: 46px;
-    height: auto;
+    height: 32px;
+    width: auto;
+    max-width: 50px;
     object-fit: contain;
-}
-.lb-doclogo span {
-    font-size: 9px;
-    font-weight: 700;
-    line-height: 1.1;
 }
 .lb-doctitle {
     flex: 1;

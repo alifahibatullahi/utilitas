@@ -56,9 +56,7 @@ export interface LogbookData {
 
 export interface LogbookSheetProps {
     data: LogbookData;
-    tanggal: string; // teks tanggal yang ditampilkan di kotak meta
-    terbitan?: string;
-    revisi?: string;
+    tanggal: string; // teks tanggal "hari, tanggal tahun" untuk kotak meta
 }
 
 const TIMES = ['06.00', '14.00', '22.00', '24.00'];
@@ -86,7 +84,7 @@ function Val({ children }: { children: string }) {
     return <span className="lb-val">{children}</span>;
 }
 
-export default function LogbookSheet({ data, tanggal, terbitan = '', revisi = '' }: LogbookSheetProps) {
+export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
     const { boilerA, boilerB, bottom } = data;
 
     // ── Render satu blok boiler (4 kolom) ──
@@ -181,8 +179,11 @@ export default function LogbookSheet({ data, tanggal, terbitan = '', revisi = ''
             <div className="lb-dochead">
                 <div className="lb-doclogo">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo/Danantara_Indonesia_(no_SW).png" alt="Danantara Indonesia" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo/Logo_Pupuk_Indonesia__Persero_-removebg-preview.png" alt="Pupuk Indonesia" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/logo/logo-PG-agro-trans-small-removebg-preview.png" alt="Petrokimia Gresik" />
-                    <span>PETROKIMIA<br />GRESIK</span>
                 </div>
                 <div className="lb-doctitle">
                     <div className="t1">LOG BOOK LAPORAN HARIAN PANEL BOILER A &amp; B</div>
@@ -191,8 +192,6 @@ export default function LogbookSheet({ data, tanggal, terbitan = '', revisi = ''
                 </div>
                 <div className="lb-docmeta">
                     <div><b>Tanggal</b>&nbsp;{tanggal}</div>
-                    <div><b>Terbitan</b>&nbsp;{terbitan}</div>
-                    <div><b>Revisi</b>&nbsp;{revisi}</div>
                 </div>
             </div>
 

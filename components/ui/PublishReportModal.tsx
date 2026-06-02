@@ -206,7 +206,6 @@ export function PublishReportModal({
     );
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const bodyRef = useRef<HTMLDivElement>(null);
 
     // Grow textarea ke tinggi konten penuh supaya TIDAK ada scroll-dalam — body modal
     // jadi satu-satunya scroll container, jadi scroll di HP halus & seluruh teks
@@ -214,15 +213,24 @@ export function PublishReportModal({
     const autoSizeTextarea = useCallback(() => {
         const el = textareaRef.current;
         if (!el) return;
-        // Set height 'auto' sesaat (untuk ukur scrollHeight) membuat body modal memendek →
-        // browser meng-clamp scrollTop → tampilan "loncat ke atas" tiap keystroke, sehingga
-        // teks yang sedang diketik tidak terlihat. Simpan & kembalikan scrollTop body modal
-        // di sekitar resize agar posisi scroll tetap stabil.
-        const scroller = bodyRef.current;
-        const prevScroll = scroller ? scroller.scrollTop : 0;
+        // Set height 'auto' sesaat (untuk ukur scrollHeight) membuat container scroll
+        // memendek → browser meng-clamp scrollTop → tampilan "loncat ke atas" tiap keystroke
+        // sehingga teks yang sedang diketik tidak terlihat (terutama di HP).
+        // Cache scrollTop SEMUA ancestor yang bisa di-scroll + dokumen, lalu kembalikan
+        // setelah resize — agar stabil di desktop maupun HP (pendekatan sama dengan
+        // react-textarea-autosize). Restore sinkron sebelum browser repaint → tak ada kedip.
+        const cached: { node: Element; top: number }[] = [];
+        for (let node: HTMLElement | null = el.parentElement; node; node = node.parentElement) {
+            if (node.scrollHeight > node.clientHeight) cached.push({ node, top: node.scrollTop });
+        }
+        const docEl = document.scrollingElement || document.documentElement;
+        const docTop = docEl ? docEl.scrollTop : 0;
+
         el.style.height = 'auto';
         el.style.height = `${el.scrollHeight}px`;
-        if (scroller) scroller.scrollTop = prevScroll;
+
+        for (const c of cached) c.node.scrollTop = c.top;
+        if (docEl) docEl.scrollTop = docTop;
     }, []);
 
     // Sizing awal saat template selesai di-load. Saat user ketik, sizing dilakukan
@@ -405,7 +413,7 @@ export function PublishReportModal({
                 </div>
 
                 {/* Body Content */}
-                <div ref={bodyRef} className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                     {/* Penanggung Jawab Laporan — ikut scroll (bukan fixed) supaya tidak
                         makan tinggi modal di HP; kompak di layar kecil. */}
                     <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-3 sm:p-4 space-y-2.5 mb-4 sm:mb-5">

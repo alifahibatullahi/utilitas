@@ -35,8 +35,8 @@ interface ShiftReviewSummary {
 
 interface DailyReviewSummary {
     header: { date: string; dateHumanized: string };
-    boilerA: { flow: number | null; batubara: number | null; tempFurnace: number | null } | null;
-    boilerB: { flow: number | null; batubara: number | null; tempFurnace: number | null } | null;
+    boilerA: { flow: number | null; batubara: number | null; tempFurnace: number | null; status: string | null } | null;
+    boilerB: { flow: number | null; batubara: number | null; tempFurnace: number | null; status: string | null } | null;
     turbin: { inletFlow: number | null; thrustBearing: number | null } | null;
     steamDist: { pabrik1: number | null; pabrik3: number | null } | null;
     power: { stgUbb: number | null; internalUbb: number | null; pabrik2: number | null; pabrik3a: number | null; pabrik3b: number | null; piu: number | null; pln: number | null } | null;
@@ -842,11 +842,19 @@ function ReviewSummaryDaily({ summary }: { summary: DailyReviewSummary }) {
                     <Row label="Flow Steam (00:00)" value={fmt(summary.boilerA?.flow)} unit="t/h" />
                     <Row label="Batubara 24h" value={fmt(summary.boilerA?.batubara)} unit="ton" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerA?.tempFurnace)} unit="°C" />
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                        <span className="text-slate-400 text-[10px]">Status</span>
+                        <StatusBadge value={summary.boilerA?.status ?? null} />
+                    </div>
                 </ReviewCard>
                 <ReviewCard title="Boiler B" icon="factory" color="purple">
                     <Row label="Flow Steam (00:00)" value={fmt(summary.boilerB?.flow)} unit="t/h" />
                     <Row label="Batubara 24h" value={fmt(summary.boilerB?.batubara)} unit="ton" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerB?.tempFurnace)} unit="°C" />
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                        <span className="text-slate-400 text-[10px]">Status</span>
+                        <StatusBadge value={summary.boilerB?.status ?? null} />
+                    </div>
                 </ReviewCard>
                 <ReviewCard title="Turbin" icon="mode_fan" color="cyan">
                     <Row label="Inlet Flow" value={fmt(summary.turbin?.inletFlow)} unit="t/h" />

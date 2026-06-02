@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
             daily_report_steam (prod_boiler_a_00, prod_boiler_b_00, inlet_turbine_00, mps_i_00, mps_3a_00),
             daily_report_power (gen_00, power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie),
             daily_report_coal (total_boiler_a_24, total_boiler_b_24),
-            daily_report_turbine_misc (temp_furnace_a, temp_furnace_b, thrust_bearing_temp, gi_sum_p),
+            daily_report_turbine_misc (temp_furnace_a, temp_furnace_b, thrust_bearing_temp, gi_sum_p, status_boiler_a, status_boiler_b),
             daily_report_stock_tank (rcw_level_00, demin_level_00, stock_batubara)
         `)
         .eq('id', reportId)
@@ -370,8 +370,8 @@ function buildDailySummary(report: any): string {
 
 export interface DailyReviewSummary {
     header: { date: string; dateHumanized: string };
-    boilerA: { flow: number | null; batubara: number | null; tempFurnace: number | null } | null;
-    boilerB: { flow: number | null; batubara: number | null; tempFurnace: number | null } | null;
+    boilerA: { flow: number | null; batubara: number | null; tempFurnace: number | null; status: string | null } | null;
+    boilerB: { flow: number | null; batubara: number | null; tempFurnace: number | null; status: string | null } | null;
     turbin: { inletFlow: number | null; thrustBearing: number | null } | null;
     steamDist: { pabrik1: number | null; pabrik3: number | null } | null;
     power: {
@@ -405,11 +405,13 @@ function buildDailyReviewSummary(report: any, maintenance: any[], critical: any[
             flow: stm?.prod_boiler_a_00 ?? null,
             batubara: coal?.total_boiler_a_24 ?? null,
             tempFurnace: turb?.temp_furnace_a ?? null,
+            status: turb?.status_boiler_a ?? null,
         } : null,
         boilerB: (stm || coal || turb) ? {
             flow: stm?.prod_boiler_b_00 ?? null,
             batubara: coal?.total_boiler_b_24 ?? null,
             tempFurnace: turb?.temp_furnace_b ?? null,
+            status: turb?.status_boiler_b ?? null,
         } : null,
         turbin: (stm || turb) ? {
             inletFlow: stm?.inlet_turbine_00 ?? null,

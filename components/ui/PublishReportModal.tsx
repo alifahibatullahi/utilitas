@@ -355,32 +355,18 @@ export function PublishReportModal({
                 <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-500" />
 
                 {/* Header */}
-                <div className="p-4 sm:p-6 border-b border-slate-800/80 space-y-3.5">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-800/80">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg sm:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400">
                             Publish Laporan {kindLabel}
                         </h3>
-                        <button 
-                            onClick={onClose} 
-                            disabled={sending} 
+                        <button
+                            onClick={onClose}
+                            disabled={sending}
                             className="text-slate-450 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/60 transition-all duration-200 disabled:opacity-30 flex items-center justify-center flex-shrink-0 cursor-pointer"
                         >
                             <span className="material-symbols-outlined text-lg">close</span>
                         </button>
-                    </div>
-                    <div className="text-[11px] sm:text-xs text-slate-400 leading-relaxed space-y-2">
-                        <span>Klik tombol <strong className="text-slate-200">Setujui &amp; Kirim ke washift</strong> untuk mengirim teks laporan ke:</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl">
-                            <div className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 px-3 py-1.5 rounded-xl font-bold text-[10px]">
-                                <span className="material-symbols-outlined text-[14px]">chat</span>
-                                <span>WA &rarr; <strong className="text-white font-mono">{washiftKey}</strong></span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-slate-500/10 border border-slate-500/20 text-slate-400 px-3 py-1.5 rounded-xl font-bold text-[10px]">
-                                <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
-                                <span>PDF &rarr; <strong className="font-mono">{pdfGroupKey}</strong></span>
-                                <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">SOON</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
 

@@ -30,6 +30,11 @@ export interface DailyTabProps {
     crA: number;
     crB: number;
 
+    /** Lingkup boiler yang ditampilkan/diedit di TabBoiler harian, sesuai station:
+     *  'A' (panel_boiler_a), 'B' (panel_boiler_b), 'AB' (panel_boiler/foreman/admin).
+     *  Memisahkan input A vs B agar antar-station tidak saling ganggu (samakan dgn shift). */
+    boilerScope?: 'A' | 'B' | 'AB';
+
     /** Total Via Laut — nilai kolom DN (formula) dari Google Sheets pada tanggal LHUBB yang
      *  sama. Diisi InputHarianForm via /api/sheets/read. Display-only di TabStockBatubara. */
     lautTotalSheet?: string | number | null;

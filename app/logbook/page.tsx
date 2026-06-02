@@ -154,10 +154,10 @@ export default function LogbookPage() {
             const low = L.toLowerCase();
             const keys = L === 'A' ? ['a', 'b', 'c'] : ['d', 'e', 'f'];
             return {
-                steam: [null, null],
-                bfw: [null, null],
-                furn: [dTurb?.[`temp_furnace_${low}`] ?? null, null],
-                hotair: [null, null],
+                steam: [dTurb?.[`press_steam_${low}`] ?? null, dTurb?.[`temp_steam_${low}`] ?? null],
+                bfw: [dTurb?.[`bfw_press_${low}`] ?? null, dTurb?.[`temp_bfw_${low}`] ?? null],
+                furn: [dTurb?.[`temp_furnace_${low}`] ?? null, dTurb?.[`temp_flue_gas_${low}`] ?? null],
+                hotair: [dTurb?.[`air_heater_ti113_${low}`] ?? null, dTurb?.[`o2_${low}`] ?? null],
                 // Catatan: di daily_report, kolom *_24 menyimpan pembacaan totaliser akhir
                 // hari (FQ), sedangkan konsumsi 24-jam (Ton) ada di kolom selisih_*.
                 totSteam: {
@@ -172,9 +172,9 @@ export default function LogbookPage() {
                     flow: dCoal?.[`coal_${k}_00`] ?? null,
                 })),
                 totalBatubara: dCoal?.[`total_boiler_${low}_24`] ?? null,
-                steamDrumPress: null,
-                pa: null,
-                sa: null,
+                steamDrumPress: dTurb?.[`steam_drum_press_${low}`] ?? null,
+                pa: dTurb?.[`primary_air_${low}`] ?? null,
+                sa: dTurb?.[`secondary_air_${low}`] ?? null,
             };
         };
 

@@ -86,6 +86,11 @@ const VALID_COLS: Record<string, string[]> = {
         'gen_ampere', 'gen_amp_react', 'gen_cos_phi', 'gen_tegangan', 'gen_frequensi',
         'gi_sum_p', 'gi_sum_q', 'gi_cos_phi',
         'status_boiler_a', 'status_boiler_b', 'status_turbin',
+        // Pembacaan sesaat boiler jam 24.00 (untuk e-Logbook) — per boiler A/B.
+        'press_steam_a', 'temp_steam_a', 'bfw_press_a', 'temp_bfw_a', 'temp_flue_gas_a',
+        'air_heater_ti113_a', 'o2_a', 'steam_drum_press_a', 'primary_air_a', 'secondary_air_a',
+        'press_steam_b', 'temp_steam_b', 'bfw_press_b', 'temp_bfw_b', 'temp_flue_gas_b',
+        'air_heater_ti113_b', 'o2_b', 'steam_drum_press_b', 'primary_air_b', 'secondary_air_b',
     ],
     daily_report_stock_tank: [
         'stock_batubara', 'rcw_level_00', 'demin_level_00',
@@ -156,12 +161,53 @@ const BOILER_OWNS_COLS: Record<string, string[]> = {
     daily_report_turbine_misc: [
         'temp_furnace_a', 'temp_furnace_b', 'status_boiler_a', 'status_boiler_b',
         'consumption_rate_a', 'consumption_rate_b', 'consumption_rate_avg',
+        // Pembacaan sesaat boiler jam 24.00 (untuk e-Logbook) — di-own Boiler supaya
+        // ikut tersimpan saat operator isi harian dari station view (panel_boiler*).
+        'press_steam_a', 'temp_steam_a', 'bfw_press_a', 'temp_bfw_a', 'temp_flue_gas_a',
+        'air_heater_ti113_a', 'o2_a', 'steam_drum_press_a', 'primary_air_a', 'secondary_air_a',
+        'press_steam_b', 'temp_steam_b', 'bfw_press_b', 'temp_bfw_b', 'temp_flue_gas_b',
+        'air_heater_ti113_b', 'o2_b', 'steam_drum_press_b', 'primary_air_b', 'secondary_air_b',
+    ],
+};
+// Pisah kepemilikan per boiler supaya panel_boiler_a & panel_boiler_b tidak saling
+// menimpa (samakan dgn isolasi A/B di laporan shift). Kolom agregat (prod_total,
+// grand_total, bfw_total, consumption_rate_avg) sengaja dimiliki KEDUANYA: keduanya
+// turunan A+B yang di-recompute dari state penuh saat submit, jadi tidak ada kolom
+// eksklusif yang hilang. Kolom eksklusif A vs B saling lepas (disjoint).
+const BOILER_A_OWNS_COLS: Record<string, string[]> = {
+    daily_report_steam: ['prod_boiler_a_24', 'prod_boiler_a_00', 'selisih_prod_boiler_a', 'prod_total_24', 'prod_total_00'],
+    daily_report_coal: [
+        'coal_a_24', 'coal_b_24', 'coal_c_24', 'total_boiler_a_24',
+        'coal_a_00', 'coal_b_00', 'coal_c_00', 'total_boiler_a_00',
+        'selisih_coal_a', 'selisih_coal_b', 'selisih_coal_c',
+        'grand_total_24', 'grand_total_00',
+    ],
+    daily_report_stock_tank: ['bfw_boiler_a', 'flow_bfw_a', 'bfw_total'],
+    daily_report_turbine_misc: [
+        'temp_furnace_a', 'status_boiler_a', 'consumption_rate_a', 'consumption_rate_avg',
+        'press_steam_a', 'temp_steam_a', 'bfw_press_a', 'temp_bfw_a', 'temp_flue_gas_a',
+        'air_heater_ti113_a', 'o2_a', 'steam_drum_press_a', 'primary_air_a', 'secondary_air_a',
+    ],
+};
+const BOILER_B_OWNS_COLS: Record<string, string[]> = {
+    daily_report_steam: ['prod_boiler_b_24', 'prod_boiler_b_00', 'selisih_prod_boiler_b', 'prod_total_24', 'prod_total_00'],
+    daily_report_coal: [
+        'coal_d_24', 'coal_e_24', 'coal_f_24', 'total_boiler_b_24',
+        'coal_d_00', 'coal_e_00', 'coal_f_00', 'total_boiler_b_00',
+        'selisih_coal_d', 'selisih_coal_e', 'selisih_coal_f',
+        'grand_total_24', 'grand_total_00',
+    ],
+    daily_report_stock_tank: ['bfw_boiler_b', 'flow_bfw_b', 'bfw_total'],
+    daily_report_turbine_misc: [
+        'temp_furnace_b', 'status_boiler_b', 'consumption_rate_b', 'consumption_rate_avg',
+        'press_steam_b', 'temp_steam_b', 'bfw_press_b', 'temp_bfw_b', 'temp_flue_gas_b',
+        'air_heater_ti113_b', 'o2_b', 'steam_drum_press_b', 'primary_air_b', 'secondary_air_b',
     ],
 };
 const STATION_OWNS_COLS: Record<string, Record<string, string[]>> = {
-    panel_boiler: BOILER_OWNS_COLS,
-    panel_boiler_a: BOILER_OWNS_COLS,
-    panel_boiler_b: BOILER_OWNS_COLS,
+    panel_boiler: BOILER_OWNS_COLS,          // legacy/full panel — own A + B
+    panel_boiler_a: BOILER_A_OWNS_COLS,
+    panel_boiler_b: BOILER_B_OWNS_COLS,
     panel_turbin: {
         daily_report_steam: [
             'inlet_turbine_24', 'inlet_turbine_00', 'mps_i_24', 'mps_i_00',

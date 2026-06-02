@@ -402,6 +402,27 @@ export interface DailyReportTurbineMiscRow {
     daily_report_id: string;
     temp_furnace_a: number | null;
     temp_furnace_b: number | null;
+    // Pembacaan sesaat boiler jam 24.00 (untuk e-Logbook) — per boiler A/B.
+    press_steam_a?: number | null;
+    temp_steam_a?: number | null;
+    bfw_press_a?: number | null;
+    temp_bfw_a?: number | null;
+    temp_flue_gas_a?: number | null;
+    air_heater_ti113_a?: number | null;
+    o2_a?: number | null;
+    steam_drum_press_a?: number | null;
+    primary_air_a?: number | null;
+    secondary_air_a?: number | null;
+    press_steam_b?: number | null;
+    temp_steam_b?: number | null;
+    bfw_press_b?: number | null;
+    temp_bfw_b?: number | null;
+    temp_flue_gas_b?: number | null;
+    air_heater_ti113_b?: number | null;
+    o2_b?: number | null;
+    steam_drum_press_b?: number | null;
+    primary_air_b?: number | null;
+    secondary_air_b?: number | null;
     axial_displacement: number | null;
     thrust_bearing_temp: number | null;
     steam_inlet_press: number | null;

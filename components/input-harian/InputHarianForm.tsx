@@ -73,6 +73,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const searchParams = useSearchParams();
     const stationParam = searchParams?.get('station') ?? null;
     const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
+    // Lingkup boiler per station: panel_boiler_a→A, panel_boiler_b→B, lainnya→A+B.
+    const boilerScope: 'A' | 'B' | 'AB' = station === 'panel_boiler_a' ? 'A' : station === 'panel_boiler_b' ? 'B' : 'AB';
 
     // Daftar operator lengkap untuk picker "Diisi oleh" (lintas grup)
     const { operators, canReviewReport } = useOperator();
@@ -814,8 +816,14 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         const hasVal = (obj: Record<string, any>, keys: string[]) => keys.every(k => obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
         
         switch (tabId) {
-            case 'Boiler': 
-                return hasVal(steam, ['prod_boiler_a_24', 'prod_boiler_b_24']) && hasVal(stockTank, ['bfw_boiler_a', 'bfw_boiler_b']);
+            case 'Boiler': {
+                // Hanya cek boiler yang jadi tanggung jawab station ini.
+                const needA = boilerScope !== 'B';
+                const needB = boilerScope !== 'A';
+                const okA = !needA || (hasVal(steam, ['prod_boiler_a_24']) && hasVal(stockTank, ['bfw_boiler_a']));
+                const okB = !needB || (hasVal(steam, ['prod_boiler_b_24']) && hasVal(stockTank, ['bfw_boiler_b']));
+                return okA && okB;
+            }
             case 'Turbin': 
                 return hasVal(steam, ['inlet_turbine_24', 'fully_condens_24']);
             case 'Power':
@@ -834,7 +842,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 return hasVal(stockTank, ['silo_a_pct', 'silo_b_pct']);
             default: return false;
         }
-    }, [steam, power, turbineMisc, stockTank, visitedTabs]);
+    }, [steam, power, turbineMisc, stockTank, visitedTabs, boilerScope]);
 
     // Semua tab visible (sesuai station kalau ada) sudah lengkap → tombol Publish aktif.
     const allTabsComplete = useMemo(
@@ -1191,7 +1199,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     onStockTankChange: makeNumberHandler(setStockTank),
                                     onCoalTransferChange: makeNumberHandler(setCoalTransfer),
                                     onTotalizerChange: makeMixedHandler(setTotalizer),
-                                    crA, crB,
+                                    crA, crB, boilerScope,
                                     lautTotalSheet,
                                     stockBatubaraSheet,
                                     lhubbDate: date,

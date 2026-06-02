@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useDailyReport } from '@/hooks/useDailyReport';
+import { useLatestBoilerStatus } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import type { Operator } from '@/lib/constants';
@@ -397,74 +398,27 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report, prevReport]);
 
-    // Inherit status boiler & turbin dari shift reports hari ini (cycle: malam→pagi→sore→harian),
-    // atau daily reports sebelumnya kalau shift hari ini belum ada.
+    // Inherit status boiler A/B & turbin dari laporan terakhir sebelum harian ini, pakai
+    // hook walkback bersama dgn laporan shift. Cycle: malam(0)→pagi(1)→sore(2)→harian(3)→
+    // malam-besok — jadi harian(D) mewarisi dari sore(D) (atau pagi/malam(D), lalu mundur
+    // ke hari sebelumnya lintas shift_reports & daily_reports). Konsisten dgn input-shift,
+    // sehingga status boiler & turbin berlanjut pagi → sore → harian → malam.
+    const latestStatus = useLatestBoilerStatus(date, 'harian');
+    const _inhBoilerA = latestStatus.statusBoilerA;
+    const _inhBoilerB = latestStatus.statusBoilerB;
+    const _inhTurbin = latestStatus.statusTurbin;
     useEffect(() => {
         if (report) return;
-        const supabase = createClient();
-        let stale = false;
-
-        async function fetchStatus() {
-            let foundA: string | null = null, foundB: string | null = null, foundT: string | null = null;
-
-            // 1. Cari dari shift reports hari ini (sore → pagi → malam)
-            const { data: shiftData } = await supabase
-                .from('shift_reports')
-                .select('shift, shift_boiler(boiler, status_boiler), shift_turbin(status_turbin)')
-                .eq('date', date)
-                .order('shift', { ascending: false });
-
-            const shiftOrder: Record<string, number> = { sore: 2, pagi: 1, malam: 0 };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const shifts = ((shiftData ?? []) as any[]).sort((a, b) =>
-                (shiftOrder[b.shift] || 0) - (shiftOrder[a.shift] || 0)
-            );
-            for (const r of shifts) {
-                const boilers = Array.isArray(r.shift_boiler) ? r.shift_boiler : [];
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (!foundA) { const a = boilers.find((b: any) => b.boiler === 'A'); if (a?.status_boiler) foundA = a.status_boiler; }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (!foundB) { const b = boilers.find((b: any) => b.boiler === 'B'); if (b?.status_boiler) foundB = b.status_boiler; }
-                if (!foundT) {
-                    const tb = Array.isArray(r.shift_turbin) ? r.shift_turbin[0] : r.shift_turbin;
-                    if (tb?.status_turbin) foundT = tb.status_turbin;
-                }
-                if (foundA && foundB && foundT) break;
-            }
-
-            // 2. Fallback: cari dari daily_reports hari sebelumnya
-            if (!foundA || !foundB || !foundT) {
-                const { data: dailyData } = await supabase
-                    .from('daily_reports')
-                    .select('daily_report_turbine_misc(status_boiler_a, status_boiler_b, status_turbin)')
-                    .lt('date', date)
-                    .order('date', { ascending: false })
-                    .limit(10);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                for (const r of (dailyData ?? []) as any[]) {
-                    const tm = Array.isArray(r.daily_report_turbine_misc) ? r.daily_report_turbine_misc[0] : r.daily_report_turbine_misc;
-                    if (!tm) continue;
-                    if (!foundA && tm.status_boiler_a) foundA = tm.status_boiler_a;
-                    if (!foundB && tm.status_boiler_b) foundB = tm.status_boiler_b;
-                    if (!foundT && tm.status_turbin) foundT = tm.status_turbin;
-                    if (foundA && foundB && foundT) break;
-                }
-            }
-
-            if (stale) return;
-            setTurbineMisc(prev => {
-                const next = { ...prev };
-                if (foundA && !prev.status_boiler_a) next.status_boiler_a = foundA;
-                if (foundB && !prev.status_boiler_b) next.status_boiler_b = foundB;
-                if (foundT && !prev.status_turbin) next.status_turbin = foundT;
-                return next;
-            });
-        }
-
-        fetchStatus();
-        return () => { stale = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, report]);
+        if (!_inhBoilerA && !_inhBoilerB && !_inhTurbin) return;
+        setTurbineMisc(prev => {
+            const next = { ...prev };
+            let changed = false;
+            if (_inhBoilerA && !prev.status_boiler_a) { next.status_boiler_a = _inhBoilerA; changed = true; }
+            if (_inhBoilerB && !prev.status_boiler_b) { next.status_boiler_b = _inhBoilerB; changed = true; }
+            if (_inhTurbin && !prev.status_turbin) { next.status_turbin = _inhTurbin; changed = true; }
+            return changed ? next : prev;
+        });
+    }, [report, _inhBoilerA, _inhBoilerB, _inhTurbin]);
 
     // ─── Previous report data for selisih calculations ───
     const prevSteam = prevReport?.daily_report_steam?.[0]

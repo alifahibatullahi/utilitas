@@ -52,6 +52,8 @@ export default function LogbookPage() {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<string>(todayWIB());
     const [shiftMap, setShiftMap] = useState<Record<string, Row>>({});
+    // Dibump untuk memicu refetch shift data (saat tab kembali aktif / polling).
+    const [refreshKey, setRefreshKey] = useState(0);
 
     // Zoom-to-fit untuk HP: lembar dirancang ~1010px, di-skala agar muat lebar layar
     // (tetap bisa pinch-zoom browser untuk lihat detail).
@@ -69,7 +71,7 @@ export default function LogbookPage() {
         return () => ro.disconnect();
     }, []);
 
-    const { report: daily } = useDailyReport(selectedDate);
+    const { report: daily, refetch: refetchDaily } = useDailyReport(selectedDate);
 
     useEffect(() => {
         if (!authLoading && !operator) router.push('/');
@@ -101,7 +103,23 @@ export default function LogbookPage() {
             setShiftMap(map);
         })();
         return () => { stale = true; };
-    }, [selectedDate]);
+    }, [selectedDate, refreshKey]);
+
+    // Auto-refresh: data logbook harus ikut terbaru saat ada input/laporan baru. Refetch
+    // saat tab kembali aktif/fokus, plus polling ringan tiap 60 dtk selama tab terlihat —
+    // supaya laporan shift/harian yang baru disubmit langsung muncul tanpa reload manual.
+    useEffect(() => {
+        const refresh = () => { setRefreshKey(k => k + 1); refetchDaily(); };
+        const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+        window.addEventListener('focus', refresh);
+        document.addEventListener('visibilitychange', onVisible);
+        const id = setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60_000);
+        return () => {
+            window.removeEventListener('focus', refresh);
+            document.removeEventListener('visibilitychange', onVisible);
+            clearInterval(id);
+        };
+    }, [refetchDaily]);
 
     const data: LogbookData = useMemo(() => {
         const prev = new Date(selectedDate + 'T00:00:00');

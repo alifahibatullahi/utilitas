@@ -52,6 +52,9 @@ interface InputHarianFormProps {
     operator: Operator | null;
     groupName?: string | null;
     supervisorName?: string;
+    /** Sinkron balik supervisor dari modal Review/Publish ke header input (page state),
+     *  supaya kalau terisi di modal, dropdown supervisor di header ikut terisi. */
+    onSupervisorChange?: (value: string) => void;
     /** Submit window dari parent (input-shift page) — block tombol SAVE & guard handleSubmit
      *  saat ini di luar window submit (sebelum 23:00 D atau setelah 09:00 D+1). */
     submitWindowStart?: Date;
@@ -60,7 +63,7 @@ interface InputHarianFormProps {
     isAdmin?: boolean;
 }
 
-export default function InputHarianForm({ date, operator, groupName, supervisorName, submitWindowStart, submitWindowEnd, isAdmin = false }: InputHarianFormProps) {
+export default function InputHarianForm({ date, operator, groupName, supervisorName, onSupervisorChange, submitWindowStart, submitWindowEnd, isAdmin = false }: InputHarianFormProps) {
     // Lock state — disable tombol SAVE & banner kalau di luar window.
     const [nowTickH, setNowTickH] = useState(() => Date.now());
     useEffect(() => {
@@ -1219,6 +1222,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 reportDate={date}
                 reportGroup={groupName ?? undefined}
                 initialSupervisor={(totalizer.kasi_name as string) || supervisorName || ''}
+                onSupervisorChange={(v) => { setTotalizer(prev => ({ ...prev, kasi_name: v })); onSupervisorChange?.(v); }}
                 canReview={canReviewReport}
                 reviewerName={operator?.name ?? ''}
             />

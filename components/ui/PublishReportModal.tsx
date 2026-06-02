@@ -96,6 +96,11 @@ interface Props {
     initialSupervisor?: string;
     initialForemanTurbin?: string;   // shift only
     initialForemanBoiler?: string;   // shift only
+    /** Callback saat dropdown diubah di modal — supaya nilai ikut ke header input
+     *  (sinkron dua arah: terisi di modal → terisi juga di header, & sebaliknya). */
+    onSupervisorChange?: (value: string) => void;
+    onForemanTurbinChange?: (value: string) => void;   // shift only
+    onForemanBoilerChange?: (value: string) => void;   // shift only
     /** Apakah operator yang sedang login bisa approve. Hanya supervisor/foreman/admin. */
     canReview?: boolean;
     /** Nama operator yang melakukan review — disimpan ke shift_reports.reviewed_by. */
@@ -118,10 +123,12 @@ export function PublishReportModal({
     washiftKey = 'washift',
     reportDate,
     reportShift,
-    reportGroup,
     initialSupervisor = '',
     initialForemanTurbin = '',
     initialForemanBoiler = '',
+    onSupervisorChange,
+    onForemanTurbinChange,
+    onForemanBoilerChange,
     canReview = false,
     reviewerName = '',
 }: Props) {
@@ -179,30 +186,24 @@ export function PublishReportModal({
         }
     };
 
-    // Filter sama persis dengan dropdown di header input-shift (app/input-shift/page.tsx:298-308).
+    // Daftar operator dibuat identik dgn dropdown di header input-shift
+    // (app/input-shift/page.tsx:381-392): filter jabatan saja, TANPA sort & TANPA label
+    // grup — supaya pilihan supervisor/foreman di modal sama persis dgn header.
     // - Supervisor: jabatan Supervisor ATAU Foreman (semua foreman bisa jadi supervisor approval).
     // - Foreman Boiler: UBB & jabatan 'Foreman Boiler' atau operator biasa (tanpa jabatan).
     // - Foreman Turbin: UBB & jabatan 'Foreman Turbin' atau operator biasa.
-    // Sort by reportGroup match (operator grup yang dinas paling atas).
     const { operators } = useOperator();
-    const sortByGroupMatch = (a: typeof operators[number], b: typeof operators[number]) => {
-        const aMatch = reportGroup && a.group === reportGroup;
-        const bMatch = reportGroup && b.group === reportGroup;
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return a.name.localeCompare(b.name);
-    };
     const supervisorOptions = useMemo(
-        () => operators.filter(op => op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman')).sort(sortByGroupMatch),
-        [operators, reportGroup], // eslint-disable-line react-hooks/exhaustive-deps
+        () => operators.filter(op => op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman')),
+        [operators],
     );
     const foremanBoilerOptions = useMemo(
-        () => operators.filter(op => op.company === 'UBB' && (op.jabatan === 'Foreman Boiler' || !op.jabatan)).sort(sortByGroupMatch),
-        [operators, reportGroup], // eslint-disable-line react-hooks/exhaustive-deps
+        () => operators.filter(op => op.company === 'UBB' && (op.jabatan === 'Foreman Boiler' || !op.jabatan)),
+        [operators],
     );
     const foremanTurbinOptions = useMemo(
-        () => operators.filter(op => op.company === 'UBB' && (op.jabatan === 'Foreman Turbin' || !op.jabatan)).sort(sortByGroupMatch),
-        [operators, reportGroup], // eslint-disable-line react-hooks/exhaustive-deps
+        () => operators.filter(op => op.company === 'UBB' && (op.jabatan === 'Foreman Turbin' || !op.jabatan)),
+        [operators],
     );
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -416,13 +417,13 @@ export function PublishReportModal({
                                 <div className="relative flex items-center">
                                     <select
                                         value={supervisor}
-                                        onChange={e => { const v = e.target.value; setSupervisor(v); persistChange('supervisor', v); }}
+                                        onChange={e => { const v = e.target.value; setSupervisor(v); onSupervisorChange?.(v); persistChange('supervisor', v); }}
                                         className="w-full bg-transparent border-none p-0 text-xs font-black text-slate-200 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                     >
                                         <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
                                         {supervisorOptions.map(op => (
                                             <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
-                                                {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                                {op.name}
                                             </option>
                                         ))}
                                     </select>
@@ -438,13 +439,13 @@ export function PublishReportModal({
                                         <div className="relative flex items-center">
                                             <select
                                                 value={foremanTurbin}
-                                                onChange={e => { const v = e.target.value; setForemanTurbin(v); persistChange('foreman_turbin', v); }}
+                                                onChange={e => { const v = e.target.value; setForemanTurbin(v); onForemanTurbinChange?.(v); persistChange('foreman_turbin', v); }}
                                                 className="w-full bg-transparent border-none p-0 text-xs font-black text-indigo-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                             >
                                                 <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
                                                 {foremanTurbinOptions.map(op => (
                                                     <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
-                                                        {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                                        {op.name}
                                                     </option>
                                                 ))}
                                             </select>
@@ -458,13 +459,13 @@ export function PublishReportModal({
                                         <div className="relative flex items-center">
                                             <select
                                                 value={foremanBoiler}
-                                                onChange={e => { const v = e.target.value; setForemanBoiler(v); persistChange('foreman_boiler', v); }}
+                                                onChange={e => { const v = e.target.value; setForemanBoiler(v); onForemanBoilerChange?.(v); persistChange('foreman_boiler', v); }}
                                                 className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
                                             >
                                                 <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
                                                 {foremanBoilerOptions.map(op => (
                                                     <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
-                                                        {op.name}{op.group ? ` (Group ${op.group})` : ''}
+                                                        {op.name}
                                                     </option>
                                                 ))}
                                             </select>

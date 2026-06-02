@@ -1828,7 +1828,7 @@ function InputShiftPageInner() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} />
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} />
             )}
             {/* Publish modal — same component as laporan-shift / laporan-harian pages */}
             {inputMode === 'shift' && (
@@ -1843,6 +1843,9 @@ function InputShiftPageInner() {
                     initialSupervisor={supervisor}
                     initialForemanTurbin={foremanTurbin}
                     initialForemanBoiler={foremanBoiler}
+                    onSupervisorChange={setSupervisor}
+                    onForemanTurbinChange={setForemanTurbin}
+                    onForemanBoilerChange={setForemanBoiler}
                     canReview={canReviewReport}
                     reviewerName={operator?.name ?? ''}
                 />

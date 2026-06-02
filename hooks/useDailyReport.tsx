@@ -239,13 +239,20 @@ const STATION_OWNS_COLS: Record<string, Record<string, string[]>> = {
         ],
     },
     esp: {
-        daily_report_stock_tank: ['silo_a_pct', 'silo_b_pct', 'unloading_fly_ash_a', 'unloading_fly_ash_b'],
+        // Silo + Trafo ESP (jam 24.00). Trafo sebelumnya tidak ter-own → tidak tersimpan
+        // saat ESP submit; kini diperbaiki agar ikut tersimpan.
+        daily_report_stock_tank: [
+            'silo_a_pct', 'silo_b_pct', 'unloading_fly_ash_a', 'unloading_fly_ash_b',
+            'trafo_a1', 'trafo_a2', 'trafo_a3', 'trafo_b1', 'trafo_b2', 'trafo_b3',
+        ],
     },
     lapangan_turbin: {
         daily_report_turbine_misc: ['totalizer_export', 'totalizer_import', 'totalizer_gi'],
     },
-    // bunker & lapangan_boiler: tidak punya tab di laporan harian → tidak own kolom apa pun.
-    bunker: {},
+    // Bunker punya tab Coal Bunker sendiri di harian (level bunker jam 24.00, dipakai logbook).
+    bunker: {
+        daily_report_stock_tank: ['bunker_a', 'bunker_b', 'bunker_c', 'bunker_d', 'bunker_e', 'bunker_f'],
+    },
     lapangan_boiler: {},
 };
 

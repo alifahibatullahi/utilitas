@@ -368,13 +368,13 @@ export const STATION_SHIFT_TABS: Record<OperatorStation, string[]> = {
 
 // Tab IDs harus match dengan HarianTabId di components/input-harian/InputHarianForm.tsx.
 export const STATION_HARIAN_TABS: Record<OperatorStation, string[]> = {
-    panel_boiler: ['Boiler'],
-    panel_boiler_a: ['Boiler'],
-    panel_boiler_b: ['Boiler'],
+    panel_boiler: ['Boiler A', 'Boiler B'],
+    panel_boiler_a: ['Boiler A'],
+    panel_boiler_b: ['Boiler B'],
     panel_turbin: ['Turbin', 'Power'],
     handling: ['Handling'],
     esp: ['Silo & Fly Ash'],
-    bunker: [],
+    bunker: ['Coal Bunker'],
     lapangan_boiler: [],
     lapangan_turbin: ['PIU'],
 };

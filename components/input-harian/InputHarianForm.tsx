@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Operator } from '@/lib/constants';
 import { isValidStation, STATION_HARIAN_TABS, STATION_LABELS, type OperatorStation } from '@/lib/constants';
 import TabBoiler from './TabBoiler';
+import TabCoalBunker from './TabCoalBunker';
 import TabTurbin from './TabTurbin';
 import TabPower from './TabPower';
 import TabPIU from './TabPIU';
@@ -19,14 +20,16 @@ import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import type { DailyTabProps } from './types';
 
-type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
+type HarianTabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Coal Bunker' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
 
 const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; colorClass: string }[] = [
-    { id: 'Boiler', label: 'Boiler', icon: 'factory', colorClass: 'rose' },
+    { id: 'Boiler A', label: 'Boiler A', icon: 'factory', colorClass: 'rose' },
+    { id: 'Boiler B', label: 'Boiler B', icon: 'factory', colorClass: 'purple' },
     { id: 'Turbin', label: 'Turbin & Distribusi Steam', icon: 'mode_fan', colorClass: 'cyan' },
     { id: 'Power', label: 'Generator', icon: 'bolt', colorClass: 'amber' },
     { id: 'PIU', label: 'PIU', icon: 'electric_meter', colorClass: 'blue' },
     { id: 'Handling', label: 'Handling', icon: 'local_shipping', colorClass: 'orange' },
+    { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2', colorClass: 'indigo' },
     { id: 'Chemical', label: 'Chemical', icon: 'science', colorClass: 'purple' },
     { id: 'Stock BB', label: 'In/Out Batubara', icon: 'local_shipping', colorClass: 'indigo' },
     { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt', colorClass: 'teal' },
@@ -73,8 +76,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const searchParams = useSearchParams();
     const stationParam = searchParams?.get('station') ?? null;
     const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
-    // Lingkup boiler per station: panel_boiler_a→A, panel_boiler_b→B, lainnya→A+B.
-    const boilerScope: 'A' | 'B' | 'AB' = station === 'panel_boiler_a' ? 'A' : station === 'panel_boiler_b' ? 'B' : 'AB';
 
     // Daftar operator lengkap untuk picker "Diisi oleh" (lintas grup)
     const { operators, canReviewReport } = useOperator();
@@ -100,7 +101,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             const firstAllowed = HARIAN_TABS.find(t => allowed.includes(t.id));
             if (firstAllowed) return firstAllowed.id;
         }
-        return 'Boiler';
+        return 'Boiler A';
     });
     const [visitedTabs, setVisitedTabs] = useState<Set<HarianTabId>>(new Set());
     const [submitting, setSubmitting] = useState(false);
@@ -816,15 +817,14 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         const hasVal = (obj: Record<string, any>, keys: string[]) => keys.every(k => obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
         
         switch (tabId) {
-            case 'Boiler': {
-                // Hanya cek boiler yang jadi tanggung jawab station ini.
-                const needA = boilerScope !== 'B';
-                const needB = boilerScope !== 'A';
-                const okA = !needA || (hasVal(steam, ['prod_boiler_a_24']) && hasVal(stockTank, ['bfw_boiler_a']));
-                const okB = !needB || (hasVal(steam, ['prod_boiler_b_24']) && hasVal(stockTank, ['bfw_boiler_b']));
-                return okA && okB;
-            }
-            case 'Turbin': 
+            case 'Boiler A':
+                return hasVal(steam, ['prod_boiler_a_24']) && hasVal(stockTank, ['bfw_boiler_a']);
+            case 'Boiler B':
+                return hasVal(steam, ['prod_boiler_b_24']) && hasVal(stockTank, ['bfw_boiler_b']);
+            case 'Coal Bunker':
+                // Level bunker opsional → tab dianggap lengkap setelah dikunjungi.
+                return visitedTabs.has('Coal Bunker');
+            case 'Turbin':
                 return hasVal(steam, ['inlet_turbine_24', 'fully_condens_24']);
             case 'Power':
                 return hasVal(power, ['gen_00']) || hasVal(turbineMisc, ['gen_ampere']);
@@ -842,7 +842,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 return hasVal(stockTank, ['silo_a_pct', 'silo_b_pct']);
             default: return false;
         }
-    }, [steam, power, turbineMisc, stockTank, visitedTabs, boilerScope]);
+    }, [steam, power, turbineMisc, stockTank, visitedTabs]);
 
     // Semua tab visible (sesuai station kalau ada) sudah lengkap → tombol Publish aktif.
     const allTabsComplete = useMemo(
@@ -1148,6 +1148,30 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                         <h2 className="text-white font-bold text-xl leading-tight">{tab?.label}</h2>
                                         <p className="text-slate-400 text-xs mt-0.5">Input data operasional harian {tab?.label}</p>
                                     </div>
+                                    {/* Status chip boiler — di kanan judul untuk tab Boiler A/B (sama spt shift). */}
+                                    {(activeTab === 'Boiler A' || activeTab === 'Boiler B') && (() => {
+                                        const bx = activeTab === 'Boiler A' ? 'a' : 'b';
+                                        const bStatus = (turbineMisc[`status_boiler_${bx}`] as string) ?? '';
+                                        const bBorder = bStatus === 'running' ? 'border-emerald-500/50' : bStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
+                                        const bDot = bStatus === 'running' ? 'bg-emerald-500' : bStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
+                                        return (
+                                            <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${bBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0 ml-auto`}>
+                                                <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${bDot} shrink-0`} />
+                                                <select
+                                                    className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                    value={bStatus}
+                                                    onChange={e => {
+                                                        const v = e.target.value === '' ? null : e.target.value;
+                                                        setTurbineMisc(prev => ({ ...prev, [`status_boiler_${bx}`]: v }));
+                                                    }}
+                                                >
+                                                    <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                                                    <option value="running" className="bg-[#101822] text-white">Running</option>
+                                                    <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                </select>
+                                            </div>
+                                        );
+                                    })()}
                                     {/* Status chip turbin — di kanan judul, size sama seperti chip shift */}
                                     {activeTab === 'Turbin' && (
                                         <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0 ml-auto`}>
@@ -1187,7 +1211,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             <p className="text-slate-400 text-sm max-w-md">Station ini hanya mengisi data di laporan shift. Buka link yang sesuai dari grup WA.</p>
                         </div>
                     ) : (
-                        <div className={`pb-6${activeTab === 'Power' ? ' flex flex-row gap-4 items-start' : ''}`}>
+                        <div className={`pb-6${activeTab === 'Power' ? ' flex flex-row gap-4 items-start' : (activeTab === 'Boiler A' || activeTab === 'Boiler B') ? ' flex flex-col xl:flex-row gap-6' : ''}`}>
                             {(() => {
                                 const tabProps: DailyTabProps = {
                                     steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,
@@ -1199,7 +1223,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     onStockTankChange: makeNumberHandler(setStockTank),
                                     onCoalTransferChange: makeNumberHandler(setCoalTransfer),
                                     onTotalizerChange: makeMixedHandler(setTotalizer),
-                                    crA, crB, boilerScope,
+                                    crA, crB,
                                     lautTotalSheet,
                                     stockBatubaraSheet,
                                     lhubbDate: date,
@@ -1215,11 +1239,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 };
                                 return (
                                     <>
-                                        {activeTab === 'Boiler' && <TabBoiler {...tabProps} />}
+                                        {activeTab === 'Boiler A' && <TabBoiler {...tabProps} boilerId="A" />}
+                                        {activeTab === 'Boiler B' && <TabBoiler {...tabProps} boilerId="B" />}
                                         {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
                                         {activeTab === 'Power' && <TabPower {...tabProps} />}
                                         {activeTab === 'PIU' && <TabPIU {...tabProps} />}
                                         {activeTab === 'Handling' && <TabHandling {...tabProps} />}
+                                        {activeTab === 'Coal Bunker' && <TabCoalBunker {...tabProps} />}
                                         {activeTab === 'Chemical' && <TabChemical date={date} />}
                                         {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}
                                         {activeTab === 'Silo & Fly Ash' && <TabSiloFlyAsh {...tabProps} />}

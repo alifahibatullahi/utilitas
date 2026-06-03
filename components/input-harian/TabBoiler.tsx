@@ -107,22 +107,6 @@ export default function TabBoiler({
                         <TotalizerInput label="BFW" name={`bfw_boiler_${x}`} value={stockTank[`bfw_boiler_${x}`]} prev={prevBfw} onChange={onStockTankChange} unit="ton" color="cyan" />
                     </Card>
 
-                    <Card title="Furnace & Air" icon="local_fire_department" color="orange">
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Temp Furnace" unit="°C" color="orange" name={`temp_furnace_${x}`} value={turbineMisc[`temp_furnace_${x}`]} onChange={onTurbineMiscChange} />
-                            <InputField label="Air Heater TI113" unit="°C" color="orange" name={`air_heater_ti113_${x}`} value={turbineMisc[`air_heater_ti113_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Temp Flue Gas" unit="°C" color="orange" name={`temp_flue_gas_${x}`} value={turbineMisc[`temp_flue_gas_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
-                            <InputField label="O2" unit="%" color="orange" name={`o2_${x}`} value={turbineMisc[`o2_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Primary Air" unit="ton" color="orange" name={`primary_air_${x}`} value={turbineMisc[`primary_air_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
-                            <InputField label="Secondary Air" unit="ton" color="orange" name={`secondary_air_${x}`} value={turbineMisc[`secondary_air_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
-                        </div>
-                        <InputField label="Pressure Drum" unit="MPa" color="orange" name={`steam_drum_press_${x}`} value={turbineMisc[`steam_drum_press_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
-                    </Card>
-
                     <Card title={`Coal Feeder ${feeders[0].toUpperCase()}-${feeders[2].toUpperCase()}`} icon="precision_manufacturing" color="emerald">
                         {feeders.map((f) => {
                             const prevF = prevCoal ? n(prevCoal[`coal_${f}_24`]) : 0;
@@ -141,6 +125,22 @@ export default function TabBoiler({
                                 </div>
                             );
                         })}
+                    </Card>
+
+                    <Card title="Furnace & Air" icon="local_fire_department" color="orange">
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Temp Furnace" unit="°C" color="orange" name={`temp_furnace_${x}`} value={turbineMisc[`temp_furnace_${x}`]} onChange={onTurbineMiscChange} />
+                            <InputField label="Air Heater TI113" unit="°C" color="orange" name={`air_heater_ti113_${x}`} value={turbineMisc[`air_heater_ti113_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Temp Flue Gas" unit="°C" color="orange" name={`temp_flue_gas_${x}`} value={turbineMisc[`temp_flue_gas_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
+                            <InputField label="O2" unit="%" color="orange" name={`o2_${x}`} value={turbineMisc[`o2_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Primary Air" unit="ton" color="orange" name={`primary_air_${x}`} value={turbineMisc[`primary_air_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
+                            <InputField label="Secondary Air" unit="ton" color="orange" name={`secondary_air_${x}`} value={turbineMisc[`secondary_air_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
+                        </div>
+                        <InputField label="Pressure Drum" unit="MPa" color="orange" name={`steam_drum_press_${x}`} value={turbineMisc[`steam_drum_press_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                     </Card>
 
                 </div>

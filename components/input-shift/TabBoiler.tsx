@@ -143,29 +143,6 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         </div>
                     </Card>
 
-                    <Card title="Furnace & Air" icon="local_fire_department" color="orange">
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Temp Furnace" unit="°C" color="orange" name="temp_furnace" value={values.temp_furnace} onChange={onFieldChange} />
-                            <InputField label="Air Heater TI113" unit="°C" color="orange" name="air_heater_ti113" value={values.air_heater_ti113} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Vacuum" unit="Pa" color="orange" name="excess_air" value={values.excess_air} onChange={onFieldChange} negative readOnly={isBoilerShutdown} />
-                            <InputField label="Temp Flue Gas" unit="°C" color="orange" name="temp_flue_gas" value={values.temp_flue_gas} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Primary Air" unit="ton" color="orange" name="primary_air" value={values.primary_air} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                            <InputField label="Secondary Air" unit="ton" color="orange" name="secondary_air" value={values.secondary_air} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <InputField label="O2" unit="%" color="orange" name="o2" value={values.o2} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                            <InputField label="Pressure Drum" unit="MPa" color="orange" name="steam_drum_press" value={values.steam_drum_press} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        </div>
-                        <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
-                            <p className="text-xs font-bold text-white uppercase tracking-wider text-left">Solar Usage</p>
-                            <InputField placeholder="0.00" unit="m³" color="orange" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        </div>
-                    </Card>
-
                     <Card title={`Coal Feeder ${feeders[0]}-${feeders[feeders.length - 1]}`} icon="precision_manufacturing" color="emerald">
                         {feeders.map((feeder, idx) => {
                             const fk = feederKeys[idx];
@@ -191,6 +168,29 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                                 </div>
                             );
                         })}
+                    </Card>
+
+                    <Card title="Furnace & Air" icon="local_fire_department" color="orange">
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Temp Furnace" unit="°C" color="orange" name="temp_furnace" value={values.temp_furnace} onChange={onFieldChange} />
+                            <InputField label="Air Heater TI113" unit="°C" color="orange" name="air_heater_ti113" value={values.air_heater_ti113} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Vacuum" unit="Pa" color="orange" name="excess_air" value={values.excess_air} onChange={onFieldChange} negative readOnly={isBoilerShutdown} />
+                            <InputField label="Temp Flue Gas" unit="°C" color="orange" name="temp_flue_gas" value={values.temp_flue_gas} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Primary Air" unit="ton" color="orange" name="primary_air" value={values.primary_air} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                            <InputField label="Secondary Air" unit="ton" color="orange" name="secondary_air" value={values.secondary_air} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="O2" unit="%" color="orange" name="o2" value={values.o2} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                            <InputField label="Pressure Drum" unit="MPa" color="orange" name="steam_drum_press" value={values.steam_drum_press} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                        </div>
+                        <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
+                            <p className="text-xs font-bold text-white uppercase tracking-wider text-left">Solar Usage</p>
+                            <InputField placeholder="0.00" unit="m³" color="orange" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
+                        </div>
                     </Card>
 
                 </div>

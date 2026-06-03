@@ -86,6 +86,9 @@ const VALID_COLS: Record<string, string[]> = {
         'gen_ampere', 'gen_amp_react', 'gen_cos_phi', 'gen_tegangan', 'gen_frequensi',
         'gi_sum_p', 'gi_sum_q', 'gi_cos_phi',
         'status_boiler_a', 'status_boiler_b', 'status_turbin',
+        // Status feeder coal (tab Boiler harian) — running/standby/emergency standby/not standby.
+        'status_feeder_a', 'status_feeder_b', 'status_feeder_c',
+        'status_feeder_d', 'status_feeder_e', 'status_feeder_f',
         // Pembacaan sesaat boiler jam 24.00 (untuk e-Logbook) — per boiler A/B.
         'press_steam_a', 'temp_steam_a', 'bfw_press_a', 'temp_bfw_a', 'temp_flue_gas_a',
         'air_heater_ti113_a', 'o2_a', 'steam_drum_press_a', 'primary_air_a', 'secondary_air_a',
@@ -161,6 +164,8 @@ const BOILER_OWNS_COLS: Record<string, string[]> = {
     daily_report_turbine_misc: [
         'temp_furnace_a', 'temp_furnace_b', 'status_boiler_a', 'status_boiler_b',
         'consumption_rate_a', 'consumption_rate_b', 'consumption_rate_avg',
+        'status_feeder_a', 'status_feeder_b', 'status_feeder_c',
+        'status_feeder_d', 'status_feeder_e', 'status_feeder_f',
         // Pembacaan sesaat boiler jam 24.00 (untuk e-Logbook) — di-own Boiler supaya
         // ikut tersimpan saat operator isi harian dari station view (panel_boiler*).
         'press_steam_a', 'temp_steam_a', 'bfw_press_a', 'temp_bfw_a', 'temp_flue_gas_a',
@@ -185,6 +190,7 @@ const BOILER_A_OWNS_COLS: Record<string, string[]> = {
     daily_report_stock_tank: ['bfw_boiler_a', 'flow_bfw_a', 'bfw_total'],
     daily_report_turbine_misc: [
         'temp_furnace_a', 'status_boiler_a', 'consumption_rate_a', 'consumption_rate_avg',
+        'status_feeder_a', 'status_feeder_b', 'status_feeder_c',
         'press_steam_a', 'temp_steam_a', 'bfw_press_a', 'temp_bfw_a', 'temp_flue_gas_a',
         'air_heater_ti113_a', 'o2_a', 'steam_drum_press_a', 'primary_air_a', 'secondary_air_a',
     ],
@@ -200,6 +206,7 @@ const BOILER_B_OWNS_COLS: Record<string, string[]> = {
     daily_report_stock_tank: ['bfw_boiler_b', 'flow_bfw_b', 'bfw_total'],
     daily_report_turbine_misc: [
         'temp_furnace_b', 'status_boiler_b', 'consumption_rate_b', 'consumption_rate_avg',
+        'status_feeder_d', 'status_feeder_e', 'status_feeder_f',
         'press_steam_b', 'temp_steam_b', 'bfw_press_b', 'temp_bfw_b', 'temp_flue_gas_b',
         'air_heater_ti113_b', 'o2_b', 'steam_drum_press_b', 'primary_air_b', 'secondary_air_b',
     ],

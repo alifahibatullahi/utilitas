@@ -446,6 +446,13 @@ export interface DailyReportTurbineMiscRow {
     gi_sum_p: number | null;
     gi_sum_q: number | null;
     gi_cos_phi: number | null;
+    // Status feeder coal (tab Boiler harian) — running/standby/emergency standby/not standby.
+    status_feeder_a?: string | null;
+    status_feeder_b?: string | null;
+    status_feeder_c?: string | null;
+    status_feeder_d?: string | null;
+    status_feeder_e?: string | null;
+    status_feeder_f?: string | null;
     /** Status turbin di harian. Saat shutdown, field instantaneous (jam 00:00) di-zero:
      *  inlet_turbine_00, co_gen_00 (di daily_report_steam), gen_00 (di daily_report_power),
      *  + axial_displacement, thrust_bearing_temp, steam_inlet_press, steam_inlet_temp.

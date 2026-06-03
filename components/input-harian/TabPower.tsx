@@ -78,7 +78,7 @@ export default function TabPower({
                                     const totName = `power_${key}_totalizer`;
                                     const prevTot = Number(prevPD?.[totName]) || 0;
                                     const defaultZero = key === 'revamping' || key === 'pie';
-                                    const totValue = defaultZero ? (pv[totName] ?? 0) : pv[totName];
+                                    const totValue = defaultZero ? (pv[totName] ?? '') : pv[totName];
                                     const curTot  = Number(totValue) || 0;
 
                                     return (

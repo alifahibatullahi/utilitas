@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { Card, InputField, CalculatedField, TotalizerInput } from '@/components/input-shift/SharedComponents';
+import { Card, InputField, CalculatedField, TotalizerInput, FeederStatusChip } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 
 // Pembacaan sesaat boiler jam 24.00 (di daily_report_turbine_misc) — per boiler.
@@ -29,16 +29,27 @@ export default function TabBoiler({
     const n = (v: number | string | null | undefined) => Number(v) || 0;
     const isShutdown = turbineMisc[`status_boiler_${x}`] === 'shutdown';
 
+    // Status feeder (running/standby/...) disimpan di daily_report_turbine_misc → status_feeder_*.
+    const feederStatusKey = (f: string) => `status_feeder_${f}`;
+    const isFeederLocked = (f: string) => {
+        const s = turbineMisc[feederStatusKey(f)];
+        return typeof s === 'string' && s !== '' && s !== 'running';
+    };
+
     const prevSteam24 = prevSteam ? n(prevSteam[`prod_boiler_${x}_24`]) : 0;
     const prevBfw = prevStockTank ? n(prevStockTank[`bfw_boiler_${x}`]) : 0;
 
     // Auto-fill totalizer (dari kemarin) + clear flow + nol-kan pembacaan sesaat saat shutdown.
+    // Semua feeder ikut di-set ke standby (samakan dgn laporan shift).
     useEffect(() => {
         if (!isShutdown) return;
         if (prevSteam24 > 0 && steam[`prod_boiler_${x}_24`] == null) onSteamChange(`prod_boiler_${x}_24`, prevSteam24);
         feeders.forEach((f) => {
             const p = prevCoal ? n(prevCoal[`coal_${f}_24`]) : 0;
             if (p > 0 && coal[`coal_${f}_24`] == null) onCoalChange(`coal_${f}_24`, p);
+            const sk = feederStatusKey(f);
+            const cur = turbineMisc[sk];
+            if (cur === 'running' || cur == null || cur === '') onTurbineMiscChange(sk, 'standby');
         });
         if (prevBfw > 0 && stockTank[`bfw_boiler_${x}`] == null) onStockTankChange(`bfw_boiler_${x}`, prevBfw);
         if (steam[`prod_boiler_${x}_00`] != null) onSteamChange(`prod_boiler_${x}_00`, null);
@@ -47,6 +58,18 @@ export default function TabBoiler({
         INSTANT_FIELDS(x).forEach((k) => { if (turbineMisc[k] != null && turbineMisc[k] !== 0) onTurbineMiscChange(k, 0); });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isShutdown]);
+
+    // Auto-fill totalizer feeder (dari kemarin) + nol-kan flow saat feeder non-running.
+    const feederStatusSig = feeders.map((f) => turbineMisc[feederStatusKey(f)] ?? '').join('|');
+    useEffect(() => {
+        feeders.forEach((f) => {
+            if (!isFeederLocked(f)) return;
+            const p = prevCoal ? n(prevCoal[`coal_${f}_24`]) : 0;
+            if (p > 0 && coal[`coal_${f}_24`] == null) onCoalChange(`coal_${f}_24`, p);
+            if (coal[`coal_${f}_00`] != null && coal[`coal_${f}_00`] !== 0) onCoalChange(`coal_${f}_00`, 0);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [feederStatusSig]);
 
     // Kalkulasi produksi (sidebar)
     const produksiSteam = prevSteam24 > 0 ? n(steam[`prod_boiler_${x}_24`]) - prevSteam24 : 0;
@@ -103,12 +126,17 @@ export default function TabBoiler({
                     <Card title={`Coal Feeder ${feeders[0].toUpperCase()}-${feeders[2].toUpperCase()}`} icon="precision_manufacturing" color="emerald">
                         {feeders.map((f) => {
                             const prevF = prevCoal ? n(prevCoal[`coal_${f}_24`]) : 0;
+                            const sk = feederStatusKey(f);
+                            const flowLocked = isShutdown || isFeederLocked(f);
                             return (
                                 <div key={f} className="space-y-2">
-                                    <p className="text-xs font-bold text-white uppercase tracking-wider">Feeder {f.toUpperCase()}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-xs font-bold text-white uppercase tracking-wider">Feeder {f.toUpperCase()}</p>
+                                        <FeederStatusChip sk={sk} value={(turbineMisc[sk] as string) ?? ''} onChange={onTurbineMiscChange} />
+                                    </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <TotalizerInput label={f.toUpperCase()} name={`coal_${f}_24`} value={coal[`coal_${f}_24`]} prev={prevF} onChange={onCoalChange} unit="ton" color="emerald" />
-                                        <InputField label="Flow" unit="t/h" color="emerald" name={`coal_${f}_00`} value={coal[`coal_${f}_00`]} onChange={onCoalChange} readOnly={isShutdown} />
+                                        <InputField label="Flow" unit="t/h" color="emerald" name={`coal_${f}_00`} value={coal[`coal_${f}_00`]} onChange={onCoalChange} readOnly={flowLocked} />
                                     </div>
                                 </div>
                             );

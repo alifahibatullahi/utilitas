@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { Card, InputField, CalculatedField, SelisihInfo } from './SharedComponents';
+import { Card, InputField, CalculatedField, SelisihInfo, FeederStatusChip } from './SharedComponents';
 
 interface TabBoilerProps {
     boilerId: 'A' | 'B';
@@ -24,46 +24,6 @@ function formatShutdownSince(sinceDate: string, currentDate: string): string {
     const tgl = d1.toLocaleDateString('id-ID', { ...opts, day: 'numeric', month: 'long' });
     const durasi = days === 0 ? 'hari ini' : `${days} hari`;
     return `sejak ${hari}, ${tgl} (${durasi})`;
-}
-
-const FEEDER_STATUS_OPTIONS = [
-    { value: 'running', label: 'Running' },
-    { value: 'standby', label: 'Standby' },
-    { value: 'emergency standby', label: 'Emergency Standby' },
-    { value: 'not standby', label: 'Not Standby' },
-];
-
-const FEEDER_STATUS_STYLE: Record<string, { border: string; dot: string }> = {
-    'running':          { border: 'border-emerald-500/50', dot: 'bg-emerald-500' },
-    'standby':          { border: 'border-amber-500/50',   dot: 'bg-amber-500' },
-    'emergency standby':{ border: 'border-orange-500/50',  dot: 'bg-orange-500' },
-    'not standby':      { border: 'border-red-500/50',     dot: 'bg-red-500' },
-};
-
-function FeederStatusChip({ feeder, sk, value, onChange }: {
-    feeder: string;
-    sk: string;
-    value: string;
-    onChange?: (name: string, v: number | string | null) => void;
-}) {
-    const style = FEEDER_STATUS_STYLE[value];
-    const border = style?.border ?? 'border-slate-700/60';
-    const dot = style?.dot ?? 'bg-slate-500';
-    return (
-        <div className={`inline-flex items-center gap-1.5 bg-[#101822]/60 border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
-            <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
-            <select
-                className="bg-transparent appearance-none text-sm text-white font-semibold pr-3 cursor-pointer outline-none"
-                value={value}
-                onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
-            >
-                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                {FEEDER_STATUS_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
-                ))}
-            </select>
-        </div>
-    );
 }
 
 const NON_TOTALIZER_BOILER_FIELDS = [
@@ -216,7 +176,6 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                                     <div className="flex items-center gap-2">
                                         <p className="text-xs font-bold text-white uppercase tracking-wider">Feeder {feeder}</p>
                                         <FeederStatusChip
-                                            feeder=""
                                             sk={sk}
                                             value={(coalBunkerValues[sk] as string) ?? ''}
                                             onChange={onCoalBunkerChange}

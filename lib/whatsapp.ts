@@ -264,8 +264,6 @@ export function buildDeepLink(path: string, params: Record<string, string>): str
 // operator ke tab yang sesuai tugasnya. Dipakai di template via {{links}}.
 export function buildStationLinksBlock(
     mode: 'shift' | 'harian',
-    date: string,
-    shift?: 'pagi' | 'sore' | 'malam',
 ): string {
     const tabsMap = mode === 'shift' ? STATION_SHIFT_TABS : STATION_HARIAN_TABS;
     // Form harian dimount di halaman /input-shift via mode toggle, jadi link harian
@@ -273,11 +271,15 @@ export function buildStationLinksBlock(
     const path = '/input-shift';
     const modeLabel = mode === 'shift' ? 'Laporan shift' : 'Laporan harian';
 
+    // LINK TETAP/PERMANEN: tidak menyertakan tanggal/shift. Saat dibuka, halaman
+    // /input-shift auto-resolve ke shift/hari "saat ini" (lihat detectCurrentShift +
+    // logika resolusi di page). Tujuannya: operator pengganti (tukar shift) yang tidak
+    // dapat notif di grup WA bisa pakai link reminder LAMA dari grup aslinya, dan tetap
+    // mendarat di laporan shift/hari yang sedang berjalan.
     const lines: string[] = [];
     for (const st of STATION_ORDER) {
         if (tabsMap[st].length === 0) continue; // station tidak punya tab di mode ini
-        const params: Record<string, string> = { station: st, date };
-        if (mode === 'shift' && shift) params.shift = shift;
+        const params: Record<string, string> = { station: st };
         if (mode === 'harian') params.mode = 'harian';
         const link = buildDeepLink(path, params);
         // Format: bold station label di baris atas, link di baris bawah →

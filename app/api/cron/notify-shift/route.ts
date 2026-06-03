@@ -150,17 +150,16 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
     if (!group) return { schedule: schedule.id, skipped: 'no_group_configured', groupKey };
 
     const isShift = schedule.kind === 'shift_reminder' && !!schedule.shift;
+    // LINK TETAP/PERMANEN — tanpa tanggal/shift. Saat dibuka, halaman auto-resolve ke
+    // shift/hari yang sedang berjalan. Supaya operator pengganti (tukar shift) bisa pakai
+    // link reminder LAMA dari grup WA aslinya & tetap mendarat di laporan yang aktif.
     // Single general link (back-compat untuk template lama yang masih pakai {{link}})
     const link = isShift
-        ? buildDeepLink('/input-shift', { shift: schedule.shift!, date })
-        : buildDeepLink('/laporan-harian', { date });
+        ? buildDeepLink('/input-shift', {})
+        : buildDeepLink('/laporan-harian', {});
     // Multi-station links block — template baru pakai {{links}} untuk menampilkan
     // 1 link per operator station.
-    const links = buildStationLinksBlock(
-        isShift ? 'shift' : 'harian',
-        date,
-        isShift ? (schedule.shift as 'pagi' | 'sore' | 'malam') : undefined,
-    );
+    const links = buildStationLinksBlock(isShift ? 'shift' : 'harian');
 
     const message = await renderTemplate(supabase, schedule.kind, {
         shift: schedule.shift ? schedule.shift.charAt(0).toUpperCase() + schedule.shift.slice(1) : '',

@@ -146,18 +146,29 @@ function InputShiftPageInner() {
         const qShift = searchParams?.get('shift');
         const qDate = searchParams?.get('date');
         const qMode = searchParams?.get('mode');
+        const harianMode = qMode === 'harian';
         // Mode toggle dari URL (always honored kalau di-set)
-        if (qMode === 'harian') setInputMode('harian');
+        if (harianMode) setInputMode('harian');
         else if (qMode === 'shift') setInputMode('shift');
 
-        // Saat station mode aktif: override URL shift/date dengan default sesuai konteks.
-        // - Shift mode: pakai current shift saat ini (jam sekarang).
-        // - Harian mode: window submit harian = 23:00 (D) - 09:00 (D+1). Default:
-        //     • jam < 9 → KEMARIN (D-1) — masih dalam window untuk laporan kemarin
-        //     • jam ≥ 9 → HARI INI (D) — prep laporan untuk submit nanti malam jam 23:00
-        // Operator pengganti yang akses link lama dari WA group → tidak salah isi shift/hari.
-        if (stationParam) {
-            if (qMode === 'harian') {
+        // Notif "siap dipublish" mengirim ?review=1 → tandai untuk auto-buka modal
+        // Review/Publish setelah report shift/tanggal target ke-load.
+        const qReview = searchParams?.get('review');
+        if (qReview === '1' || qReview === 'publish') autoReviewRef.current = true;
+
+        // ── Resolusi target "saat ini" (LINK TETAP/PERMANEN) ──
+        // Link reminder/review dibuat tanpa tanggal/shift supaya permanen. Saat dibuka,
+        // halaman menentukan sendiri shift/hari yang sedang berjalan. Diberlakukan saat:
+        //   - station mode (operator pengganti — abaikan tanggal di link lama), ATAU
+        //   - tidak ada qDate & qShift eksplisit di URL (link permanen).
+        // Kalau URL membawa qDate/qShift eksplisit (mis. admin buka laporan tanggal
+        // tertentu) → tetap dihormati (di blok else).
+        const resolveCurrent = !!stationParam || (!qDate && !qShift);
+        if (resolveCurrent) {
+            if (harianMode) {
+                // Window submit harian = 23:00 (D) - 09:00 (D+1):
+                //   • jam < 9 → KEMARIN (D-1) — masih dalam window laporan kemarin
+                //   • jam ≥ 9 → HARI INI (D) — prep laporan untuk submit nanti malam 23:00
                 const fmtY = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                 const nowH = new Date();
                 const target = new Date(nowH);
@@ -171,17 +182,14 @@ function InputShiftPageInner() {
             }
             return;
         }
-        // Non-station mode: honor URL params (deep-link dari WA reminder normal)
+
+        // Deep-link spesifik (ada qDate/qShift) → honor URL params apa adanya.
         if (qShift) {
             const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
             const target = map[qShift.toLowerCase()];
             if (target) setSelectedShift(target);
         }
         if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) setSelectedDate(qDate);
-        // Notif "siap dipublish" mengirim ?review=1 → tandai untuk auto-buka modal
-        // Review/Publish setelah report shift/tanggal target ke-load.
-        const qReview = searchParams?.get('review');
-        if (qReview === '1' || qReview === 'publish') autoReviewRef.current = true;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

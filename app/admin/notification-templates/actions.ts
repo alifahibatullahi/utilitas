@@ -37,20 +37,14 @@ export async function renderTemplatePreview(key: string, overrides: PreviewVars 
 
     // shift placeholder: kalau template butuh tapi user tidak set, pakai 'Pagi' sebagai contoh.
     const shiftLabel = shift ? shift.charAt(0).toUpperCase() + shift.slice(1) : 'Pagi';
-    const shiftForLinks: 'pagi' | 'sore' | 'malam' = shift ?? 'pagi';
 
     const isShift = key === 'shift_reminder' || key === 'shift_share';
     const linkPath = isShift ? '/input-shift' : '/laporan-harian';
-    const linkParams: Record<string, string> = { date };
-    if (isShift) linkParams.shift = shiftForLinks;
-    const link = buildDeepLink(linkPath, linkParams);
+    // LINK TETAP/PERMANEN — tanpa tanggal/shift (auto-resolve ke shift/hari berjalan).
+    const link = buildDeepLink(linkPath, {});
 
     // Station links block — hanya relevan untuk reminder, tapi safe untuk semua.
-    const links = buildStationLinksBlock(
-        isShift ? 'shift' : 'harian',
-        date,
-        isShift ? shiftForLinks : undefined,
-    );
+    const links = buildStationLinksBlock(isShift ? 'shift' : 'harian');
 
     const summary = overrides.summary
         ?? '(placeholder summary — isi otomatis saat kirim dari laporan)';

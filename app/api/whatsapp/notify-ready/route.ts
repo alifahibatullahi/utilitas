@@ -106,7 +106,9 @@ export async function POST(req: NextRequest) {
 
     // 4. Susun pesan ringkas parameter washift + link review/publish.
     // review=1 → halaman input-shift auto-buka modal Review/Publish untuk Foreman/Supervisor.
-    const link = buildDeepLink('/input-shift', { shift, date, review: '1' });
+    // LINK TETAP/PERMANEN — tanpa tanggal/shift: auto-resolve ke shift berjalan, supaya
+    // Foreman/Supervisor pengganti bisa pakai link review LAMA dari grup WA aslinya.
+    const link = buildDeepLink('/input-shift', { review: '1' });
     const logbookLink = buildDeepLink('/logbook', { date });
     const sc = shiftLabel(shift);
     // Pesan ringkas: tanpa isian parameter — cukup info + link untuk Foreman/Supervisor

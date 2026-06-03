@@ -87,7 +87,9 @@ export async function POST(req: NextRequest) {
     if (!group) return NextResponse.json({ ready: true, skipped: 'no_group_configured', groupKey });
 
     // 4. Pesan ringkas (tanpa isian parameter) + link review/publish harian.
-    const link = buildDeepLink('/input-shift', { mode: 'harian', date, review: '1' });
+    // LINK TETAP/PERMANEN — tanpa tanggal: auto-resolve ke laporan harian berjalan, supaya
+    // Foreman/Supervisor pengganti bisa pakai link review LAMA dari grup WA aslinya.
+    const link = buildDeepLink('/input-shift', { mode: 'harian', review: '1' });
     const logbookLink = buildDeepLink('/logbook', { date });
     const msg = [
         `✅ *Laporan Harian (LHUBB) siap dipublish*`,

@@ -94,14 +94,6 @@ export default function TabCatatanOperasional({
     return (
         <div className="w-full max-w-3xl mx-auto">
             <Card title="Catatan Operasional" icon="sticky_note_2" color="amber">
-                <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                    Tulis catatan operasional bebas. Aktivitas{' '}
-                    <span className="text-amber-300 font-semibold">solar</span>,{' '}
-                    <span className="text-slate-300 font-semibold">unloading fly ash</span>, dan{' '}
-                    <span className="text-amber-300 font-semibold">bunker berasap</span> akan
-                    otomatis ditambahkan sebagai baris teks di bawah — bebas diedit, diatur ulang,
-                    atau dihapus seperti catatan biasa.
-                </p>
                 <textarea
                     value={catatan}
                     onChange={e => onCatatanChange(e.target.value)}

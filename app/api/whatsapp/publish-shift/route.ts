@@ -517,9 +517,14 @@ function buildShiftSummary(report: any, latestTank: { rcw: number | null; demin:
     // Level RCW/Demin pakai data terakhir dari tank_levels.
     lines.push(buildOperasiParams(report, latestTank));
 
-    // CATATAN: Untuk sementara teks washift hanya berisi Parameter Operasi.
-    // Blok Maintenance & Catatan Operasional sengaja tidak disertakan (atas permintaan).
-    // Data maintenance/catatan tetap dipakai untuk PDF & tab Review.
+    // Catatan Operasional shift (catatan utama + catatan tiap station digabung).
+    // Blok Maintenance tetap tidak disertakan ke teks washift (hanya untuk PDF & Review).
+    const catatan = mergeShiftCatatan(report.catatan as string | null, report.station_catatan as Record<string, string> | null);
+    if (catatan.trim()) {
+        lines.push('');
+        lines.push('*Catatan Operasional*');
+        lines.push(catatan.trim());
+    }
 
     return lines.join('\n');
 }

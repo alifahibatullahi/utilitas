@@ -1088,8 +1088,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
                 {/* Tab Content Area */}
                 <div className="flex-1 min-w-0 flex flex-col gap-4">
-                    {/* Active Tab Header */}
-                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-5 py-4 flex items-center gap-4 shadow-lg">
+                    {/* Active Tab Header — disamakan dengan laporan shift (judul + status chip di kanan judul). */}
+                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                         {(() => {
                             const tab = visibleTabs.find(t => t.id === activeTab);
                             const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
@@ -1098,13 +1098,10 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                             return (
                                 <>
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner`}>
-                                        <span className={`material-symbols-outlined text-[26px] ${styles.icon}`}>{tab?.icon}</span>
+                                    <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
+                                        <span className={`material-symbols-outlined text-[22px] sm:text-[30px] ${styles.icon}`}>{tab?.icon}</span>
                                     </div>
-                                    <div>
-                                        <h2 className="text-white font-bold text-xl leading-tight">{tab?.label}</h2>
-                                        <p className="text-slate-400 text-xs mt-0.5">Input data operasional harian {tab?.label}</p>
-                                    </div>
+                                    <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide shrink-0">{tab?.label}</h2>
                                     {/* Status chip boiler — di kanan judul untuk tab Boiler A/B (sama spt shift). */}
                                     {(activeTab === 'Boiler A' || activeTab === 'Boiler B') && (() => {
                                         const bx = activeTab === 'Boiler A' ? 'a' : 'b';
@@ -1112,7 +1109,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                         const bBorder = bStatus === 'running' ? 'border-emerald-500/50' : bStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
                                         const bDot = bStatus === 'running' ? 'bg-emerald-500' : bStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                                         return (
-                                            <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${bBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0 ml-auto`}>
+                                            <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${bBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
                                                 <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${bDot} shrink-0`} />
                                                 <select
                                                     className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
@@ -1131,7 +1128,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     })()}
                                     {/* Status chip turbin — di kanan judul, size sama seperti chip shift */}
                                     {activeTab === 'Turbin' && (
-                                        <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0 ml-auto`}>
+                                        <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
                                             <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
                                             <select
                                                 className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"

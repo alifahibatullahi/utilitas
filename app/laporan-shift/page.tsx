@@ -115,6 +115,23 @@ function toLocalDateStr(d: Date): string {
     return `${y}-${m}-${day}`;
 }
 
+// Gabungkan catatan utama + catatan tiap station (panel_boiler/turbin) jadi satu.
+const STATION_CATATAN_VIEW: Record<string, string> = {
+    panel_boiler: 'Panel Boiler', panel_boiler_a: 'Panel Boiler A',
+    panel_boiler_b: 'Panel Boiler B', panel_turbin: 'Panel Turbin',
+};
+function mergeShiftCatatan(main: string | null | undefined, sc: Record<string, string> | null | undefined): string {
+    const parts: string[] = [];
+    const m = (main ?? '').trim();
+    if (m) parts.push(m);
+    const obj = sc ?? {};
+    for (const key of ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin']) {
+        const note = (obj[key] ?? '').trim();
+        if (note) parts.push(`[${STATION_CATATAN_VIEW[key] ?? key}]\n${note}`);
+    }
+    return parts.join('\n\n');
+}
+
 // ─── Build Report from Supabase Data ───
 function buildReportFromSupabase(sr: ShiftReportData): ShiftReport {
     const boilerA = sr.shift_boiler?.find(b => b.boiler === 'A');
@@ -240,7 +257,7 @@ function buildReportFromSupabase(sr: ShiftReportData): ShiftReport {
         // Sumber utama catatan = shift_reports.catatan (diisi via tab "Catatan Operasional"
         // di form input). Legacy shift_notes.content dipakai sebagai fallback untuk
         // laporan lama yang belum migrasi.
-        catatan: sr.catatan ?? note?.content ?? '',
+        catatan: mergeShiftCatatan(sr.catatan, sr.station_catatan) || (note?.content ?? ''),
         catatanTime: note?.timestamp ?? '',
         catatanAuthor: sr.created_by ?? '',
         catatanRole: '',

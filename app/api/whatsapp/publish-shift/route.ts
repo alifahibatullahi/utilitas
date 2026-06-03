@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     const { data: report, error } = await supabase
         .from('shift_reports')
         .select(`
-            id, date, shift, group_name, supervisor, catatan,
+            id, date, shift, group_name, supervisor, catatan, station_catatan,
             shift_turbin (flow_steam, press_steam, temp_steam, vacuum, stream_days, thrust_bearing),
             shift_generator_gi (gen_load, gen_tegangan, gen_frequensi, gi_sum_p),
             shift_boiler (boiler, press_steam, flow_steam, temp_steam, batubara_ton, temp_furnace, temp_flue_gas, totalizer_steam, status_boiler),
@@ -200,6 +200,29 @@ function formatDateHariTanggal(isoDate: string): string {
     return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// Label & urutan station yang punya catatan operasional sendiri (panel_boiler/turbin).
+const STATION_CATATAN_LABELS: Record<string, string> = {
+    panel_boiler: 'Panel Boiler',
+    panel_boiler_a: 'Panel Boiler A',
+    panel_boiler_b: 'Panel Boiler B',
+    panel_turbin: 'Panel Turbin',
+};
+const STATION_CATATAN_ORDER = ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin'];
+
+/** Gabungkan catatan utama shift + catatan tiap station (panel_boiler/turbin) jadi satu
+ *  teks catatan shift. Tiap blok station diberi label kecil supaya jelas sumbernya. */
+function mergeShiftCatatan(mainCatatan: string | null | undefined, stationCatatan: Record<string, string> | null | undefined): string {
+    const parts: string[] = [];
+    const main = (mainCatatan ?? '').trim();
+    if (main) parts.push(main);
+    const sc = stationCatatan ?? {};
+    for (const key of STATION_CATATAN_ORDER) {
+        const note = (sc[key] ?? '').trim();
+        if (note) parts.push(`[${STATION_CATATAN_LABELS[key] ?? key}]\n${note}`);
+    }
+    return parts.join('\n\n');
+}
+
 interface PublishBody {
     reportId: string;
     washiftMessage: string;
@@ -220,7 +243,7 @@ export async function POST(req: NextRequest) {
     const { data: report, error } = await supabase
         .from('shift_reports')
         .select(`
-            id, date, shift, group_name, supervisor, catatan,
+            id, date, shift, group_name, supervisor, catatan, station_catatan,
             shift_turbin (*),
             shift_generator_gi (*),
             shift_boiler (*),
@@ -475,7 +498,7 @@ function buildShiftReportHtml(report: any, maintenance: any[]): string {
     <tbody>${maintRows}</tbody>
   </table>
 
-  ${report.catatan ? `<h2>Catatan Shift</h2><div class="catatan">${escapeHtml(report.catatan)}</div>` : ''}
+  ${(() => { const c = mergeShiftCatatan(report.catatan as string | null, report.station_catatan as Record<string, string> | null); return c ? `<h2>Catatan Shift</h2><div class="catatan">${escapeHtml(c)}</div>` : ''; })()}
 
   <div class="footer">PowerOps — Laporan Shift ${shiftLabel} ${report.date} · Grup ${report.group_name}</div>
 </body>
@@ -675,7 +698,7 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
         } : null,
         // Level RCW/Demin dari data terakhir di tank_levels (bukan shift_tankyard).
         tankLevels: { rcw: latestTank.rcw, demin: latestTank.demin },
-        catatan: (report.catatan as string) ?? '',
+        catatan: mergeShiftCatatan(report.catatan as string | null, report.station_catatan as Record<string, string> | null),
         maintenance: maintenance.map(m => ({
             item: String(m.item ?? '-'),
             uraian: String(m.uraian ?? '-'),

@@ -355,10 +355,10 @@ export const STATION_LABELS: Record<OperatorStation, string> = {
 
 // Tab IDs harus match dengan TabId di app/input-shift/page.tsx.
 export const STATION_SHIFT_TABS: Record<OperatorStation, string[]> = {
-    panel_boiler: ['Boiler A', 'Boiler B'],
-    panel_boiler_a: ['Boiler A'],
-    panel_boiler_b: ['Boiler B'],
-    panel_turbin: ['Turbin', 'Distribusi Steam', 'Generator'],
+    panel_boiler: ['Boiler A', 'Boiler B', 'Catatan Operasional'],
+    panel_boiler_a: ['Boiler A', 'Catatan Operasional'],
+    panel_boiler_b: ['Boiler B', 'Catatan Operasional'],
+    panel_turbin: ['Turbin', 'Distribusi Steam', 'Generator', 'Catatan Operasional'],
     handling: ['Handling'],
     esp: ['ESP'],
     bunker: ['Coal Bunker'],

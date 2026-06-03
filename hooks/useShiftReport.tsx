@@ -407,6 +407,9 @@ export interface ShiftReportData {
     supervisor: string;
     status: ReportStatus;
     catatan: string | null;
+    /** Catatan operasional per-station (panel_boiler/turbin), key = station id.
+     *  Digabung dgn catatan utama jadi satu catatan shift saat publish. */
+    station_catatan: Record<string, string> | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
     created_by: string;
@@ -793,6 +796,10 @@ export function useShiftReport(date: string, shift: ShiftType) {
         /** Per-station filler — kalau diisi, di-merge ke station_fillers JSONB tanpa
          *  overwrite station lain. Dipakai saat operator submit dari station view. */
         station_filler?: { station: string; name: string };
+        /** Per-station catatan operasional — di-merge ke station_catatan JSONB (race-proof
+         *  via RPC) tanpa overwrite station lain. Saat publish digabung jadi satu catatan
+         *  shift. Dipakai saat panel_boiler/panel_turbin submit dari station view. */
+        station_catatan?: { station: string; catatan: string };
         /** Station scope. Kalau diisi:
          *  - parent shift_reports update tidak overwrite supervisor/catatan/group_name
          *  - hanya child tables yang owned station tsb yang ditulis
@@ -980,6 +987,21 @@ export function useShiftReport(date: string, shift: ShiftType) {
             if (rpcErr) {
                 console.warn('[submitReport] merge_shift_station_filler RPC failed:', rpcErr.message);
                 // Non-fatal: data operasional tetap tersimpan, hanya audit name yang miss.
+            }
+        }
+
+        // ─── Atomic merge station_catatan via RPC (race-proof) ───
+        // Catatan operasional per-station (panel_boiler/turbin) di-merge ke JSONB tanpa
+        // overwrite station lain. Digabung jadi satu catatan shift saat publish.
+        if (reportData.station_catatan && sr?.id) {
+            const { error: rpcErr } = await supabase.rpc('merge_shift_station_catatan', {
+                p_report_id: sr.id,
+                p_station: reportData.station_catatan.station,
+                p_catatan: reportData.station_catatan.catatan,
+            });
+            if (rpcErr) {
+                console.warn('[submitReport] merge_shift_station_catatan RPC failed:', rpcErr.message);
+                // Non-fatal: data operasional tetap tersimpan, hanya catatan station yang miss.
             }
         }
 

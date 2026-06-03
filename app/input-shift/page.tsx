@@ -314,6 +314,10 @@ function InputShiftPageInner() {
     // per session. Setelah di-track di autoInjectedRef, user bebas edit/hapus tanpa kita
     // re-add. Dipasang setelah `bunkerBerasapSince` dideklarasi (TDZ-safe).
     useEffect(() => {
+        // Auto-inject hanya untuk form penuh (supervisor). Di mode station, catatan
+        // operasional adalah teks bebas milik station tsb — jangan dicampuri auto-line
+        // (solar/ash/bunker milik station lain).
+        if (station) return;
         const lines = buildAutoCatatanLines({
             solarIn: [...savedSolarEntries, ...solarEntries],
             solarOut: [...savedOutSolarEntries, ...outSolarEntries],
@@ -506,7 +510,14 @@ function InputShiftPageInner() {
         const personnel = (report as any).shift_personnel?.[0];
         if (personnel?.turbin_karu) setForemanTurbin(personnel.turbin_karu);
         if (personnel?.boiler_karu) setForemanBoiler(personnel.boiler_karu);
-        if (report.catatan != null) setCatatan(report.catatan);
+        // Catatan: di mode station (panel_boiler/turbin) restore dari station_catatan[station]
+        // (catatan milik station ini saja). Di mode penuh restore dari catatan utama shift.
+        if (station) {
+            const sc = report.station_catatan as Record<string, string> | null | undefined;
+            setCatatan(sc?.[station] ?? '');
+        } else if (report.catatan != null) {
+            setCatatan(report.catatan);
+        }
         // status_turbin restored automatically via extractFields di useEffect lain saat
         // report.shift_turbin di-load → setTurbin(extractFields(turbinData)).
         // Restore filler dari station_fillers[station] kalau ada — kalau belum, default
@@ -927,24 +938,28 @@ function InputShiftPageInner() {
             // pernah buka tab Catatan Operasional, atau useEffect timing aneh, auto-line
             // ter-include di laporan. Line yang user sudah delete (autoInjectedRef.has)
             // tidak di-re-add.
-            const finalAutoLines = buildAutoCatatanLines({
-                solarIn: [...savedSolarEntries, ...solarEntries],
-                solarOut: [...savedOutSolarEntries, ...outSolarEntries],
-                ash: [...savedAshEntries, ...ashEntries],
-                coalBunker,
-                berasapSince: bunkerBerasapSince,
-                currentDate: selectedDate,
-                currentShift: shiftMap[selectedShift],
-            });
+            // Auto-line hanya untuk form penuh (supervisor). Di mode station, catatan = teks
+            // bebas milik station tsb, tidak dicampuri auto-line milik station lain.
             let catatanForSubmit = catatan;
-            for (const line of finalAutoLines) {
-                if (autoInjectedRef.current.has(line)) continue;       // user mungkin sudah delete
-                if (catatanForSubmit.includes(line)) continue;          // sudah ada di textarea
-                autoInjectedRef.current.add(line);
-                const sep = catatanForSubmit && !catatanForSubmit.endsWith('\n') ? '\n' : '';
-                catatanForSubmit = catatanForSubmit + sep + line;
+            if (!station) {
+                const finalAutoLines = buildAutoCatatanLines({
+                    solarIn: [...savedSolarEntries, ...solarEntries],
+                    solarOut: [...savedOutSolarEntries, ...outSolarEntries],
+                    ash: [...savedAshEntries, ...ashEntries],
+                    coalBunker,
+                    berasapSince: bunkerBerasapSince,
+                    currentDate: selectedDate,
+                    currentShift: shiftMap[selectedShift],
+                });
+                for (const line of finalAutoLines) {
+                    if (autoInjectedRef.current.has(line)) continue;       // user mungkin sudah delete
+                    if (catatanForSubmit.includes(line)) continue;          // sudah ada di textarea
+                    autoInjectedRef.current.add(line);
+                    const sep = catatanForSubmit && !catatanForSubmit.endsWith('\n') ? '\n' : '';
+                    catatanForSubmit = catatanForSubmit + sep + line;
+                }
+                if (catatanForSubmit !== catatan) setCatatan(catatanForSubmit);
             }
-            if (catatanForSubmit !== catatan) setCatatan(catatanForSubmit);
 
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
@@ -973,6 +988,11 @@ function InputShiftPageInner() {
                 prevBoilerB: { totalizer_steam: (prevBoilerB.totalizer_steam as number | null) ?? null },
                 // Station-scoped fill audit: hanya di-kirim kalau operator submit dari station view.
                 ...(station && fillerName ? { station_filler: { station, name: fillerName } } : {}),
+                // Catatan operasional per-station (hanya station yg punya tab Catatan, mis.
+                // panel_boiler/turbin) — di-merge ke station_catatan JSONB, digabung saat publish.
+                ...(station && STATION_SHIFT_TABS[station]?.includes('Catatan Operasional')
+                    ? { station_catatan: { station, catatan: catatanForSubmit } }
+                    : {}),
                 // Station scope — hook akan filter child tables yang hanya owned station ini.
                 station: station ?? null,
             });

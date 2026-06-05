@@ -17,6 +17,7 @@ import TabChemical from './TabChemical';
 import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import type { DailyTabProps } from './types';
@@ -1016,14 +1017,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             <div className="flex flex-col gap-1">
                                 <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
                                 <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
-                                    <select value={fillerName} onChange={e => setFillerName(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none w-full">
-                                        <option value="" className="bg-[#101822]">Pilih...</option>
-                                        {operators.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#101822]">
-                                                {op.name}{op.group ? ` (Group ${op.group})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        value={fillerName}
+                                        onChange={setFillerName}
+                                        options={operators.map(op => ({ value: op.name, label: `${op.name}${op.group ? ` (Group ${op.group})` : ''}` }))}
+                                        ariaLabel="Diisi oleh"
+                                        triggerClassName="text-sm font-bold text-white"
+                                    />
                                     <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                 </div>
                             </div>

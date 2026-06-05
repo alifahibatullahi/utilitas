@@ -18,6 +18,7 @@ import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
@@ -1469,16 +1470,14 @@ function InputShiftPageInner() {
                             <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight select-none">Supervisor</span>
                                 <div className="relative w-full flex items-center h-5">
-                                    <select 
-                                        value={supervisor} 
-                                        onChange={e => setSupervisor(e.target.value)} 
-                                        className="w-full bg-transparent border-none p-0 text-[11px] sm:text-xs lg:text-sm font-black text-slate-100 focus:ring-0 cursor-pointer appearance-none outline-none"
-                                    >
-                                        <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
-                                        {supervisorOptions.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#101822] text-slate-100">{op.name}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        value={supervisor}
+                                        onChange={setSupervisor}
+                                        options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
+                                        ariaLabel="Supervisor"
+                                        triggerClassName="text-[11px] sm:text-xs lg:text-sm font-black text-slate-100"
+                                        placeholderClassName="text-slate-400"
+                                    />
                                 </div>
                                 <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                             </div>
@@ -1491,16 +1490,14 @@ function InputShiftPageInner() {
                                 <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
                                     <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest leading-tight select-none">Foreman Boiler</span>
                                     <div className="relative w-full flex items-center h-5">
-                                        <select 
-                                            value={foremanBoiler} 
-                                            onChange={e => setForemanBoiler(e.target.value)} 
-                                            className="w-full bg-transparent border-none p-0 text-[11px] sm:text-xs lg:text-sm font-black text-amber-100 focus:ring-0 cursor-pointer appearance-none outline-none"
-                                        >
-                                            <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
-                                            {foremanBoilerOptions.map(op => (
-                                                <option key={op.id} value={op.name} className="bg-[#101822] text-amber-100">{op.name}</option>
-                                            ))}
-                                        </select>
+                                        <SearchableSelect
+                                            value={foremanBoiler}
+                                            onChange={setForemanBoiler}
+                                            options={foremanBoilerOptions.map(op => ({ value: op.name, label: op.name }))}
+                                            ariaLabel="Foreman Boiler"
+                                            triggerClassName="text-[11px] sm:text-xs lg:text-sm font-black text-amber-100"
+                                            placeholderClassName="text-slate-400"
+                                        />
                                     </div>
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                 </div>
@@ -1508,16 +1505,14 @@ function InputShiftPageInner() {
                                 <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
                                     <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-tight select-none">Foreman Turbin</span>
                                     <div className="relative w-full flex items-center h-5">
-                                        <select 
-                                            value={foremanTurbin} 
-                                            onChange={e => setForemanTurbin(e.target.value)} 
-                                            className="w-full bg-transparent border-none p-0 text-[11px] sm:text-xs lg:text-sm font-black text-indigo-100 focus:ring-0 cursor-pointer appearance-none outline-none"
-                                        >
-                                            <option value="" className="bg-[#101822] text-slate-400">Pilih...</option>
-                                            {foremanTurbinOptions.map(op => (
-                                                <option key={op.id} value={op.name} className="bg-[#101822] text-indigo-100">{op.name}</option>
-                                            ))}
-                                        </select>
+                                        <SearchableSelect
+                                            value={foremanTurbin}
+                                            onChange={setForemanTurbin}
+                                            options={foremanTurbinOptions.map(op => ({ value: op.name, label: op.name }))}
+                                            ariaLabel="Foreman Turbin"
+                                            triggerClassName="text-[11px] sm:text-xs lg:text-sm font-black text-indigo-100"
+                                            placeholderClassName="text-slate-400"
+                                        />
                                     </div>
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                 </div>
@@ -1676,14 +1671,13 @@ function InputShiftPageInner() {
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
                                     <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
-                                        <select value={fillerName} onChange={e => setFillerName(e.target.value)} className="bg-transparent border-none p-0 text-sm font-bold text-white focus:ring-0 cursor-pointer appearance-none outline-none w-full">
-                                            <option value="" className="bg-[#101822]">Pilih...</option>
-                                            {operators.map(op => (
-                                                <option key={op.id} value={op.name} className="bg-[#101822]">
-                                                    {op.name}{op.group ? ` (Group ${op.group})` : ''}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <SearchableSelect
+                                            value={fillerName}
+                                            onChange={setFillerName}
+                                            options={operators.map(op => ({ value: op.name, label: `${op.name}${op.group ? ` (Group ${op.group})` : ''}` }))}
+                                            ariaLabel="Diisi oleh"
+                                            triggerClassName="text-sm font-bold text-white"
+                                        />
                                         <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                     </div>
                                 </div>

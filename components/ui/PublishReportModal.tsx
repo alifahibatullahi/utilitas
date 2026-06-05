@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 
 // ── Structured summary types (mirror dari server endpoints publish-{shift|daily}) ──
 interface ShiftReviewSummary {
@@ -415,18 +416,13 @@ export function PublishReportModal({
                                     {kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
                                 </label>
                                 <div className="relative flex items-center">
-                                    <select
+                                    <SearchableSelect
                                         value={supervisor}
-                                        onChange={e => { const v = e.target.value; setSupervisor(v); onSupervisorChange?.(v); persistChange('supervisor', v); }}
-                                        className="w-full bg-transparent border-none p-0 text-xs font-black text-slate-200 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
-                                    >
-                                        <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
-                                        {supervisorOptions.map(op => (
-                                            <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
-                                                {op.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={v => { setSupervisor(v); onSupervisorChange?.(v); persistChange('supervisor', v); }}
+                                        options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
+                                        ariaLabel={kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
+                                        triggerClassName="text-xs font-black text-slate-200 pr-6"
+                                    />
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
                                 </div>
                             </div>
@@ -437,18 +433,13 @@ export function PublishReportModal({
                                     <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
                                         <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Turbin</label>
                                         <div className="relative flex items-center">
-                                            <select
+                                            <SearchableSelect
                                                 value={foremanTurbin}
-                                                onChange={e => { const v = e.target.value; setForemanTurbin(v); onForemanTurbinChange?.(v); persistChange('foreman_turbin', v); }}
-                                                className="w-full bg-transparent border-none p-0 text-xs font-black text-indigo-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
-                                            >
-                                                <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
-                                                {foremanTurbinOptions.map(op => (
-                                                    <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
-                                                        {op.name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                onChange={v => { setForemanTurbin(v); onForemanTurbinChange?.(v); persistChange('foreman_turbin', v); }}
+                                                options={foremanTurbinOptions.map(op => ({ value: op.name, label: op.name }))}
+                                                ariaLabel="Foreman Turbin"
+                                                triggerClassName="text-xs font-black text-indigo-300 pr-6"
+                                            />
                                             <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
                                         </div>
                                     </div>
@@ -457,18 +448,13 @@ export function PublishReportModal({
                                     <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
                                         <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Boiler</label>
                                         <div className="relative flex items-center">
-                                            <select
+                                            <SearchableSelect
                                                 value={foremanBoiler}
-                                                onChange={e => { const v = e.target.value; setForemanBoiler(v); onForemanBoilerChange?.(v); persistChange('foreman_boiler', v); }}
-                                                className="w-full bg-transparent border-none p-0 text-xs font-black text-amber-300 focus:ring-0 cursor-pointer appearance-none outline-none pr-6"
-                                            >
-                                                <option value="" className="bg-[#0e1621] text-slate-500">Pilih...</option>
-                                                {foremanBoilerOptions.map(op => (
-                                                    <option key={op.id} value={op.name} className="bg-[#0e1621] text-slate-100">
-                                                        {op.name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                onChange={v => { setForemanBoiler(v); onForemanBoilerChange?.(v); persistChange('foreman_boiler', v); }}
+                                                options={foremanBoilerOptions.map(op => ({ value: op.name, label: op.name }))}
+                                                ariaLabel="Foreman Boiler"
+                                                triggerClassName="text-xs font-black text-amber-300 pr-6"
+                                            />
                                             <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
                                         </div>
                                     </div>

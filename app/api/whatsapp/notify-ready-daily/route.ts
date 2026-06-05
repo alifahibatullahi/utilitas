@@ -10,8 +10,9 @@ import { getGroupShiftOnDate } from '@/lib/constants';
 
 // Notif "siap dipublish" laporan HARIAN (LHUBB): dikirim ke grup yang MENGISI LHUBB —
 // yaitu grup yang dinas malam mulai 23:00 hari D (jadwal 'M' pada tanggal D) — ketika
-// semua parameter harian utama sudah terisi. Dipanggil fire-and-forget dari client tiap
-// simpan harian. Endpoint sendiri yang menentukan complete & dedup (1x per hari).
+// parameter Boiler A, Boiler B, Turbin, & Power sudah terisi (panel boiler + panel
+// turbin selesai). Dipanggil fire-and-forget dari client tiap simpan harian. Endpoint
+// sendiri yang menentukan complete & dedup (1x per hari).
 
 const NOTIF_KIND = 'report_ready_daily';
 
@@ -46,14 +47,20 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Ambil parameter harian utama untuk cek kelengkapan.
+    //    Kriteria SAMA PERSIS dengan centang tab di form (isTabLengkap):
+    //    notif "siap publish" fire begitu Boiler A, Boiler B, Turbin, & Power
+    //    sudah lengkap (panel boiler + panel turbin selesai). Handling/stock/coal
+    //    TIDAK jadi syarat — by design, lihat keputusan ops.
+    //    Pakai field totalizer 24h (_24) yang memang diisi operator, BUKAN _00
+    //    yang di-zero saat boiler/turbin shutdown.
     const { data: report } = await supabase
         .from('daily_reports')
         .select(`
             id,
-            daily_report_steam (prod_boiler_a_00, prod_boiler_b_00, inlet_turbine_00),
-            daily_report_power (gen_00, power_ubb),
-            daily_report_coal (total_boiler_a_24, total_boiler_b_24),
-            daily_report_stock_tank (rcw_level_00, demin_level_00, stock_batubara)
+            daily_report_steam (prod_boiler_a_24, prod_boiler_b_24, inlet_turbine_24, fully_condens_24),
+            daily_report_power (gen_00),
+            daily_report_turbine_misc (gen_ampere),
+            daily_report_stock_tank (bfw_boiler_a, bfw_boiler_b)
         `)
         .eq('id', reportId)
         .single();
@@ -62,14 +69,17 @@ export async function POST(req: NextRequest) {
 
     const steam = first(report.daily_report_steam);
     const power = first(report.daily_report_power);
-    const coal = first(report.daily_report_coal);
+    const turbineMisc = first(report.daily_report_turbine_misc);
     const stock = first(report.daily_report_stock_tank);
 
     const missing: string[] = [];
-    if (!steam || !filled(steam.prod_boiler_a_00) || !filled(steam.prod_boiler_b_00) || !filled(steam.inlet_turbine_00)) missing.push('Produksi Steam');
-    if (!power || !filled(power.gen_00) || !filled(power.power_ubb)) missing.push('Power');
-    if (!coal || !filled(coal.total_boiler_a_24) || !filled(coal.total_boiler_b_24)) missing.push('Batubara 24h');
-    if (!stock || !filled(stock.rcw_level_00) || !filled(stock.demin_level_00) || !filled(stock.stock_batubara)) missing.push('Stock & Tank');
+    // Boiler A & B — produksi totalizer 24h + BFW (mirror isTabLengkap 'Boiler A'/'Boiler B').
+    if (!steam || !filled(steam.prod_boiler_a_24) || !stock || !filled(stock.bfw_boiler_a)) missing.push('Boiler A');
+    if (!steam || !filled(steam.prod_boiler_b_24) || !stock || !filled(stock.bfw_boiler_b)) missing.push('Boiler B');
+    // Turbin — inlet & fully condensing 24h (mirror isTabLengkap 'Turbin').
+    if (!steam || !filled(steam.inlet_turbine_24) || !filled(steam.fully_condens_24)) missing.push('Turbin');
+    // Power/Generator — gen_00 (load) ATAU gen_ampere (mirror isTabLengkap 'Power').
+    if ((!power || !filled(power.gen_00)) && (!turbineMisc || !filled(turbineMisc.gen_ampere))) missing.push('Power');
 
     if (missing.length > 0) {
         return NextResponse.json({ ready: false, missing });
@@ -95,7 +105,7 @@ export async function POST(req: NextRequest) {
         `✅ *Laporan Harian (LHUBB) siap dipublish*`,
         `Tanggal: ${date}  •  Grup ${groupLetter}`,
         '',
-        'Semua parameter harian sudah terisi. Mohon Foreman/Supervisor review & publish:',
+        'Parameter Boiler, Turbin & Power sudah terisi. Mohon Foreman/Supervisor review & publish:',
         link,
         '',
         '📖 Review via E-Logbook:',

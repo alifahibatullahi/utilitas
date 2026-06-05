@@ -52,6 +52,9 @@ export default function LogbookPage() {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<string>(todayWIB());
     const [shiftMap, setShiftMap] = useState<Record<string, Row>>({});
+    // Pesan error fetch shift (mis. API Supabase down/timeout) — ditampilkan sebagai
+    // banner supaya gangguan tidak tampil sebagai halaman kosong tanpa keterangan.
+    const [shiftError, setShiftError] = useState<string | null>(null);
     // Dibump untuk memicu refetch shift data (saat tab kembali aktif / polling).
     const [refreshKey, setRefreshKey] = useState(0);
 
@@ -71,7 +74,11 @@ export default function LogbookPage() {
         return () => ro.disconnect();
     }, []);
 
-    const { report: daily, refetch: refetchDaily } = useDailyReport(selectedDate);
+    const { report: daily, refetch: refetchDaily, error: dailyError } = useDailyReport(selectedDate);
+
+    // Error gabungan (shift + harian) untuk banner. Manual retry tersedia di banner.
+    const loadError = shiftError || dailyError;
+    const retry = () => { setShiftError(null); setRefreshKey(k => k + 1); refetchDaily(); };
 
     useEffect(() => {
         if (!authLoading && !operator) router.push('/');
@@ -93,11 +100,17 @@ export default function LogbookPage() {
         const prevISO = toISO(prev);
 
         (async () => {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('shift_reports')
                 .select(SHIFT_SELECT)
                 .in('date', [prevISO, selectedDate]);
             if (stale) return;
+            if (error) {
+                // Pertahankan data terakhir yang sempat tampil; cukup tandai error.
+                setShiftError(error.message);
+                return;
+            }
+            setShiftError(null);
             const map: Record<string, Row> = {};
             (data ?? []).forEach((r: Row) => { map[`${r.date}|${r.shift}`] = r; });
             setShiftMap(map);
@@ -426,6 +439,24 @@ export default function LogbookPage() {
                     Print / PDF
                 </button>
             </div>
+
+            {/* Banner error muat data (tidak ikut print) */}
+            {loadError && (
+                <div className="lb-no-print mt-3 flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm">
+                    <span className="material-symbols-outlined text-red-400">error</span>
+                    <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-red-200">Gagal memuat data logbook</p>
+                        <p className="text-red-300/80 text-xs mt-0.5 break-words">
+                            Data yang tampil mungkin tidak lengkap atau belum diperbarui. ({loadError})
+                        </p>
+                    </div>
+                    <button onClick={retry}
+                        className="shrink-0 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-100 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
+                        <span className="material-symbols-outlined text-sm">refresh</span>
+                        Coba lagi
+                    </button>
+                </div>
+            )}
 
             {/* Lembar buku — zoom-to-fit di layar kecil */}
             <div ref={fitRef} className="overflow-x-auto">

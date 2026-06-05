@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
             ),
             daily_report_turbine_misc (
                 status_boiler_a, status_boiler_b, status_turbin,
+                status_feeder_a, status_feeder_b, status_feeder_c,
+                status_feeder_d, status_feeder_e, status_feeder_f,
                 press_steam_a, temp_steam_a, bfw_press_a, temp_bfw_a, temp_furnace_a,
                 air_heater_ti113_a, temp_flue_gas_a, o2_a, primary_air_a, secondary_air_a, steam_drum_press_a,
                 press_steam_b, temp_steam_b, bfw_press_b, temp_bfw_b, temp_furnace_b,

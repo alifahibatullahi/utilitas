@@ -39,6 +39,13 @@ export function isBoilerComplete(s: DailyState, boiler: 'a' | 'b'): boolean {
             && has(s.stockTank, [`bfw_boiler_${b}`])
             && has(s.coal, tot24);
     }
+    // Flow per-feeder (coal_*_00) HANYA wajib untuk feeder yang running. Feeder
+    // standby/emergency/not-standby → field flow dikunci & kosong di form, jadi
+    // tidak boleh diwajibkan (kalau dipaksa, centang tak pernah muncul saat ada
+    // feeder standby). Totalizer 24h tetap wajib untuk semua feeder.
+    const runningFlow = feeders
+        .filter((f) => s.turbineMisc?.[`status_feeder_${f}`] === 'running')
+        .map((f) => `coal_${f}_00`);
     return has(s.turbineMisc, [
         `press_steam_${b}`, `temp_steam_${b}`, `bfw_press_${b}`, `temp_bfw_${b}`,
         `temp_furnace_${b}`, `air_heater_ti113_${b}`, `temp_flue_gas_${b}`, `o2_${b}`,
@@ -46,7 +53,7 @@ export function isBoilerComplete(s: DailyState, boiler: 'a' | 'b'): boolean {
     ])
         && has(s.steam, [`prod_boiler_${b}_00`, `prod_boiler_${b}_24`])
         && has(s.stockTank, [`flow_bfw_${b}`, `bfw_boiler_${b}`])
-        && has(s.coal, [...tot24, ...feeders.map((f) => `coal_${f}_00`)]);
+        && has(s.coal, [...tot24, ...runningFlow]);
 }
 
 /** Turbin & Distribusi Steam lengkap (totalizer + flow tiap distribusi + parameter turbin). */

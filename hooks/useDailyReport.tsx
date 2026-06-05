@@ -140,7 +140,7 @@ function pickValidCols(table: string, data: Record<string, unknown>): Record<str
 // menulis tabel yang sama. Contoh tabel berbagi:
 //   - daily_report_steam        : Boiler (prod_boiler_*) + Turbin (inlet/mps/condens)
 //   - daily_report_turbine_misc : Boiler (furnace/status_boiler/CR) + Turbin (gen/gi/status_turbin)
-//                                 + PIU (totalizer_export/import/gi)
+//                                 + PIU (totalizer_export/import/gi, pie_dr)
 //   - daily_report_stock_tank   : Boiler (bfw_*) + Handling (rcw/demin/solar) + ESP (silo/fly_ash)
 //   - daily_report_totalizer    : Handling (tot_* konsumsi) + foreman (group/kasi/totalizer_1..5)
 // Tabel yang TIDAK ada di map sebuah station → di-skip total untuk station itu.
@@ -254,7 +254,7 @@ const STATION_OWNS_COLS: Record<string, Record<string, string[]>> = {
         ],
     },
     lapangan_turbin: {
-        daily_report_turbine_misc: ['totalizer_export', 'totalizer_import', 'totalizer_gi'],
+        daily_report_turbine_misc: ['totalizer_export', 'totalizer_import', 'totalizer_gi', 'pie_dr'],
     },
     // Bunker punya tab Coal Bunker sendiri di harian (level bunker jam 24.00, dipakai logbook).
     bunker: {

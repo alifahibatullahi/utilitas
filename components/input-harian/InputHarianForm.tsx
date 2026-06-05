@@ -19,6 +19,11 @@ import TabSiloFlyAsh from './TabSiloFlyAsh';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
+import {
+    type DailyState,
+    isBoilerComplete, isTurbinComplete, isPowerComplete,
+    isPiuComplete, isHandlingComplete, isSiloComplete, isCoalBunkerComplete,
+} from '@/lib/daily-completeness';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import type { DailyTabProps } from './types';
 
@@ -772,35 +777,24 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
     // ─── Tab Completeness Checker ───
     const isTabLengkap = useCallback((tabId: HarianTabId) => {
-        const hasVal = (obj: Record<string, any>, keys: string[]) => keys.every(k => obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
-        
+        // Sumber kebenaran kelengkapan field ada di lib/daily-completeness.ts supaya
+        // SELALU sinkron dgn syarat notif "siap publish" (notify-ready-daily).
+        const state: DailyState = { steam, power, coal, turbineMisc, stockTank, totalizer };
         switch (tabId) {
-            case 'Boiler A':
-                return hasVal(steam, ['prod_boiler_a_24']) && hasVal(stockTank, ['bfw_boiler_a']);
-            case 'Boiler B':
-                return hasVal(steam, ['prod_boiler_b_24']) && hasVal(stockTank, ['bfw_boiler_b']);
-            case 'Coal Bunker':
-                // Level bunker opsional → tab dianggap lengkap setelah dikunjungi.
-                return visitedTabs.has('Coal Bunker');
-            case 'Turbin':
-                return hasVal(steam, ['inlet_turbine_24', 'fully_condens_24']);
-            case 'Power':
-                return hasVal(power, ['gen_00']) || hasVal(turbineMisc, ['gen_ampere']);
-            case 'PIU':
-                return hasVal(turbineMisc, ['totalizer_export', 'totalizer_import']);
-            case 'Handling':
-                return hasVal(stockTank, ['rcw_level_00', 'demin_level_00', 'solar_tank_a', 'solar_boiler']);
-            case 'Chemical':
-                return visitedTabs.has('Chemical');
-            case 'Stock BB':
-                // Semua field opsional dengan default 0 (diisi hanya kalau ada aktivitas) →
-                // tab dianggap lengkap setelah dikunjungi.
-                return visitedTabs.has('Stock BB');
-            case 'Silo & Fly Ash': 
-                return hasVal(stockTank, ['silo_a_pct', 'silo_b_pct']);
+            case 'Boiler A': return isBoilerComplete(state, 'a');
+            case 'Boiler B': return isBoilerComplete(state, 'b');
+            case 'Turbin': return isTurbinComplete(state);
+            case 'Power': return isPowerComplete(state);
+            case 'PIU': return isPiuComplete(state);
+            case 'Handling': return isHandlingComplete(state);
+            case 'Silo & Fly Ash': return isSiloComplete(state);
+            case 'Coal Bunker': return isCoalBunkerComplete(state);
+            // Tab opsional/event-based → cukup dikunjungi (field tidak selalu ada datanya).
+            case 'Chemical': return visitedTabs.has('Chemical');
+            case 'Stock BB': return visitedTabs.has('Stock BB');
             default: return false;
         }
-    }, [steam, power, turbineMisc, stockTank, visitedTabs]);
+    }, [steam, power, coal, turbineMisc, stockTank, totalizer, visitedTabs]);
 
     // Semua tab visible (sesuai station kalau ada) sudah lengkap → tombol Publish aktif.
     const allTabsComplete = useMemo(
@@ -1101,7 +1095,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
                                         <span className={`material-symbols-outlined text-[22px] sm:text-[30px] ${styles.icon}`}>{tab?.icon}</span>
                                     </div>
-                                    <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide shrink-0">{tab?.label}</h2>
+                                    <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide min-w-0 truncate">{tab?.label}</h2>
                                     {/* Status chip boiler — di kanan judul untuk tab Boiler A/B (sama spt shift). */}
                                     {(activeTab === 'Boiler A' || activeTab === 'Boiler B') && (() => {
                                         const bx = activeTab === 'Boiler A' ? 'a' : 'b';

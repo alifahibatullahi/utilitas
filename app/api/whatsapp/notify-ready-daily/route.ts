@@ -7,6 +7,10 @@ import {
     buildDeepLink,
 } from '@/lib/whatsapp';
 import { getGroupShiftOnDate } from '@/lib/constants';
+import {
+    type DailyState,
+    isBoilerComplete, isTurbinComplete, isPowerComplete,
+} from '@/lib/daily-completeness';
 
 // Notif "siap dipublish" laporan HARIAN (LHUBB): dikirim ke grup yang MENGISI LHUBB —
 // yaitu grup yang dinas malam mulai 23:00 hari D (jadwal 'M' pada tanggal D) — ketika
@@ -18,7 +22,6 @@ const NOTIF_KIND = 'report_ready_daily';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const first = (x: any) => (Array.isArray(x) ? x[0] : x);
-const filled = (v: unknown) => v !== null && v !== undefined && v !== '';
 
 interface NotifyReadyDailyBody {
     date: string;
@@ -46,40 +49,59 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ skipped: 'already_sent' });
     }
 
-    // 2. Ambil parameter harian utama untuk cek kelengkapan.
-    //    Kriteria SAMA PERSIS dengan centang tab di form (isTabLengkap):
-    //    notif "siap publish" fire begitu Boiler A, Boiler B, Turbin, & Power
-    //    sudah lengkap (panel boiler + panel turbin selesai). Handling/stock/coal
-    //    TIDAK jadi syarat — by design, lihat keputusan ops.
-    //    Pakai field totalizer 24h (_24) yang memang diisi operator, BUKAN _00
-    //    yang di-zero saat boiler/turbin shutdown.
+    // 2. Ambil parameter harian untuk cek kelengkapan. Kriteria kelengkapan SAMA
+    //    PERSIS dengan centang tab di form (lib/daily-completeness.ts) — notif fire
+    //    begitu tab Boiler A, Boiler B, Turbin, & Power BENAR-BENAR lengkap (semua
+    //    field), sinkron dgn centang. Tarik semua kolom yang dibutuhkan helper.
     const { data: report } = await supabase
         .from('daily_reports')
         .select(`
             id,
-            daily_report_steam (prod_boiler_a_24, prod_boiler_b_24, inlet_turbine_24, fully_condens_24),
-            daily_report_power (gen_00),
-            daily_report_turbine_misc (gen_ampere),
-            daily_report_stock_tank (bfw_boiler_a, bfw_boiler_b)
+            daily_report_steam (
+                prod_boiler_a_24, prod_boiler_a_00, prod_boiler_b_24, prod_boiler_b_00,
+                inlet_turbine_24, inlet_turbine_00, mps_i_24, mps_i_00,
+                mps_3a_24, mps_3a_00, fully_condens_24, fully_condens_00
+            ),
+            daily_report_power (
+                gen_00, power_ubb, power_ubb_totalizer,
+                power_pabrik2, power_pabrik2_totalizer,
+                power_pabrik3a, power_pabrik3a_totalizer, power_stg_ubb_totalizer
+            ),
+            daily_report_turbine_misc (
+                status_boiler_a, status_boiler_b, status_turbin,
+                press_steam_a, temp_steam_a, bfw_press_a, temp_bfw_a, temp_furnace_a,
+                air_heater_ti113_a, temp_flue_gas_a, o2_a, primary_air_a, secondary_air_a, steam_drum_press_a,
+                press_steam_b, temp_steam_b, bfw_press_b, temp_bfw_b, temp_furnace_b,
+                air_heater_ti113_b, temp_flue_gas_b, o2_b, primary_air_b, secondary_air_b, steam_drum_press_b,
+                steam_inlet_press, steam_inlet_temp, thrust_bearing_temp, axial_displacement,
+                gen_ampere, gen_tegangan, gen_amp_react, gen_frequensi, gen_cos_phi,
+                gi_sum_p, gi_sum_q, gi_cos_phi
+            ),
+            daily_report_coal (
+                coal_a_24, coal_b_24, coal_c_24, coal_a_00, coal_b_00, coal_c_00,
+                coal_d_24, coal_e_24, coal_f_24, coal_d_00, coal_e_00, coal_f_00
+            ),
+            daily_report_stock_tank (bfw_boiler_a, flow_bfw_a, bfw_boiler_b, flow_bfw_b)
         `)
         .eq('id', reportId)
         .single();
 
     if (!report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
 
-    const steam = first(report.daily_report_steam);
-    const power = first(report.daily_report_power);
-    const turbineMisc = first(report.daily_report_turbine_misc);
-    const stock = first(report.daily_report_stock_tank);
+    const state: DailyState = {
+        steam: first(report.daily_report_steam) ?? {},
+        power: first(report.daily_report_power) ?? {},
+        coal: first(report.daily_report_coal) ?? {},
+        turbineMisc: first(report.daily_report_turbine_misc) ?? {},
+        stockTank: first(report.daily_report_stock_tank) ?? {},
+        totalizer: {},
+    };
 
     const missing: string[] = [];
-    // Boiler A & B — produksi totalizer 24h + BFW (mirror isTabLengkap 'Boiler A'/'Boiler B').
-    if (!steam || !filled(steam.prod_boiler_a_24) || !stock || !filled(stock.bfw_boiler_a)) missing.push('Boiler A');
-    if (!steam || !filled(steam.prod_boiler_b_24) || !stock || !filled(stock.bfw_boiler_b)) missing.push('Boiler B');
-    // Turbin — inlet & fully condensing 24h (mirror isTabLengkap 'Turbin').
-    if (!steam || !filled(steam.inlet_turbine_24) || !filled(steam.fully_condens_24)) missing.push('Turbin');
-    // Power/Generator — gen_00 (load) ATAU gen_ampere (mirror isTabLengkap 'Power').
-    if ((!power || !filled(power.gen_00)) && (!turbineMisc || !filled(turbineMisc.gen_ampere))) missing.push('Power');
+    if (!isBoilerComplete(state, 'a')) missing.push('Boiler A');
+    if (!isBoilerComplete(state, 'b')) missing.push('Boiler B');
+    if (!isTurbinComplete(state)) missing.push('Turbin');
+    if (!isPowerComplete(state)) missing.push('Power');
 
     if (missing.length > 0) {
         return NextResponse.json({ ready: false, missing });

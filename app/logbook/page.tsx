@@ -74,7 +74,10 @@ export default function LogbookPage() {
         return () => ro.disconnect();
     }, []);
 
-    const { report: daily, refetch: refetchDaily, error: dailyError } = useDailyReport(selectedDate);
+    const { report: daily, prevReport: dailyPrev, refetch: refetchDaily, error: dailyError } = useDailyReport(selectedDate);
+    // Throttle refetch (focus/visibility/polling) supaya buka logbook tidak spam query
+    // berat ke DB saat user sering alt-tab — minimal jeda antar-refresh.
+    const lastRefreshRef = useRef(0);
 
     // Error gabungan (shift + harian) untuk banner. Manual retry tersedia di banner.
     const loadError = shiftError || dailyError;
@@ -122,7 +125,13 @@ export default function LogbookPage() {
     // saat tab kembali aktif/fokus, plus polling ringan tiap 60 dtk selama tab terlihat —
     // supaya laporan shift/harian yang baru disubmit langsung muncul tanpa reload manual.
     useEffect(() => {
-        const refresh = () => { setRefreshKey(k => k + 1); refetchDaily(); };
+        const MIN_REFRESH_GAP = 30_000; // jeda minimal antar-refresh (lindungi DB dari spam query)
+        const refresh = () => {
+            const now = Date.now();
+            if (now - lastRefreshRef.current < MIN_REFRESH_GAP) return;
+            lastRefreshRef.current = now;
+            setRefreshKey(k => k + 1); refetchDaily();
+        };
         const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
         window.addEventListener('focus', refresh);
         document.addEventListener('visibilitychange', onVisible);
@@ -150,6 +159,7 @@ export default function LogbookPage() {
         const dCoal = first(daily?.daily_report_coal);
         const dTurb = first(daily?.daily_report_turbine_misc);
         const dTank = first(daily?.daily_report_stock_tank);
+        const dTankPrev = first(dailyPrev?.daily_report_stock_tank);
         const dPower = first(daily?.daily_report_power);
 
         // ── Boiler shift column (i = 0..2) ──
@@ -196,7 +206,9 @@ export default function LogbookPage() {
                     ton: dSteam?.[`selisih_prod_boiler_${low}`] ?? null,
                     flow: dSteam?.[`prod_boiler_${low}_00`] ?? null,
                 },
-                totBfw: { fq: dTank?.[`bfw_boiler_${low}`] ?? null, ton: null, flow: dTank?.[`flow_bfw_${low}`] ?? null },
+                // Total BFW 24h per-boiler = totaliser hari ini − kemarin (mirror produksi BFW
+                // di form harian; jumlah A+B = bfw_total). prevReport sudah di-fetch hook → no extra query.
+                totBfw: { fq: dTank?.[`bfw_boiler_${low}`] ?? null, ton: delta(dTank?.[`bfw_boiler_${low}`], dTankPrev?.[`bfw_boiler_${low}`]), flow: dTank?.[`flow_bfw_${low}`] ?? null },
                 feeders: keys.map((k) => ({
                     fq: dCoal?.[`coal_${k}_24`] ?? null,
                     ton: dCoal?.[`selisih_coal_${k}`] ?? null,
@@ -384,7 +396,7 @@ export default function LogbookPage() {
             turbin: [turbinShiftCol(0), turbinShiftCol(1), turbinShiftCol(2), turbinDailyCol()],
             generator: [generatorShiftCol(0), generatorShiftCol(1), generatorShiftCol(2), generatorDailyCol()],
         };
-    }, [shiftMap, daily, selectedDate]);
+    }, [shiftMap, daily, dailyPrev, selectedDate]);
 
     if (authLoading || !operator) return null;
 

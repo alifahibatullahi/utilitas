@@ -316,7 +316,7 @@ export default function StationPickerModal({
                                 className="mt-3 w-full flex items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-3 text-sm font-bold text-indigo-200 transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
                             >
                                 <span className="material-symbols-outlined text-lg">grid_view</span>
-                                Lihat Semua Tab (Form Penuh)
+                                Review laporan
                             </button>
                         )}
                     </div>

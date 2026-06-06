@@ -157,7 +157,7 @@ export default function StationPickerModal({
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 duration-200 ease-out">
+            <div className="relative w-full max-w-2xl rounded-3xl border border-slate-700 bg-slate-900 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 duration-200 ease-out">
                 {/* Close Button on top right */}
                 <button
                     type="button"
@@ -184,7 +184,7 @@ export default function StationPickerModal({
                 </div>
 
                 {/* Content Body */}
-                <div className="p-6 space-y-5 max-h-[65vh] overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
                     
                     {/* Step 1: Jenis Laporan */}
                     <div className="space-y-2">
@@ -264,7 +264,7 @@ export default function StationPickerModal({
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                             {mode === 'shift' ? '4. Pilih Station' : '3. Pilih Station'}
                         </label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {stations.map((s) => {
                                 const theme = STATION_THEMES[s] || {
                                     icon: 'tune',

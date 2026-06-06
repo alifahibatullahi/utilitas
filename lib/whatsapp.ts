@@ -127,6 +127,26 @@ export async function sendWaFile(to: string, fileUrl: string, caption?: string, 
     return wahaPost(cfg, '/api/sendFile', payload);
 }
 
+/** Cek status session WAHA (untuk health-check). status 'WORKING' = siap kirim;
+ *  'SCAN_QR_CODE'/'STOPPED'/'FAILED' = perlu re-scan / restart. */
+export async function wahaSessionStatus(account: WaAccount = 'notif'): Promise<{
+    ok: boolean; account: WaAccount; session?: string; status?: string; error?: string;
+}> {
+    const { cfg, error } = resolveWaha(account);
+    if (!cfg) return { ok: false, account, error };
+    try {
+        const res = await fetch(`${cfg.baseUrl}/api/sessions/${cfg.session}`, {
+            headers: { 'X-Api-Key': cfg.apiKey },
+        });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) return { ok: false, account, session: cfg.session, error: `HTTP ${res.status}` };
+        const status = (body as { status?: string })?.status;
+        return { ok: status === 'WORKING', account, session: cfg.session, status };
+    } catch (err) {
+        return { ok: false, account, session: cfg.session, error: err instanceof Error ? err.message : String(err) };
+    }
+}
+
 // ─── Alias kompatibilitas (nama lama Fonnte → WAHA) ───
 /** @deprecated pakai sendWaText. */
 export const sendFonnteText = sendWaText;

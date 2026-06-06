@@ -213,7 +213,13 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                                             className={`flex-1 px-4 py-3 rounded-xl border transition-all cursor-pointer select-none active:scale-[0.98] text-left flex flex-col gap-0.5 ${active ? opt.activeCls : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-350'}`}
                                         >
                                             <div className="flex items-center gap-1.5">
-                                                <span className="material-symbols-outlined text-[16px]">{opt.icon}</span>
+                                                <span className={`material-symbols-outlined text-[16px] ${
+                                                    opt.value === 'corrective'
+                                                        ? (active ? 'text-blue-700' : 'text-blue-500')
+                                                        : opt.value === 'preventif'
+                                                        ? (active ? 'text-emerald-700' : 'text-emerald-500')
+                                                        : (active ? 'text-violet-700' : 'text-violet-500')
+                                                }`}>{opt.icon}</span>
                                                 <div className={`text-sm font-extrabold ${active ? opt.titleCls : 'text-black'}`}>{opt.label}</div>
                                                 {active && <span className="material-symbols-outlined text-[14px] font-black ml-auto">check_circle</span>}
                                             </div>

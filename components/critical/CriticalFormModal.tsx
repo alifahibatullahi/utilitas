@@ -107,7 +107,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                     </div>
 
                     {/* Scope */}
-                    <div>
+                    <div className="md:col-span-2">
                         <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Scope HAR</label>
                         <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="Pilih scope HAR" />
                     </div>

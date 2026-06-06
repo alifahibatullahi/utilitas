@@ -118,7 +118,11 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                                         }`}
                                     >
                                         <span className="text-sm font-extrabold flex items-center gap-1.5">
-                                            <span className="material-symbols-outlined text-[18px]">
+                                            <span className={`material-symbols-outlined text-[18px] ${
+                                                opt.value === 'preventif'
+                                                    ? (active ? 'text-emerald-700' : 'text-emerald-500')
+                                                    : (active ? 'text-violet-700' : 'text-violet-500')
+                                            }`}>
                                                 {opt.value === 'preventif' ? 'event_available' : 'precision_manufacturing'}
                                             </span>
                                             {opt.label}

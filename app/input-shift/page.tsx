@@ -1762,7 +1762,8 @@ function InputShiftPageInner() {
                                         <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                     </div>
                                 </div>
-                                {/* Supervisor — WAJIB di station panel (boiler A/B + turbin) */}
+                                {/* Supervisor — WAJIB di station panel (boiler A/B + turbin).
+                                    Dikunci kalau laporan sudah punya supervisor → 1 supervisor konsisten. */}
                                 {isPanelStation && (
                                     <div className="flex flex-col gap-1">
                                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Supervisor <span className="text-red-400">*</span></span>
@@ -1773,9 +1774,13 @@ function InputShiftPageInner() {
                                                 options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
                                                 ariaLabel="Supervisor"
                                                 triggerClassName="text-sm font-bold text-white"
+                                                disabled={!!report?.supervisor}
                                             />
                                             <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                         </div>
+                                        {!!report?.supervisor && (
+                                            <span className="text-[9px] text-slate-500">Sudah ditetapkan untuk laporan ini.</span>
+                                        )}
                                     </div>
                                 )}
                             </div>

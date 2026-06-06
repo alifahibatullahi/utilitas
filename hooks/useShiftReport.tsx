@@ -932,11 +932,15 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 sr = existingParent as { id: string };
             }
         } else {
+            // Supervisor hanya boleh ditetapkan oleh form penuh / station panel — station
+            // non-panel JANGAN set supervisor (hindari "kotor" dgn nama operator → jaga 1
+            // supervisor konsisten per laporan).
+            const canSetSupervisor = !isStationScoped || (stationKey != null && SUPERVISOR_OWNER_STATIONS.has(stationKey));
             const insertPayload: Record<string, unknown> = {
                 date,
                 shift,
                 group_name: reportData.group_name,
-                supervisor: reportData.supervisor,
+                supervisor: canSetSupervisor ? reportData.supervisor : '',
                 status: 'draft' as ReportStatus,
                 catatan: isStationScoped ? null : (reportData.catatan || null),
                 ...(validCreatedBy ? { created_by: validCreatedBy } : {}),

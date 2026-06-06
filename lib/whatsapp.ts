@@ -59,11 +59,14 @@ function resolveWablas(account: WaAccount): { cfg?: WablasConfig; error?: string
     return { cfg: { baseUrl: conf.baseUrl || 'https://wablas.com', auth: `${conf.token}.${conf.secret}` } };
 }
 
-/** Deteksi apakah target adalah grup. Nomor personal Wablas = digit saja (mis.
- *  "628123..."); ID grup Wablas mengandung karakter non-digit (huruf/strip), mis.
- *  "872468237asd-6281218xxxx". Nilai legacy "...@g.us" juga dianggap grup. */
+/** Deteksi apakah target adalah grup. Dua format ID grup Wablas:
+ *   - lama  : mengandung huruf/strip, mis. "872468237asd-6281218xxxx"
+ *   - modern: JID WhatsApp semua-angka & sangat panjang, mis. "120363321789945938"
+ *  Nomor telepon E.164 maksimal 15 digit → target ≥16 digit pasti grup.
+ *  Nilai legacy "...@g.us" (ada '@') juga tertangkap oleh cek non-digit. */
 function isGroupTarget(target: string): boolean {
-    return /[^\d]/.test(target.trim());
+    const t = target.trim();
+    return /[^\d]/.test(t) || t.length >= 16;
 }
 
 async function wablasPost(cfg: WablasConfig, path: string, params: Record<string, string>): Promise<SendResult> {

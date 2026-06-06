@@ -8,7 +8,10 @@ export function createAdminClient(): SupabaseClient {
     );
 }
 
-// ─── Fonnte send helpers ───
+// ─── WAHA send helpers ───
+// WAHA (WhatsApp HTTP API, self-host) menggantikan Fonnte. Nama fungsi lama
+// (sendFonnteText/Group/File, FonnteAccount, accountForKind) DIPERTAHANKAN sebagai
+// alias supaya seluruh pemanggil lama tidak perlu diubah.
 
 export interface SendResult {
     ok: boolean;
@@ -17,108 +20,120 @@ export interface SendResult {
     error?: string;   // human-readable reason when ok=false
 }
 
-// Dua akun Fonnte (dua device/nomor WA):
-//  - 'notif'   → FONNTE_TOKEN          : reminder isi laporan shift/harian (grup A–D), photo-bot.
-//  - 'publish' → FONNTE_TOKEN_PUBLISH  : publish laporan ke washift, Utilitas 2, SU 3A.
-export type FonnteAccount = 'notif' | 'publish';
+// Dua "akun" = dua nomor/instance WAHA (tiap nomor = 1 session WAHA terpisah):
+//  - 'notif'   → WAHA_*          : reminder isi laporan shift/harian (grup A–D), photo-bot.
+//  - 'publish' → WAHA_*_PUBLISH  : publish laporan ke washift, Utilitas 2, SU 3A.
+export type WaAccount = 'notif' | 'publish';
+/** @deprecated nama lama; pakai WaAccount. */
+export type FonnteAccount = WaAccount;
 
 // notification_log.kind yang berasal dari akun PUBLISH — dipakai resend agar kirim
 // ulang lewat akun/nomor yang sama dengan pengiriman aslinya.
 const PUBLISH_KINDS = new Set(['shift_share', 'daily_share', 'turbin_save_shift', 'turbin_save_harian']);
 
-/** Tentukan akun Fonnte dari kind notification_log (untuk resend). Default 'notif'. */
-export function accountForKind(kind: string | null | undefined): FonnteAccount {
+/** Tentukan akun (nomor WA) dari kind notification_log (untuk resend). Default 'notif'. */
+export function accountForKind(kind: string | null | undefined): WaAccount {
     return kind && PUBLISH_KINDS.has(kind) ? 'publish' : 'notif';
 }
 
-/** Ambil token Fonnte untuk akun tertentu. Akun 'publish' fallback ke FONNTE_TOKEN
- *  (dengan warning) kalau FONNTE_TOKEN_PUBLISH belum diset, supaya tidak gagal total. */
-function resolveFonnteToken(account: FonnteAccount): { token?: string; error?: string } {
-    const envName = account === 'publish' ? 'FONNTE_TOKEN_PUBLISH' : 'FONNTE_TOKEN';
-    const token = process.env[envName]?.trim();
-    if (token) return { token };
-    if (account === 'publish') {
-        const fallback = process.env.FONNTE_TOKEN?.trim();
-        if (fallback) {
-            console.warn('[whatsapp] FONNTE_TOKEN_PUBLISH not set, falling back to FONNTE_TOKEN');
-            return { token: fallback };
-        }
+interface WahaConfig { baseUrl: string; apiKey: string; session: string; }
+
+/** Resolve konfigurasi WAHA untuk akun tertentu. Akun 'publish' fallback ke env
+ *  notif (dengan warning) kalau WAHA_*_PUBLISH belum diset, supaya tidak gagal total. */
+function resolveWaha(account: WaAccount): { cfg?: WahaConfig; error?: string } {
+    const pick = (suffix: '' | '_PUBLISH') => ({
+        baseUrl: process.env[`WAHA_BASE_URL${suffix}`]?.trim().replace(/\/+$/, ''),
+        apiKey: process.env[`WAHA_API_KEY${suffix}`]?.trim(),
+        session: process.env[`WAHA_SESSION${suffix}`]?.trim() || 'default',
+    });
+
+    let conf = account === 'publish' ? pick('_PUBLISH') : pick('');
+    if (account === 'publish' && !conf.baseUrl) {
+        console.warn('[whatsapp] WAHA_BASE_URL_PUBLISH not set, falling back to WAHA_BASE_URL');
+        conf = pick('');
     }
-    return { error: `${envName} belum diset di environment server` };
+    if (!conf.baseUrl) return { error: 'WAHA_BASE_URL belum diset di environment server' };
+    if (!conf.apiKey) return { error: 'WAHA_API_KEY belum diset di environment server' };
+    return { cfg: { baseUrl: conf.baseUrl, apiKey: conf.apiKey, session: conf.session } };
 }
 
-export async function sendFonnteText(to: string, message: string, account: FonnteAccount = 'notif'): Promise<SendResult> {
-    const { token, error: tokenError } = resolveFonnteToken(account);
-    if (!token) {
-        console.warn('[whatsapp]', tokenError);
-        return { ok: false, error: tokenError };
-    }
-
-    try {
-        const res = await fetch('https://api.fonnte.com/send', {
-            method: 'POST',
-            headers: {
-                Authorization: token,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ target: to, message }),
-        });
-        const body = await res.json().catch(() => null);
-        // Fonnte returns HTTP 200 even on logical failure; check body.status as the source of truth.
-        const fonnteOk = body && typeof body === 'object' && (body as { status?: boolean }).status === true;
-        const reason = (body && typeof body === 'object' && (body as { reason?: string }).reason) || undefined;
-        const ok = res.ok && fonnteOk !== false;  // if body has explicit false, fail
-        return {
-            ok,
-            status: res.status,
-            body,
-            error: ok ? undefined : (reason ?? `HTTP ${res.status}${body ? ' · ' + JSON.stringify(body) : ''}`),
-        };
-    } catch (err) {
-        console.warn('[whatsapp] Send failed:', err);
-        return { ok: false, error: err instanceof Error ? err.message : String(err) };
-    }
+/** Normalisasi target ke chatId WAHA. Grup sudah disimpan sbg "...@g.us" → dipakai
+ *  apa adanya; nomor personal polos (mis. "628123...") → ditambah suffix "@c.us". */
+function toChatId(target: string): string {
+    const t = target.trim();
+    if (t.includes('@')) return t;
+    return `${t.replace(/[^\d]/g, '')}@c.us`;
 }
 
-// Fonnte uses the same `target` parameter for personal numbers and group JIDs.
-export const sendFonnteGroup = sendFonnteText;
-
-// Send a file (PDF/image/doc) by passing a public URL. Fonnte fetches the URL server-side.
-export async function sendFonnteFile(to: string, fileUrl: string, caption?: string, filename?: string, account: FonnteAccount = 'notif'): Promise<SendResult> {
-    const { token, error: tokenError } = resolveFonnteToken(account);
-    if (!token) {
-        console.warn('[whatsapp]', tokenError);
-        return { ok: false, error: tokenError };
-    }
-
+async function wahaPost(cfg: WahaConfig, path: string, payload: Record<string, unknown>): Promise<SendResult> {
     try {
-        const payload: Record<string, string> = { target: to, url: fileUrl };
-        if (caption) payload.message = caption;
-        if (filename) payload.filename = filename;
-
-        const res = await fetch('https://api.fonnte.com/send', {
+        const res = await fetch(`${cfg.baseUrl}${path}`, {
             method: 'POST',
-            headers: {
-                Authorization: token,
-                'Content-Type': 'application/json',
-            },
+            headers: { 'X-Api-Key': cfg.apiKey, 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
         const body = await res.json().catch(() => null);
-        const fonnteOk = body && typeof body === 'object' && (body as { status?: boolean }).status === true;
-        const reason = (body && typeof body === 'object' && (body as { reason?: string }).reason) || undefined;
-        const ok = res.ok && fonnteOk !== false;
+        // WAHA: 2xx = terkirim. Error → non-2xx + { error/message } di body.
+        const reason = body && typeof body === 'object'
+            ? ((body as { error?: string; message?: string }).error ?? (body as { message?: string }).message)
+            : undefined;
         return {
-            ok,
+            ok: res.ok,
             status: res.status,
             body,
-            error: ok ? undefined : (reason ?? `HTTP ${res.status}${body ? ' · ' + JSON.stringify(body) : ''}`),
+            error: res.ok ? undefined : (reason ?? `HTTP ${res.status}${body ? ' · ' + JSON.stringify(body) : ''}`),
         };
     } catch (err) {
-        console.warn('[whatsapp] File send failed:', err);
+        console.warn('[whatsapp] WAHA send failed:', err);
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
+
+export async function sendWaText(to: string, message: string, account: WaAccount = 'notif'): Promise<SendResult> {
+    const { cfg, error } = resolveWaha(account);
+    if (!cfg) { console.warn('[whatsapp]', error); return { ok: false, error }; }
+    return wahaPost(cfg, '/api/sendText', { session: cfg.session, chatId: toChatId(to), text: message });
+}
+
+// WAHA pakai chatId yang sama untuk nomor personal (@c.us) maupun grup (@g.us).
+export const sendWaGroup = sendWaText;
+
+// Tebak mimetype dari ekstensi nama file / URL (untuk sendFile WAHA).
+function guessMime(name: string): string {
+    const ext = name.toLowerCase().match(/\.([a-z0-9]+)(?:\?|$)/)?.[1];
+    switch (ext) {
+        case 'pdf': return 'application/pdf';
+        case 'jpg': case 'jpeg': return 'image/jpeg';
+        case 'png': return 'image/png';
+        case 'doc': return 'application/msword';
+        case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        case 'xls': return 'application/vnd.ms-excel';
+        case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        default: return 'application/octet-stream';
+    }
+}
+
+// Kirim file (PDF/gambar/dokumen) lewat URL publik — WAHA yang mengunduh & mengirim.
+export async function sendWaFile(to: string, fileUrl: string, caption?: string, filename?: string, account: WaAccount = 'notif'): Promise<SendResult> {
+    const { cfg, error } = resolveWaha(account);
+    if (!cfg) { console.warn('[whatsapp]', error); return { ok: false, error }; }
+    const name = filename || fileUrl.split('/').pop()?.split('?')[0] || 'file';
+    const payload: Record<string, unknown> = {
+        session: cfg.session,
+        chatId: toChatId(to),
+        file: { url: fileUrl, filename: name, mimetype: guessMime(name) },
+    };
+    if (caption) payload.caption = caption;
+    return wahaPost(cfg, '/api/sendFile', payload);
+}
+
+// ─── Alias kompatibilitas (nama lama Fonnte → WAHA) ───
+/** @deprecated pakai sendWaText. */
+export const sendFonnteText = sendWaText;
+/** @deprecated pakai sendWaGroup. */
+export const sendFonnteGroup = sendWaGroup;
+/** @deprecated pakai sendWaFile. */
+export const sendFonnteFile = sendWaFile;
 
 // ─── DB helpers ───
 

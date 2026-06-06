@@ -870,6 +870,13 @@ function InputShiftPageInner() {
             }
         }
 
+        // ─── Supervisor wajib diisi (form penuh; mode station tak punya field supervisor) ───
+        if (!station && !supervisor.trim()) {
+            setToast({ type: 'error', message: 'Kolom Supervisor wajib diisi sebelum simpan.' });
+            setTimeout(() => setToast(null), 4000);
+            return;
+        }
+
         // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
         // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
         // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.

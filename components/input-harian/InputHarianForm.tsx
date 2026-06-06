@@ -494,6 +494,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             }
         }
 
+        // ─── Supervisor (KASI) wajib diisi (form penuh; mode station tak punya field) ───
+        if (!station && !(supervisorName || '').trim() && !((totalizer.kasi_name as string) || '').trim()) {
+            setToast({ message: 'Kolom Supervisor wajib diisi sebelum simpan.', type: 'error' });
+            setTimeout(() => setToast(null), 4000);
+            return;
+        }
+
         // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
         // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
         // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.

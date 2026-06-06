@@ -4,6 +4,7 @@ import {
     sendFonnteGroup,
     getWhatsappGroup,
     logNotification,
+    notifySupervisorPersonal,
     buildDeepLink,
 } from '@/lib/whatsapp';
 import { getGroupShiftOnDate } from '@/lib/constants';
@@ -83,7 +84,8 @@ export async function POST(req: NextRequest) {
                 coal_a_24, coal_b_24, coal_c_24, coal_a_00, coal_b_00, coal_c_00,
                 coal_d_24, coal_e_24, coal_f_24, coal_d_00, coal_e_00, coal_f_00
             ),
-            daily_report_stock_tank (bfw_boiler_a, flow_bfw_a, bfw_boiler_b, flow_bfw_b)
+            daily_report_stock_tank (bfw_boiler_a, flow_bfw_a, bfw_boiler_b, flow_bfw_b),
+            daily_report_totalizer (kasi_name)
         `)
         .eq('id', reportId)
         .single();
@@ -146,5 +148,14 @@ export async function POST(req: NextRequest) {
         payload: msg,
     });
 
-    return NextResponse.json({ ready: true, sent: send.ok, error: send.error, group: groupKey });
+    // Kirim juga ke nomor pribadi supervisor (KASI) — operators.phone_number sesuai nama.
+    const kasiName = first(report.daily_report_totalizer)?.kasi_name as string | null | undefined;
+    const sv = await notifySupervisorPersonal(supabase, {
+        supervisorName: kasiName,
+        message: msg,
+        logKind: `${NOTIF_KIND}_supervisor`,
+        date,
+    });
+
+    return NextResponse.json({ ready: true, sent: send.ok, error: send.error, group: groupKey, supervisor: sv });
 }

@@ -220,6 +220,37 @@ export async function logNotification(
     if (error) console.warn('[whatsapp] logNotification error:', error);
 }
 
+/** Kirim pesan ke nomor pribadi supervisor (operators.phone_number sesuai nama supervisor
+ *  di laporan). No-op (graceful) kalau nama kosong atau operator belum punya phone_number —
+ *  notif grup tetap jalan. Dipakai notif "siap dipublish" (shift & harian). */
+export async function notifySupervisorPersonal(
+    supabase: SupabaseClient,
+    opts: { supervisorName?: string | null; message: string; logKind: string; date: string; shift?: string | null },
+): Promise<{ sent: boolean; skipped?: string }> {
+    const name = opts.supervisorName?.trim();
+    if (!name) return { sent: false, skipped: 'no_supervisor_name' };
+    const { data } = await supabase
+        .from('operators')
+        .select('phone_number')
+        .eq('name', name)
+        .maybeSingle();
+    const phone = (data as { phone_number?: string } | null)?.phone_number?.trim();
+    if (!phone) {
+        console.warn(`[whatsapp] supervisor "${name}" belum punya phone_number — skip notif pribadi`);
+        return { sent: false, skipped: 'no_phone_number' };
+    }
+    const send = await sendWaText(phone, opts.message);
+    await logNotification(supabase, {
+        kind: opts.logKind,
+        target_date: opts.date,
+        target_shift: opts.shift ?? null,
+        target_group: null,
+        sent_to: phone,
+        payload: opts.message,
+    });
+    return { sent: send.ok };
+}
+
 // ─── Shared report formatting ───
 
 /** Format angka: null/undefined → '-', integer → tanpa decimal, selain itu fixed `decimals`. */

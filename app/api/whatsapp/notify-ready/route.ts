@@ -4,6 +4,7 @@ import {
     sendFonnteGroup,
     getWhatsappGroup,
     logNotification,
+    notifySupervisorPersonal,
     buildDeepLink,
 } from '@/lib/whatsapp';
 import { getGroupForShift } from '@/lib/constants';
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
         .from('shift_reports')
         .select(`
             id,
+            supervisor,
             shift_boiler (boiler, press_steam, temp_steam, flow_steam, batubara_ton, temp_furnace, status_boiler),
             shift_turbin (press_steam, temp_steam, flow_steam, vacuum, thrust_bearing),
             shift_generator_gi (gen_load, gi_sum_p),
@@ -134,5 +136,14 @@ export async function POST(req: NextRequest) {
         payload: msg,
     });
 
-    return NextResponse.json({ ready: true, sent: send.ok, error: send.error, group: groupKey });
+    // Kirim juga ke nomor pribadi supervisor (operators.phone_number sesuai nama).
+    const sv = await notifySupervisorPersonal(supabase, {
+        supervisorName: (report as { supervisor?: string | null }).supervisor,
+        message: msg,
+        logKind: `${NOTIF_KIND}_supervisor`,
+        date,
+        shift,
+    });
+
+    return NextResponse.json({ ready: true, sent: send.ok, error: send.error, group: groupKey, supervisor: sv });
 }

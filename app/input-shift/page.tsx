@@ -411,30 +411,36 @@ function InputShiftPageInner() {
     );
     const router = useRouter();
 
-    // ── Dialog "Pilih Station" ──
-    // Saat operator membuka input laporan TANPA station (mis. dari sidebar/dashboard),
-    // tanyakan dulu mau isi station yang mana. Tidak muncul untuk: link yg sudah bawa
-    // station, link review/publish (?review=1), deep-link spesifik (?date/?shift), atau
-    // user yang bisa review/publish (supervisor/admin) — mereka tetap dapat form penuh.
+    // ── Dialog "Pilih Laporan" ──
+    // Saat membuka input laporan TANPA station (mis. dari sidebar/dashboard), tanyakan
+    // dulu jenis laporan/tanggal/station. Tidak muncul untuk: link yg sudah bawa station,
+    // link review/publish (?review=1), atau deep-link spesifik (?date/?shift).
+    // Foreman/supervisor/admin TIDAK di-bypass — mereka dapat opsi "Semua Tab" di dialog.
     const [stationPickerOpen, setStationPickerOpen] = useState(false);
+    // Dibuka manual via tombol "Ganti Laporan" (vs auto saat buka tanpa station).
+    // Menentukan perilaku Batal: manual → tutup; auto (entry awal) → ke dashboard.
+    const [pickerManual, setPickerManual] = useState(false);
     useEffect(() => {
         if (!mounted || !operator) return;
         const qReview = searchParams?.get('review');
         const qDate = searchParams?.get('date');
         const qShift = searchParams?.get('shift');
-        const needsPicker = !station && !qReview && !qDate && !qShift && !canReviewReport;
+        const needsPicker = !station && !qReview && !qDate && !qShift;
         setStationPickerOpen(needsPicker);
-    }, [mounted, operator, canReviewReport, station, searchParams]);
+    }, [mounted, operator, station, searchParams]);
+
+    // Buka dialog "Ganti Laporan" (manual) — selalu tersedia.
+    const openChangeReport = useCallback(() => { setPickerManual(true); setStationPickerOpen(true); }, []);
 
     // Konfirmasi dialog → set state langsung (apply instan) + tulis ke URL (persist saat
-    // refresh). station di URL memicu filter tab; date/shift juga dihormati saat reload.
+    // refresh). station 'all' = form penuh (tanpa param station); station X = filter tab.
     const handleConfirmSetup = useCallback((sel: StationSetupSelection) => {
         setInputMode(sel.mode);
         setSelectedDate(sel.date);
         setSelectedShift(sel.shift);
         const params = new URLSearchParams();
-        params.set('station', sel.station);
         params.set('date', sel.date);
+        if (sel.station !== 'all') params.set('station', sel.station);
         if (sel.mode === 'harian') {
             params.set('mode', 'harian');
         } else {
@@ -442,6 +448,7 @@ function InputShiftPageInner() {
         }
         router.replace(`/input-shift?${params.toString()}`);
         setStationPickerOpen(false);
+        setPickerManual(false);
     }, [router]);
 
     // Fetch saved ash unloadings and solar for current date+shift
@@ -1696,6 +1703,14 @@ function InputShiftPageInner() {
                                         </button>
                                     );
                                 })()}
+                                {/* Ganti Laporan — buka kembali dialog Pilih Laporan (selalu tersedia) */}
+                                <button
+                                    onClick={openChangeReport}
+                                    className="flex justify-center items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-lg text-sm font-bold transition-all border border-slate-700/50 w-full"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
+                                    GANTI LAPORAN
+                                </button>
                             </div>
                         </div>
 
@@ -1720,14 +1735,6 @@ function InputShiftPageInner() {
                                         <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                     </div>
                                 </div>
-                                {/* Ganti laporan/station — buka kembali dialog Pilih Laporan */}
-                                <button
-                                    onClick={() => setStationPickerOpen(true)}
-                                    className="flex items-center justify-center gap-1.5 mt-1 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-xs font-bold text-slate-200 transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
-                                    Ganti Laporan
-                                </button>
                             </div>
                         )}
 
@@ -1897,7 +1904,7 @@ function InputShiftPageInner() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={station ? () => setStationPickerOpen(true) : undefined} />
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={openChangeReport} />
             )}
             {/* Publish modal — same component as laporan-shift / laporan-harian pages */}
             {inputMode === 'shift' && (
@@ -1925,8 +1932,9 @@ function InputShiftPageInner() {
                     initialMode={inputMode}
                     initialDate={selectedDate}
                     initialShift={selectedShift}
+                    allowAllTabs={true}
                     onConfirm={handleConfirmSetup}
-                    onCancel={() => { if (station) setStationPickerOpen(false); else router.push('/dashboard'); }}
+                    onCancel={() => { if (pickerManual || station) setStationPickerOpen(false); else router.push('/dashboard'); }}
                 />
             )}
         </div>

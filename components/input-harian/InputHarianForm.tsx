@@ -1001,6 +1001,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 </button>
                             );
                         })()}
+                        {/* Ganti Laporan — buka kembali dialog Pilih Laporan (selalu tersedia) */}
+                        {onChangeReport && (
+                            <button
+                                onClick={onChangeReport}
+                                className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-lg text-sm font-bold transition-all border border-slate-700/50 w-full"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                                GANTI LAPORAN
+                            </button>
+                        )}
                     </div>
 
                     {station && (
@@ -1023,15 +1033,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                 </div>
                             </div>
-                            {onChangeReport && (
-                                <button
-                                    onClick={onChangeReport}
-                                    className="flex items-center justify-center gap-1.5 mt-1 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-xs font-bold text-slate-200 transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
-                                    Ganti Laporan
-                                </button>
-                            )}
                         </div>
                     )}
 

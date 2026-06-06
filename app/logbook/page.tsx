@@ -74,7 +74,10 @@ export default function LogbookPage() {
         return () => ro.disconnect();
     }, []);
 
-    const { report: daily, prevReport: dailyPrev, refetch: refetchDaily, error: dailyError } = useDailyReport(selectedDate);
+    const { report: daily, prevReport: dailyPrev, refetch: refetchDaily, error: dailyError, loading: dailyLoading } = useDailyReport(selectedDate);
+    // Loading data shift (untuk animasi loading). True saat ganti tanggal / load awal,
+    // false setelah fetch selesai. Tidak ikut polling background (lihat effect di bawah).
+    const [shiftLoading, setShiftLoading] = useState(true);
     // Throttle refetch (focus/visibility/polling) supaya buka logbook tidak spam query
     // berat ke DB saat user sering alt-tab — minimal jeda antar-refresh.
     const lastRefreshRef = useRef(0);
@@ -111,15 +114,21 @@ export default function LogbookPage() {
             if (error) {
                 // Pertahankan data terakhir yang sempat tampil; cukup tandai error.
                 setShiftError(error.message);
+                setShiftLoading(false);
                 return;
             }
             setShiftError(null);
             const map: Record<string, Row> = {};
             (data ?? []).forEach((r: Row) => { map[`${r.date}|${r.shift}`] = r; });
             setShiftMap(map);
+            setShiftLoading(false);
         })();
         return () => { stale = true; };
     }, [selectedDate, refreshKey]);
+
+    // Reset loading saat ganti tanggal → animasi loading tampil untuk tanggal baru
+    // (tidak di-reset oleh refreshKey/polling, supaya tak berkedip tiap refresh).
+    useEffect(() => { setShiftLoading(true); }, [selectedDate]);
 
     // Auto-refresh: data logbook harus ikut terbaru saat ada input/laporan baru. Refetch
     // saat tab kembali aktif/fokus, plus polling ringan tiap 60 dtk selama tab terlihat —
@@ -380,10 +389,11 @@ export default function LogbookPage() {
                 piu: dist('pie', 'power_pie', 'selisih_pie'),
                 // STG UBB: totalizer + selisih, MW (Act) = Load STG (gen_00).
                 genOut: { fq: dPower?.power_stg_ubb_totalizer ?? null, ton: dPower?.selisih_stg_ubb ?? null, flow: dPower?.gen_00 ?? null },
-                current: null,
-                voltage: null,
-                q: null,
-                pf: null,
+                // Output generator (Current/Voltage/Q/PF) tersimpan di daily_report_turbine_misc.
+                current: dTurb?.gen_ampere ?? null,
+                voltage: dTurb?.gen_tegangan ?? null,
+                q: dTurb?.gen_amp_react ?? null,
+                pf: dTurb?.gen_cos_phi ?? null,
                 // Power GI - PKG (Σ P / Σ Q / Cos Ø) tersimpan di daily_report_turbine_misc.
                 sumP: dTurb?.gi_sum_p ?? null,
                 sumQ: dTurb?.gi_sum_q ?? null,
@@ -408,6 +418,10 @@ export default function LogbookPage() {
     }, [shiftMap, daily, dailyPrev, selectedDate]);
 
     if (authLoading || !operator) return null;
+
+    // Animasi loading: tampil saat load awal / ganti tanggal. `&& !daily` mencegah
+    // overlay berkedip saat refetch polling (data lama masih ada selama fetch).
+    const dataLoading = shiftLoading || (dailyLoading && !daily);
 
     const dateObj = new Date(selectedDate + 'T00:00:00');
     const hariStr = HARI_ID[dateObj.getDay()];
@@ -480,7 +494,17 @@ export default function LogbookPage() {
             )}
 
             {/* Lembar buku — zoom-to-fit di layar kecil */}
-            <div ref={fitRef} className="overflow-x-auto">
+            <div ref={fitRef} className="relative overflow-x-auto">
+                {/* Animasi loading data (load awal / ganti tanggal; tidak saat polling) */}
+                {dataLoading && (
+                    <div className="lb-no-print absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#0b1220]/70 backdrop-blur-sm rounded-lg min-h-[300px]">
+                        <div className="w-12 h-12 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin shadow-[0_0_12px_rgba(43,124,238,0.3)]"></div>
+                        <div className="text-center">
+                            <h3 className="text-white font-bold text-base mb-1">Memuat data logbook</h3>
+                            <p className="text-slate-400 text-sm">Mengambil laporan {formatDate(selectedDate)}...</p>
+                        </div>
+                    </div>
+                )}
                 <div className="lb-fit" style={{ zoom }}>
                     <LogbookSheet data={data} tanggal={`${hariStr}, ${formatDate(selectedDate)}`} />
                 </div>

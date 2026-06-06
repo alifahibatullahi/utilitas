@@ -70,7 +70,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
     const btnClass = isPreventif ? 'from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20' : 'from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-violet-500/20';
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
                 {/* Header */}
                 <div className={`flex items-center justify-between px-6 py-4.5 bg-gradient-to-r ${gradientClass} shadow-sm flex-shrink-0`}>
@@ -94,12 +94,12 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                     {/* Section 1 */}
                     <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mb-1">
                         <span className={`w-5 h-5 rounded-full ${isPreventif ? 'bg-emerald-50 border-emerald-100 text-emerald-500' : 'bg-violet-50 border-violet-100 text-violet-500'} border flex items-center justify-center text-[10px] font-black`}>01</span>
-                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Ruang Lingkup Pekerjaan</span>
+                        <span className="text-[11px] font-black text-black uppercase tracking-widest">Ruang Lingkup Pekerjaan</span>
                     </div>
 
-                    {/* Tipe */}
+                    {/* Tipe Pekerjaan */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Tipe Pekerjaan</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Tipe Pekerjaan</label>
                         <div className="flex gap-3">
                             {([
                                 { value: 'preventif' as WorkOrderType, label: 'Preventif', desc: 'Pemeliharaan terencana & rutin', activeCls: 'border-emerald-500 bg-emerald-50/50 text-emerald-700 ring-4 ring-emerald-500/10 shadow-sm' },
@@ -114,7 +114,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                                         className={`flex-1 flex flex-col text-left py-2.5 px-4 rounded-xl border transition-all cursor-pointer select-none active:scale-[0.98] ${
                                             active
                                                 ? opt.activeCls
-                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-350'
+                                                : 'bg-white border-slate-200 text-black hover:bg-slate-50 hover:border-slate-350'
                                         }`}
                                     >
                                         <span className="text-sm font-extrabold flex items-center gap-1.5">
@@ -124,7 +124,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                                             {opt.label}
                                             {active && <span className="material-symbols-outlined text-[14px] font-black ml-auto">check_circle</span>}
                                         </span>
-                                        <span className="text-[10px] font-semibold text-slate-500 mt-0.5 leading-snug">{opt.desc}</span>
+                                        <span className="text-[10px] font-semibold text-slate-800 mt-0.5 leading-snug">{opt.desc}</span>
                                     </button>
                                 );
                              })}
@@ -133,25 +133,25 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
 
                     {/* Item */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={setItem} light={true} />
                     </div>
 
                     {/* Scope */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Scope HAR</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Scope HAR</label>
                         <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="Pilih scope HAR" />
                     </div>
 
                     {/* Section 2 */}
                     <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mt-3 mb-1">
                         <span className={`w-5 h-5 rounded-full ${isPreventif ? 'bg-emerald-50 border-emerald-100 text-emerald-500' : 'bg-violet-50 border-violet-100 text-violet-500'} border flex items-center justify-center text-[10px] font-black`}>02</span>
-                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Detail Rencana & PIC</span>
+                        <span className="text-[11px] font-black text-black uppercase tracking-widest">Detail Rencana & PIC</span>
                     </div>
 
                     {/* Deskripsi */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Deskripsi Pekerjaan</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Deskripsi Pekerjaan</label>
                         <textarea
                             value={deskripsi}
                             onChange={e => setDeskripsi(e.target.value)}
@@ -163,7 +163,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
 
                     {/* Penanggung Jawab */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
                         <div className="flex gap-3">
                             {FOREMAN_OPTIONS.map(f => {
                                 const active = foreman === f.value;
@@ -179,7 +179,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                                         className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-extrabold transition-all cursor-pointer select-none active:scale-[0.98] ${
                                             active
                                                 ? activeClass
-                                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                                                : 'bg-white border-slate-200 text-black hover:bg-slate-50 hover:border-slate-300'
                                         }`}
                                     >
                                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{icon}</span>
@@ -195,7 +195,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
 
                     {/* Notif SAP */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Notif SAP</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Notif SAP</label>
                         <input
                             type="text"
                             value={notif}
@@ -207,7 +207,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
 
                     {/* Yang Membuat */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Yang Membuat</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Yang Membuat</label>
                         <OperatorCombobox
                             value={reportedBy}
                             onChange={setReportedBy}
@@ -229,7 +229,7 @@ export default function WorkOrderFormModal({ open, onClose, onSubmit, initial }:
                 <div className="flex gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl flex-shrink-0">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-800 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98"
+                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-black bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-800 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98"
                     >
                         Batal
                     </button>

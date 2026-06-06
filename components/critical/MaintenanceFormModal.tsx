@@ -168,9 +168,8 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
             : initial?.uraian ? 'Edit Maintenance' : 'Tambah Maintenance';
     // suppress unused warnings
     void isModifikasiNew; void isPreventifWO;
-
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
                 {/* Header */}
                 <div className={`flex items-center justify-between px-6 py-4.5 bg-gradient-to-r ${headerGradient} shadow-sm flex-shrink-0`}>
@@ -190,13 +189,13 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                     {/* Section 1 */}
                     <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mb-1">
                         <span className={`w-5 h-5 rounded-full ${stepCircleBg} border flex items-center justify-center text-[10px] font-black`}>01</span>
-                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Tipe & Peralatan</span>
+                        <span className="text-[11px] font-black text-black uppercase tracking-widest">Tipe & Peralatan</span>
                     </div>
 
                     {/* Tipe Maintenance — hanya muncul saat tambah baru tanpa konteks WO/critical */}
                     {showTipeSelector && (
                         <div className="md:col-span-2">
-                            <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Tipe Maintenance</label>
+                            <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Tipe Maintenance</label>
                             <div className="flex gap-3">
                                 {([
                                     { value: 'corrective' as MaintenanceType, label: 'Critical', desc: 'Terkait Critical Equipment', activeCls: 'border-blue-500 bg-blue-50/50 text-blue-700 ring-4 ring-blue-500/10 shadow-sm', titleCls: 'text-blue-800', descCls: 'text-blue-600/70', icon: 'warning' },
@@ -215,16 +214,16 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                                         >
                                             <div className="flex items-center gap-1.5">
                                                 <span className="material-symbols-outlined text-[16px]">{opt.icon}</span>
-                                                <div className={`text-sm font-extrabold ${active ? opt.titleCls : 'text-slate-700'}`}>{opt.label}</div>
+                                                <div className={`text-sm font-extrabold ${active ? opt.titleCls : 'text-black'}`}>{opt.label}</div>
                                                 {active && <span className="material-symbols-outlined text-[14px] font-black ml-auto">check_circle</span>}
                                             </div>
-                                            <div className={`text-[10px] font-semibold ${active ? opt.descCls : 'text-slate-500'} mt-0.5 leading-snug`}>{opt.desc}</div>
+                                            <div className={`text-[10px] font-semibold ${active ? opt.descCls : 'text-slate-800'} mt-0.5 leading-snug`}>{opt.desc}</div>
                                         </button>
                                     );
                                 })}
                             </div>
                             {isPreventifModifikasiMode && (
-                                <p className="text-[11px] font-medium text-slate-500 mt-2.5 italic flex items-center gap-1">
+                                <p className="text-[11px] font-medium text-black mt-2.5 italic flex items-center gap-1">
                                     <span className="material-symbols-outlined text-amber-500 font-bold" style={{ fontSize: 14 }}>info</span>
                                     Akan dibuat sebagai pekerjaan {tipeSelected} baru dan ditambahkan langsung ke daftar pekerjaan tim HAR
                                 </p>
@@ -234,13 +233,13 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
 
                     {/* Row 1: Item | Critical (hanya mode corrective) */}
                     <div className={isPreventifModifikasiMode || isWOMode ? 'md:col-span-2' : ''}>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={handleItemChange} light={true} />
                     </div>
 
                     {!isWOMode && !isPreventifModifikasiMode && (
                         <div className="min-w-0">
-                            <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Critical Terkait (opsional)</label>
+                            <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Critical Terkait (opsional)</label>
                             <div className="relative w-full">
                                 <select
                                     value={criticalId}
@@ -264,12 +263,12 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                                 <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" style={{ fontSize: 16 }}>expand_more</span>
                             </div>
                             {selectedCritical && (
-                                <p className="text-[11px] text-slate-600 mt-1.5 leading-snug break-words">
+                                <p className="text-[11px] text-black mt-1.5 leading-snug break-words">
                                     <span className="font-bold">Critical: </span>{selectedCritical.deskripsi}
                                 </p>
                             )}
                             {item && activeCriticalList.length === 0 && !selectedCritical && (
-                                <p className="text-[11px] text-slate-400 italic mt-1.5">Tidak ada critical OPEN untuk item ini.</p>
+                                <p className="text-[11px] text-black font-semibold italic mt-1.5">Tidak ada critical OPEN untuk item ini.</p>
                             )}
                         </div>
                     )}
@@ -277,12 +276,12 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                     {/* Section 2 */}
                     <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mt-3 mb-1">
                         <span className={`w-5 h-5 rounded-full ${stepCircleBg} border flex items-center justify-center text-[10px] font-black`}>02</span>
-                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Rincian Pekerjaan</span>
+                        <span className="text-[11px] font-black text-black uppercase tracking-widest">Rincian Pekerjaan</span>
                     </div>
 
                     {/* Uraian */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Uraian Pekerjaan</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Uraian Pekerjaan</label>
                         <textarea
                             value={uraian}
                             onChange={e => setUraian(e.target.value)}
@@ -294,13 +293,13 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
 
                     {/* Scope */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Scope HAR</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Scope HAR</label>
                         <ScopeCombobox value={scope} onChange={setScope} light={true} />
                     </div>
 
                     {/* Notif */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Notif SAP (opsional)</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Notif SAP (opsional)</label>
                         <input
                             type="text"
                             value={notif}
@@ -320,12 +319,12 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                     {/* Section 3 */}
                     <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mt-3 mb-1">
                         <span className={`w-5 h-5 rounded-full ${stepCircleBg} border flex items-center justify-center text-[10px] font-black`}>03</span>
-                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Personil</span>
+                        <span className="text-[11px] font-black text-black uppercase tracking-widest">Personil</span>
                     </div>
 
                     {/* Foreman */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
                         <div className="flex gap-3">
                             {FOREMAN_OPTIONS.map(f => {
                                 const active = foreman === f.value;
@@ -341,7 +340,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                                         className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-extrabold transition-all cursor-pointer select-none active:scale-[0.98] ${
                                             active
                                                 ? activeClass
-                                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                                                : 'bg-white border-slate-200 text-black hover:bg-slate-50 hover:border-slate-300'
                                         }`}
                                     >
                                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{icon}</span>
@@ -357,7 +356,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
 
                     {/* Yang Membuat */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Yang Membuat</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Yang Membuat</label>
                         <OperatorCombobox value={reportedBy} onChange={setReportedBy} placeholder="Pilih atau ketik nama..." dropUp />
                     </div>
 
@@ -373,7 +372,7 @@ export default function MaintenanceFormModal({ open, onClose, onSubmit, onSubmit
                 {/* Footer */}
                 <div className="flex gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl flex-shrink-0">
                     <button onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-800 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98">
+                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-black bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-800 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98">
                         Batal
                     </button>
                     <button onClick={handleSubmit} disabled={saving}

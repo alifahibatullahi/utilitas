@@ -175,7 +175,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                         <select
                             value={filterScope}
                             onChange={e => setFilterScope(e.target.value)}
-                            className="pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-xs font-extrabold text-slate-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-all appearance-none h-9"
+                            className="pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-xs font-extrabold text-slate-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-all appearance-none h-9 w-44"
                         >
                             <option value="all">Semua Scope</option>
                             {scopes.map(s => <option key={s} value={s}>{s}</option>)}
@@ -214,7 +214,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                             <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Item</th>
                             <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest min-w-[200px]">Uraian</th>
                             <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Tipe</th>
-                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Scope</th>
+                            <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest w-44 min-w-[176px]">Scope</th>
                             <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Foreman</th>
                             <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Status</th>
                             <th className="px-4 py-4 text-center text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Detail / Actions</th>
@@ -248,7 +248,7 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                                 {m.tipe === 'corrective' ? 'Critical' : TIPE_LABEL[m.tipe]}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-4"><ScopeBadge scope={m.scope} solid className="px-3 py-1.5 text-sm shadow-sm" /></td>
+                                        <td className="px-4 py-4 w-44 min-w-[176px]"><ScopeBadge scope={m.scope} solid className="px-3 py-1.5 text-sm shadow-sm" /></td>
                                         <td className="px-4 py-4 whitespace-nowrap">
                                             <div className="flex flex-col leading-tight">
                                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Foreman</span>

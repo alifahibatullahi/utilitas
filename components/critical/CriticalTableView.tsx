@@ -190,7 +190,7 @@ function CriticalRow({
                     <span className="line-clamp-3 whitespace-pre-wrap">{capitalizeFirst(critical.deskripsi)}</span>
                 </td>
                 {/* Scope */}
-                <td className="px-5 py-5">
+                <td className="px-5 py-5 w-44 min-w-[176px]">
                     <div className="flex flex-wrap gap-2">
                         {Array.from(new Set([
                             critical.scope,
@@ -321,7 +321,7 @@ function WorkOrderRow({
                 <span className="line-clamp-3 whitespace-pre-wrap">{capitalizeFirst(wo.deskripsi)}</span>
             </td>
             {/* Scope */}
-            <td className="px-5 py-4">
+            <td className="px-5 py-4 w-44 min-w-[176px]">
                 <ScopeBadge scope={wo.scope} solid className="px-3 py-1.5 text-sm shadow-sm" />
             </td>
             {/* Foreman */}
@@ -443,7 +443,7 @@ function TableHeader() {
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Tanggal</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Item</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest min-w-[300px]">Deskripsi</th>
-                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Scope</th>
+                <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest w-44 min-w-[176px]">Scope</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Foreman</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest whitespace-nowrap">Notif/SAP</th>
                 <th className="px-4 py-4 text-left text-xs font-black text-black uppercase tracking-widest">Status</th>
@@ -758,7 +758,7 @@ export default function CriticalTableView({ criticals, workOrders = [], onEditCr
                         <select
                             value={filterScope}
                             onChange={e => { setFilterScope(e.target.value as HarScope | ''); setExpandedId(null); setCurrentPage(1); }}
-                            className="pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-xs font-extrabold text-slate-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-all appearance-none h-9"
+                            className="pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-xs font-extrabold text-slate-700 outline-none cursor-pointer shadow-sm hover:border-gray-300 transition-all appearance-none h-9 w-44"
                         >
                             <option value="">Semua Scope</option>
                             {harScopes.map(s => (

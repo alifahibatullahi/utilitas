@@ -63,7 +63,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-rose-500 to-rose-600 shadow-sm flex-shrink-0">
@@ -85,18 +85,18 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                     {/* Section 1 */}
                     <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mb-1">
                         <span className="w-5 h-5 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-[10px] font-black text-rose-500">01</span>
-                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Detail Peralatan & Temuan Masalah</span>
+                        <span className="text-[11px] font-black text-black uppercase tracking-widest">Detail Peralatan & Temuan Masalah</span>
                     </div>
 
                     {/* Item */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">No Item + Deskripsi</label>
                         <ItemCombobox value={item} onChange={setItem} light={true} />
                     </div>
 
                     {/* Deskripsi */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Deskripsi Masalah</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Deskripsi Masalah</label>
                         <textarea
                             value={deskripsi}
                             onChange={e => setDeskripsi(e.target.value)}
@@ -108,19 +108,19 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
 
                     {/* Scope */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Scope HAR</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Scope HAR</label>
                         <ScopeCombobox value={scope} onChange={setScope} light={true} placeholder="Pilih scope HAR" />
                     </div>
 
                     {/* Section 2 */}
                     <div className="md:col-span-2 flex items-center gap-2 pb-1.5 border-b border-slate-100 mt-3 mb-1">
                         <span className="w-5 h-5 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-[10px] font-black text-rose-500">02</span>
-                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">PIC & Administrasi</span>
+                        <span className="text-[11px] font-black text-black uppercase tracking-widest">PIC & Administrasi</span>
                     </div>
 
                     {/* Penanggung Jawab */}
                     <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Penanggung Jawab (Foreman)</label>
                         <div className="flex gap-3">
                             {FOREMAN_OPTIONS.map(f => {
                                 const active = foreman === f.value;
@@ -136,7 +136,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                                         className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-extrabold transition-all cursor-pointer select-none active:scale-[0.98] ${
                                             active
                                                 ? activeClass
-                                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                                                : 'bg-white border-slate-200 text-black hover:bg-slate-50 hover:border-slate-300'
                                         }`}
                                     >
                                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{icon}</span>
@@ -152,7 +152,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
 
                     {/* Notif SAP */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Notif SAP</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Notif SAP</label>
                         <input
                             type="text"
                             value={notif}
@@ -164,7 +164,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
 
                     {/* Yang Melaporkan */}
                     <div>
-                        <label className="block text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Yang Melaporkan</label>
+                        <label className="block text-[11px] font-black text-black mb-1.5 uppercase tracking-wider">Yang Melaporkan</label>
                         <OperatorCombobox
                             value={reportedBy}
                             onChange={setReportedBy}
@@ -186,7 +186,7 @@ export default function CriticalFormModal({ open, onClose, onSubmit, initial }: 
                 <div className="flex gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl flex-shrink-0">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-800 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98"
+                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-black bg-white text-sm font-bold hover:bg-slate-100 hover:text-slate-850 hover:border-slate-350 transition-all cursor-pointer shadow-sm active:scale-98"
                     >
                         Batal
                     </button>

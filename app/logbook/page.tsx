@@ -361,24 +361,33 @@ export default function LogbookPage() {
             };
         };
         // ── Generator daily column (24.00) ──
+        // Form Power harian menyimpan ke kolom yang SAMA dengan shift
+        // (power_*_totalizer / power_* / selisih_*), BUKAN kolom legacy *_24/*_00.
+        // fq = totalizer, ton = selisih (MWh), flow = MW (Act).
         const generatorDailyCol = (): GenCol => {
-            const dd = (tot: string, sel: string, act: string) => ({ fq: dPower?.[tot] ?? null, ton: dPower?.[sel] ?? null, flow: dPower?.[act] ?? null });
+            const dist = (k: string, mwKey: string, sel: string) => ({
+                fq: dPower?.[`power_${k}_totalizer`] ?? null,
+                ton: dPower?.[sel] ?? null,
+                flow: dPower?.[mwKey] ?? null,
+            });
             return {
-                busBar1: dd('internal_bus1_24', 'selisih_ubb', 'internal_bus1_00'),
-                busBar2: { fq: dPower?.internal_bus2_24 ?? null, ton: null, flow: dPower?.internal_bus2_00 ?? null },
-                pabrik2: dd('dist_ii_24', 'selisih_pabrik2', 'dist_ii_00'),
-                pabrik3: dd('dist_3a_24', 'selisih_pabrik3a', 'dist_3a_00'),
-                pja: { fq: dPower?.pja_24 ?? null, ton: null, flow: dPower?.pja_00 ?? null },
-                revamping: dd('dist_3b_24', 'selisih_revamping', 'dist_3b_00'),
-                piu: dd('pie_pln_24', 'selisih_pie', 'pie_pln_00'),
-                genOut: dd('gen_24', 'selisih_stg_ubb', 'gen_00'),
+                busBar1: dist('ubb', 'power_ubb', 'selisih_ubb'),
+                busBar2: { fq: null, ton: null, flow: null },
+                pabrik2: dist('pabrik2', 'power_pabrik2', 'selisih_pabrik2'),
+                pabrik3: dist('pabrik3a', 'power_pabrik3a', 'selisih_pabrik3a'),
+                pja: { fq: null, ton: null, flow: null },
+                revamping: dist('revamping', 'power_revamping', 'selisih_revamping'),
+                piu: dist('pie', 'power_pie', 'selisih_pie'),
+                // STG UBB: totalizer + selisih, MW (Act) = Load STG (gen_00).
+                genOut: { fq: dPower?.power_stg_ubb_totalizer ?? null, ton: dPower?.selisih_stg_ubb ?? null, flow: dPower?.gen_00 ?? null },
                 current: null,
                 voltage: null,
                 q: null,
                 pf: null,
-                sumP: null,
-                sumQ: null,
-                cosO: null,
+                // Power GI - PKG (Σ P / Σ Q / Cos Ø) tersimpan di daily_report_turbine_misc.
+                sumP: dTurb?.gi_sum_p ?? null,
+                sumQ: dTurb?.gi_sum_q ?? null,
+                cosO: dTurb?.gi_cos_phi ?? null,
                 pMwh: null,
                 qMvarh: null,
                 delivered: dTurb?.totalizer_import ?? null,

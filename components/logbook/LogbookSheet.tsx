@@ -396,7 +396,7 @@ export default function LogbookSheet({ data, tanggal }: LogbookSheetProps) {
     // ── Render Generator ──
     const renderGenerator = (cols: GenCol[]) => (
         <>
-            <SubDoc title="LOG SHEET ELECTRIC GENERATOR" doc="PG-LS-50-5008" />
+            <SubDoc title="LOG BOOK ELECTRIC GENERATOR" doc="PG-LS-50-5008" />
             <TimeRow />
             <tr className="lb-subsection">
                 <td colSpan={14}>OUTPUT GENERATOR</td>

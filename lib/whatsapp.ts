@@ -20,43 +20,75 @@ export interface SendResult {
     error?: string;   // human-readable reason when ok=false
 }
 
-// Dua "akun" = dua device/nomor WA terdaftar di Wablas (token+secret berbeda):
-//  - 'notif'   → WABLAS_*          : reminder isi laporan shift/harian (grup A–D), photo-bot.
-//  - 'publish' → WABLAS_*_PUBLISH  : publish laporan ke washift, Utilitas 2, SU 3A.
+// HYBRID provider per "akun":
+//  - 'notif'   → WABLAS_* (Wablas)      : reminder isi laporan shift/harian (grup A–D), photo-bot.
+//  - 'publish' → FONNTE_TOKEN_PUBLISH (Fonnte) : publish laporan ke washift, Utilitas 2, SU 3A.
+// Publish sengaja TETAP di Fonnte (permintaan user); hanya notif yang pindah ke Wablas.
 export type WaAccount = 'notif' | 'publish';
 /** @deprecated nama lama; pakai WaAccount. */
 export type FonnteAccount = WaAccount;
 
 // notification_log.kind yang berasal dari akun PUBLISH — dipakai resend agar kirim
-// ulang lewat akun/nomor yang sama dengan pengiriman aslinya.
+// ulang lewat akun/provider yang sama dengan pengiriman aslinya.
 const PUBLISH_KINDS = new Set(['shift_share', 'daily_share', 'turbin_save_shift', 'turbin_save_harian']);
 
-/** Tentukan akun (nomor WA) dari kind notification_log (untuk resend). Default 'notif'. */
+/** Tentukan akun dari kind notification_log (untuk resend). Default 'notif'. */
 export function accountForKind(kind: string | null | undefined): WaAccount {
     return kind && PUBLISH_KINDS.has(kind) ? 'publish' : 'notif';
 }
 
 interface WablasConfig { baseUrl: string; auth: string; }
 
-/** Resolve konfigurasi Wablas untuk akun tertentu. Auth header = "token.secret_key".
- *  Akun 'publish' fallback ke env notif (dengan warning) kalau WABLAS_*_PUBLISH belum
- *  diset, supaya tidak gagal total. WABLAS_BASE_URL = domain server device kamu
- *  (mis. https://solo.wablas.com), default https://wablas.com. */
-function resolveWablas(account: WaAccount): { cfg?: WablasConfig; error?: string } {
-    const pick = (suffix: '' | '_PUBLISH') => ({
-        baseUrl: process.env[`WABLAS_BASE_URL${suffix}`]?.trim().replace(/\/+$/, ''),
-        token: process.env[`WABLAS_TOKEN${suffix}`]?.trim(),
-        secret: process.env[`WABLAS_SECRET_KEY${suffix}`]?.trim(),
-    });
+/** Resolve konfigurasi Wablas (akun notif). Auth header = "token.secret_key".
+ *  WABLAS_BASE_URL = domain server device kamu (mis. https://solo.wablas.com),
+ *  default https://wablas.com. */
+function resolveWablas(): { cfg?: WablasConfig; error?: string } {
+    const baseUrl = process.env.WABLAS_BASE_URL?.trim().replace(/\/+$/, '');
+    const token = process.env.WABLAS_TOKEN?.trim();
+    const secret = process.env.WABLAS_SECRET_KEY?.trim();
+    if (!token) return { error: 'WABLAS_TOKEN belum diset di environment server' };
+    if (!secret) return { error: 'WABLAS_SECRET_KEY belum diset di environment server' };
+    return { cfg: { baseUrl: baseUrl || 'https://wablas.com', auth: `${token}.${secret}` } };
+}
 
-    let conf = account === 'publish' ? pick('_PUBLISH') : pick('');
-    if (account === 'publish' && !conf.token) {
-        console.warn('[whatsapp] WABLAS_TOKEN_PUBLISH not set, falling back to WABLAS_TOKEN');
-        conf = pick('');
+/** Resolve token Fonnte akun publish. Fallback ke FONNTE_TOKEN (notif lama) + warning
+ *  kalau FONNTE_TOKEN_PUBLISH belum diset, supaya tidak gagal total. */
+function resolveFonntePublishToken(): { token?: string; error?: string } {
+    const token = process.env.FONNTE_TOKEN_PUBLISH?.trim();
+    if (token) return { token };
+    const fallback = process.env.FONNTE_TOKEN?.trim();
+    if (fallback) {
+        console.warn('[whatsapp] FONNTE_TOKEN_PUBLISH not set, falling back to FONNTE_TOKEN');
+        return { token: fallback };
     }
-    if (!conf.token) return { error: 'WABLAS_TOKEN belum diset di environment server' };
-    if (!conf.secret) return { error: 'WABLAS_SECRET_KEY belum diset di environment server' };
-    return { cfg: { baseUrl: conf.baseUrl || 'https://wablas.com', auth: `${conf.token}.${conf.secret}` } };
+    return { error: 'FONNTE_TOKEN_PUBLISH belum diset di environment server' };
+}
+
+/** Kirim via Fonnte (akun publish). Teks: { target, message }; file: tambah { url, filename }. */
+async function sendViaFonnte(payload: Record<string, string>): Promise<SendResult> {
+    const { token, error } = resolveFonntePublishToken();
+    if (!token) { console.warn('[whatsapp]', error); return { ok: false, error }; }
+    try {
+        const res = await fetch('https://api.fonnte.com/send', {
+            method: 'POST',
+            headers: { Authorization: token, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const body = await res.json().catch(() => null);
+        // Fonnte: HTTP 200 walau gagal logis; status terikat ke body.status (boolean).
+        const fonnteOk = body && typeof body === 'object' && (body as { status?: boolean }).status === true;
+        const reason = (body && typeof body === 'object' && (body as { reason?: string }).reason) || undefined;
+        const ok = res.ok && fonnteOk !== false;
+        return {
+            ok,
+            status: res.status,
+            body,
+            error: ok ? undefined : (reason ?? `HTTP ${res.status}${body ? ' · ' + JSON.stringify(body) : ''}`),
+        };
+    } catch (err) {
+        console.warn('[whatsapp] Fonnte send failed:', err);
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
 }
 
 /** Deteksi apakah target adalah grup. Dua format ID grup Wablas:
@@ -97,7 +129,10 @@ async function wablasPost(cfg: WablasConfig, path: string, params: Record<string
 }
 
 export async function sendWaText(to: string, message: string, account: WaAccount = 'notif'): Promise<SendResult> {
-    const { cfg, error } = resolveWablas(account);
+    // Publish → Fonnte (semua target publish = nomor personal, tanpa isGroup).
+    if (account === 'publish') return sendViaFonnte({ target: to.trim(), message });
+    // Notif → Wablas.
+    const { cfg, error } = resolveWablas();
     if (!cfg) { console.warn('[whatsapp]', error); return { ok: false, error }; }
     const params: Record<string, string> = { phone: to.trim(), message };
     if (isGroupTarget(to)) params.isGroup = 'true';
@@ -115,7 +150,15 @@ function isImage(name: string): boolean {
 
 // Kirim file (PDF/gambar/dokumen) lewat URL publik — Wablas yang mengunduh & mengirim.
 export async function sendWaFile(to: string, fileUrl: string, caption?: string, filename?: string, account: WaAccount = 'notif'): Promise<SendResult> {
-    const { cfg, error } = resolveWablas(account);
+    // Publish → Fonnte (fetch URL server-side; param message = caption).
+    if (account === 'publish') {
+        const payload: Record<string, string> = { target: to.trim(), url: fileUrl };
+        if (caption) payload.message = caption;
+        if (filename) payload.filename = filename;
+        return sendViaFonnte(payload);
+    }
+    // Notif → Wablas.
+    const { cfg, error } = resolveWablas();
     if (!cfg) { console.warn('[whatsapp]', error); return { ok: false, error }; }
     const name = filename || fileUrl.split('/').pop()?.split('?')[0] || 'file';
     const img = isImage(name);

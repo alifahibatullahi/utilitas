@@ -18,6 +18,7 @@ import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import { PublishReportModal } from '@/components/ui/PublishReportModal';
+import StationPickerModal, { type StationSetupSelection } from '@/components/ui/StationPickerModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
@@ -164,7 +165,10 @@ function InputShiftPageInner() {
         //   - tidak ada qDate & qShift eksplisit di URL (link permanen).
         // Kalau URL membawa qDate/qShift eksplisit (mis. admin buka laporan tanggal
         // tertentu) → tetap dihormati (di blok else).
-        const resolveCurrent = !!stationParam || (!qDate && !qShift);
+        // Resolve "current" hanya kalau TIDAK ada tanggal/shift eksplisit di URL.
+        // Link WA permanen (station tanpa date) → tetap resolve current. Dialog "Pilih
+        // Laporan" mengirim station+date(+shift) eksplisit → dihormati (juga saat refresh).
+        const resolveCurrent = !qDate && !qShift;
         if (resolveCurrent) {
             if (harianMode) {
                 // Default tanggal LHUBB rollover di jam 22:45 (mulai shift malam):
@@ -406,6 +410,39 @@ function InputShiftPageInner() {
         op.company === 'UBB' && (op.jabatan === 'Foreman Turbin' || !op.jabatan)
     );
     const router = useRouter();
+
+    // ── Dialog "Pilih Station" ──
+    // Saat operator membuka input laporan TANPA station (mis. dari sidebar/dashboard),
+    // tanyakan dulu mau isi station yang mana. Tidak muncul untuk: link yg sudah bawa
+    // station, link review/publish (?review=1), deep-link spesifik (?date/?shift), atau
+    // user yang bisa review/publish (supervisor/admin) — mereka tetap dapat form penuh.
+    const [stationPickerOpen, setStationPickerOpen] = useState(false);
+    useEffect(() => {
+        if (!mounted || !operator) return;
+        const qReview = searchParams?.get('review');
+        const qDate = searchParams?.get('date');
+        const qShift = searchParams?.get('shift');
+        const needsPicker = !station && !qReview && !qDate && !qShift && !canReviewReport;
+        setStationPickerOpen(needsPicker);
+    }, [mounted, operator, canReviewReport, station, searchParams]);
+
+    // Konfirmasi dialog → set state langsung (apply instan) + tulis ke URL (persist saat
+    // refresh). station di URL memicu filter tab; date/shift juga dihormati saat reload.
+    const handleConfirmSetup = useCallback((sel: StationSetupSelection) => {
+        setInputMode(sel.mode);
+        setSelectedDate(sel.date);
+        setSelectedShift(sel.shift);
+        const params = new URLSearchParams();
+        params.set('station', sel.station);
+        params.set('date', sel.date);
+        if (sel.mode === 'harian') {
+            params.set('mode', 'harian');
+        } else {
+            params.set('shift', sel.shift === 1 ? 'malam' : sel.shift === 2 ? 'pagi' : 'sore');
+        }
+        router.replace(`/input-shift?${params.toString()}`);
+        setStationPickerOpen(false);
+    }, [router]);
 
     // Fetch saved ash unloadings and solar for current date+shift
     useEffect(() => {
@@ -1872,6 +1909,16 @@ function InputShiftPageInner() {
                     onForemanBoilerChange={setForemanBoiler}
                     canReview={canReviewReport}
                     reviewerName={operator?.name ?? ''}
+                />
+            )}
+            {/* Dialog "Pilih Laporan" — operator yang buka tanpa station (dari app) */}
+            {stationPickerOpen && (
+                <StationPickerModal
+                    initialMode={inputMode}
+                    initialDate={selectedDate}
+                    initialShift={selectedShift}
+                    onConfirm={handleConfirmSetup}
+                    onCancel={() => router.push('/dashboard')}
                 />
             )}
         </div>

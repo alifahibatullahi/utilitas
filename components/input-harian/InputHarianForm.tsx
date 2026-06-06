@@ -67,9 +67,11 @@ interface InputHarianFormProps {
     submitWindowEnd?: Date;
     /** Admin bypass — kalau true, tombol SAVE selalu enabled (admin bisa isi kapan saja). */
     isAdmin?: boolean;
+    /** Buka kembali dialog "Pilih Laporan" (tombol Ganti Laporan di header station). */
+    onChangeReport?: () => void;
 }
 
-export default function InputHarianForm({ date, operator, groupName, supervisorName, onSupervisorChange, submitWindowStart, submitWindowEnd, isAdmin = false }: InputHarianFormProps) {
+export default function InputHarianForm({ date, operator, groupName, supervisorName, onSupervisorChange, submitWindowStart, submitWindowEnd, isAdmin = false, onChangeReport }: InputHarianFormProps) {
     // Lock state — disable tombol SAVE & banner kalau di luar window.
     const [nowTickH, setNowTickH] = useState(() => Date.now());
     useEffect(() => {
@@ -1021,6 +1023,15 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                 </div>
                             </div>
+                            {onChangeReport && (
+                                <button
+                                    onClick={onChangeReport}
+                                    className="flex items-center justify-center gap-1.5 mt-1 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-xs font-bold text-slate-200 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                                    Ganti Laporan
+                                </button>
+                            )}
                         </div>
                     )}
 

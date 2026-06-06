@@ -48,6 +48,14 @@ export default function StationPickerModal({
     const tabsMap = mode === 'shift' ? STATION_SHIFT_TABS : STATION_HARIAN_TABS;
     const stations = STATION_ORDER.filter((s) => tabsMap[s].length > 0);
 
+    // Tampilan tanggal format Indonesia (input native ikut locale browser, jadi
+    // kita tampilkan label terformat di bawahnya).
+    const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? new Date(date + 'T00:00:00').toLocaleDateString('id-ID', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        })
+        : '';
+
     const segBtn = (active: boolean) =>
         `flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-colors ${active
             ? 'bg-blue-500 text-white'
@@ -83,6 +91,9 @@ export default function StationPickerModal({
                             onChange={(e) => setDate(e.target.value)}
                             className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none"
                         />
+                        {dateLabel && (
+                            <p className="text-xs font-semibold text-blue-300 mt-1.5">{dateLabel}</p>
+                        )}
                     </div>
 
                     {/* Shift (hanya mode shift) */}

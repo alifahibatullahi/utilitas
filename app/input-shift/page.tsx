@@ -1720,6 +1720,14 @@ function InputShiftPageInner() {
                                         <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                     </div>
                                 </div>
+                                {/* Ganti laporan/station — buka kembali dialog Pilih Laporan */}
+                                <button
+                                    onClick={() => setStationPickerOpen(true)}
+                                    className="flex items-center justify-center gap-1.5 mt-1 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-xs font-bold text-slate-200 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                                    Ganti Laporan
+                                </button>
                             </div>
                         )}
 
@@ -1889,7 +1897,7 @@ function InputShiftPageInner() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} />
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={station ? () => setStationPickerOpen(true) : undefined} />
             )}
             {/* Publish modal — same component as laporan-shift / laporan-harian pages */}
             {inputMode === 'shift' && (
@@ -1918,7 +1926,7 @@ function InputShiftPageInner() {
                     initialDate={selectedDate}
                     initialShift={selectedShift}
                     onConfirm={handleConfirmSetup}
-                    onCancel={() => router.push('/dashboard')}
+                    onCancel={() => { if (station) setStationPickerOpen(false); else router.push('/dashboard'); }}
                 />
             )}
         </div>

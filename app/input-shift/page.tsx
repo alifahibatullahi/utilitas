@@ -143,6 +143,8 @@ function InputShiftPageInner() {
     const searchParams = useSearchParams();
     const stationParam = searchParams?.get('station') ?? null;
     const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
+    // Station panel (boiler A/B + turbin) wajib mengisi supervisor (dipakai notif siap-publish).
+    const isPanelStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin'].includes(station);
 
     useEffect(() => {
         const qShift = searchParams?.get('shift');
@@ -870,8 +872,8 @@ function InputShiftPageInner() {
             }
         }
 
-        // ─── Supervisor wajib diisi (form penuh; mode station tak punya field supervisor) ───
-        if (!station && !supervisor.trim()) {
+        // ─── Supervisor wajib diisi: form penuh & station panel (boiler A/B + turbin) ───
+        if ((!station || isPanelStation) && !supervisor.trim()) {
             setToast({ type: 'error', message: 'Kolom Supervisor wajib diisi sebelum simpan.' });
             setTimeout(() => setToast(null), 4000);
             return;
@@ -1760,6 +1762,22 @@ function InputShiftPageInner() {
                                         <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                     </div>
                                 </div>
+                                {/* Supervisor — WAJIB di station panel (boiler A/B + turbin) */}
+                                {isPanelStation && (
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Supervisor <span className="text-red-400">*</span></span>
+                                        <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                            <SearchableSelect
+                                                value={supervisor}
+                                                onChange={setSupervisor}
+                                                options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
+                                                ariaLabel="Supervisor"
+                                                triggerClassName="text-sm font-bold text-white"
+                                            />
+                                            <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 

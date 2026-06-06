@@ -91,6 +91,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
     // Daftar operator lengkap untuk picker "Diisi oleh" (lintas grup)
     const { operators, canReviewReport } = useOperator();
+    // Station panel (boiler A/B + turbin) wajib mengisi supervisor (KASI).
+    const isPanelStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin'].includes(station);
+    const supervisorOptions = operators.filter(op => op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman'));
 
     // Per-station filler — default ke operator login, bisa di-override saat swap shift.
     const [fillerName, setFillerName] = useState(() => {
@@ -494,8 +497,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             }
         }
 
-        // ─── Supervisor (KASI) wajib diisi (form penuh; mode station tak punya field) ───
-        if (!station && !(supervisorName || '').trim() && !((totalizer.kasi_name as string) || '').trim()) {
+        // ─── Supervisor (KASI) wajib: form penuh & station panel (boiler A/B + turbin) ───
+        if ((!station || isPanelStation) && !(supervisorName || '').trim() && !((totalizer.kasi_name as string) || '').trim()) {
             setToast({ message: 'Kolom Supervisor wajib diisi sebelum simpan.', type: 'error' });
             setTimeout(() => setToast(null), 4000);
             return;
@@ -1052,6 +1055,22 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                 </div>
                             </div>
+                            {/* Supervisor (KASI) — WAJIB di station panel (boiler A/B + turbin) */}
+                            {isPanelStation && (
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Supervisor <span className="text-red-400">*</span></span>
+                                    <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                        <SearchableSelect
+                                            value={(totalizer.kasi_name as string) || supervisorName || ''}
+                                            onChange={(v) => { setTotalizer(prev => ({ ...prev, kasi_name: v })); onSupervisorChange?.(v); }}
+                                            options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
+                                            ariaLabel="Supervisor"
+                                            triggerClassName="text-sm font-bold text-white"
+                                        />
+                                        <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -872,6 +872,10 @@ export function useShiftReport(date: string, shift: ShiftType) {
             },
         };
 
+        // Station panel (boiler A/B + turbin) memiliki kolom `supervisor` → boleh menulisnya
+        // walau station-scoped (operator panel wajib isi supervisor; dipakai notif siap-publish).
+        const SUPERVISOR_OWNER_STATIONS = new Set(['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin']);
+
         const stationKey = reportData.station ?? null;
         const isStationScoped = !!stationKey && stationKey in STATION_OWNS_TABLES;
         const ownedTables = isStationScoped ? (STATION_OWNS_TABLES[stationKey!] ?? []) : null;
@@ -908,6 +912,9 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 updatePayload.group_name = reportData.group_name;
                 updatePayload.supervisor = reportData.supervisor;
                 updatePayload.catatan = reportData.catatan || null;
+            } else if (stationKey && SUPERVISOR_OWNER_STATIONS.has(stationKey) && reportData.supervisor) {
+                // Panel station: tulis supervisor tanpa overwrite kolom lain.
+                updatePayload.supervisor = reportData.supervisor;
             }
             // station_fillers di-handle via RPC setelah parent confirmed (lihat di bawah).
             if (validCreatedBy && !isStationScoped) updatePayload.created_by = validCreatedBy;

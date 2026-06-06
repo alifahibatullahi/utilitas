@@ -173,6 +173,8 @@ const BOILER_OWNS_COLS: Record<string, string[]> = {
         'press_steam_b', 'temp_steam_b', 'bfw_press_b', 'temp_bfw_b', 'temp_flue_gas_b',
         'air_heater_ti113_b', 'o2_b', 'steam_drum_press_b', 'primary_air_b', 'secondary_air_b',
     ],
+    // Panel boiler wajib isi supervisor (KASI) → boleh tulis kasi_name (dipakai notif siap-publish).
+    daily_report_totalizer: ['kasi_name'],
 };
 // Pisah kepemilikan per boiler supaya panel_boiler_a & panel_boiler_b tidak saling
 // menimpa (samakan dgn isolasi A/B di laporan shift). Kolom agregat (prod_total,
@@ -194,6 +196,7 @@ const BOILER_A_OWNS_COLS: Record<string, string[]> = {
         'press_steam_a', 'temp_steam_a', 'bfw_press_a', 'temp_bfw_a', 'temp_flue_gas_a',
         'air_heater_ti113_a', 'o2_a', 'steam_drum_press_a', 'primary_air_a', 'secondary_air_a',
     ],
+    daily_report_totalizer: ['kasi_name'],
 };
 const BOILER_B_OWNS_COLS: Record<string, string[]> = {
     daily_report_steam: ['prod_boiler_b_24', 'prod_boiler_b_00', 'selisih_prod_boiler_b', 'prod_total_24', 'prod_total_00'],
@@ -210,6 +213,7 @@ const BOILER_B_OWNS_COLS: Record<string, string[]> = {
         'press_steam_b', 'temp_steam_b', 'bfw_press_b', 'temp_bfw_b', 'temp_flue_gas_b',
         'air_heater_ti113_b', 'o2_b', 'steam_drum_press_b', 'primary_air_b', 'secondary_air_b',
     ],
+    daily_report_totalizer: ['kasi_name'],
 };
 const STATION_OWNS_COLS: Record<string, Record<string, string[]>> = {
     panel_boiler: BOILER_OWNS_COLS,          // legacy/full panel — own A + B
@@ -231,6 +235,8 @@ const STATION_OWNS_COLS: Record<string, Record<string, string[]>> = {
             'gen_ampere', 'gen_amp_react', 'gen_cos_phi', 'gen_tegangan', 'gen_frequensi',
             'gi_sum_p', 'gi_sum_q', 'gi_cos_phi', 'status_turbin',
         ],
+        // Panel turbin wajib isi supervisor (KASI).
+        daily_report_totalizer: ['kasi_name'],
     },
     handling: {
         daily_report_stock_tank: [

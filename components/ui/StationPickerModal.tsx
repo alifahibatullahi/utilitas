@@ -153,19 +153,29 @@ export default function StationPickerModal({
         : '';
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden animate-in zoom-in-95 duration-200 ease-out">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="relative w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 duration-200 ease-out">
+                {/* Close Button on top right */}
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-white hover:bg-slate-800/80 p-1.5 rounded-full transition-colors z-20 cursor-pointer flex items-center justify-center"
+                    aria-label="Tutup"
+                >
+                    <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+
                 {/* Ambient glow decoration */}
                 <div className="absolute -top-[20%] -right-[20%] w-72 h-72 rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
                 <div className="absolute -bottom-[20%] -left-[20%] w-72 h-72 rounded-full bg-emerald-500/5 blur-[80px] pointer-events-none" />
 
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-850 relative z-10">
+                <div className="px-6 py-5 border-b border-slate-800 relative z-10">
                     <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-slate-400 tracking-tight flex items-center gap-2">
                         <span className="material-symbols-outlined text-blue-400">assignment</span>
                         Pilih Laporan
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1 font-medium leading-relaxed">
+                    <p className="text-xs text-slate-400 mt-1 font-medium leading-relaxed pr-6">
                         Tentukan jenis laporan, tanggal, lalu pilih station untuk mulai mengisi data.
                     </p>
                 </div>

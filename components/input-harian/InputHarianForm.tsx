@@ -482,6 +482,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             return;
         }
 
+        // ─── Pastikan semua tab (sesuai scope station/penuh) terisi sebelum simpan ───
+        // Admin bypass; operator/foreman/supervisor wajib lengkap.
+        if (!isAdmin && visibleTabs.length > 0) {
+            const incomplete = visibleTabs.filter(t => !isTabLengkap(t.id));
+            if (incomplete.length > 0) {
+                setActiveTab(incomplete[0].id);
+                setToast({ message: `Lengkapi dulu tab: ${incomplete.map(t => t.id).join(', ')}`, type: 'error' });
+                setTimeout(() => setToast(null), 5000);
+                return;
+            }
+        }
+
         // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
         // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
         // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.

@@ -218,20 +218,25 @@ export default function StationPickerModal({
                     {/* Step 2: Tanggal */}
                     <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">2. Tanggal</label>
-                        <div className="relative">
+                        {/* Native date input transparan di atas; tampilan field memakai
+                            format Indonesia (input native ikut locale browser, jadi disembunyikan). */}
+                        <div className="relative group">
                             <input
                                 type="date"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
-                                className="w-full rounded-2xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900/80 px-4 py-3 text-white text-sm font-semibold focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all cursor-pointer [color-scheme:dark]"
+                                onClick={(e) => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* noop */ } }}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 [color-scheme:dark]"
+                                aria-label="Pilih tanggal"
                             />
+                            <div className="pointer-events-none w-full rounded-2xl border border-slate-800 bg-slate-900/60 group-hover:bg-slate-900/80 px-4 py-3 flex items-center justify-between transition-all">
+                                <span className="flex items-center gap-2 text-white text-sm font-semibold">
+                                    <span className="material-symbols-outlined text-[18px] text-cyan-400">event</span>
+                                    {dateLabel || 'Pilih tanggal'}
+                                </span>
+                                <span className="material-symbols-outlined text-slate-400 text-[18px]">calendar_today</span>
+                            </div>
                         </div>
-                        {dateLabel && (
-                            <p className="text-xs font-bold text-cyan-400 flex items-center gap-1 mt-1.5 pl-1">
-                                <span className="material-symbols-outlined text-[15px]">event</span>
-                                {dateLabel}
-                            </p>
-                        )}
                     </div>
 
                     {/* Step 3: Shift (Hanya jika mode shift) */}

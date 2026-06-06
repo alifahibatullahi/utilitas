@@ -429,8 +429,12 @@ function InputShiftPageInner() {
         setStationPickerOpen(needsPicker);
     }, [mounted, operator, station, searchParams]);
 
-    // Buka dialog "Ganti Laporan" (manual) — selalu tersedia.
+    // Buka dialog "Ganti Laporan" (manual).
     const openChangeReport = useCallback(() => { setPickerManual(true); setStationPickerOpen(true); }, []);
+
+    // Tombol "Ganti Laporan" hanya untuk yang masuk lewat dialog (URL bawa ?date),
+    // BUKAN operator yang dibuka dari link WA permanen (station tanpa date).
+    const cameFromPicker = !!searchParams?.get('date');
 
     // Konfirmasi dialog → set state langsung (apply instan) + tulis ke URL (persist saat
     // refresh). station 'all' = form penuh (tanpa param station); station X = filter tab.
@@ -1715,14 +1719,16 @@ function InputShiftPageInner() {
                                         </button>
                                     );
                                 })()}
-                                {/* Ganti Laporan — buka kembali dialog Pilih Laporan (selalu tersedia) */}
-                                <button
-                                    onClick={openChangeReport}
-                                    className="flex justify-center items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-lg text-sm font-bold transition-all border border-slate-700/50 w-full"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
-                                    GANTI LAPORAN
-                                </button>
+                                {/* Ganti Laporan — hanya untuk yang masuk lewat dialog (bukan link WA) */}
+                                {cameFromPicker && (
+                                    <button
+                                        onClick={openChangeReport}
+                                        className="flex justify-center items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-lg text-sm font-bold transition-all border border-slate-700/50 w-full"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
+                                        GANTI LAPORAN
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -1916,7 +1922,7 @@ function InputShiftPageInner() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={openChangeReport} />
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={cameFromPicker ? openChangeReport : undefined} />
             )}
             {/* Publish modal — same component as laporan-shift / laporan-harian pages */}
             {inputMode === 'shift' && (

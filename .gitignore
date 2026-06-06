@@ -43,3 +43,5 @@ TEMPLATE DARI STITCH/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.claude/scheduled_tasks.lock

@@ -8,8 +8,8 @@ export function createAdminClient(): SupabaseClient {
     );
 }
 
-// ─── WAHA send helpers ───
-// WAHA (WhatsApp HTTP API, self-host) menggantikan Fonnte. Nama fungsi lama
+// ─── Wablas send helpers ───
+// Wablas (gateway WhatsApp Indonesia) menggantikan Fonnte. Nama fungsi lama
 // (sendFonnteText/Group/File, FonnteAccount, accountForKind) DIPERTAHANKAN sebagai
 // alias supaya seluruh pemanggil lama tidak perlu diubah.
 
@@ -20,9 +20,9 @@ export interface SendResult {
     error?: string;   // human-readable reason when ok=false
 }
 
-// Dua "akun" = dua nomor/instance WAHA (tiap nomor = 1 session WAHA terpisah):
-//  - 'notif'   → WAHA_*          : reminder isi laporan shift/harian (grup A–D), photo-bot.
-//  - 'publish' → WAHA_*_PUBLISH  : publish laporan ke washift, Utilitas 2, SU 3A.
+// Dua "akun" = dua device/nomor WA terdaftar di Wablas (token+secret berbeda):
+//  - 'notif'   → WABLAS_*          : reminder isi laporan shift/harian (grup A–D), photo-bot.
+//  - 'publish' → WABLAS_*_PUBLISH  : publish laporan ke washift, Utilitas 2, SU 3A.
 export type WaAccount = 'notif' | 'publish';
 /** @deprecated nama lama; pakai WaAccount. */
 export type FonnteAccount = WaAccount;
@@ -36,118 +36,95 @@ export function accountForKind(kind: string | null | undefined): WaAccount {
     return kind && PUBLISH_KINDS.has(kind) ? 'publish' : 'notif';
 }
 
-interface WahaConfig { baseUrl: string; apiKey: string; session: string; }
+interface WablasConfig { baseUrl: string; auth: string; }
 
-/** Resolve konfigurasi WAHA untuk akun tertentu. Akun 'publish' fallback ke env
- *  notif (dengan warning) kalau WAHA_*_PUBLISH belum diset, supaya tidak gagal total. */
-function resolveWaha(account: WaAccount): { cfg?: WahaConfig; error?: string } {
+/** Resolve konfigurasi Wablas untuk akun tertentu. Auth header = "token.secret_key".
+ *  Akun 'publish' fallback ke env notif (dengan warning) kalau WABLAS_*_PUBLISH belum
+ *  diset, supaya tidak gagal total. WABLAS_BASE_URL = domain server device kamu
+ *  (mis. https://solo.wablas.com), default https://wablas.com. */
+function resolveWablas(account: WaAccount): { cfg?: WablasConfig; error?: string } {
     const pick = (suffix: '' | '_PUBLISH') => ({
-        baseUrl: process.env[`WAHA_BASE_URL${suffix}`]?.trim().replace(/\/+$/, ''),
-        apiKey: process.env[`WAHA_API_KEY${suffix}`]?.trim(),
-        session: process.env[`WAHA_SESSION${suffix}`]?.trim() || 'default',
+        baseUrl: process.env[`WABLAS_BASE_URL${suffix}`]?.trim().replace(/\/+$/, ''),
+        token: process.env[`WABLAS_TOKEN${suffix}`]?.trim(),
+        secret: process.env[`WABLAS_SECRET_KEY${suffix}`]?.trim(),
     });
 
     let conf = account === 'publish' ? pick('_PUBLISH') : pick('');
-    if (account === 'publish' && !conf.baseUrl) {
-        console.warn('[whatsapp] WAHA_BASE_URL_PUBLISH not set, falling back to WAHA_BASE_URL');
+    if (account === 'publish' && !conf.token) {
+        console.warn('[whatsapp] WABLAS_TOKEN_PUBLISH not set, falling back to WABLAS_TOKEN');
         conf = pick('');
     }
-    if (!conf.baseUrl) return { error: 'WAHA_BASE_URL belum diset di environment server' };
-    if (!conf.apiKey) return { error: 'WAHA_API_KEY belum diset di environment server' };
-    return { cfg: { baseUrl: conf.baseUrl, apiKey: conf.apiKey, session: conf.session } };
+    if (!conf.token) return { error: 'WABLAS_TOKEN belum diset di environment server' };
+    if (!conf.secret) return { error: 'WABLAS_SECRET_KEY belum diset di environment server' };
+    return { cfg: { baseUrl: conf.baseUrl || 'https://wablas.com', auth: `${conf.token}.${conf.secret}` } };
 }
 
-/** Normalisasi target ke chatId WAHA. Grup sudah disimpan sbg "...@g.us" → dipakai
- *  apa adanya; nomor personal polos (mis. "628123...") → ditambah suffix "@c.us". */
-function toChatId(target: string): string {
-    const t = target.trim();
-    if (t.includes('@')) return t;
-    return `${t.replace(/[^\d]/g, '')}@c.us`;
+/** Deteksi apakah target adalah grup. Nomor personal Wablas = digit saja (mis.
+ *  "628123..."); ID grup Wablas mengandung karakter non-digit (huruf/strip), mis.
+ *  "872468237asd-6281218xxxx". Nilai legacy "...@g.us" juga dianggap grup. */
+function isGroupTarget(target: string): boolean {
+    return /[^\d]/.test(target.trim());
 }
 
-async function wahaPost(cfg: WahaConfig, path: string, payload: Record<string, unknown>): Promise<SendResult> {
+async function wablasPost(cfg: WablasConfig, path: string, params: Record<string, string>): Promise<SendResult> {
     try {
         const res = await fetch(`${cfg.baseUrl}${path}`, {
             method: 'POST',
-            headers: { 'X-Api-Key': cfg.apiKey, 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            headers: {
+                Authorization: cfg.auth,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(params).toString(),
         });
         const body = await res.json().catch(() => null);
-        // WAHA: 2xx = terkirim. Error → non-2xx + { error/message } di body.
-        const reason = body && typeof body === 'object'
-            ? ((body as { error?: string; message?: string }).error ?? (body as { message?: string }).message)
-            : undefined;
+        // Wablas: HTTP 200 walau gagal logis; status terikat ke body.status (boolean).
+        const wablasOk = body && typeof body === 'object' && (body as { status?: boolean }).status === true;
+        const reason = (body && typeof body === 'object' && (body as { message?: string }).message) || undefined;
+        const ok = res.ok && wablasOk !== false;  // body.status === false → gagal
         return {
-            ok: res.ok,
+            ok,
             status: res.status,
             body,
-            error: res.ok ? undefined : (reason ?? `HTTP ${res.status}${body ? ' · ' + JSON.stringify(body) : ''}`),
+            error: ok ? undefined : (reason ?? `HTTP ${res.status}${body ? ' · ' + JSON.stringify(body) : ''}`),
         };
     } catch (err) {
-        console.warn('[whatsapp] WAHA send failed:', err);
+        console.warn('[whatsapp] Wablas send failed:', err);
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 
 export async function sendWaText(to: string, message: string, account: WaAccount = 'notif'): Promise<SendResult> {
-    const { cfg, error } = resolveWaha(account);
+    const { cfg, error } = resolveWablas(account);
     if (!cfg) { console.warn('[whatsapp]', error); return { ok: false, error }; }
-    return wahaPost(cfg, '/api/sendText', { session: cfg.session, chatId: toChatId(to), text: message });
+    const params: Record<string, string> = { phone: to.trim(), message };
+    if (isGroupTarget(to)) params.isGroup = 'true';
+    return wablasPost(cfg, '/api/send-message', params);
 }
 
-// WAHA pakai chatId yang sama untuk nomor personal (@c.us) maupun grup (@g.us).
+// Wablas pakai param `phone` (+isGroup) yang sama untuk nomor personal & grup.
 export const sendWaGroup = sendWaText;
 
-// Tebak mimetype dari ekstensi nama file / URL (untuk sendFile WAHA).
-function guessMime(name: string): string {
-    const ext = name.toLowerCase().match(/\.([a-z0-9]+)(?:\?|$)/)?.[1];
-    switch (ext) {
-        case 'pdf': return 'application/pdf';
-        case 'jpg': case 'jpeg': return 'image/jpeg';
-        case 'png': return 'image/png';
-        case 'doc': return 'application/msword';
-        case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        case 'xls': return 'application/vnd.ms-excel';
-        case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-        default: return 'application/octet-stream';
-    }
+// Pilih endpoint Wablas dari ekstensi: gambar → /api/send-image, selain itu (PDF/doc)
+// → /api/send-document. (Wablas: maks 2MB per file.)
+function isImage(name: string): boolean {
+    return /\.(jpe?g|png|gif|webp)(\?|$)/i.test(name);
 }
 
-// Kirim file (PDF/gambar/dokumen) lewat URL publik — WAHA yang mengunduh & mengirim.
+// Kirim file (PDF/gambar/dokumen) lewat URL publik — Wablas yang mengunduh & mengirim.
 export async function sendWaFile(to: string, fileUrl: string, caption?: string, filename?: string, account: WaAccount = 'notif'): Promise<SendResult> {
-    const { cfg, error } = resolveWaha(account);
+    const { cfg, error } = resolveWablas(account);
     if (!cfg) { console.warn('[whatsapp]', error); return { ok: false, error }; }
     const name = filename || fileUrl.split('/').pop()?.split('?')[0] || 'file';
-    const payload: Record<string, unknown> = {
-        session: cfg.session,
-        chatId: toChatId(to),
-        file: { url: fileUrl, filename: name, mimetype: guessMime(name) },
-    };
-    if (caption) payload.caption = caption;
-    return wahaPost(cfg, '/api/sendFile', payload);
+    const img = isImage(name);
+    const params: Record<string, string> = { phone: to.trim() };
+    params[img ? 'image' : 'document'] = fileUrl;
+    if (!img && filename) params.filename = filename;
+    if (caption) params.caption = caption;
+    if (isGroupTarget(to)) params.isGroup = 'true';
+    return wablasPost(cfg, img ? '/api/send-image' : '/api/send-document', params);
 }
 
-/** Cek status session WAHA (untuk health-check). status 'WORKING' = siap kirim;
- *  'SCAN_QR_CODE'/'STOPPED'/'FAILED' = perlu re-scan / restart. */
-export async function wahaSessionStatus(account: WaAccount = 'notif'): Promise<{
-    ok: boolean; account: WaAccount; session?: string; status?: string; error?: string;
-}> {
-    const { cfg, error } = resolveWaha(account);
-    if (!cfg) return { ok: false, account, error };
-    try {
-        const res = await fetch(`${cfg.baseUrl}/api/sessions/${cfg.session}`, {
-            headers: { 'X-Api-Key': cfg.apiKey },
-        });
-        const body = await res.json().catch(() => null);
-        if (!res.ok) return { ok: false, account, session: cfg.session, error: `HTTP ${res.status}` };
-        const status = (body as { status?: string })?.status;
-        return { ok: status === 'WORKING', account, session: cfg.session, status };
-    } catch (err) {
-        return { ok: false, account, session: cfg.session, error: err instanceof Error ? err.message : String(err) };
-    }
-}
-
-// ─── Alias kompatibilitas (nama lama Fonnte → WAHA) ───
+// ─── Alias kompatibilitas (nama lama Fonnte → Wablas) ───
 /** @deprecated pakai sendWaText. */
 export const sendFonnteText = sendWaText;
 /** @deprecated pakai sendWaGroup. */

@@ -29,6 +29,17 @@ import type { DailyTabProps, CoalActivity, CoalActivityInput } from './types';
 
 type HarianTabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Coal Bunker' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
 
+/** Parse nilai numerik ter-format Indonesia dari Google Sheets (FORMATTED_VALUE):
+ *  '.' = pemisah ribuan, ',' = desimal. Return null bila kosong/'-'/non-angka. */
+const parseSheetNum = (s: string | number | null | undefined): number | null => {
+    if (s == null) return null;
+    if (typeof s === 'number') return isNaN(s) ? null : s;
+    const t = s.trim();
+    if (t === '' || t === '-') return null;
+    const n = Number(t.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, ''));
+    return isNaN(n) ? null : n;
+};
+
 const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; colorClass: string }[] = [
     { id: 'Boiler A', label: 'Boiler A', icon: 'factory', colorClass: 'rose' },
     { id: 'Boiler B', label: 'Boiler B', icon: 'factory', colorClass: 'purple' },
@@ -767,6 +778,12 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     ...totalizer,
                     group_name: groupName || totalizer.group_name || null,
                     kasi_name: supervisorName || totalizer.kasi_name || null,
+                    // Stock Batubara (kolom DW) — diambil dari Sheets LHUBB, disimpan ke
+                    // Supabase supaya muncul di review In/Out & ditulis balik ke DW.
+                    stock_batubara_rendal:
+                        parseSheetNum(stockBatubaraSheet)
+                        ?? (totalizer.stock_batubara_rendal as number | null | undefined)
+                        ?? null,
                 },
                 // Station-scoped fill audit: hanya di-kirim kalau submit dari station view.
                 ...(station && fillerName ? { station_filler: { station, name: fillerName } } : {}),

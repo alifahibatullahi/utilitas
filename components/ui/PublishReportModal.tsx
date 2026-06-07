@@ -4,6 +4,17 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import TabStockBatubara from '@/components/input-harian/TabStockBatubara';
+import type { CoalActivity, CoalActivityInput } from '@/components/input-harian/types';
+
+/** Satu langkah di panel publish. Daftar step dibangun per-`kind` (lihat buildSteps di
+ *  komponen) sehingga menambah step pra-publish ke depan = cukup push entri baru. */
+interface ReviewStep {
+    id: string;
+    label: string;
+    icon: string;
+    render: () => React.ReactNode;
+}
 
 // ── Structured summary types (mirror dari server endpoints publish-{shift|daily}) ──
 interface ShiftReviewSummary {
@@ -133,11 +144,10 @@ export function PublishReportModal({
     canReview = false,
     reviewerName = '',
 }: Props) {
-    // Default ke tab Review — kartu ringkasan + teks Washift digabung dalam 1 view
-    // (stacked, scrollable) supaya di HP semua info terlihat tanpa pindah tab.
-    const [tab, setTab] = useState<'review' | 'pdf'>('review');
+    // Step aktif di panel berlangkah. 0 = step pertama; step terakhir selalu 'publish'.
+    const [stepIdx, setStepIdx] = useState(0);
     const [text, setText] = useState('');
-    // Structured summary untuk review tab. Union karena kind shift vs daily struktur beda.
+    // Structured summary untuk step publish. Union karena kind shift vs daily struktur beda.
     const [summary, setSummary] = useState<ShiftReviewSummary | DailyReviewSummary | null>(null);
     const [loadingText, setLoadingText] = useState(false);
     const [sending, setSending] = useState(false);
@@ -146,6 +156,13 @@ export function PublishReportModal({
     const [supervisor, setSupervisor] = useState(initialSupervisor);
     const [foremanTurbin, setForemanTurbin] = useState(initialForemanTurbin);
     const [foremanBoiler, setForemanBoiler] = useState(initialForemanBoiler);
+
+    // ── State In/Out Batubara (hanya dipakai step 'batubara' di laporan harian) ──
+    // Panel mengelola data ini sendiri (fetch + add/hapus via Supabase) supaya bisa
+    // dipakai dari halaman read-only tanpa state form. Pola meniru InputHarianForm.
+    const [coalActivities, setCoalActivities] = useState<CoalActivity[]>([]);
+    const [lautTotalSheet, setLautTotalSheet] = useState<string | null>(null);
+    const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
 
     // Sync state dari props saat modal open atau initial values berubah dari parent.
     // Direksi: parent (input laporan / fetched report) → modal.
@@ -238,10 +255,13 @@ export function PublishReportModal({
     // Sizing awal saat template selesai di-load. Saat user ketik, sizing dilakukan
     // langsung di onChange (lihat textarea) supaya tidak ada scroll-jump per keystroke.
     useEffect(() => {
-        if (tab !== 'review' || !open || loadingText) return;
+        if (!open || loadingText) return;
         const raf = requestAnimationFrame(autoSizeTextarea);
         return () => cancelAnimationFrame(raf);
-    }, [tab, open, loadingText, autoSizeTextarea]);
+    }, [open, loadingText, stepIdx, autoSizeTextarea]);
+
+    // Reset ke step pertama tiap kali panel dibuka.
+    useEffect(() => { if (open) setStepIdx(0); }, [open]);
 
     // Reusable: re-fetch template body dari server. Dipanggil saat modal open AND
     // setiap kali dropdown supervisor/foreman berubah supaya template auto-refresh.
@@ -267,6 +287,75 @@ export function PublishReportModal({
         fetchTemplate();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, reportId, kind]);
+
+    // ── In/Out Batubara: fetch coal_activities saat panel harian dibuka ──
+    useEffect(() => {
+        if (!open || kind !== 'daily' || !reportDate) return;
+        const supabase = createClient();
+        supabase
+            .from('coal_activities')
+            .select('id, date, kind, category, rit, ton, keterangan')
+            .eq('date', reportDate)
+            .order('created_at', { ascending: false })
+            .then(({ data }) => {
+                setCoalActivities(
+                    (data ?? []).map(r => ({
+                        id: r.id as string,
+                        date: r.date as string,
+                        kind: r.kind as CoalActivity['kind'],
+                        category: r.category as CoalActivity['category'],
+                        rit: Number(r.rit) || 0,
+                        ton: Number(r.ton) || 0,
+                        keterangan: (r.keterangan as string) ?? undefined,
+                    })),
+                );
+            });
+    }, [open, kind, reportDate]);
+
+    // Nilai read-only dari Sheets LHUBB: DN(117)=total via laut, DW(126)=stock batubara.
+    useEffect(() => {
+        if (!open || kind !== 'daily' || !reportDate) return;
+        let stale = false;
+        setLautTotalSheet(null);
+        setStockBatubaraSheet(null);
+        fetch(`/api/sheets/read?type=daily_report&date=${reportDate}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(j => {
+                if (stale || !j?.found || !Array.isArray(j?.data?.raw)) return;
+                const pick = (idx: number) => {
+                    const raw = j.data.raw[idx];
+                    const v = raw == null ? '' : String(raw).trim();
+                    return v && v !== '-' ? v : null;
+                };
+                setLautTotalSheet(pick(117));
+                setStockBatubaraSheet(pick(126));
+            })
+            .catch(() => { /* non-blocking */ });
+        return () => { stale = true; };
+    }, [open, kind, reportDate]);
+
+    const handleAddCoalActivity = async (a: CoalActivityInput) => {
+        if (!reportDate) return;
+        const supabase = createClient();
+        const row = {
+            date: reportDate, shift: null,
+            kind: a.kind, category: a.category,
+            rit: a.rit, ton: a.ton,
+            keterangan: a.keterangan ?? null,
+            operator_id: reviewerName || null,
+        };
+        const { data, error } = await supabase.from('coal_activities').insert(row).select('id').single();
+        if (error) { alert('Gagal simpan aktivitas: ' + error.message); return; }
+        setCoalActivities(prev => [{ id: data?.id as string, date: reportDate, ...a }, ...prev]);
+    };
+
+    const handleDeleteCoalActivity = async (id: string) => {
+        if (!confirm('Hapus aktivitas batubara ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('coal_activities').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setCoalActivities(prev => prev.filter(e => e.id !== id));
+    };
 
     if (!open) return null;
 
@@ -326,14 +415,146 @@ export function PublishReportModal({
 
     const kindLabel = kind === 'shift' ? 'Shift' : 'Harian';
 
+    // ── Konten step terakhir 'publish': dropdown PJ + ringkasan + teks Washift ──
+    const renderPublishStep = () => (
+        <>
+            {/* Penanggung Jawab Laporan */}
+            <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-3 sm:p-4 space-y-2.5 mb-4 sm:mb-5">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                    <span className="material-symbols-outlined text-[14px] text-blue-400">badge</span>
+                    Penanggung Jawab Laporan
+                </div>
+                <div className={`grid grid-cols-1 ${kind === 'shift' ? 'sm:grid-cols-3' : 'max-w-md'} gap-2 sm:gap-3`}>
+                    {/* Supervisor Dropdown */}
+                    <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                            {kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
+                        </label>
+                        <div className="relative flex items-center">
+                            <SearchableSelect
+                                value={supervisor}
+                                onChange={v => { setSupervisor(v); onSupervisorChange?.(v); persistChange('supervisor', v); }}
+                                options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
+                                ariaLabel={kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
+                                triggerClassName="text-xs font-black text-slate-200 pr-6"
+                            />
+                            <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
+                        </div>
+                    </div>
+
+                    {kind === 'shift' && (
+                        <>
+                            {/* Foreman Turbin Dropdown */}
+                            <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Turbin</label>
+                                <div className="relative flex items-center">
+                                    <SearchableSelect
+                                        value={foremanTurbin}
+                                        onChange={v => { setForemanTurbin(v); onForemanTurbinChange?.(v); persistChange('foreman_turbin', v); }}
+                                        options={foremanTurbinOptions.map(op => ({ value: op.name, label: op.name }))}
+                                        ariaLabel="Foreman Turbin"
+                                        triggerClassName="text-xs font-black text-indigo-300 pr-6"
+                                    />
+                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
+                                </div>
+                            </div>
+
+                            {/* Foreman Boiler Dropdown */}
+                            <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Boiler</label>
+                                <div className="relative flex items-center">
+                                    <SearchableSelect
+                                        value={foremanBoiler}
+                                        onChange={v => { setForemanBoiler(v); onForemanBoilerChange?.(v); persistChange('foreman_boiler', v); }}
+                                        options={foremanBoilerOptions.map(op => ({ value: op.name, label: op.name }))}
+                                        ariaLabel="Foreman Boiler"
+                                        triggerClassName="text-xs font-black text-amber-300 pr-6"
+                                    />
+                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Ringkasan + pesan Washift */}
+            {loadingText || !summary ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                    <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
+                    <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat ringkasan...</span>
+                </div>
+            ) : (
+                <div className="space-y-5">
+                    {kind === 'shift' ? (
+                        <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
+                    ) : (
+                        <ReviewSummaryDaily summary={summary as DailyReviewSummary} />
+                    )}
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px] text-cyan-400">chat</span>
+                                Pesan ke {washiftKey}
+                            </div>
+                            <button
+                                onClick={copyToClipboard}
+                                disabled={loadingText || !text}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-40 active:scale-95 border text-[10px] font-bold uppercase tracking-wider
+                                    ${copied
+                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                                        : 'bg-slate-900 border-slate-800 hover:border-slate-700/80 text-slate-400 hover:text-white hover:scale-105 shadow-sm'}`}
+                            >
+                                <span className="material-symbols-outlined text-[13px]">{copied ? 'check' : 'content_copy'}</span>
+                                {copied ? 'Tersalin' : 'Salin'}
+                            </button>
+                        </div>
+                        <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
+                            <textarea
+                                ref={textareaRef}
+                                value={text}
+                                onChange={e => { setText(e.target.value); autoSizeTextarea(); }}
+                                className="w-full bg-transparent border-none text-xs sm:text-[13px] font-mono focus:outline-none focus:ring-0 text-slate-200 resize-none overflow-hidden leading-relaxed min-h-[240px]"
+                                placeholder="Tulis laporan di sini..."
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+
+    // Daftar step (registry) — step pra-publish disisipkan SEBELUM 'publish' (selalu akhir).
+    // Menambah step ke depan = cukup push entri baru di sini.
+    const steps: ReviewStep[] = [];
+    if (kind === 'daily') {
+        steps.push({
+            id: 'batubara',
+            label: 'Review In/Out Batubara',
+            icon: 'local_shipping',
+            render: () => (
+                <TabStockBatubara
+                    coalActivities={coalActivities}
+                    onAddCoalActivity={handleAddCoalActivity}
+                    onDeleteCoalActivity={handleDeleteCoalActivity}
+                    lautTotalSheet={lautTotalSheet}
+                    stockBatubaraSheet={stockBatubaraSheet}
+                    lhubbDate={reportDate}
+                />
+            ),
+        });
+    }
+    steps.push({ id: 'publish', label: 'Review & Publish', icon: 'fact_check', render: renderPublishStep });
+    const safeStepIdx = Math.min(stepIdx, steps.length - 1);
+    const isLast = safeStepIdx === steps.length - 1;
+
     return (
-        <div 
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center z-50 p-2 sm:p-4 transition-all duration-300"
-            onClick={() => !sending && onClose()}
+        <div
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col transition-all duration-300"
         >
-            <div 
-                className="relative bg-gradient-to-b from-[#182333] to-[#0e1621] rounded-2xl border border-slate-700/60 max-w-3xl w-full max-h-[92vh] flex flex-col shadow-[0_0_60px_rgba(43,124,238,0.18)] overflow-hidden transform transition-all duration-300 scale-100" 
-                onClick={e => e.stopPropagation()}
+            <div
+                className="relative w-full h-[100dvh] bg-gradient-to-b from-[#182333] to-[#0e1621] flex flex-col overflow-hidden"
             >
                 {/* Loading Overlay */}
                 {sending && (
@@ -372,170 +593,49 @@ export function PublishReportModal({
                     </div>
                 </div>
 
-                {/* Tabs Wrapper — Review Summary + Teks Washift digabung di tab 'review'. */}
-                <div className="px-4 sm:px-6 pt-4">
-                    <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 flex gap-2">
-                        {/* Review & Teks — kartu ringkasan + textarea pesan Washift dalam satu view. */}
-                        <button
-                            onClick={() => setTab('review')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
-                                ${tab === 'review'
-                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)]'
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                        >
-                            <span className="material-symbols-outlined text-base">fact_check</span>
-                            Review &amp; Teks
-                        </button>
-                        <button
-                            onClick={() => setTab('pdf')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer relative
-                                ${tab === 'pdf'
-                                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.25)]'
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                        >
-                            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-                            PDF<span className="hidden sm:inline">&nbsp;ke {pdfGroupKey}</span>
-                            <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">SOON</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Body Content */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                    {/* Penanggung Jawab Laporan — ikut scroll (bukan fixed) supaya tidak
-                        makan tinggi modal di HP; kompak di layar kecil. */}
-                    <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-3 sm:p-4 space-y-2.5 mb-4 sm:mb-5">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
-                            <span className="material-symbols-outlined text-[14px] text-blue-400">badge</span>
-                            Penanggung Jawab Laporan
-                        </div>
-                        <div className={`grid grid-cols-1 ${kind === 'shift' ? 'sm:grid-cols-3' : 'max-w-md'} gap-2 sm:gap-3`}>
-                            {/* Supervisor Dropdown */}
-                            <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
-                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                                    {kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
-                                </label>
-                                <div className="relative flex items-center">
-                                    <SearchableSelect
-                                        value={supervisor}
-                                        onChange={v => { setSupervisor(v); onSupervisorChange?.(v); persistChange('supervisor', v); }}
-                                        options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
-                                        ariaLabel={kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
-                                        triggerClassName="text-xs font-black text-slate-200 pr-6"
-                                    />
-                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
-                                </div>
-                            </div>
-
-                            {kind === 'shift' && (
-                                <>
-                                    {/* Foreman Turbin Dropdown */}
-                                    <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Turbin</label>
-                                        <div className="relative flex items-center">
-                                            <SearchableSelect
-                                                value={foremanTurbin}
-                                                onChange={v => { setForemanTurbin(v); onForemanTurbinChange?.(v); persistChange('foreman_turbin', v); }}
-                                                options={foremanTurbinOptions.map(op => ({ value: op.name, label: op.name }))}
-                                                ariaLabel="Foreman Turbin"
-                                                triggerClassName="text-xs font-black text-indigo-300 pr-6"
-                                            />
-                                            <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Foreman Boiler Dropdown */}
-                                    <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Foreman Boiler</label>
-                                        <div className="relative flex items-center">
-                                            <SearchableSelect
-                                                value={foremanBoiler}
-                                                onChange={v => { setForemanBoiler(v); onForemanBoilerChange?.(v); persistChange('foreman_boiler', v); }}
-                                                options={foremanBoilerOptions.map(op => ({ value: op.name, label: op.name }))}
-                                                ariaLabel="Foreman Boiler"
-                                                triggerClassName="text-xs font-black text-amber-300 pr-6"
-                                            />
-                                            <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
+                {/* Step indicator — tampil bila ada > 1 step (mis. harian: Batubara → Publish) */}
+                {steps.length > 1 && (
+                    <div className="px-4 sm:px-6 pt-4">
+                        <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 flex gap-2">
+                            {steps.map((s, i) => {
+                                const active = i === safeStepIdx;
+                                const reachable = i <= safeStepIdx;
+                                return (
+                                    <button
+                                        key={s.id}
+                                        type="button"
+                                        onClick={() => { if (reachable) setStepIdx(i); }}
+                                        disabled={!reachable || sending}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 relative
+                                            ${active
+                                                ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)] cursor-pointer'
+                                                : reachable
+                                                    ? 'text-emerald-300 hover:text-emerald-200 hover:bg-slate-900/40 cursor-pointer'
+                                                    : 'text-slate-500 cursor-not-allowed'}`}
+                                    >
+                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${active ? 'bg-white/20' : 'bg-slate-800/80'}`}>{i + 1}</span>
+                                        <span className="hidden sm:inline">{s.label}</span>
+                                        <span className="material-symbols-outlined text-base sm:hidden">{s.icon}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
+                )}
 
-                    {/* Review & Teks — kartu ringkasan + pesan Washift digabung dalam satu view. */}
-                    {tab === 'review' && (
-                        loadingText || !summary ? (
-                            <div className="flex flex-col items-center justify-center py-20 gap-3">
-                                <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
-                                <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat ringkasan...</span>
+                {/* Body — slide track antar step (semua step tetap mounted) */}
+                <div className="flex-1 overflow-hidden">
+                    <div
+                        className="flex h-full transition-transform duration-300 ease-out"
+                        style={{ width: `${steps.length * 100}%`, transform: `translateX(-${safeStepIdx * (100 / steps.length)}%)` }}
+                    >
+                        {steps.map(s => (
+                            <div key={s.id} className="h-full overflow-y-auto" style={{ width: `${100 / steps.length}%` }}>
+                                <div className="p-4 sm:p-6">{s.render()}</div>
                             </div>
-                        ) : (
-                            <div className="space-y-5">
-                                {/* Kartu ringkasan per area */}
-                                {kind === 'shift' ? (
-                                    <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
-                                ) : (
-                                    <ReviewSummaryDaily summary={summary as DailyReviewSummary} />
-                                )}
-
-                                {/* Pesan ke Washift — editable, tepat di bawah ringkasan supaya
-                                    reviewer langsung lihat & koreksi sebelum publish. */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                            <span className="material-symbols-outlined text-[14px] text-cyan-400">chat</span>
-                                            Pesan ke {washiftKey}
-                                        </div>
-                                        <button
-                                            onClick={copyToClipboard}
-                                            disabled={loadingText || !text}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-40 active:scale-95 border text-[10px] font-bold uppercase tracking-wider
-                                                ${copied
-                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
-                                                    : 'bg-slate-900 border-slate-800 hover:border-slate-700/80 text-slate-400 hover:text-white hover:scale-105 shadow-sm'}`}
-                                        >
-                                            <span className="material-symbols-outlined text-[13px]">{copied ? 'check' : 'content_copy'}</span>
-                                            {copied ? 'Tersalin' : 'Salin'}
-                                        </button>
-                                    </div>
-                                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
-                                        <textarea
-                                            ref={textareaRef}
-                                            value={text}
-                                            onChange={e => { setText(e.target.value); autoSizeTextarea(); }}
-                                            className="w-full bg-transparent border-none text-xs sm:text-[13px] font-mono focus:outline-none focus:ring-0 text-slate-200 resize-none overflow-hidden leading-relaxed min-h-[240px]"
-                                            placeholder="Tulis laporan di sini..."
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    )}
-
-                    {tab === 'pdf' && (
-                        <div className="space-y-4 py-12">
-                            <div className="max-w-md mx-auto">
-                                <div className="bg-slate-950/60 border border-slate-800/80 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
-                                    <div className="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center shadow-[0_0_25px_rgba(245,158,11,0.15)] border border-amber-500/30">
-                                        <span className="material-symbols-outlined text-4xl">construction</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <h3 className="text-base font-extrabold text-amber-300 uppercase tracking-wider">Coming Soon</h3>
-                                        <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
-                                            Pengiriman PDF laporan ke grup <span className="text-emerald-400 font-bold">{pdfGroupKey}</span> sedang dalam pengembangan. Untuk sementara, gunakan tab <span className="text-cyan-300 font-bold">Text Washift</span> untuk publish.
-                                        </p>
-                                    </div>
-                                    <span className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest">
-                                        <span className="material-symbols-outlined text-[12px]">schedule</span>
-                                        Fitur dalam pengembangan
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                        ))}
+                    </div>
                 </div>
-
                 {/* Results Section */}
                 {results && (
                     <div className="px-4 sm:px-6 pb-4 space-y-2.5">
@@ -547,33 +647,57 @@ export function PublishReportModal({
                     </div>
                 )}
 
-                {/* Footer / Actions */}
-                <div className="flex items-center justify-end gap-3 p-4 sm:p-6 border-t border-slate-800/80 bg-slate-950/20">
-                    <button 
-                        onClick={onClose} 
-                        disabled={sending} 
-                        className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/50 transition-all border border-transparent hover:border-slate-800 cursor-pointer disabled:opacity-30"
-                    >
-                        Tutup
-                    </button>
-                    <button
-                        onClick={publish}
-                        disabled={sending || loadingText || !text.trim() || !reportId || tab === 'pdf'}
-                        title={tab === 'pdf' ? 'PDF ke management belum tersedia (coming soon)' : !reportId ? 'Laporan belum disimpan' : `Setujui isi laporan dan kirim teks ke ${washiftKey}`}
-                        className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all duration-300 shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
-                    >
-                        {sending ? (
-                            <>
-                                <span className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
-                                Mengirim Laporan...
-                            </>
-                        ) : (
-                            <>
-                                <span className="material-symbols-outlined text-sm">check_circle</span>
-                                {tab === 'pdf' ? 'PDF Coming Soon' : 'Setujui & Kirim ke washift'}
-                            </>
+                {/* Footer / Actions — kontekstual per step */}
+                <div className="flex items-center justify-between gap-3 p-4 sm:p-6 border-t border-slate-800/80 bg-slate-950/20">
+                    <div className="flex items-center gap-2">
+                        {safeStepIdx > 0 && (
+                            <button
+                                onClick={() => setStepIdx(i => Math.max(0, i - 1))}
+                                disabled={sending}
+                                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white rounded-xl hover:bg-slate-800/50 transition-all border border-slate-800 cursor-pointer disabled:opacity-30"
+                            >
+                                <span className="material-symbols-outlined text-sm">arrow_back</span>
+                                Kembali
+                            </button>
                         )}
-                    </button>
+                        <button
+                            onClick={onClose}
+                            disabled={sending}
+                            className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/50 transition-all border border-transparent hover:border-slate-800 cursor-pointer disabled:opacity-30"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+
+                    {!isLast ? (
+                        <button
+                            onClick={() => setStepIdx(i => Math.min(steps.length - 1, i + 1))}
+                            disabled={sending}
+                            className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
+                        >
+                            Lanjut
+                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={publish}
+                            disabled={sending || loadingText || !text.trim() || !reportId}
+                            title={!reportId ? 'Laporan belum disimpan' : `Setujui isi laporan dan kirim teks ke ${washiftKey}`}
+                            className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all duration-300 shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                            {sending ? (
+                                <>
+                                    <span className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                                    Mengirim Laporan...
+                                </>
+                            ) : (
+                                <>
+                                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                                    Setujui &amp; Kirim ke {washiftKey}
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

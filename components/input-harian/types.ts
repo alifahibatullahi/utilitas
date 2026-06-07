@@ -69,3 +69,14 @@ export interface CoalActivity extends CoalActivityInput {
     id?: string;
     date: string;
 }
+
+/** Subset prop yang dipakai TabStockBatubara — supaya komponen bisa dipakai ulang di
+ *  luar form harian (mis. panel publish) tanpa harus menyediakan seluruh DailyTabProps. */
+export type CoalReviewProps = Pick<DailyTabProps,
+    | 'lautTotalSheet'
+    | 'stockBatubaraSheet'
+    | 'lhubbDate'
+    | 'coalActivities'
+    | 'onAddCoalActivity'
+    | 'onDeleteCoalActivity'
+>;

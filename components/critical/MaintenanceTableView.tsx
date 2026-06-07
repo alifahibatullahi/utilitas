@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import type { MaintenanceWithCritical, WorkOrderWithPekerjaan, MaintenanceStatus, MaintenanceType } from '@/lib/supabase/types';
-import { capitalizeFirst, todayWIB } from '@/lib/utils';
+import { capitalizeFirst, todayWIB, deriveShiftKeyFromIso } from '@/lib/utils';
 import { detectCurrentShift, getShiftWindow } from '@/lib/constants';
 import ScopeBadge from './ScopeBadge';
 import ClickableStatusDropdown from './ClickableStatusDropdown';
@@ -26,6 +26,18 @@ const STATUS_OPTIONS = [
     { value: 'IP', label: 'IN PROGRESS', color: 'bg-amber-500 text-white' },
     { value: 'OK', label: 'SELESAI', color: 'bg-slate-600 text-white' },
 ];
+
+const SHIFT_LABEL: Record<'pagi' | 'sore' | 'malam', string> = { pagi: 'Pagi', sore: 'Sore', malam: 'Malam' };
+
+// Penjelasan asal shift sebuah item IP — "dari shift apa, hari & tanggal kapan"
+// berdasarkan updated_at (shift terakhir item itu dikerjakan).
+function describeShiftAsal(iso: string): string {
+    const k = deriveShiftKeyFromIso(iso);
+    const tgl = new Date(k.date + 'T00:00:00').toLocaleDateString('id-ID', {
+        weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
+    });
+    return `Shift ${SHIFT_LABEL[k.shift]} — ${tgl}`;
+}
 
 interface MaintenanceTableViewProps {
     maintenances: MaintenanceWithCritical[];
@@ -307,10 +319,16 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                                             Shift Ini
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                                                            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>history</span>
-                                                            Shift Sebelumnya
-                                                        </span>
+                                                        <div className="flex flex-col items-start gap-0.5">
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                                                                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>history</span>
+                                                                Shift Sebelumnya
+                                                            </span>
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 leading-tight" title={`Masih IN PROGRESS sejak ${describeShiftAsal(m.updated_at)}`}>
+                                                                <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 11 }}>schedule</span>
+                                                                Masih IP sejak {describeShiftAsal(m.updated_at)}
+                                                            </span>
+                                                        </div>
                                                     )
                                                 )}
                                             </div>

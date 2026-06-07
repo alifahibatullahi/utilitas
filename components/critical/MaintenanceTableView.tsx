@@ -7,7 +7,7 @@ import { detectCurrentShift, getShiftWindow } from '@/lib/constants';
 import ScopeBadge from './ScopeBadge';
 import ClickableStatusDropdown from './ClickableStatusDropdown';
 
-type DateMode = 'shift_now' | 'today' | 'last_1_day' | 'all';
+type DateMode = 'shift_now' | 'today' | 'last_1_day' | 'all' | 'need_continue';
 
 const TIPE_LABEL: Record<MaintenanceType, string> = {
     corrective: 'Corrective',
@@ -34,9 +34,11 @@ interface MaintenanceTableViewProps {
     onDelete: (id: string) => Promise<void> | void;
     onChangeStatus: (id: string, newStatus: MaintenanceStatus) => Promise<unknown> | unknown;
     onToggleExpand: (id: string, type: 'critical' | 'wo') => void;
+    onKonfirmasiShift: (id: string) => Promise<unknown> | unknown;
+    onRevertFromCurrentShift: (id: string, shiftWindow: { start: Date; end: Date }) => Promise<unknown> | unknown;
 }
 
-export default function MaintenanceTableView({ maintenances, workOrders, onEdit, onDelete, onChangeStatus, onToggleExpand }: MaintenanceTableViewProps) {
+export default function MaintenanceTableView({ maintenances, workOrders, onEdit, onDelete, onChangeStatus, onToggleExpand, onKonfirmasiShift, onRevertFromCurrentShift }: MaintenanceTableViewProps) {
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'done'>('all');
     const [filterScope, setFilterScope] = useState<string>('all');
@@ -51,6 +53,23 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
 
     const scopes = useMemo(() => Array.from(new Set(maintenances.map(m => m.scope))).sort(), [maintenances]);
     const foremen = useMemo(() => Array.from(new Set(maintenances.map(m => m.foreman))).sort(), [maintenances]);
+
+    // Window shift sekarang — dipakai untuk klasifikasi IP (Shift Ini vs Shift Sebelumnya)
+    const curShift = useMemo(() => detectCurrentShift(), []);
+    const shiftWindow = useMemo(() => getShiftWindow(curShift.date, curShift.shift), [curShift]);
+    const inCurrentShift = (m: MaintenanceWithCritical) => {
+        const t = new Date(m.updated_at).getTime();
+        return t >= shiftWindow.start.getTime() && t <= shiftWindow.end.getTime();
+    };
+    // "Perlu dilanjut" = IP & updated_at masih di shift sebelumnya (belum dilanjut ke shift ini)
+    const isCarryForward = (m: MaintenanceWithCritical) => m.status === 'IP' && !inCurrentShift(m);
+
+    // Jumlah item IP shift sebelumnya yang perlu dilanjut (dari list dasar, exclude notes)
+    const needContinueCount = useMemo(
+        () => maintenances.filter(m => m.keterangan !== 'IS_NOTE' && m.item !== 'NOTE' && isCarryForward(m)).length,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [maintenances, shiftWindow]
+    );
 
     // Pre-compute window untuk preset tanggal
     const dateFilter = useMemo(() => {
@@ -90,11 +109,12 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
             .filter(m => filterStatus === 'all' || (filterStatus === 'active' ? m.status !== 'OK' : m.status === 'OK'))
             .filter(m => filterScope === 'all' || m.scope === filterScope)
             .filter(m => filterForeman === 'all' || m.foreman === filterForeman)
-            .filter(matchesDate)
+            // Mode "Perlu Dilanjut": hanya IP shift sebelumnya. Mode lain: filter tanggal biasa.
+            .filter(m => dateMode === 'need_continue' ? isCarryForward(m) : matchesDate(m))
             .filter(m => !q || m.item.toLowerCase().includes(q) || m.uraian.toLowerCase().includes(q) || (m.notif ?? '').toLowerCase().includes(q))
             .sort((a, b) => b.date.localeCompare(a.date));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [maintenances, search, filterStatus, filterScope, filterForeman, dateFilter]);
+    }, [maintenances, search, filterStatus, filterScope, filterForeman, dateFilter, dateMode, shiftWindow]);
 
     const counts = useMemo(() => ({
         total: filtered.length,
@@ -163,6 +183,23 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                             {t.label}
                         </button>
                     ))}
+                    <button
+                        onClick={() => setDateMode('need_continue')}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap h-full ${
+                            dateMode === 'need_continue'
+                                ? 'bg-white shadow-sm border border-amber-200 text-amber-600'
+                                : 'text-amber-600/80 hover:text-amber-700 hover:bg-white/30'
+                        }`}
+                        title="Item IN PROGRESS dari shift sebelumnya yang belum dilanjut ke shift ini"
+                    >
+                        <span className="material-symbols-outlined text-amber-500" style={{ fontSize: 13 }}>pending_actions</span>
+                        Perlu Dilanjut
+                        {needContinueCount > 0 && (
+                            <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-black leading-none">
+                                {needContinueCount}
+                            </span>
+                        )}
+                    </button>
                 </div>
 
                 {/* Scope & Foreman dropdowns */}
@@ -256,17 +293,51 @@ export default function MaintenanceTableView({ maintenances, workOrders, onEdit,
                                             </div>
                                         </td>
                                         <td className="px-4 py-4">
-                                            <div className="flex flex-col gap-1 items-start">
+                                            <div className="flex flex-col gap-1.5 items-start">
                                                 <ClickableStatusDropdown
                                                     currentStatus={m.status}
                                                     options={STATUS_OPTIONS}
                                                     onChange={newStatus => { onChangeStatus(m.id, newStatus as MaintenanceStatus); }}
                                                     label={m.item}
                                                 />
+                                                {m.status === 'IP' && (
+                                                    inCurrentShift(m) ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200">
+                                                            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>pending</span>
+                                                            Shift Ini
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                                                            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>history</span>
+                                                            Shift Sebelumnya
+                                                        </span>
+                                                    )
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-4 py-4 text-center">
                                             <div className="flex items-center justify-center gap-2">
+                                                {m.status === 'IP' && (
+                                                    isCarryForward(m) ? (
+                                                        <button
+                                                            onClick={() => onKonfirmasiShift(m.id)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/20 hover:from-emerald-600 hover:to-teal-700 transition-all whitespace-nowrap"
+                                                            title="Lanjutkan pekerjaan ini di shift sekarang"
+                                                        >
+                                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+                                                            Lanjut ke Shift Ini
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => onRevertFromCurrentShift(m.id, shiftWindow)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all whitespace-nowrap"
+                                                            title="Batalkan dari shift ini (kembalikan ke shift sebelumnya)"
+                                                        >
+                                                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>undo</span>
+                                                            Batalkan
+                                                        </button>
+                                                    )
+                                                )}
                                                 <button
                                                     onClick={() => onToggleExpand(asal?.type === 'critical' && m.critical_id ? m.critical_id : (m.work_order_id ?? ''), asal?.type || 'critical')}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:from-blue-600 hover:to-blue-700 transition-all"

@@ -356,6 +356,8 @@ export default function CriticalPage() {
                                         if (type === 'critical') setExpandedCriticalId(id);
                                         else setExpandedWOId(id);
                                     }}
+                                    onKonfirmasiShift={cm.konfirmasiShift}
+                                    onRevertFromCurrentShift={cm.revertMaintenanceFromCurrentShift}
                                 />
 
                                 {/* Detail Modals for Maintenance View */}

@@ -353,6 +353,28 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         setCoalActivities(prev => prev.filter(e => e.id !== id));
     };
 
+    // Refetch coal_activities — dipanggil saat panel publish ditutup, supaya edit
+    // batubara yang dilakukan supervisor di panel ikut tampil di tab In/Out Batubara.
+    const refetchCoalActivities = useCallback(async () => {
+        const supabase = createClient();
+        const { data } = await supabase
+            .from('coal_activities')
+            .select('id, date, kind, category, rit, ton, keterangan')
+            .eq('date', date)
+            .order('created_at', { ascending: false });
+        setCoalActivities(
+            (data ?? []).map(r => ({
+                id: r.id as string,
+                date: r.date as string,
+                kind: r.kind as CoalActivity['kind'],
+                category: r.category as CoalActivity['category'],
+                rit: Number(r.rit) || 0,
+                ton: Number(r.ton) || 0,
+                keterangan: (r.keterangan as string) ?? undefined,
+            })),
+        );
+    }, [date]);
+
     // ─── Helpers ───
     const extractFields = (obj: Record<string, unknown> | undefined, skipKeys: string[] = []) => {
         if (!obj) return {};
@@ -1327,7 +1349,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 kind="daily"
                 reportId={(report?.id as string) ?? ''}
                 open={publishOpen}
-                onClose={() => setPublishOpen(false)}
+                onClose={() => { setPublishOpen(false); refetchCoalActivities(); }}
                 reportDate={date}
                 reportGroup={groupName ?? undefined}
                 initialSupervisor={(totalizer.kasi_name as string) || supervisorName || ''}

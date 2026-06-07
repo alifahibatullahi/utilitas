@@ -204,6 +204,16 @@ function set(
     if (val !== undefined && val !== null) row[idx] = val;
 }
 
+/** Selalu tulis angka; null/undefined/kosong → 0. Dipakai untuk kolom yang harus
+ *  eksplisit 0 di Sheets (bukan blank), mis. flow coal feeder 00:00 & agregat aktivitas. */
+function setNum0(
+    row: (string | number | null)[],
+    idx: number,
+    val: string | number | null | undefined,
+): void {
+    row[idx] = Number(val) || 0;
+}
+
 /** Selisih: today − yesterday. Returns null if no valid yesterday data. */
 function sel(
     today:     number | null | undefined,
@@ -219,6 +229,18 @@ export type SolarSummary = {
     kedatangan: number; // total Liter dari solar_unloadings
     bengkel:    number; // total Liter dari solar_usages tujuan=Bengkel
     sasu:       number; // total Liter dari solar_usages tujuan=SA/SU 3B
+    boiler:     number; // total Liter dari solar_usages tujuan=Boiler A+B → CL
+};
+
+export type CoalSummary = {
+    daratTon:   number; // DK — total ton kedatangan darat
+    lautTon:    number; // DM — total ton kedatangan laut
+    pb2Pf1Rit:  number; // CY
+    pb2Pf1Ton:  number; // CZ
+    pb2Pf2Rit:  number; // DA
+    pb2Pf2Ton:  number; // DB
+    pb3CalcRit: number; // DG
+    pb3CalcTon: number; // DH
 };
 
 export type ChemicalSummary = {
@@ -251,6 +273,7 @@ export function dailyReportToRow(
     prev: PrevDailyData = null,
     solar: SolarSummary | null = null,
     chemical: ChemicalSummary | null = null,
+    coalActivity: CoalSummary | null = null,
 ): (string | number | null)[] {
     const row: (string | number | null)[] = new Array(TOTAL_COLS).fill(null);
 
@@ -337,13 +360,14 @@ export function dailyReportToRow(
         set(row, COL.coal_f_24, sel(coal.coal_f_24, pc?.coal_f_24)); // BE
         // BF(57)=formula, BG(58)=formula — skip
 
-        set(row, COL.coal_a_00, coal.coal_a_00); // BH
-        set(row, COL.coal_b_00, coal.coal_b_00); // BI
-        set(row, COL.coal_c_00, coal.coal_c_00); // BJ
+        // Flow coal feeder 00:00 — selalu tulis 0 (bukan blank) saat feeder mati/kosong.
+        setNum0(row, COL.coal_a_00, coal.coal_a_00); // BH
+        setNum0(row, COL.coal_b_00, coal.coal_b_00); // BI
+        setNum0(row, COL.coal_c_00, coal.coal_c_00); // BJ
         // BK(62) = formula — skip
-        set(row, COL.coal_d_00, coal.coal_d_00); // BL
-        set(row, COL.coal_e_00, coal.coal_e_00); // BM
-        set(row, COL.coal_f_00, coal.coal_f_00); // BN
+        setNum0(row, COL.coal_d_00, coal.coal_d_00); // BL
+        setNum0(row, COL.coal_e_00, coal.coal_e_00); // BM
+        setNum0(row, COL.coal_f_00, coal.coal_f_00); // BN
         // BO(66)=formula, BP(67)=formula — skip
     }
 
@@ -370,12 +394,14 @@ export function dailyReportToRow(
         set(row, COL.solar_tank_a, stock.solar_tank_a); // CH
         set(row, COL.solar_tank_b, stock.solar_tank_a); // CI (sama dengan CH)
         // CJ(87) = formula: solar_tank_total — skip
+        // Solar: input dalam Liter → Sheets simpan m³ (÷1000).
         if (solar) {
-            if (solar.kedatangan) row[COL.kedatangan_solar] = solar.kedatangan; // CK — total Liter kedatangan
-            if (solar.bengkel)    row[COL.solar_bengkel]    = solar.bengkel;    // CM — total Liter bengkel
-            if (solar.sasu)       row[COL.solar_3b]         = solar.sasu;       // CN — total Liter SA/SU 3B
+            if (solar.kedatangan) row[COL.kedatangan_solar] = solar.kedatangan / 1000; // CK — m³ kedatangan
+            if (solar.bengkel)    row[COL.solar_bengkel]    = solar.bengkel / 1000;    // CM — m³ bengkel
+            if (solar.sasu)       row[COL.solar_3b]         = solar.sasu / 1000;       // CN — m³ SA/SU 3B
+            // CL — pemakaian Boiler A+B: turunan dari aktivitas (tujuan "Boiler A+B"), m³.
+            if (solar.boiler)     row[COL.solar_boiler]     = solar.boiler / 1000;     // CL — m³ Boiler A+B
         }
-        set(row, COL.solar_boiler, stock.solar_boiler); // CL
         const ps2 = prev?.stock;
         set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO
         set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b)); // CP
@@ -415,6 +441,19 @@ export function dailyReportToRow(
         set(row, COL.darat_total_ton, transfer.darat_total_ton); // DL
         set(row, COL.laut_24_ton,     transfer.laut_24_ton);     // DM
         // DN(117) = formula: laut_total_ton — skip
+    }
+
+    // ── In/Out batubara dari coal_activities (agregat per category) ───────────
+    // Menang atas field tunggal lama. Default 0 (bukan blank) untuk ke-8 kolom ini.
+    if (coalActivity) {
+        setNum0(row, COL.pb2_pf1_rit,  coalActivity.pb2Pf1Rit);  // CY
+        setNum0(row, COL.pb2_pf1_ton,  coalActivity.pb2Pf1Ton);  // CZ
+        setNum0(row, COL.pb2_pf2_rit,  coalActivity.pb2Pf2Rit);  // DA
+        setNum0(row, COL.pb2_pf2_ton,  coalActivity.pb2Pf2Ton);  // DB
+        setNum0(row, COL.pb3_calc_rit, coalActivity.pb3CalcRit); // DG
+        setNum0(row, COL.pb3_calc_ton, coalActivity.pb3CalcTon); // DH
+        setNum0(row, COL.darat_24_ton, coalActivity.daratTon);   // DK
+        setNum0(row, COL.laut_24_ton,  coalActivity.lautTon);    // DM
     }
 
     // ── Totalizer & Keterangan ───────────────────────────────────────────────

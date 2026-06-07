@@ -25,7 +25,7 @@ import {
     isPiuComplete, isHandlingComplete, isSiloComplete, isCoalBunkerComplete,
 } from '@/lib/daily-completeness';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
-import type { DailyTabProps } from './types';
+import type { DailyTabProps, CoalActivity, CoalActivityInput } from './types';
 
 type HarianTabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Coal Bunker' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
 
@@ -148,6 +148,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string }[]>([]);
     const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
     const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
+    const [coalActivities, setCoalActivities] = useState<CoalActivity[]>([]);
 
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
     const [publishOpen, setPublishOpen] = useState(false);
@@ -229,6 +230,25 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         }))
                     );
                 });
+
+            supabase
+                .from('coal_activities')
+                .select('id, date, kind, category, rit, ton, keterangan')
+                .eq('date', date)
+                .order('created_at', { ascending: false })
+                .then(({ data }) => {
+                    setCoalActivities(
+                        (data ?? []).map(r => ({
+                            id: r.id as string,
+                            date: r.date as string,
+                            kind: r.kind as CoalActivity['kind'],
+                            category: r.category as CoalActivity['category'],
+                            rit: Number(r.rit) || 0,
+                            ton: Number(r.ton) || 0,
+                            keterangan: (r.keterangan as string) ?? undefined,
+                        }))
+                    );
+                });
         }, [date]);
 
     // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DN = total via laut
@@ -297,6 +317,29 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         const { error } = await supabase.from('ash_unloadings').update(fields).eq('id', id);
         if (error) { alert('Gagal simpan: ' + error.message); return; }
         setAshUnloadings(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    };
+
+    // ─── Coal activities (In/Out batubara) — persist langsung ke supabase ───
+    const handleAddCoalActivity = async (a: CoalActivityInput) => {
+        const supabase = createClient();
+        const row = {
+            date, shift: null,
+            kind: a.kind, category: a.category,
+            rit: a.rit, ton: a.ton,
+            keterangan: a.keterangan ?? null,
+            operator_id: operator?.name ?? null,
+        };
+        const { data, error } = await supabase.from('coal_activities').insert(row).select('id').single();
+        if (error) { alert('Gagal simpan aktivitas: ' + error.message); return; }
+        setCoalActivities(prev => [{ id: data?.id as string, date, ...a }, ...prev]);
+    };
+
+    const handleDeleteCoalActivity = async (id: string) => {
+        if (!confirm('Hapus aktivitas batubara ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('coal_activities').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setCoalActivities(prev => prev.filter(e => e.id !== id));
     };
 
     // ─── Helpers ───
@@ -1239,6 +1282,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     ashUnloadings,
                                     onDeleteAshUnloading: handleDeleteAshUnloading,
                                     onEditAshUnloading: handleEditAshUnloading,
+                                    coalActivities,
+                                    onAddCoalActivity: handleAddCoalActivity,
+                                    onDeleteCoalActivity: handleDeleteCoalActivity,
                                 };
                                 return (
                                     <>

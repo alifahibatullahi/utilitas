@@ -7,11 +7,11 @@ const n = (v: number | string | null | undefined) => Number(v) || 0;
 const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
 
 type EditUn = { id: string; liters: number; supplier: string };
-type EditUs = { id: string; liters: number; tujuan: string; shift: string; tujuanMode: 'Bengkel' | 'SA/SU 3B' | 'Lainnya' };
+type EditUs = { id: string; liters: number; tujuan: string; shift: string; tujuanMode: 'Boiler A+B' | 'Bengkel' | 'SA/SU 3B' | 'Lainnya' };
 
 export default function TabHandling({
     stockTank, totalizer,
-    prevTotalizer,
+    prevTotalizer, prevStockTank,
     onStockTankChange, onTotalizerChange,
     solarUnloadings = [],
     solarUsages = [],
@@ -49,8 +49,15 @@ export default function TabHandling({
     const totalPermintaan = solarUsages.reduce((s, e) => s + e.liters, 0);
     const bengkelTotal = solarUsages.filter(e => e.tujuan === 'Bengkel').reduce((s, e) => s + e.liters, 0);
     const sasuTotal = solarUsages.filter(e => e.tujuan === 'SA/SU 3B').reduce((s, e) => s + e.liters, 0);
-    const boilerUsage = n(stockTank.solar_boiler);
+    const boilerTotal = solarUsages.filter(e => e.tujuan === 'Boiler A+B').reduce((s, e) => s + e.liters, 0);
+    // Pemakaian Boiler A+B = turunan dari aktivitas permintaan solar (tujuan "Boiler A+B"), m³.
+    const boilerUsage = boilerTotal / 1000;
     const shiftLabel: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
+
+    // Review pengurangan level solar: bandingkan level kemarin (LHUBB hari sebelumnya) vs hari ini.
+    const levelKemarin = prevStockTank?.solar_tank_a != null ? n(prevStockTank.solar_tank_a) : null;
+    const levelHariIni = stockTank.solar_tank_a != null ? n(stockTank.solar_tank_a) : null;
+    const adaPengurangan = levelKemarin != null && levelHariIni != null && levelKemarin > levelHariIni;
 
     const saveEditUn = async () => {
         if (!editUn) return;
@@ -73,7 +80,35 @@ export default function TabHandling({
                     <InputField label="Level Demin" name="demin_level_00" value={stockTank.demin_level_00} onChange={onStockTankChange} unit="m³" color="blue" />
                 </div>
                 <InputField label="Level Tank Solar" name="solar_tank_a" value={stockTank.solar_tank_a} onChange={onStockTankChange} unit="m³" color="orange" />
-                <InputField label="Pemakaian Solar Boiler A+B" name="solar_boiler" value={stockTank.solar_boiler} onChange={onStockTankChange} unit="m³" color="orange" />
+                <CalculatedField label="Pemakaian Solar Boiler A+B" value={fmt(boilerUsage)} unit="m³" variant="small" />
+                <p className="-mt-1 text-[10px] text-slate-500">Otomatis dari aktivitas Permintaan Solar tujuan “Boiler A+B” (Liter → m³ ÷ 1000).</p>
+
+                {/* Review pengurangan level solar — cuma konfirmasi (tanpa validasi angka) */}
+                {adaPengurangan && (
+                    <div className="mt-3 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2.5">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <span className="material-symbols-outlined text-orange-400 text-[15px]">trending_down</span>
+                            <span className="text-[11px] font-bold text-orange-300 uppercase tracking-wider">Konfirmasi Pengurangan Solar</span>
+                        </div>
+                        <p className="text-[12px] text-slate-200 leading-relaxed">
+                            Level solar berkurang dari <b className="text-white">{fmt(levelKemarin!)} m³</b> ke <b className="text-white">{fmt(levelHariIni!)} m³</b> untuk:
+                        </p>
+                        <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
+                            <div className="rounded-md bg-[#101822]/60 py-1.5">
+                                <p className="text-[9px] text-slate-400 uppercase">Boiler AB</p>
+                                <p className="text-sm font-mono font-bold text-orange-300">{fmt(boilerTotal / 1000)} <span className="text-[9px]">m³</span></p>
+                            </div>
+                            <div className="rounded-md bg-[#101822]/60 py-1.5">
+                                <p className="text-[9px] text-slate-400 uppercase">Bengkel</p>
+                                <p className="text-sm font-mono font-bold text-orange-300">{fmt(bengkelTotal / 1000)} <span className="text-[9px]">m³</span></p>
+                            </div>
+                            <div className="rounded-md bg-[#101822]/60 py-1.5">
+                                <p className="text-[9px] text-slate-400 uppercase">SA/SU 3B</p>
+                                <p className="text-sm font-mono font-bold text-orange-300">{fmt(sasuTotal / 1000)} <span className="text-[9px]">m³</span></p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Card>
 
             {/* ═══ Konsumsi & Penerimaan ═══ */}
@@ -186,7 +221,7 @@ export default function TabHandling({
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     <button type="button" onClick={() => setEditUs({
                                                         id: item.id!, liters: item.liters, tujuan: item.tujuan, shift: item.shift,
-                                                        tujuanMode: (['Bengkel', 'SA/SU 3B'].includes(item.tujuan) ? item.tujuan : 'Lainnya') as EditUs['tujuanMode'],
+                                                        tujuanMode: (['Boiler A+B', 'Bengkel', 'SA/SU 3B'].includes(item.tujuan) ? item.tujuan : 'Lainnya') as EditUs['tujuanMode'],
                                                     })}
                                                         className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors">
                                                         <span className="material-symbols-outlined text-[13px]">edit</span>
@@ -266,6 +301,7 @@ export default function TabHandling({
                                     const mode = e.target.value as EditUs['tujuanMode'];
                                     setEditUs({ ...editUs, tujuanMode: mode, tujuan: mode !== 'Lainnya' ? mode : '' });
                                 }}>
+                                <option value="Boiler A+B">Boiler A+B</option>
                                 <option value="Bengkel">Bengkel</option>
                                 <option value="SA/SU 3B">SA/SU 3B</option>
                                 <option value="Lainnya">Lainnya…</option>

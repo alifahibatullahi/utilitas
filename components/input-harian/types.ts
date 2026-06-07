@@ -49,4 +49,23 @@ export interface DailyTabProps {
     onEditSolarUsage?: (id: string, fields: { liters: number; tujuan: string; shift: string }) => void;
     onDeleteAshUnloading?: (id: string) => void;
     onEditAshUnloading?: (id: string, fields: { silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number }) => void;
+
+    // In/Out batubara — model "tambah aktivitas" (tabel coal_activities)
+    coalActivities?: CoalActivity[];
+    onAddCoalActivity?: (a: CoalActivityInput) => void | Promise<void>;
+    onDeleteCoalActivity?: (id: string) => void | Promise<void>;
+}
+
+/** Kategori aktivitas batubara. In = kedatangan, Out = pemindahan. */
+export type CoalCategory = 'darat' | 'laut' | 'pb2_pf1' | 'pb2_pf2' | 'pb3_calc';
+export interface CoalActivityInput {
+    kind: 'in' | 'out';
+    category: CoalCategory;
+    rit: number;
+    ton: number;
+    keterangan?: string;
+}
+export interface CoalActivity extends CoalActivityInput {
+    id?: string;
+    date: string;
 }

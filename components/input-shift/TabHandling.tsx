@@ -113,7 +113,7 @@ export default function TabHandling({
     const [showOutModal, setShowOutModal] = useState(false);
     const [solarForm, setSolarForm] = useState<SolarEntry>(EMPTY_SOLAR);
     const [outForm, setOutForm] = useState<OutSolarEntry>(EMPTY_OUT);
-    const [tujuanMode, setTujuanMode] = useState<'Bengkel' | 'SA/SU 3B' | 'Lainnya'>('Bengkel');
+    const [tujuanMode, setTujuanMode] = useState<'Boiler A+B' | 'Bengkel' | 'SA/SU 3B' | 'Lainnya'>('Bengkel');
 
     const saveSolar = () => {
         if (!solarForm.jam || !solarForm.jumlah || !solarForm.perusahaan) return;
@@ -253,6 +253,7 @@ export default function TabHandling({
                         if (mode !== 'Lainnya') setOutForm({ ...outForm, tujuan: mode });
                         else setOutForm({ ...outForm, tujuan: '' });
                     }} className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-rose-500 text-sm transition-all">
+                        <option value="Boiler A+B">Boiler A+B</option>
                         <option value="Bengkel">Bengkel</option>
                         <option value="SA/SU 3B">SA/SU 3B</option>
                         <option value="Lainnya">Lainnya…</option>

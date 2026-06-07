@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift } from '@/lib/google-sheets';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
-import { dailyReportToRow, type SolarSummary, type ChemicalSummary } from '@/lib/daily-sheets-mapper';
+import { dailyReportToRow, type SolarSummary, type ChemicalSummary, type CoalSummary } from '@/lib/daily-sheets-mapper';
 import type { ShiftTab } from '@/lib/google-sheets';
 
 // ─── Supabase client (service role / anon fallback) ───────────────────────────
@@ -129,10 +129,13 @@ export async function POST(req: NextRequest) {
                     .select('shift_water_quality(phosphate_penambahan_chemical, phosphate_b_penambahan_chemical, amine_penambahan_chemical, hydrazine_penambahan_chemical)')
                     .eq('date', date),
             ]);
+            const sumByTujuan = (t: string) =>
+                (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === t).reduce((s, r) => s + (Number(r.liters) || 0), 0);
             const solarSummary: SolarSummary = {
                 kedatangan: (solarIn.data ?? []).reduce((s, r) => s + (Number(r.liters) || 0), 0),
-                bengkel:    (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === 'Bengkel').reduce((s, r) => s + (Number(r.liters) || 0), 0),
-                sasu:       (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === 'SA/SU 3B').reduce((s, r) => s + (Number(r.liters) || 0), 0),
+                bengkel:    sumByTujuan('Bengkel'),
+                sasu:       sumByTujuan('SA/SU 3B'),
+                boiler:     sumByTujuan('Boiler A+B'),
             };
 
             let phosphateTotal = 0, amineTotal = 0, hydrazineTotal = 0;
@@ -153,6 +156,25 @@ export async function POST(req: NextRequest) {
                 hydrazine:  hasHydrazine  ? hydrazineTotal  : null,
             };
 
+            // In/Out batubara — agregat coal_activities per category (default 0).
+            const { data: coalAct } = await supabase
+                .from('coal_activities')
+                .select('category, rit, ton')
+                .eq('date', date);
+            const sumCat = (cat: string, field: 'rit' | 'ton') =>
+                (coalAct ?? []).filter((r: { category: string }) => r.category === cat)
+                    .reduce((s, r) => s + (Number((r as Record<string, unknown>)[field]) || 0), 0);
+            const coalSummary: CoalSummary = {
+                daratTon:   sumCat('darat', 'ton'),
+                lautTon:    sumCat('laut', 'ton'),
+                pb2Pf1Rit:  sumCat('pb2_pf1', 'rit'),
+                pb2Pf1Ton:  sumCat('pb2_pf1', 'ton'),
+                pb2Pf2Rit:  sumCat('pb2_pf2', 'rit'),
+                pb2Pf2Ton:  sumCat('pb2_pf2', 'ton'),
+                pb3CalcRit: sumCat('pb3_calc', 'rit'),
+                pb3CalcTon: sumCat('pb3_calc', 'ton'),
+            };
+
             const row = dailyReportToRow(
                 date,
                 dbData.steam,
@@ -165,6 +187,7 @@ export async function POST(req: NextRequest) {
                 prevData,
                 solarSummary,
                 chemicalSummary,
+                coalSummary,
             );
 
             const result = await upsertDailyRow(date, row);

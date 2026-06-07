@@ -111,7 +111,9 @@ export async function POST(req: NextRequest) {
     // LINK TETAP/PERMANEN — tanpa tanggal/shift: auto-resolve ke shift berjalan, supaya
     // Foreman/Supervisor pengganti bisa pakai link review LAMA dari grup WA aslinya.
     const link = buildDeepLink('/input-shift', { review: '1' });
-    const logbookLink = buildDeepLink('/logbook', { date });
+    // LINK TETAP/PERMANEN — tanpa tanggal: /logbook default ke hari ini (todayWIB), supaya
+    // link review LAMA dari grup WA tetap mendarat di logbook hari berjalan saat dibuka ulang.
+    const logbookLink = buildDeepLink('/logbook', {});
     const sc = shiftLabel(shift);
     // Pesan ringkas: tanpa isian parameter — cukup info + link untuk Foreman/Supervisor
     // membuka halaman Review/Publish + link E-Logbook untuk review tampilan buku.

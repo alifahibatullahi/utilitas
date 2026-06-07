@@ -173,14 +173,14 @@ function InputShiftPageInner() {
         const resolveCurrent = !qDate && !qShift;
         if (resolveCurrent) {
             if (harianMode) {
-                // Default tanggal LHUBB rollover di jam 22:45 (mulai shift malam):
-                // report "tanggal D" jadi default sejak 22:45 (D) dan tetap default
-                // sampai 22:45 (D+1) — termasuk dini hari 00:00–09:00 (D+1) yang masih
-                // tanggal D. Sebelum 22:45 → masih laporan kemarin (D-1).
+                // Default tanggal LHUBB rollover di jam 21:00:
+                // report "tanggal D" jadi default sejak 21:00 (D) dan tetap default
+                // sampai 21:00 (D+1) — termasuk dini hari 00:00–09:00 (D+1) yang masih
+                // tanggal D. Sebelum 21:00 → masih laporan kemarin (D-1).
                 const fmtY = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                 const nowH = new Date();
                 const target = new Date(nowH);
-                const ROLLOVER_MIN = 22 * 60 + 45; // 22:45 WIB (jam lokal browser operator)
+                const ROLLOVER_MIN = 21 * 60; // 21:00 WIB (jam lokal browser operator)
                 if (nowH.getHours() * 60 + nowH.getMinutes() < ROLLOVER_MIN) target.setDate(target.getDate() - 1);
                 setSelectedDate(fmtY(target));
             } else {

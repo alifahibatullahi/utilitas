@@ -854,7 +854,7 @@ export default function LaporanHarianPage() {
                         Lihat Preview
                     </button>
                     <button
-                        onClick={() => report?.id && router.push(`/laporan-harian/publish?id=${encodeURIComponent(report.id as string)}&date=${encodeURIComponent(selectedDate)}&group=${encodeURIComponent(r.group ?? '')}&sup=${encodeURIComponent(r.supervisor || '')}`)}
+                        onClick={() => report?.id && window.open(`/laporan-harian/publish?id=${encodeURIComponent(report.id as string)}&date=${encodeURIComponent(selectedDate)}&group=${encodeURIComponent(r.group ?? '')}&sup=${encodeURIComponent(r.supervisor || '')}`, '_blank')}
                         title="Review ringkasan laporan sebelum kirim ke WhatsApp"
                         className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(16,185,129,0.5)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.7)] hover:scale-105">
                         <span className="material-symbols-outlined text-lg">fact_check</span>

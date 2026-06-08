@@ -10,9 +10,9 @@ const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID'
 const CAT_LABEL: Record<CoalCategory, string> = {
     darat: 'Via Darat',
     laut: 'Via Laut',
-    pb2_pf1: 'PB2 · PF1',
-    pb2_pf2: 'PB2 · PF2',
-    pb3_calc: 'PB3 · Calsinasi',
+    pb2_pf1: 'Pabrik 2 · PF1',
+    pb2_pf2: 'Pabrik 2 · PF2',
+    pb3_calc: 'Pabrik 3 · Calsinasi',
 };
 
 const CATS_IN: CoalCategory[]  = ['darat', 'laut'];
@@ -101,20 +101,7 @@ export default function TabStockBatubara({
 
             {/* ═══ Kedatangan Batubara (IN) ═══ */}
             <Card title="Kedatangan Batubara" icon="download" color="amber">
-                <div className="grid grid-cols-2 gap-3">
-                    <CalculatedField label="Total Via Darat" value={fmt(sumCat('darat', 'ton'))} unit="Ton" variant="small" />
-                    <CalculatedField label="Total Via Laut (hari ini)" value={fmt(sumCat('laut', 'ton'))} unit="Ton" variant="small" />
-                </div>
-                {inActs.length > 0 && (
-                    <div>
-                        <EntryList acts={inActs} accent="amber" />
-                        <div className="flex justify-between items-center px-1 mt-2 mb-1">
-                            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total</span>
-                            <span className="text-sm font-mono font-bold text-amber-300">{fmt(totalIn)} Ton</span>
-                        </div>
-                        <div className="h-px bg-slate-700/40" />
-                    </div>
-                )}
+                {inActs.length > 0 && <EntryList acts={inActs} accent="amber" />}
                 <button type="button" onClick={() => openModal('in')}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm font-bold transition-colors">
                     <span className="material-symbols-outlined text-[18px]">add_circle</span>
@@ -128,21 +115,7 @@ export default function TabStockBatubara({
 
             {/* ═══ Pemindahan Batubara (OUT) ═══ */}
             <Card title="Pemindahan Batubara" icon="upload" color="rose">
-                <div className="grid grid-cols-3 gap-2">
-                    <CalculatedField label="PB2 PF1" value={fmt(sumCat('pb2_pf1', 'ton'))} unit="Ton" variant="small" />
-                    <CalculatedField label="PB2 PF2" value={fmt(sumCat('pb2_pf2', 'ton'))} unit="Ton" variant="small" />
-                    <CalculatedField label="PB3 Calc" value={fmt(sumCat('pb3_calc', 'ton'))} unit="Ton" variant="small" />
-                </div>
-                {outActs.length > 0 && (
-                    <div>
-                        <EntryList acts={outActs} accent="rose" />
-                        <div className="flex justify-between items-center px-1 mt-2 mb-1">
-                            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total</span>
-                            <span className="text-sm font-mono font-bold text-rose-300">{fmt(totalOut)} Ton</span>
-                        </div>
-                        <div className="h-px bg-slate-700/40" />
-                    </div>
-                )}
+                {outActs.length > 0 && <EntryList acts={outActs} accent="rose" />}
                 <button type="button" onClick={() => openModal('out')}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-sm font-bold transition-colors">
                     <span className="material-symbols-outlined text-[18px]">add_circle</span>
@@ -151,7 +124,7 @@ export default function TabStockBatubara({
             </Card>
 
             {/* ═══ Review In/Out Batubara (default 0 bila tidak ada aktivitas) ═══ */}
-            <Card title="Review In/Out Batubara" icon="fact_check" color="slate" className="lg:col-span-2">
+            <Card title={`Review In/Out Batubara${lhubbDate ? ` hari ${formatDate(lhubbDate)}` : ''}`} icon="fact_check" color="slate" className="lg:col-span-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                     <div className="space-y-2">
                         <SectionLabel label="Kedatangan" badge="In" />
@@ -161,7 +134,7 @@ export default function TabStockBatubara({
                             ))}
                         </div>
                         <div className="flex justify-between items-center px-1 pt-1">
-                            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total Kedatangan</span>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total Kedatangan hari ini</span>
                             <span className="text-sm font-mono font-bold text-amber-300">{fmt(totalIn)} Ton</span>
                         </div>
                     </div>
@@ -173,7 +146,7 @@ export default function TabStockBatubara({
                             ))}
                         </div>
                         <div className="flex justify-between items-center px-1 pt-1">
-                            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total Pemindahan</span>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total Pemindahan hari ini</span>
                             <span className="text-sm font-mono font-bold text-rose-300">{fmt(totalOut)} Ton</span>
                         </div>
                     </div>

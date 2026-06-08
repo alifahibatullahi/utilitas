@@ -551,10 +551,10 @@ export function PublishReportModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col transition-all duration-300"
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col items-center transition-all duration-300"
         >
             <div
-                className="relative w-full h-[100dvh] bg-gradient-to-b from-[#182333] to-[#0e1621] flex flex-col overflow-hidden"
+                className="relative w-full max-w-4xl h-[100dvh] bg-gradient-to-b from-[#182333] to-[#0e1621] flex flex-col overflow-hidden shadow-2xl border-x border-slate-800/60"
             >
                 {/* Loading Overlay */}
                 {sending && (

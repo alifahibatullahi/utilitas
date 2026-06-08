@@ -164,7 +164,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const router = useRouter();
 
     // Navigasi ke halaman Review/Publish harian (full-screen, URL sendiri).
-    const goPublishDaily = useCallback(() => {
+    // newTab=true (klik tombol) → buka di tab baru. Auto deep-link memakai navigasi
+    // tab yang sama agar tidak diblokir popup blocker (tanpa user gesture).
+    const goPublishDaily = useCallback((newTab = false) => {
         const id = (report?.id as string) ?? '';
         if (!id) return;
         const q = new URLSearchParams({
@@ -173,7 +175,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             group: groupName ?? '',
             sup: (totalizer.kasi_name as string) || supervisorName || '',
         });
-        router.push(`/laporan-harian/publish?${q.toString()}`);
+        const url = `/laporan-harian/publish?${q.toString()}`;
+        if (newTab) window.open(url, '_blank');
+        else router.push(url);
     }, [report, date, groupName, totalizer, supervisorName, router]);
 
     // Deep-link ?review=1 (dari notif "siap dipublish" harian) → langsung ke halaman
@@ -1085,7 +1089,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
                             return (
                                 <button
-                                    onClick={goPublishDaily}
+                                    onClick={() => goPublishDaily(true)}
                                     disabled={publishDisabled}
                                     title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
                                     className={`flex items-center justify-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}

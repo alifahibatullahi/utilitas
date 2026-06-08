@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import { parseSheetNumber } from '@/lib/utils';
 import TabStockBatubara from '@/components/input-harian/TabStockBatubara';
 import type { CoalActivity, CoalActivityInput } from '@/components/input-harian/types';
 
@@ -161,6 +162,9 @@ export function PublishReportModal({
     // Panel mengelola data ini sendiri (fetch + add/hapus via Supabase) supaya bisa
     // dipakai dari halaman read-only tanpa state form. Pola meniru InputHarianForm.
     const [coalActivities, setCoalActivities] = useState<CoalActivity[]>([]);
+    // Jawaban "Apakah hari ini ada kedatangan/pemindahan batubara?" di step batubara.
+    // null = belum dijawab, true = isi form, false = langsung ke publish.
+    const [coalHasActivity, setCoalHasActivity] = useState<boolean | null>(null);
     const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
 
     // Sync state dari props saat modal open atau initial values berubah dari parent.
@@ -260,7 +264,7 @@ export function PublishReportModal({
     }, [open, loadingText, stepIdx, autoSizeTextarea]);
 
     // Reset ke step pertama tiap kali panel dibuka.
-    useEffect(() => { if (open) setStepIdx(0); }, [open]);
+    useEffect(() => { if (open) { setStepIdx(0); setCoalHasActivity(null); } }, [open]);
 
     // Reusable: re-fetch template body dari server. Dipanggil saat modal open AND
     // setiap kali dropdown supervisor/foreman berubah supaya template auto-refresh.
@@ -412,6 +416,14 @@ export function PublishReportModal({
 
     const kindLabel = kind === 'shift' ? 'Shift' : 'Harian';
 
+    // Stock batubara untuk ringkasan = stock LHUBB + kedatangan (in) − pemindahan (out).
+    const coalStockBase = parseSheetNumber(stockBatubaraSheet);
+    const coalIn = coalActivities.filter(a => a.kind === 'in').reduce((s, a) => s + (Number(a.ton) || 0), 0);
+    const coalOut = coalActivities.filter(a => a.kind === 'out').reduce((s, a) => s + (Number(a.ton) || 0), 0);
+    const stockComputed = coalStockBase != null
+        ? fmt(coalStockBase + coalIn - coalOut)
+        : (stockBatubaraSheet ?? null);
+
     // ── Konten step terakhir 'publish': dropdown PJ + ringkasan + teks Washift ──
     const renderPublishStep = () => (
         <>
@@ -486,7 +498,7 @@ export function PublishReportModal({
                     {kind === 'shift' ? (
                         <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
                     ) : (
-                        <ReviewSummaryDaily summary={summary as DailyReviewSummary} stockOverride={stockBatubaraSheet} />
+                        <ReviewSummaryDaily summary={summary as DailyReviewSummary} stockOverride={stockComputed} />
                     )}
 
                     <div className="space-y-2">
@@ -532,22 +544,50 @@ export function PublishReportModal({
             icon: 'local_shipping',
             render: () => (
                 <div className="space-y-4">
-                    <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4">
-                        <span className="material-symbols-outlined text-[20px] text-amber-400 flex-shrink-0 mt-0.5">notifications_active</span>
-                        <div className="space-y-0.5">
-                            <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Sebelum publish</div>
-                            <p className="text-[12px] sm:text-[13px] text-amber-100/90 font-medium leading-snug">
-                                Apakah hari ini ada kedatangan / pemindahan batubara?
-                            </p>
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4">
+                        <div className="flex items-start gap-3">
+                            <span className="material-symbols-outlined text-[20px] text-amber-400 flex-shrink-0 mt-0.5">notifications_active</span>
+                            <div className="space-y-0.5">
+                                <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Sebelum publish</div>
+                                <p className="text-[12px] sm:text-[13px] text-amber-100/90 font-medium leading-snug">
+                                    Apakah hari ini ada kedatangan / pemindahan batubara?
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2.5 mt-3">
+                            <button
+                                type="button"
+                                onClick={() => setCoalHasActivity(true)}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border active:scale-[0.98]
+                                    ${coalHasActivity === true
+                                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-[0_4px_14px_rgba(251,191,36,0.3)]'
+                                        : 'bg-slate-900/40 text-amber-200 border-amber-500/30 hover:bg-amber-500/15'}`}
+                            >
+                                <span className="material-symbols-outlined text-[16px]">check</span>
+                                Ya, ada
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setCoalHasActivity(false); setStepIdx(steps.length - 1); }}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border active:scale-[0.98]
+                                    ${coalHasActivity === false
+                                        ? 'bg-slate-700 text-white border-slate-600'
+                                        : 'bg-slate-900/40 text-slate-300 border-slate-700/60 hover:bg-slate-800/60'}`}
+                            >
+                                <span className="material-symbols-outlined text-[16px]">block</span>
+                                Tidak ada
+                            </button>
                         </div>
                     </div>
-                    <TabStockBatubara
-                        coalActivities={coalActivities}
-                        onAddCoalActivity={handleAddCoalActivity}
-                        onDeleteCoalActivity={handleDeleteCoalActivity}
-                        stockBatubaraSheet={stockBatubaraSheet}
-                        lhubbDate={reportDate}
-                    />
+                    {coalHasActivity === true && (
+                        <TabStockBatubara
+                            coalActivities={coalActivities}
+                            onAddCoalActivity={handleAddCoalActivity}
+                            onDeleteCoalActivity={handleDeleteCoalActivity}
+                            stockBatubaraSheet={stockBatubaraSheet}
+                            lhubbDate={reportDate}
+                        />
+                    )}
                 </div>
             ),
         });
@@ -555,13 +595,17 @@ export function PublishReportModal({
     steps.push({ id: 'publish', label: 'Review & Publish', icon: 'fact_check', render: renderPublishStep });
     const safeStepIdx = Math.min(stepIdx, steps.length - 1);
     const isLast = safeStepIdx === steps.length - 1;
+    const currentStepId = steps[safeStepIdx]?.id;
+    // Di step batubara, tombol "Lanjut publish" baru muncul setelah user memilih
+    // "Ya, ada" (jika "Tidak ada" sudah otomatis loncat ke step publish).
+    const hideNextButton = currentStepId === 'batubara' && coalHasActivity !== true;
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col items-center transition-all duration-300"
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 transition-all duration-300"
         >
             <div
-                className="relative w-full max-w-4xl h-[100dvh] bg-gradient-to-b from-[#182333] to-[#0e1621] flex flex-col overflow-hidden shadow-2xl border-x border-slate-800/60"
+                className="relative w-full max-w-4xl max-h-[94dvh] bg-gradient-to-b from-[#182333] to-[#0e1621] flex flex-col overflow-hidden shadow-2xl rounded-2xl border border-slate-800/60"
             >
                 {/* Loading Overlay */}
                 {sending && (
@@ -631,7 +675,7 @@ export function PublishReportModal({
                 )}
 
                 {/* Body — slide track antar step (semua step tetap mounted) */}
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-hidden">
                     <div
                         className="flex h-full transition-transform duration-300 ease-out"
                         style={{ width: `${steps.length * 100}%`, transform: `translateX(-${safeStepIdx * (100 / steps.length)}%)` }}
@@ -679,17 +723,19 @@ export function PublishReportModal({
                     </div>
 
                     {!isLast ? (
-                        // Step pra-publish (mis. Review In/Out Batubara): aktivitas batubara
-                        // sudah tersimpan tiap add/hapus, jadi tombol ini "Simpan" lalu
-                        // otomatis lanjut ke step berikutnya.
-                        <button
-                            onClick={() => setStepIdx(i => Math.min(steps.length - 1, i + 1))}
-                            disabled={sending}
-                            className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
-                        >
-                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                            Lanjut publish
-                        </button>
+                        // Step pra-publish (Review In/Out Batubara): aktivitas batubara sudah
+                        // tersimpan tiap add/hapus. Tombol baru tampil setelah user memilih
+                        // "Ya, ada"; "Tidak ada" sudah otomatis loncat ke step publish.
+                        hideNextButton ? <span /> : (
+                            <button
+                                onClick={() => setStepIdx(i => Math.min(steps.length - 1, i + 1))}
+                                disabled={sending}
+                                className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
+                            >
+                                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                Lanjut publish
+                            </button>
+                        )
                     ) : (
                         <button
                             onClick={publish}

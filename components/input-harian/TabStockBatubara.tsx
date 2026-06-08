@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Card, CalculatedField, Modal, InputField, SectionLabel } from '@/components/input-shift/SharedComponents';
-import { formatDate } from '@/lib/utils';
+import { formatDate, parseSheetNumber } from '@/lib/utils';
 import type { CoalReviewProps, CoalCategory, CoalActivityInput } from './types';
 
 const n = (v: number | string | null | undefined) => Number(v) || 0;
@@ -28,9 +28,6 @@ export default function TabStockBatubara({
 
     // Nilai read-only dari Google Sheets untuk tanggal LHUBB yang sama:
     //   - Stock Batubara = kolom DW (stock_batubara_rendal)
-    const show = (v: string | number | null | undefined, fallback: string) =>
-        v != null && String(v).trim() !== '' && String(v).trim() !== '-' ? String(v).trim() : fallback;
-    const stockDisplay = show(stockBatubaraSheet, '—');
     const lhubbLabel = lhubbDate ? `Data dari LHUBB tanggal ${formatDate(lhubbDate)}.` : 'Data dari LHUBB.';
 
     // Agregat per category (default 0 bila tidak ada aktivitas)
@@ -40,6 +37,14 @@ export default function TabStockBatubara({
     const outActs = coalActivities.filter(a => a.kind === 'out');
     const totalIn  = inActs.reduce((s, a) => s + n(a.ton), 0);
     const totalOut = outActs.reduce((s, a) => s + n(a.ton), 0);
+
+    // Stock batubara = stock LHUBB + kedatangan (in) − pemindahan (out).
+    const stockBase = parseSheetNumber(stockBatubaraSheet);
+    const stockDisplay = stockBase != null
+        ? fmt(stockBase + totalIn - totalOut)
+        : (stockBatubaraSheet != null && String(stockBatubaraSheet).trim() !== '' && String(stockBatubaraSheet).trim() !== '-'
+            ? String(stockBatubaraSheet).trim()
+            : '—');
 
     const openModal = (kind: 'in' | 'out') =>
         setModal({ kind, category: kind === 'in' ? 'darat' : 'pb2_pf1', rit: '', ton: '', keterangan: '' });

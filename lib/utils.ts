@@ -96,6 +96,18 @@ export function formatDate(date: Date | string): string {
     });
 }
 
+/** Parse angka berformat id-ID dari Google Sheets (FORMATTED_VALUE): '.' = ribuan, ',' = desimal.
+ *  Mengembalikan null bila kosong/'-'/tidak valid. */
+export function parseSheetNumber(s: string | number | null | undefined): number | null {
+    if (s == null) return null;
+    if (typeof s === 'number') return isNaN(s) ? null : s;
+    const t = s.trim();
+    if (!t || t === '-') return null;
+    const cleaned = t.replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.');
+    const n = Number(cleaned);
+    return isNaN(n) ? null : n;
+}
+
 // Generate dummy trend data (1 hour, every 5 min = 12 points)
 export function generateTrendData(currentLevel: number): { time: string; level: number }[] {
     const data = [];

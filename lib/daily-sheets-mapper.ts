@@ -454,6 +454,13 @@ export function dailyReportToRow(
         setNum0(row, COL.pb3_calc_ton, coalActivity.pb3CalcTon); // DH
         setNum0(row, COL.darat_24_ton, coalActivity.daratTon);   // DK
         setNum0(row, COL.laut_24_ton,  coalActivity.lautTon);    // DM
+        // Kolom total kumulatif PB2/PB3 — auto isi 0 (bukan blank/formula).
+        setNum0(row, COL.pb2_total_pf1_rit, 0); // DC
+        setNum0(row, COL.pb2_total_pf1_ton, 0); // DD
+        setNum0(row, COL.pb2_total_pf2_rit, 0); // DE
+        setNum0(row, COL.pb2_total_pf2_ton, 0); // DF
+        setNum0(row, COL.pb3_total_calc_rit, 0); // DI
+        setNum0(row, COL.pb3_total_calc_ton, 0); // DJ
     }
 
     // ── Totalizer & Keterangan ───────────────────────────────────────────────

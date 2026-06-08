@@ -161,7 +161,6 @@ export function PublishReportModal({
     // Panel mengelola data ini sendiri (fetch + add/hapus via Supabase) supaya bisa
     // dipakai dari halaman read-only tanpa state form. Pola meniru InputHarianForm.
     const [coalActivities, setCoalActivities] = useState<CoalActivity[]>([]);
-    const [lautTotalSheet, setLautTotalSheet] = useState<string | null>(null);
     const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
 
     // Sync state dari props saat modal open atau initial values berubah dari parent.
@@ -312,11 +311,10 @@ export function PublishReportModal({
             });
     }, [open, kind, reportDate]);
 
-    // Nilai read-only dari Sheets LHUBB: DN(117)=total via laut, DW(126)=stock batubara.
+    // Nilai read-only dari Sheets LHUBB: DW(126)=stock batubara.
     useEffect(() => {
         if (!open || kind !== 'daily' || !reportDate) return;
         let stale = false;
-        setLautTotalSheet(null);
         setStockBatubaraSheet(null);
         fetch(`/api/sheets/read?type=daily_report&date=${reportDate}`)
             .then(r => (r.ok ? r.json() : null))
@@ -327,7 +325,6 @@ export function PublishReportModal({
                     const v = raw == null ? '' : String(raw).trim();
                     return v && v !== '-' ? v : null;
                 };
-                setLautTotalSheet(pick(117));
                 setStockBatubaraSheet(pick(126));
             })
             .catch(() => { /* non-blocking */ });
@@ -489,7 +486,7 @@ export function PublishReportModal({
                     {kind === 'shift' ? (
                         <ReviewSummaryShift summary={summary as ShiftReviewSummary} />
                     ) : (
-                        <ReviewSummaryDaily summary={summary as DailyReviewSummary} />
+                        <ReviewSummaryDaily summary={summary as DailyReviewSummary} stockOverride={stockBatubaraSheet} />
                     )}
 
                     <div className="space-y-2">
@@ -534,14 +531,24 @@ export function PublishReportModal({
             label: 'Review In/Out Batubara',
             icon: 'local_shipping',
             render: () => (
-                <TabStockBatubara
-                    coalActivities={coalActivities}
-                    onAddCoalActivity={handleAddCoalActivity}
-                    onDeleteCoalActivity={handleDeleteCoalActivity}
-                    lautTotalSheet={lautTotalSheet}
-                    stockBatubaraSheet={stockBatubaraSheet}
-                    lhubbDate={reportDate}
-                />
+                <div className="space-y-4">
+                    <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4">
+                        <span className="material-symbols-outlined text-[20px] text-amber-400 flex-shrink-0 mt-0.5">notifications_active</span>
+                        <div className="space-y-0.5">
+                            <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Sebelum publish</div>
+                            <p className="text-[12px] sm:text-[13px] text-amber-100/90 font-medium leading-snug">
+                                Apakah hari ini ada kedatangan / pemindahan batubara?
+                            </p>
+                        </div>
+                    </div>
+                    <TabStockBatubara
+                        coalActivities={coalActivities}
+                        onAddCoalActivity={handleAddCoalActivity}
+                        onDeleteCoalActivity={handleDeleteCoalActivity}
+                        stockBatubaraSheet={stockBatubaraSheet}
+                        lhubbDate={reportDate}
+                    />
+                </div>
             ),
         });
     }
@@ -660,13 +667,15 @@ export function PublishReportModal({
                                 Kembali
                             </button>
                         )}
-                        <button
-                            onClick={onClose}
-                            disabled={sending}
-                            className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/50 transition-all border border-transparent hover:border-slate-800 cursor-pointer disabled:opacity-30"
-                        >
-                            Tutup
-                        </button>
+                        {!isLast && (
+                            <button
+                                onClick={onClose}
+                                disabled={sending}
+                                className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/50 transition-all border border-transparent hover:border-slate-800 cursor-pointer disabled:opacity-30"
+                            >
+                                Tutup
+                            </button>
+                        )}
                     </div>
 
                     {!isLast ? (
@@ -678,8 +687,8 @@ export function PublishReportModal({
                             disabled={sending}
                             className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
                         >
-                            <span className="material-symbols-outlined text-sm">save</span>
-                            Simpan
+                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            Lanjut publish
                         </button>
                     ) : (
                         <button
@@ -900,7 +909,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
     );
 }
 
-function ReviewSummaryDaily({ summary }: { summary: DailyReviewSummary }) {
+function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSummary; stockOverride?: string | null }) {
     return (
         <div className="space-y-4">
             {/* Header Laporan Harian */}
@@ -953,7 +962,7 @@ function ReviewSummaryDaily({ summary }: { summary: DailyReviewSummary }) {
                 <ReviewCard title="Tank & Stock" icon="water" color="emerald">
                     <Row label="RCW" value={fmt(summary.tankLevels?.rcw)} unit="m³" />
                     <Row label="Demin" value={fmt(summary.tankLevels?.demin)} unit="m³" />
-                    <Row label="Stock Batubara" value={fmt(summary.stockBatubara)} unit="ton" />
+                    <Row label="Stock Batubara" value={stockOverride && stockOverride.trim() ? stockOverride.trim() : fmt(summary.stockBatubara)} unit="ton" />
                 </ReviewCard>
             </div>
 

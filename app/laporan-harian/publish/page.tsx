@@ -32,7 +32,7 @@ function PublishHarianInner() {
             kind="daily"
             reportId={reportId}
             open
-            onClose={() => { if (window.opener) window.close(); else router.back(); }}
+            onClose={() => router.back()}
             reportDate={date}
             reportGroup={group}
             initialSupervisor={supervisor}

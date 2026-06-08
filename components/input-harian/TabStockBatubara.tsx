@@ -21,17 +21,15 @@ const CATS_OUT: CoalCategory[] = ['pb2_pf1', 'pb2_pf2', 'pb3_calc'];
 type ModalState = { kind: 'in' | 'out'; category: CoalCategory; rit: string; ton: string; keterangan: string } | null;
 
 export default function TabStockBatubara({
-    lautTotalSheet, stockBatubaraSheet, lhubbDate,
+    stockBatubaraSheet, lhubbDate,
     coalActivities = [], onAddCoalActivity, onDeleteCoalActivity,
 }: CoalReviewProps) {
     const [modal, setModal] = useState<ModalState>(null);
 
     // Nilai read-only dari Google Sheets untuk tanggal LHUBB yang sama:
-    //   - Total Via Laut = kolom DN (formula)
     //   - Stock Batubara = kolom DW (stock_batubara_rendal)
     const show = (v: string | number | null | undefined, fallback: string) =>
         v != null && String(v).trim() !== '' && String(v).trim() !== '-' ? String(v).trim() : fallback;
-    const lautTotalDisplay = show(lautTotalSheet, '0');
     const stockDisplay = show(stockBatubaraSheet, '—');
     const lhubbLabel = lhubbDate ? `Data dari LHUBB tanggal ${formatDate(lhubbDate)}.` : 'Data dari LHUBB.';
 
@@ -107,10 +105,6 @@ export default function TabStockBatubara({
                     <span className="material-symbols-outlined text-[18px]">add_circle</span>
                     Tambah Kedatangan
                 </button>
-                <div className="pt-3 border-t border-amber-500/20">
-                    <CalculatedField label="Total Via Laut (kumulatif)" value={lautTotalDisplay} unit="Ton" variant="small" />
-                    <p className="mt-1 text-[10px] text-slate-500">{lhubbLabel}</p>
-                </div>
             </Card>
 
             {/* ═══ Pemindahan Batubara (OUT) ═══ */}
@@ -124,7 +118,7 @@ export default function TabStockBatubara({
             </Card>
 
             {/* ═══ Review In/Out Batubara (default 0 bila tidak ada aktivitas) ═══ */}
-            <Card title={`Review In/Out Batubara${lhubbDate ? ` hari ${formatDate(lhubbDate)}` : ''}`} icon="fact_check" color="slate" className="lg:col-span-2">
+            <Card title={`Review In/Out Batubara${lhubbDate ? ` ${formatDate(lhubbDate)}` : ''}`} icon="fact_check" color="slate" className="lg:col-span-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                     <div className="space-y-2">
                         <SectionLabel label="Kedatangan" badge="In" />

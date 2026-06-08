@@ -401,9 +401,7 @@ function InputShiftPageInner() {
     const router = useRouter();
 
     // Navigasi ke halaman Review/Publish shift (full-screen, URL sendiri).
-    // newTab=true (klik tombol) → buka di tab baru. Auto deep-link memakai navigasi
-    // tab yang sama agar tidak diblokir popup blocker (tanpa user gesture).
-    const goPublishShift = useCallback((newTab = false) => {
+    const goPublishShift = useCallback(() => {
         if (!report?.id) return;
         const q = new URLSearchParams({
             id: report.id,
@@ -414,9 +412,7 @@ function InputShiftPageInner() {
             ft: foremanTurbin ?? '',
             fb: foremanBoiler ?? '',
         });
-        const url = `/laporan-shift/publish?${q.toString()}`;
-        if (newTab) window.open(url, '_blank');
-        else router.push(url);
+        router.push(`/laporan-shift/publish?${q.toString()}`);
     }, [report, selectedDate, selectedShift, currentGroup, supervisor, foremanTurbin, foremanBoiler, router]);
 
     // Auto-navigasi dari deep-link ?review=1 begitu report target (sesuai shift+tanggal)
@@ -1734,7 +1730,7 @@ function InputShiftPageInner() {
                                     const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
                                     return (
                                         <button
-                                            onClick={() => goPublishShift(true)}
+                                            onClick={goPublishShift}
                                             disabled={publishDisabled}
                                             title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
                                             className={`flex justify-center items-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}

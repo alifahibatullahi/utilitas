@@ -339,7 +339,7 @@ export default function LaporanShiftPage() {
             ft: sp0?.turbin_karu ?? '',
             fb: sp0?.boiler_karu ?? '',
         });
-        window.open(`/laporan-shift/publish?${q.toString()}`, '_blank');
+        router.push(`/laporan-shift/publish?${q.toString()}`);
     };
 
     useEffect(() => {

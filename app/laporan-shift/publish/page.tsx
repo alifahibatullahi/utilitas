@@ -35,7 +35,7 @@ function PublishShiftInner() {
             kind="shift"
             reportId={reportId}
             open
-            onClose={() => { if (window.opener) window.close(); else router.back(); }}
+            onClose={() => router.back()}
             reportDate={date}
             reportShift={shift}
             reportGroup={group}

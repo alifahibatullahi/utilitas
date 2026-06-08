@@ -30,9 +30,6 @@ export interface DailyTabProps {
     crA: number;
     crB: number;
 
-    /** Total Via Laut — nilai kolom DN (formula) dari Google Sheets pada tanggal LHUBB yang
-     *  sama. Diisi InputHarianForm via /api/sheets/read. Display-only di TabStockBatubara. */
-    lautTotalSheet?: string | number | null;
     /** Stock Batubara — nilai kolom DW (stock_batubara_rendal) dari Google Sheets pada tanggal
      *  LHUBB yang sama. Display-only di TabStockBatubara. */
     stockBatubaraSheet?: string | number | null;
@@ -73,7 +70,6 @@ export interface CoalActivity extends CoalActivityInput {
 /** Subset prop yang dipakai TabStockBatubara — supaya komponen bisa dipakai ulang di
  *  luar form harian (mis. panel publish) tanpa harus menyediakan seluruh DailyTabProps. */
 export type CoalReviewProps = Pick<DailyTabProps,
-    | 'lautTotalSheet'
     | 'stockBatubaraSheet'
     | 'lhubbDate'
     | 'coalActivities'

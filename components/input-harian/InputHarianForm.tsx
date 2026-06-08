@@ -150,9 +150,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
 
-    // Nilai read-only dari Google Sheets untuk tanggal ini: Total Via Laut (kolom DN/formula)
-    // dan Stock Batubara (kolom DW / stock_batubara_rendal).
-    const [lautTotalSheet, setLautTotalSheet] = useState<string | null>(null);
+    // Nilai read-only dari Google Sheets untuk tanggal ini: Stock Batubara
+    // (kolom DW / stock_batubara_rendal).
     const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
 
     const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string }[]>([]);
@@ -164,9 +163,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const router = useRouter();
 
     // Navigasi ke halaman Review/Publish harian (full-screen, URL sendiri).
-    // newTab=true (klik tombol) → buka di tab baru. Auto deep-link memakai navigasi
-    // tab yang sama agar tidak diblokir popup blocker (tanpa user gesture).
-    const goPublishDaily = useCallback((newTab = false) => {
+    const goPublishDaily = useCallback(() => {
         const id = (report?.id as string) ?? '';
         if (!id) return;
         const q = new URLSearchParams({
@@ -175,9 +172,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             group: groupName ?? '',
             sup: (totalizer.kasi_name as string) || supervisorName || '',
         });
-        const url = `/laporan-harian/publish?${q.toString()}`;
-        if (newTab) window.open(url, '_blank');
-        else router.push(url);
+        router.push(`/laporan-harian/publish?${q.toString()}`);
     }, [report, date, groupName, totalizer, supervisorName, router]);
 
     // Deep-link ?review=1 (dari notif "siap dipublish" harian) → langsung ke halaman
@@ -278,11 +273,10 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 });
         }, [date]);
 
-    // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DN = total via laut
-    // (formula), DW = stock batubara (stock_batubara_rendal).
+    // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DW = stock batubara
+    // (stock_batubara_rendal).
     useEffect(() => {
         let stale = false;
-        setLautTotalSheet(null);
         setStockBatubaraSheet(null);
         fetch(`/api/sheets/read?type=daily_report&date=${date}`)
             .then(r => (r.ok ? r.json() : null))
@@ -293,7 +287,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     const v = raw == null ? '' : String(raw).trim();
                     return v && v !== '-' ? v : null;
                 };
-                setLautTotalSheet(pick(117));      // DN = laut_total_ton (formula)
                 setStockBatubaraSheet(pick(126));  // DW = stock_batubara_rendal
             })
             .catch(() => { /* non-blocking — biarkan tampil default */ });
@@ -1089,7 +1082,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
                             return (
                                 <button
-                                    onClick={() => goPublishDaily(true)}
+                                    onClick={goPublishDaily}
                                     disabled={publishDisabled}
                                     title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
                                     className={`flex items-center justify-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
@@ -1303,7 +1296,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     onCoalTransferChange: makeNumberHandler(setCoalTransfer),
                                     onTotalizerChange: makeMixedHandler(setTotalizer),
                                     crA, crB,
-                                    lautTotalSheet,
                                     stockBatubaraSheet,
                                     lhubbDate: date,
                                     solarUnloadings,

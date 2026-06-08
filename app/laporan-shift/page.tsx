@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useShiftReport, ShiftReportData } from '@/hooks/useShiftReport';
 import { todayWIB } from '@/lib/utils';
-import { PublishReportModal } from '@/components/ui/PublishReportModal';
 
 // ─── Data Interfaces ───
 interface BoilerData {
@@ -315,18 +314,33 @@ function CylinderTank({ label, value, unit, color, fillPercent }: {
 }
 
 export default function LaporanShiftPage() {
-    const { operator, canReviewReport } = useOperator();
+    const { operator } = useOperator();
     const router = useRouter();
     const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('malam');
     const [selectedDate, setSelectedDate] = useState(todayWIB);
-    const [publishOpen, setPublishOpen] = useState(false);
-
     const { report: supaReport, activeMaintenance, openCriticals, loading, error } = useShiftReport(selectedDate, activeShift);
 
     const report = useMemo(() => {
         if (supaReport) return buildReportFromSupabase(supaReport);
         return null;
     }, [supaReport]);
+
+    // Navigasi ke halaman Review/Publish shift (full-screen, URL sendiri).
+    const goPublishShift = () => {
+        if (!supaReport?.id) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sp0 = (supaReport as any)?.shift_personnel?.[0] as { turbin_karu?: string; boiler_karu?: string } | undefined;
+        const q = new URLSearchParams({
+            id: supaReport.id,
+            date: selectedDate,
+            shift: SHIFT_LABELS[activeShift] ?? '',
+            group: report?.group ?? '',
+            sup: supaReport.supervisor ?? '',
+            ft: sp0?.turbin_karu ?? '',
+            fb: sp0?.boiler_karu ?? '',
+        });
+        router.push(`/laporan-shift/publish?${q.toString()}`);
+    };
 
     useEffect(() => {
         if (!operator) router.push('/');
@@ -749,7 +763,7 @@ export default function LaporanShiftPage() {
                         <span className="material-symbols-outlined text-lg">visibility</span>
                         Lihat Preview
                     </button>
-                    <button onClick={() => setPublishOpen(true)}
+                    <button onClick={goPublishShift}
                         title="Review ringkasan laporan sebelum kirim ke WhatsApp"
                         className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(16,185,129,0.5)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.7)] hover:scale-105">
                         <span className="material-symbols-outlined text-lg">fact_check</span>
@@ -757,22 +771,6 @@ export default function LaporanShiftPage() {
                     </button>
                 </div>
             )}
-            <PublishReportModal
-                kind="shift"
-                reportId={supaReport?.id ?? ''}
-                open={publishOpen}
-                onClose={() => setPublishOpen(false)}
-                reportDate={selectedDate}
-                reportShift={SHIFT_LABELS[activeShift]}
-                reportGroup={report?.group}
-                initialSupervisor={supaReport?.supervisor ?? ''}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                initialForemanTurbin={(supaReport as any)?.shift_personnel?.[0]?.turbin_karu ?? ''}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                initialForemanBoiler={(supaReport as any)?.shift_personnel?.[0]?.boiler_karu ?? ''}
-                canReview={canReviewReport}
-                reviewerName={operator?.name ?? ''}
-            />
             </>)}
 
         </div>

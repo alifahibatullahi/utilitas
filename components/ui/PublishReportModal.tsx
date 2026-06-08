@@ -670,13 +670,16 @@ export function PublishReportModal({
                     </div>
 
                     {!isLast ? (
+                        // Step pra-publish (mis. Review In/Out Batubara): aktivitas batubara
+                        // sudah tersimpan tiap add/hapus, jadi tombol ini "Simpan" lalu
+                        // otomatis lanjut ke step berikutnya.
                         <button
                             onClick={() => setStepIdx(i => Math.min(steps.length - 1, i + 1))}
                             disabled={sending}
                             className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
                         >
-                            Lanjut
-                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            <span className="material-symbols-outlined text-sm">save</span>
+                            Simpan
                         </button>
                     ) : (
                         <button

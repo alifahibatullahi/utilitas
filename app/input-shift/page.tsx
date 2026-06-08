@@ -17,7 +17,6 @@ import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
-import { PublishReportModal } from '@/components/ui/PublishReportModal';
 import StationPickerModal, { type StationSetupSelection } from '@/components/ui/StationPickerModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { nowWIB, todayWIB } from '@/lib/utils';
@@ -302,26 +301,14 @@ function InputShiftPageInner() {
     const shiftMap: Record<number, ShiftType> = { 1: 'malam', 2: 'pagi', 3: 'sore' };
     const SHIFT_LABELS: Record<number, string> = { 1: 'Shift Malam 06.00', 2: 'Shift Pagi 14.00', 3: 'Shift Sore 22.00' };
     const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
-    const [publishOpen, setPublishOpen] = useState(false);
-    // Deep-link ?review=1 (dari notif "siap dipublish") → auto-buka modal Review/Publish
-    // begitu report target selesai di-load. Sekali pakai supaya bisa ditutup tanpa re-open.
+    // Deep-link ?review=1 (dari notif "siap dipublish") → navigasi ke halaman
+    // Review/Publish begitu report target selesai di-load. Sekali pakai.
     const autoReviewRef = useRef(false);
-    // Auto-buka modal Review/Publish begitu report target (sesuai shift+tanggal di URL)
-    // selesai di-load. Guard date/shift mencegah modal terbuka untuk report default
-    // yang sempat ke-load sebelum prefill jalan.
-    useEffect(() => {
-        if (!autoReviewRef.current) return;
-        if (inputMode !== 'shift' || !report?.id) return;
-        if (report.date !== selectedDate || report.shift !== shiftMap[selectedShift]) return;
-        setPublishOpen(true);
-        autoReviewRef.current = false;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [report, selectedDate, selectedShift, inputMode]);
     const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
     const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
     const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift]);
     const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift]);
-    const { operator, operators, canReviewReport } = useOperator();
+    const { operator, operators } = useOperator();
     const isAdmin = operator?.role === 'admin';
 
     // Auto-kalkulasi grup dari pola jadwal shift
@@ -412,6 +399,31 @@ function InputShiftPageInner() {
         op.company === 'UBB' && (op.jabatan === 'Foreman Turbin' || !op.jabatan)
     );
     const router = useRouter();
+
+    // Navigasi ke halaman Review/Publish shift (full-screen, URL sendiri).
+    const goPublishShift = useCallback(() => {
+        if (!report?.id) return;
+        const q = new URLSearchParams({
+            id: report.id,
+            date: selectedDate,
+            shift: SHIFT_LABELS[selectedShift] ?? '',
+            group: currentGroup ?? '',
+            sup: supervisor ?? '',
+            ft: foremanTurbin ?? '',
+            fb: foremanBoiler ?? '',
+        });
+        router.push(`/laporan-shift/publish?${q.toString()}`);
+    }, [report, selectedDate, selectedShift, currentGroup, supervisor, foremanTurbin, foremanBoiler, router]);
+
+    // Auto-navigasi dari deep-link ?review=1 begitu report target (sesuai shift+tanggal)
+    // selesai di-load. Guard date/shift mencegah navigasi untuk report default.
+    useEffect(() => {
+        if (!autoReviewRef.current) return;
+        if (inputMode !== 'shift' || !report?.id) return;
+        if (report.date !== selectedDate || report.shift !== shiftMap[selectedShift]) return;
+        autoReviewRef.current = false;
+        goPublishShift();
+    }, [report, selectedDate, selectedShift, inputMode, shiftMap, goPublishShift]);
 
     // ── Dialog "Pilih Laporan" ──
     // Saat membuka input laporan TANPA station (mis. dari sidebar/dashboard), tanyakan
@@ -1718,7 +1730,7 @@ function InputShiftPageInner() {
                                     const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
                                     return (
                                         <button
-                                            onClick={() => setPublishOpen(true)}
+                                            onClick={goPublishShift}
                                             disabled={publishDisabled}
                                             title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
                                             className={`flex justify-center items-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
@@ -1953,26 +1965,6 @@ function InputShiftPageInner() {
                 </div>
             ) : (
                 <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={cameFromPicker ? openChangeReport : undefined} />
-            )}
-            {/* Publish modal — same component as laporan-shift / laporan-harian pages */}
-            {inputMode === 'shift' && (
-                <PublishReportModal
-                    kind="shift"
-                    reportId={report?.id ?? ''}
-                    open={publishOpen}
-                    onClose={() => setPublishOpen(false)}
-                    reportDate={selectedDate}
-                    reportShift={SHIFT_LABELS[selectedShift]}
-                    reportGroup={currentGroup ?? undefined}
-                    initialSupervisor={supervisor}
-                    initialForemanTurbin={foremanTurbin}
-                    initialForemanBoiler={foremanBoiler}
-                    onSupervisorChange={setSupervisor}
-                    onForemanTurbinChange={setForemanTurbin}
-                    onForemanBoilerChange={setForemanBoiler}
-                    canReview={canReviewReport}
-                    reviewerName={operator?.name ?? ''}
-                />
             )}
             {/* Dialog "Pilih Laporan" — operator yang buka tanpa station (dari app) */}
             {stationPickerOpen && (

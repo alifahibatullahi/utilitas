@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { useLatestBoilerStatus } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
@@ -16,7 +16,6 @@ import TabHandling from './TabHandling';
 import TabChemical from './TabChemical';
 import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
-import { PublishReportModal } from '@/components/ui/PublishReportModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
 import {
@@ -101,7 +100,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
 
     // Daftar operator lengkap untuk picker "Diisi oleh" (lintas grup)
-    const { operators, canReviewReport } = useOperator();
+    const { operators } = useOperator();
     // Station panel (boiler A/B + turbin) wajib mengisi supervisor (KASI).
     const isPanelStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin'].includes(station);
     const supervisorOptions = operators.filter(op => op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman'));
@@ -162,17 +161,30 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [coalActivities, setCoalActivities] = useState<CoalActivity[]>([]);
 
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
-    const [publishOpen, setPublishOpen] = useState(false);
+    const router = useRouter();
 
-    // Deep-link ?review=1 (dari notif "siap dipublish" harian) → auto-buka modal
-    // Review/Publish begitu report harian selesai di-load. Sekali pakai (bisa ditutup
-    // tanpa re-open). Hanya non-station mode (link notif tidak membawa station).
+    // Navigasi ke halaman Review/Publish harian (full-screen, URL sendiri).
+    const goPublishDaily = useCallback(() => {
+        const id = (report?.id as string) ?? '';
+        if (!id) return;
+        const q = new URLSearchParams({
+            id,
+            date,
+            group: groupName ?? '',
+            sup: (totalizer.kasi_name as string) || supervisorName || '',
+        });
+        router.push(`/laporan-harian/publish?${q.toString()}`);
+    }, [report, date, groupName, totalizer, supervisorName, router]);
+
+    // Deep-link ?review=1 (dari notif "siap dipublish" harian) → langsung ke halaman
+    // Review/Publish begitu report harian selesai di-load. Sekali pakai. Hanya
+    // non-station mode (link notif tidak membawa station).
     const autoReviewRef = useRef(searchParams?.get('review') === '1' && !stationParam);
     useEffect(() => {
         if (!autoReviewRef.current || !report?.id) return;
-        setPublishOpen(true);
         autoReviewRef.current = false;
-    }, [report?.id]);
+        goPublishDaily();
+    }, [report?.id, goPublishDaily]);
 
     // Restore filler dari report.station_fillers[station] kalau ada — kalau belum, default
     // ke operator login (saat user pertama buka station view).
@@ -352,28 +364,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (error) { alert('Gagal hapus: ' + error.message); return; }
         setCoalActivities(prev => prev.filter(e => e.id !== id));
     };
-
-    // Refetch coal_activities — dipanggil saat panel publish ditutup, supaya edit
-    // batubara yang dilakukan supervisor di panel ikut tampil di tab In/Out Batubara.
-    const refetchCoalActivities = useCallback(async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-            .from('coal_activities')
-            .select('id, date, kind, category, rit, ton, keterangan')
-            .eq('date', date)
-            .order('created_at', { ascending: false });
-        setCoalActivities(
-            (data ?? []).map(r => ({
-                id: r.id as string,
-                date: r.date as string,
-                kind: r.kind as CoalActivity['kind'],
-                category: r.category as CoalActivity['category'],
-                rit: Number(r.rit) || 0,
-                ton: Number(r.ton) || 0,
-                keterangan: (r.keterangan as string) ?? undefined,
-            })),
-        );
-    }, [date]);
 
     // ─── Helpers ───
     const extractFields = (obj: Record<string, unknown> | undefined, skipKeys: string[] = []) => {
@@ -1095,7 +1085,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
                             return (
                                 <button
-                                    onClick={() => setPublishOpen(true)}
+                                    onClick={goPublishDaily}
                                     disabled={publishDisabled}
                                     title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
                                     className={`flex items-center justify-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
@@ -1344,19 +1334,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     )}
                 </div>
             </div>
-            {/* Publish modal — same component as laporan-harian page */}
-            <PublishReportModal
-                kind="daily"
-                reportId={(report?.id as string) ?? ''}
-                open={publishOpen}
-                onClose={() => { setPublishOpen(false); refetchCoalActivities(); }}
-                reportDate={date}
-                reportGroup={groupName ?? undefined}
-                initialSupervisor={(totalizer.kasi_name as string) || supervisorName || ''}
-                onSupervisorChange={(v) => { setTotalizer(prev => ({ ...prev, kasi_name: v })); onSupervisorChange?.(v); }}
-                canReview={canReviewReport}
-                reviewerName={operator?.name ?? ''}
-            />
         </>
     );
 }

@@ -543,52 +543,49 @@ export function PublishReportModal({
             label: 'Review In/Out Batubara',
             icon: 'local_shipping',
             render: () => (
-                <div className="space-y-4">
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4">
-                        <div className="flex items-start gap-3">
-                            <span className="material-symbols-outlined text-[20px] text-amber-400 flex-shrink-0 mt-0.5">notifications_active</span>
-                            <div className="space-y-0.5">
-                                <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Sebelum publish</div>
-                                <p className="text-[12px] sm:text-[13px] text-amber-100/90 font-medium leading-snug">
-                                    Apakah hari ini ada kedatangan / pemindahan batubara?
-                                </p>
+                coalHasActivity === true ? (
+                    // Sudah pilih "Ya, ada" → pertanyaan hilang, tampil form In/Out Batubara.
+                    <TabStockBatubara
+                        coalActivities={coalActivities}
+                        onAddCoalActivity={handleAddCoalActivity}
+                        onDeleteCoalActivity={handleDeleteCoalActivity}
+                        stockBatubaraSheet={stockBatubaraSheet}
+                        lhubbDate={reportDate}
+                    />
+                ) : (
+                    // Belum dijawab → pertanyaan tampil penuh & terpusat di dalam tab.
+                    <div className="min-h-[55vh] flex flex-col items-center justify-center">
+                        <div className="w-full max-w-lg bg-amber-500/10 border border-amber-500/30 rounded-3xl p-6 sm:p-8 text-center shadow-[0_8px_32px_rgba(251,191,36,0.08)]">
+                            <div className="flex justify-center mb-4">
+                                <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-[28px] text-amber-400">local_shipping</span>
+                                </div>
+                            </div>
+                            <div className="text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-2">Sebelum publish</div>
+                            <p className="text-base sm:text-lg text-amber-50 font-bold leading-snug mb-6">
+                                Apakah hari ini ada kedatangan / pemindahan batubara?
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setCoalHasActivity(true)}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all cursor-pointer border bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400 shadow-[0_4px_16px_rgba(251,191,36,0.3)] hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">check</span>
+                                    Ya, ada
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setCoalHasActivity(false); setStepIdx(steps.length - 1); }}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all cursor-pointer border bg-slate-900/40 text-slate-300 border-slate-700/60 hover:bg-slate-800/60 hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">block</span>
+                                    Tidak ada
+                                </button>
                             </div>
                         </div>
-                        <div className="flex gap-2.5 mt-3">
-                            <button
-                                type="button"
-                                onClick={() => setCoalHasActivity(true)}
-                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border active:scale-[0.98]
-                                    ${coalHasActivity === true
-                                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-[0_4px_14px_rgba(251,191,36,0.3)]'
-                                        : 'bg-slate-900/40 text-amber-200 border-amber-500/30 hover:bg-amber-500/15'}`}
-                            >
-                                <span className="material-symbols-outlined text-[16px]">check</span>
-                                Ya, ada
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => { setCoalHasActivity(false); setStepIdx(steps.length - 1); }}
-                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border active:scale-[0.98]
-                                    ${coalHasActivity === false
-                                        ? 'bg-slate-700 text-white border-slate-600'
-                                        : 'bg-slate-900/40 text-slate-300 border-slate-700/60 hover:bg-slate-800/60'}`}
-                            >
-                                <span className="material-symbols-outlined text-[16px]">block</span>
-                                Tidak ada
-                            </button>
-                        </div>
                     </div>
-                    {coalHasActivity === true && (
-                        <TabStockBatubara
-                            coalActivities={coalActivities}
-                            onAddCoalActivity={handleAddCoalActivity}
-                            onDeleteCoalActivity={handleDeleteCoalActivity}
-                            stockBatubaraSheet={stockBatubaraSheet}
-                            lhubbDate={reportDate}
-                        />
-                    )}
-                </div>
+                )
             ),
         });
     }

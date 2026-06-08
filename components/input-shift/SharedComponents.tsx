@@ -29,6 +29,16 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
         return num.toLocaleString('id-ID', { maximumFractionDigits: 3 });
     };
 
+    // Skala font menyesuaikan panjang nilai → angka totalizer yang panjang tetap
+    // terlihat penuh di semua ukuran layar (tidak terpotong di kolom sempit).
+    const sizeForLen = (s: string | null | undefined): string => {
+        const len = (s ?? '').length;
+        if (len > 14) return 'text-xs';
+        if (len > 11) return 'text-sm';
+        if (len > 8) return 'text-base';
+        return 'text-lg';
+    };
+
     // Sync rawText when value changes from parent (e.g. loading saved data)
     useEffect(() => {
         if (textMode && !isFocused.current) {
@@ -67,7 +77,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                 {labelEl}
                 <div className="relative">
                     <input
-                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-lg font-mono font-bold tracking-wide transition-all text-left`}
+                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(thuText)} font-mono font-bold tracking-wide transition-all text-left`}
                         type="text"
                         inputMode="numeric"
                         placeholder={placeholder}
@@ -111,7 +121,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
             <div className="relative">
                 {negative && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">−</span>}
                 <input
-                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-lg font-mono font-bold tracking-wide transition-all text-left`}
+                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(String(textMode ? rawText : (displayValue ?? '')))} font-mono font-bold tracking-wide transition-all text-left`}
                     placeholder={placeholder}
                     type={textMode ? "text" : "number"}
                     inputMode={textMode ? "text" : "decimal"}

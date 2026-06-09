@@ -7,18 +7,20 @@ import LogPanel from '@/components/admin-wa/LogPanel';
 import SchedulePanel from '@/components/admin-wa/SchedulePanel';
 import TemplatePanel from '@/components/admin-wa/TemplatePanel';
 import GroupsPanel from '@/components/admin-wa/GroupsPanel';
+import RecipientsPanel from '@/components/admin-wa/RecipientsPanel';
 import UsersPhonePanel from '@/components/admin-wa/UsersPhonePanel';
 import TestSendPanel from '@/components/admin-wa/TestSendPanel';
 
-type TabId = 'log' | 'schedule' | 'template' | 'groups' | 'users' | 'test';
+type TabId = 'log' | 'schedule' | 'template' | 'groups' | 'recipients' | 'users' | 'test';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
-    { id: 'log',      label: 'Log',           icon: 'history' },
-    { id: 'schedule', label: 'Jadwal',        icon: 'schedule' },
-    { id: 'template', label: 'Template',      icon: 'draft' },
-    { id: 'groups',   label: 'Groups WA',     icon: 'forum' },
-    { id: 'users',    label: 'Nomor Operator', icon: 'group' },
-    { id: 'test',     label: 'Test Send',     icon: 'send' },
+    { id: 'log',        label: 'Log',            icon: 'history' },
+    { id: 'schedule',   label: 'Jadwal',         icon: 'schedule' },
+    { id: 'template',   label: 'Template',       icon: 'draft' },
+    { id: 'groups',     label: 'Groups WA',      icon: 'forum' },
+    { id: 'recipients', label: 'Penerima Pribadi', icon: 'contact_phone' },
+    { id: 'users',      label: 'Nomor Operator', icon: 'group' },
+    { id: 'test',       label: 'Test Send',      icon: 'send' },
 ];
 
 export default function NotificationHubPage() {
@@ -63,6 +65,7 @@ export default function NotificationHubPage() {
                 {tab === 'schedule' && <SchedulePanel />}
                 {tab === 'template' && <TemplatePanel />}
                 {tab === 'groups' && <GroupsPanel />}
+                {tab === 'recipients' && <RecipientsPanel />}
                 {tab === 'users' && <UsersPhonePanel />}
                 {tab === 'test' && <TestSendPanel />}
             </div>

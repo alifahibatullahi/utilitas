@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
     createAdminClient,
     sendFonnteGroup,
+    sendWaText,
     getWhatsappGroup,
     renderTemplate,
     logNotification,
@@ -171,7 +172,39 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
         links,
     });
 
-    // 4. Send + log
+    // 4. Routing reminder (semua via Wablas):
+    //   - Grup dengan penerima PRIBADI aktif (mis. A–C) → kirim HANYA ke nomor pribadi
+    //     mereka, TIDAK ke grup WhatsApp.
+    //   - Grup tanpa penerima pribadi (mis. D) / management → kirim ke GRUP WhatsApp.
+    // Di KEDUA mode pakai kind dasar `schedule.kind` saat log, supaya one-shot dedup di
+    // langkah 2 (query kind = schedule.kind) menemukan log ini & skip tick cron berikutnya.
+    const recipients: { name: string; phone_number: string }[] = groupLetter
+        ? (((await supabase
+            .from('whatsapp_reminder_recipients')
+            .select('name, phone_number')
+            .eq('group_letter', groupLetter)
+            .eq('active', true)).data ?? []) as { name: string; phone_number: string }[])
+        : [];
+
+    if (recipients.length > 0) {
+        // Mode PRIBADI — grup A–C: kirim ke tiap nomor, grup WA dilewati.
+        let personalSent = 0;
+        for (const r of recipients) {
+            const ps = await sendWaText(r.phone_number, message);
+            if (ps.ok) personalSent++;
+            await logNotification(supabase, {
+                kind: schedule.kind,
+                target_date: date,
+                target_shift: schedule.shift ?? null,
+                target_group: groupLetter,
+                sent_to: r.phone_number,
+                payload: message,
+            });
+        }
+        return { schedule: schedule.id, mode: 'personal', recipients: recipients.length, personalSent };
+    }
+
+    // Mode GRUP — grup D / management: kirim ke grup WhatsApp.
     const send = await sendFonnteGroup(group.fonnte_target, message);
     await logNotification(supabase, {
         kind: schedule.kind,
@@ -182,5 +215,5 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
         payload: message,
     });
 
-    return { schedule: schedule.id, sent: send.ok, status: send.status };
+    return { schedule: schedule.id, mode: 'group', sent: send.ok, status: send.status };
 }

@@ -257,6 +257,17 @@ export function shiftReportToRow(
         row[COL.boiler_kasi_ms] = s(p.turbin_kasi);
     }
 
+    // Batubara (konsumsi = selisih totalizer feeder) → CE/CF.
+    // 0 BERMAKNA (tanpa konsumsi / belum ada baseline shift sebelumnya), jadi harus
+    // ditulis 0 lewat nz() — bukan dilewati. Kalau pakai n(), 0 jadi null dan sel
+    // dilewati update Sheets sehingga nilai LAMA bertahan ("data sebelum input user").
+    // Tapi hanya saat submission ini memang melaporkan feeder boiler ybs; kalau tidak
+    // (mis. station non-boiler kirim batubara_ton=0), biarkan null agar merge tak
+    // menimpa nilai station boiler dengan 0.
+    const cbInput = data.coalBunker ?? {};
+    const hasFeedersA = cbInput.feeder_a != null || cbInput.feeder_b != null || cbInput.feeder_c != null;
+    const hasFeedersB = cbInput.feeder_d != null || cbInput.feeder_e != null || cbInput.feeder_f != null;
+
     // Boiler A
     const bA = data.boilerA ?? {};
     row[COL.boiler_press_steam_a] = n(bA.press_steam);
@@ -268,7 +279,7 @@ export function shiftReportToRow(
     row[COL.boiler_temp_flue_gas_a] = n(bA.temp_flue_gas);
     row[COL.boiler_excess_air_a] = n(bA.o2);
     row[COL.boiler_air_heater_a] = n(bA.air_heater_ti113);
-    row[COL.boiler_batubara_a] = n(bA.batubara_ton);
+    row[COL.boiler_batubara_a] = hasFeedersA ? nz(bA.batubara_ton) : n(bA.batubara_ton);
     row[COL.boiler_solar_a] = nz(bA.solar_m3);         // CG — Solar Usage boiler A (0 tetap ditulis)
     row[COL.boiler_stream_days_a] = n(bA.stream_days);
     // Boiler B
@@ -283,7 +294,7 @@ export function shiftReportToRow(
     row[COL.boiler_temp_flue_gas_b] = n(bB.temp_flue_gas);
     row[COL.boiler_excess_air_b] = n(bB.o2);           // CB — O2 boiler B
     row[COL.boiler_air_heater_b] = n(bB.air_heater_ti113);
-    row[COL.boiler_batubara_b] = n(bB.batubara_ton);
+    row[COL.boiler_batubara_b] = hasFeedersB ? nz(bB.batubara_ton) : n(bB.batubara_ton);
     row[COL.boiler_solar_b] = nz(bB.solar_m3);         // CH — Solar Usage boiler B (0 tetap ditulis)
     row[COL.boiler_stream_days_b] = n(bB.stream_days);
     // Coal Feeders — flow dari boiler tab (CK-CP).

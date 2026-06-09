@@ -1142,7 +1142,11 @@ function InputShiftPageInner() {
             if (result?.error) {
                 showToast('Error: ' + result.error, 'error');
             } else {
-                showToast('Laporan berhasil disimpan!', 'success');
+                if (result?.sheetsWarning) {
+                    showToast('Tersimpan di database, tapi sinkron Google Sheets GAGAL: ' + result.sheetsWarning + '. Mohon simpan ulang.', 'error');
+                } else {
+                    showToast('Laporan berhasil disimpan!', 'success');
+                }
                 setUserModified(false);
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();

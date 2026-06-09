@@ -48,6 +48,37 @@ function getSheetsClient() {
     return google.sheets({ version: 'v4', auth });
 }
 
+// ─── Retry (transient Google Sheets API failures) ─────────────────────────────
+
+/**
+ * Retry a Google Sheets API call on transient errors (rate limit 429, server 5xx,
+ * jaringan terputus/timeout). Error non-transien (mis. 400/403 — kredensial/range
+ * salah) langsung dilempar tanpa retry. Backoff: 400ms, 800ms.
+ */
+async function withRetry<T>(fn: () => Promise<T>, label: string, maxAttempts = 3): Promise<T> {
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            return await fn();
+        } catch (err: unknown) {
+            lastErr = err;
+            const e = err as { code?: number | string; status?: number; response?: { status?: number }; message?: string };
+            const httpStatus = typeof e.code === 'number' ? e.code : (e.status ?? e.response?.status);
+            const netCode = typeof e.code === 'string' ? e.code : '';
+            const transient =
+                httpStatus === 429 ||
+                (typeof httpStatus === 'number' && httpStatus >= 500) ||
+                /ECONNRESET|ETIMEDOUT|EAI_AGAIN|ECONNREFUSED|EPIPE|ENOTFOUND/i.test(netCode) ||
+                /network|timeout|socket hang up|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(e.message ?? '');
+            if (!transient || attempt === maxAttempts) throw err;
+            const delay = 400 * 2 ** (attempt - 1); // 400ms, 800ms
+            console.warn(`[sheets retry] ${label} attempt ${attempt}/${maxAttempts} gagal (${httpStatus ?? netCode ?? 'unknown'}); retry ${delay}ms`);
+            await new Promise(r => setTimeout(r, delay));
+        }
+    }
+    throw lastErr;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Convert ISO date "2025-04-07" → Indonesian "07 April 2025" */
@@ -83,10 +114,10 @@ export function fromIndonesianDate(indonesianDate: string): string | null {
  */
 export async function getSheetRows(tab: string): Promise<string[][]> {
     const sheets = getSheetsClient();
-    const res = await sheets.spreadsheets.values.get({
+    const res = await withRetry(() => sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: `${tab}!A6:EZ`, // Start from row 6 (after 5 header rows)
-    });
+    }), `get ${tab}!A6:EZ`);
     return (res.data.values ?? []) as string[][];
 }
 
@@ -111,10 +142,10 @@ export async function findShiftRow(tab: string, isoDate: string): Promise<number
  */
 export async function getShiftRow(tab: string, rowIndex: number): Promise<string[]> {
     const sheets = getSheetsClient();
-    const res = await sheets.spreadsheets.values.get({
+    const res = await withRetry(() => sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: `${tab}!A${rowIndex}:EZ${rowIndex}`,
-    });
+    }), `get ${tab}!A${rowIndex}`);
     const rows = res.data.values ?? [];
     return (rows[0] ?? []) as string[];
 }
@@ -132,7 +163,7 @@ async function countDataRows(tab: string): Promise<number> {
  */
 async function appendSheetRow(tab: string, values: (string | number | null)[]): Promise<void> {
     const sheets = getSheetsClient();
-    await sheets.spreadsheets.values.append({
+    await withRetry(() => sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
         range: `${tab}!A6`,
         valueInputOption: 'USER_ENTERED',
@@ -140,7 +171,7 @@ async function appendSheetRow(tab: string, values: (string | number | null)[]): 
         requestBody: {
             values: [values],
         },
-    });
+    }), `append ${tab}!A6`);
 }
 
 /**
@@ -150,14 +181,14 @@ async function updateSheetRow(tab: string, rowIndex: number, values: (string | n
     const sheets = getSheetsClient();
     const nonNullCount = values.filter(v => v !== null && v !== '').length;
     console.log(`[updateSheetRow] spreadsheet=${SPREADSHEET_ID.slice(0,8)}... tab=${tab} row=${rowIndex} cells=${nonNullCount}/${values.length}`);
-    const res = await sheets.spreadsheets.values.update({
+    const res = await withRetry(() => sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
         range: `${tab}!A${rowIndex}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
             values: [values],
         },
-    });
+    }), `update ${tab}!A${rowIndex}`);
     console.log(`[updateSheetRow] response: updatedCells=${res.data.updatedCells} updatedRange=${res.data.updatedRange}`);
 }
 
@@ -344,12 +375,12 @@ export async function upsertRcwRows(entries: RcwEntry[]): Promise<RcwUpsertResul
 
     for (const entry of entries) {
         const rowIndex = rcwRowIndex(entry.isoDate, entry.jam);
-        await sheets.spreadsheets.values.update({
+        await withRetry(() => sheets.spreadsheets.values.update({
             spreadsheetId: RCW_SPREADSHEET_ID,
             range: `${tab}!D${rowIndex}`,
             valueInputOption: 'USER_ENTERED',
             requestBody: { values: [[entry.level]] },
-        });
+        }), `update RCW ${tab}!D${rowIndex}`);
         updated++;
         details.push({ action: 'updated', rowIndex, jam: entry.jam, date: entry.isoDate, level: entry.level });
     }
@@ -484,12 +515,12 @@ export async function upsertTankLevelsShift(levels: TankLevelsInput, now?: Date)
 
     const updates: TankShiftUpdateResult['updates'] = [];
     for (const u of queue) {
-        await sheets.spreadsheets.values.update({
+        await withRetry(() => sheets.spreadsheets.values.update({
             spreadsheetId: TANK_SHIFT_SPREADSHEET_ID,
             range: u.range,
             valueInputOption: 'USER_ENTERED',
             requestBody: { values: [[u.value]] },
-        });
+        }), `update tank ${u.range}`);
         updates.push(u);
     }
 

@@ -1201,51 +1201,59 @@ export function useShiftReport(date: string, shift: ShiftType) {
 
         console.log('[submitReport] all saves done, errors:', errors);
 
-        // Fire-and-forget: sync to Google Sheets (does not block or fail Supabase save)
-        void (async () => {
-            try {
-                const res = await fetch('/api/sheets/write', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        type: 'shift_report',
-                        data: {
-                            shift,
-                            date,
-                            group_name: reportData.group_name,
-                            turbin: reportData.turbin,
-                            steamDist: reportData.steamDist,
-                            generatorGi: reportData.generatorGi,
-                            powerDist: reportData.powerDist,
-                            espHandling: reportData.espHandling,
-                            tankyard: reportData.tankyard,
-                            personnel: reportData.personnel,
-                            boilerA: reportData.boilerA,
-                            boilerB: reportData.boilerB,
-                            coalBunker: reportData.coalBunker,
-                            waterQuality: reportData.waterQuality,
-                            prevBoilerA: reportData.prevBoilerA,
-                            prevBoilerB: reportData.prevBoilerB,
-                        },
-                    }),
-                });
+        // Sync ke Google Sheets — DITUNGGU agar kita tahu pasti apakah benar tersimpan.
+        // Supabase tetap source of truth: kalau Sheets gagal (setelah retry server-side),
+        // kita kembalikan sheetsWarning supaya UI bisa kasih tahu user untuk simpan ulang.
+        let sheetsWarning: string | undefined;
+        try {
+            const res = await fetch('/api/sheets/write', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'shift_report',
+                    data: {
+                        shift,
+                        date,
+                        group_name: reportData.group_name,
+                        turbin: reportData.turbin,
+                        steamDist: reportData.steamDist,
+                        generatorGi: reportData.generatorGi,
+                        powerDist: reportData.powerDist,
+                        espHandling: reportData.espHandling,
+                        tankyard: reportData.tankyard,
+                        personnel: reportData.personnel,
+                        boilerA: reportData.boilerA,
+                        boilerB: reportData.boilerB,
+                        coalBunker: reportData.coalBunker,
+                        waterQuality: reportData.waterQuality,
+                        prevBoilerA: reportData.prevBoilerA,
+                        prevBoilerB: reportData.prevBoilerB,
+                    },
+                }),
+            });
+            if (!res.ok) {
+                sheetsWarning = `Google Sheets HTTP ${res.status}`;
+                console.warn('[submitReport] Sheets sync HTTP error:', res.status);
+            } else {
                 const result = await res.json();
                 if (result.warning) {
+                    sheetsWarning = result.warning;
                     console.warn('[submitReport] Sheets warning:', result.warning);
                 } else {
                     console.log('[submitReport] Sheets sync OK:', result);
                 }
-            } catch (sheetsErr) {
-                console.warn('[submitReport] Sheets sync failed (non-fatal):', sheetsErr);
             }
-        })();
+        } catch (sheetsErr) {
+            sheetsWarning = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
+            console.warn('[submitReport] Sheets sync failed:', sheetsErr);
+        }
 
         if (errors.length > 0) {
             console.error('Child table errors:', errors);
-            return { error: errors.join('; '), reportId };
+            return { error: errors.join('; '), reportId, sheetsWarning };
         }
 
-        return { error: null, reportId };
+        return { error: null, reportId, sheetsWarning };
     }, [date, shift]);
 
     /**

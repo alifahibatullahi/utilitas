@@ -104,13 +104,17 @@ export async function GET(req: NextRequest) {
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {
     const { schedule, date } = job;
 
-    // 1. Already submitted? → skip
+    // 1. Sudah SUBMIT (bukan sekadar ada baris draft)? → skip.
+    //    Penting: laporan harian sering dibuat sebagai 'draft' siang hari (jauh sebelum grup
+    //    malam mengisi LHUBB). Cek status, jangan cuma keberadaan baris — kalau tidak,
+    //    reminder LHUBB ke-skip padahal belum diisi.
     if (schedule.kind === 'shift_reminder' && schedule.shift) {
         const { data } = await supabase
             .from('shift_reports')
             .select('id')
             .eq('date', date)
             .eq('shift', schedule.shift)
+            .neq('status', 'draft')
             .limit(1);
         if (data && data.length > 0) return { schedule: schedule.id, skipped: 'already_submitted' };
     } else if (schedule.kind === 'daily_reminder') {
@@ -118,6 +122,7 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
             .from('daily_reports')
             .select('id')
             .eq('date', date)
+            .neq('status', 'draft')
             .limit(1);
         if (data && data.length > 0) return { schedule: schedule.id, skipped: 'already_submitted' };
     }

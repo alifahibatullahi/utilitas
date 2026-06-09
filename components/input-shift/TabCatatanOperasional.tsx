@@ -3,7 +3,7 @@ import React from 'react';
 import { Card } from './SharedComponents';
 import type { AshUnloadingEntry } from './TabESP';
 import type { BunkerBerasapInfo } from '@/hooks/useShiftReport';
-import { STATION_LABELS, type OperatorStation } from '@/lib/constants';
+import { type OperatorStation } from '@/lib/constants';
 
 interface SolarInEntry { id?: string; tanggal: string; jumlah: number | null; perusahaan: string }
 interface SolarOutEntry { id?: string; tanggal: string; jumlah: number | null; tujuan: string }
@@ -105,10 +105,13 @@ export default function TabCatatanOperasional({
     currentStation,
 }: TabCatatanOperasionalProps) {
     const sc = stationCatatan ?? {};
-    // Catatan station LAIN (selain yang sedang diedit) yang ada isinya → referensi read-only.
-    const others = CATATAN_STATION_ORDER.filter(
-        s => s !== currentStation && (sc[s] ?? '').trim().length > 0,
-    );
+    // Catatan station LAIN (selain yang sedang diedit) digabung jadi SATU blok tanpa label
+    // (permintaan user: "semua jadi satu, jangan dibedakan"). Saat publish pun digabung jadi satu.
+    const otherText = CATATAN_STATION_ORDER
+        .filter(s => s !== currentStation)
+        .map(s => (sc[s] ?? '').trim())
+        .filter(Boolean)
+        .join('\n');
 
     return (
         <div className="w-full max-w-3xl mx-auto space-y-4">
@@ -125,19 +128,12 @@ export default function TabCatatanOperasional({
                 </p>
             </Card>
 
-            {others.length > 0 && (
+            {otherText && (
                 <Card title="Catatan Station Lain" icon="notes" color="slate">
-                    <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
-                        Catatan dari Panel Boiler / Turbin lain (read-only). Semua digabung otomatis saat publish.
+                    <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
+                        Catatan dari station lain (read-only). Semua digabung jadi satu Catatan Operasional saat publish.
                     </p>
-                    <div className="space-y-3">
-                        {others.map(s => (
-                            <div key={s}>
-                                <p className="text-[11px] font-bold text-slate-300 mb-1">{STATION_LABELS[s]}</p>
-                                <pre className="text-xs text-slate-200 whitespace-pre-wrap font-sans bg-[#0e1621] border border-slate-700/60 rounded-lg px-3 py-2 leading-relaxed">{sc[s].trim()}</pre>
-                            </div>
-                        ))}
-                    </div>
+                    <pre className="text-xs text-slate-200 whitespace-pre-wrap font-sans bg-[#0e1621] border border-slate-700/60 rounded-lg px-3 py-2 leading-relaxed">{otherText}</pre>
                 </Card>
             )}
         </div>

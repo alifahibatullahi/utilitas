@@ -152,9 +152,6 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
         groupKey = 'management';
     }
 
-    const group = await getWhatsappGroup(supabase, groupKey);
-    if (!group) return { schedule: schedule.id, skipped: 'no_group_configured', groupKey };
-
     const isShift = schedule.kind === 'shift_reminder' && !!schedule.shift;
     // LINK TETAP/PERMANEN — tanpa tanggal/shift. Saat dibuka, halaman auto-resolve ke
     // shift/hari yang sedang berjalan. Supaya operator pengganti (tukar shift) bisa pakai
@@ -211,7 +208,11 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
         return { schedule: schedule.id, mode: 'personal', recipients: recipients.length, personalSent };
     }
 
-    // Mode GRUP — grup D / management: kirim ke grup WhatsApp.
+    // Mode GRUP — grup D / management: kirim ke grup WhatsApp. Lookup grup di SINI (bukan
+    // di awal) supaya grup A–C yang TIDAK punya baris whatsapp_groups tetap bisa kirim ke
+    // penerima pribadi di atas — sebelumnya early-return 'no_group_configured' memblokirnya.
+    const group = await getWhatsappGroup(supabase, groupKey);
+    if (!group) return { schedule: schedule.id, skipped: 'no_group_configured', groupKey };
     const send = await sendFonnteGroup(group.fonnte_target, message);
     await logNotification(supabase, {
         kind: schedule.kind,

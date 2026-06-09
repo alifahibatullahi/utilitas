@@ -3,13 +3,24 @@ import React from 'react';
 import { Card } from './SharedComponents';
 import type { AshUnloadingEntry } from './TabESP';
 import type { BunkerBerasapInfo } from '@/hooks/useShiftReport';
+import { STATION_LABELS, type OperatorStation } from '@/lib/constants';
 
 interface SolarInEntry { id?: string; tanggal: string; jumlah: number | null; perusahaan: string }
 interface SolarOutEntry { id?: string; tanggal: string; jumlah: number | null; tujuan: string }
 
+// Station yang punya tab Catatan Operasional sendiri. Catatan dari station ini
+// digabung saat publish; di form, ditampilkan saling-silang sebagai referensi.
+const CATATAN_STATION_ORDER: OperatorStation[] = ['panel_boiler_a', 'panel_boiler_b', 'panel_turbin'];
+
 interface TabCatatanOperasionalProps {
     catatan: string;
     onCatatanChange: (v: string) => void;
+    /** Semua catatan per-station (report.station_catatan) — untuk menampilkan catatan
+     *  station LAIN (PB A/B & Turbin) sebagai referensi read-only di tab ini. */
+    stationCatatan?: Record<string, string> | null;
+    /** Station yang sedang diedit (textarea). Dikecualikan dari blok referensi karena
+     *  sudah jadi textarea utama. Null = mode penuh → semua station tampil sebagai referensi. */
+    currentStation?: string | null;
     // Props lain (solar/ash/coalBunker) tetap di-pass untuk back-compat & jaga2 kalau
     // butuh derive sesuatu di masa depan, tapi tidak dipakai sekarang.
     solarEntries?: SolarInEntry[];
@@ -90,9 +101,17 @@ export function buildAutoCatatanLines(p: AutoCatatanInput): string[] {
 export default function TabCatatanOperasional({
     catatan,
     onCatatanChange,
+    stationCatatan,
+    currentStation,
 }: TabCatatanOperasionalProps) {
+    const sc = stationCatatan ?? {};
+    // Catatan station LAIN (selain yang sedang diedit) yang ada isinya → referensi read-only.
+    const others = CATATAN_STATION_ORDER.filter(
+        s => s !== currentStation && (sc[s] ?? '').trim().length > 0,
+    );
+
     return (
-        <div className="w-full max-w-3xl mx-auto">
+        <div className="w-full max-w-3xl mx-auto space-y-4">
             <Card title="Catatan Operasional" icon="sticky_note_2" color="amber">
                 <textarea
                     value={catatan}
@@ -105,6 +124,22 @@ export default function TabCatatanOperasional({
                     Catatan ini akan ikut tampil di pesan publish WhatsApp dan laporan PDF.
                 </p>
             </Card>
+
+            {others.length > 0 && (
+                <Card title="Catatan Station Lain" icon="notes" color="slate">
+                    <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+                        Catatan dari Panel Boiler / Turbin lain (read-only). Semua digabung otomatis saat publish.
+                    </p>
+                    <div className="space-y-3">
+                        {others.map(s => (
+                            <div key={s}>
+                                <p className="text-[11px] font-bold text-slate-300 mb-1">{STATION_LABELS[s]}</p>
+                                <pre className="text-xs text-slate-200 whitespace-pre-wrap font-sans bg-[#0e1621] border border-slate-700/60 rounded-lg px-3 py-2 leading-relaxed">{sc[s].trim()}</pre>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
         </div>
     );
 }

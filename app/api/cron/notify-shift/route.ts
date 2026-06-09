@@ -179,31 +179,6 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
         links,
     });
 
-    // 4a. Kirim reminder JUGA ke SUPERVISOR grup ini (operator jabatan 'Supervisor' yg punya
-    // nomor), lewat Wablas. Berlaku semua mode. Ikut dalam run yang sama dgn penerima/grup
-    // jadi aman dari one-shot dedup (langkah 2 cek keberadaan log kind+date+shift).
-    if (groupLetter) {
-        const { data: sups } = await supabase
-            .from('operators')
-            .select('phone_number')
-            .eq('group_name', groupLetter)
-            .eq('jabatan', 'Supervisor')
-            .not('phone_number', 'is', null)
-            .limit(1);
-        const supPhone = (sups?.[0] as { phone_number?: string } | undefined)?.phone_number?.trim();
-        if (supPhone) {
-            await sendWaText(supPhone, message);
-            await logNotification(supabase, {
-                kind: schedule.kind,
-                target_date: date,
-                target_shift: schedule.shift ?? null,
-                target_group: groupLetter,
-                sent_to: supPhone,
-                payload: message,
-            });
-        }
-    }
-
     // 4. Routing reminder (semua via Wablas):
     //   - Grup dengan penerima PRIBADI aktif (mis. A–C) → kirim HANYA ke nomor pribadi
     //     mereka, TIDAK ke grup WhatsApp.

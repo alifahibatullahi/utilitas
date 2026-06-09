@@ -322,6 +322,21 @@ export default function LaporanShiftPage() {
         return null;
     }, [supaReport]);
 
+    // Catatan Operasional KANONIK — ambil dari endpoint publish supaya 100% identik dengan
+    // Review & PDF (manual + solar/fly ash + bunker berasap, satu blok tanpa label).
+    const [canonCatatan, setCanonCatatan] = useState<string | null>(null);
+    useEffect(() => {
+        setCanonCatatan(null);
+        const id = supaReport?.id;
+        if (!id) return;
+        let cancelled = false;
+        fetch(`/api/whatsapp/publish-shift?reportId=${id}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => { if (!cancelled && d?.summary?.catatan != null) setCanonCatatan(d.summary.catatan as string); })
+            .catch(() => { /* fallback ke report.catatan */ });
+        return () => { cancelled = true; };
+    }, [supaReport?.id]);
+
     // Navigasi ke halaman Review/Publish shift (full-screen, URL sendiri).
     const goPublishShift = () => {
         if (!supaReport?.id) return;
@@ -627,9 +642,9 @@ export default function LaporanShiftPage() {
                             <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Catatan Shift</p>
                         </div>
                         <div className="p-4">
-                            {report.catatan.trim() ? (
+                            {(canonCatatan ?? report.catatan).trim() ? (
                                 <pre className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
-{report.catatan}
+{canonCatatan ?? report.catatan}
                                 </pre>
                             ) : (
                                 <p className="text-sm text-slate-500 italic">Tidak ada catatan untuk shift ini.</p>

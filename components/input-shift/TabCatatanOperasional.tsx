@@ -130,7 +130,11 @@ export default function TabCatatanOperasional({
                 </p>
             </Card>
 
-            {otherText && (
+            {/* "Catatan Station Lain" HANYA muncul saat mode station (operator melihat catatan
+                station lain sebagai referensi). Di tab Catatan Operasional umum (BUKAN station,
+                currentStation null) kartu ini disembunyikan — semua catatan langsung di field
+                Catatan Operasional di atas. (permintaan user) */}
+            {currentStation && otherText && (
                 <Card title="Catatan Station Lain" icon="notes" color="slate">
                     <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
                         Catatan dari station lain (read-only). Semua digabung jadi satu Catatan Operasional saat publish.

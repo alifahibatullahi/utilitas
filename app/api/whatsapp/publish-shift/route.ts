@@ -15,6 +15,7 @@ import {
     computeBunkerBerasapLines,
     fetchBunkerBerasapSince,
     buildDayCatatanLabeled,
+    getShiftCatatanCanonical,
 } from '@/lib/shift-catatan';
 
 // Use node runtime — puppeteer requires it.
@@ -125,12 +126,14 @@ export async function GET(req: NextRequest) {
     const coalRow = Array.isArray(report.shift_coal_bunker) ? (report.shift_coal_bunker as any[])[0] : ((report.shift_coal_bunker as any) ?? null);
     const bunkerLines = computeBunkerBerasapLines(coalRow, report.date as string, report.shift as string, berasapSince);
 
-    // Catatan Operasional = blok per-shift hari ini DARI Malam s/d shift berjalan, berlabel.
-    // (mis. review Pagi → "Shift Malam: ..." lalu "Shift Pagi: ..."). Dipakai teks washift,
-    // Review, & PDF agar identik.
-    const catatanText = await buildDayCatatanLabeled(supabase, report.date as string, report.shift as string);
+    // Catatan Operasional — DUA varian:
+    //  - REVIEW (kartu): blok per-shift hari ini DARI Malam s/d shift berjalan, berlabel
+    //    (konteks; mis. review Sore → Malam+Pagi+Sore).
+    //  - WASHIFT (teks publish) & PDF: HANYA catatan shift INI saja (permintaan user).
+    const catatanShiftIni = await getShiftCatatanCanonical(supabase, report);
+    const catatanDayLabeled = await buildDayCatatanLabeled(supabase, report.date as string, report.shift as string);
 
-    const summaryText = buildShiftSummary(report, latestTank, catatanText);
+    const summaryText = buildShiftSummary(report, latestTank, catatanShiftIni);
     const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
     const text = await renderTemplate(supabase, 'shift_share', {
         shift: shiftLabel,
@@ -156,7 +159,7 @@ export async function GET(req: NextRequest) {
         B: (prevBoilers.find((b: any) => b.boiler === 'B')?.totalizer_steam as number | null) ?? null,
     };
 
-    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal, latestTank, bunkerLines, catatanText);
+    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal, latestTank, bunkerLines, catatanDayLabeled);
     return NextResponse.json({ text, summary });
 }
 
@@ -212,9 +215,8 @@ export async function POST(req: NextRequest) {
         .neq('item', 'NOTE')
         .order('item', { ascending: true });
 
-    // ── Catatan Operasional KANONIK untuk PDF — IDENTIK dengan teks washift & Review:
-    // blok per-shift berlabel (Malam → ... → shift berjalan). ──
-    const catatanText = await buildDayCatatanLabeled(supabase, report.date as string, report.shift as string);
+    // ── Catatan Operasional untuk PDF = HANYA shift ini (sama dengan teks washift). ──
+    const catatanText = await getShiftCatatanCanonical(supabase, report);
 
     // ────────── Run both sends in parallel ──────────
     const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey, catatanText);

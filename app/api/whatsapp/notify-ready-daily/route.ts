@@ -119,8 +119,6 @@ export async function POST(req: NextRequest) {
     }
     if (!groupLetter) return NextResponse.json({ ready: true, skipped: 'no_group_assignment' });
     const groupKey = `shift_${groupLetter.toLowerCase()}`;
-    const group = await getWhatsappGroup(supabase, groupKey);
-    if (!group) return NextResponse.json({ ready: true, skipped: 'no_group_configured', groupKey });
 
     // 4. Pesan ringkas (tanpa isian parameter) + link review/publish harian.
     // LINK TETAP/PERMANEN — tanpa tanggal: auto-resolve ke laporan harian berjalan, supaya
@@ -140,17 +138,36 @@ export async function POST(req: NextRequest) {
         logbookLink,
     ].join('\n');
 
-    const send = await sendFonnteGroup(group.fonnte_target, msg);
-    await logNotification(supabase, {
-        kind: NOTIF_KIND,
-        target_date: date,
-        target_shift: null,
-        target_group: groupLetter,
-        sent_to: group.fonnte_target,
-        payload: msg,
-    });
+    // 5. Kirim notif "siap dipublish" harian:
+    //   - Grup dengan penerima pribadi (A–C) → kirim ke tiap nomor pribadi.
+    //   - Grup punya baris whatsapp_groups (mis. D) → kirim ke grup WA.
+    // Lookup grup TIDAK lagi memblokir; supervisor (KASI) personal SELALU dikirim.
+    const { data: recips } = await supabase
+        .from('whatsapp_reminder_recipients')
+        .select('name, phone_number')
+        .eq('group_letter', groupLetter)
+        .eq('active', true);
+    let dispatch: Record<string, unknown>;
+    if (recips && recips.length > 0) {
+        let sent = 0;
+        for (const r of recips as { name: string; phone_number: string }[]) {
+            const ps = await sendFonnteGroup(r.phone_number, msg);
+            if (ps.ok) sent++;
+            await logNotification(supabase, { kind: NOTIF_KIND, target_date: date, target_shift: null, target_group: groupLetter, sent_to: r.phone_number, payload: msg });
+        }
+        dispatch = { mode: 'personal', recipients: recips.length, sent };
+    } else {
+        const group = await getWhatsappGroup(supabase, groupKey);
+        if (group) {
+            const send = await sendFonnteGroup(group.fonnte_target, msg);
+            await logNotification(supabase, { kind: NOTIF_KIND, target_date: date, target_shift: null, target_group: groupLetter, sent_to: group.fonnte_target, payload: msg });
+            dispatch = { mode: 'group', sent: send.ok, error: send.error };
+        } else {
+            dispatch = { mode: 'none', skipped: 'no_group_configured', groupKey };
+        }
+    }
 
-    // Kirim juga ke nomor pribadi supervisor (KASI) — operators.phone_number sesuai nama.
+    // Kirim ke nomor pribadi supervisor (KASI) via Fonnte — SELALU, lepas dari grup.
     const kasiName = first(report.daily_report_totalizer)?.kasi_name as string | null | undefined;
     const sv = await notifySupervisorPersonal(supabase, {
         supervisorName: kasiName,
@@ -160,5 +177,5 @@ export async function POST(req: NextRequest) {
         account: 'publish', // notif siap-publish ke supervisor (KASI) → Fonnte
     });
 
-    return NextResponse.json({ ready: true, sent: send.ok, error: send.error, group: groupKey, supervisor: sv });
+    return NextResponse.json({ ready: true, dispatch, supervisor: sv });
 }

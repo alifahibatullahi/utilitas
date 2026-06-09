@@ -341,10 +341,19 @@ export function buildOperasiParams(report: any, tankLevels?: { rcw: number | nul
 
 // ─── Deep links & WIB time helpers ───
 
+// Fallback domain produksi — dipakai HANYA kalau NEXT_PUBLIC_APP_URL kosong/hilang
+// di server (mis. env Vercel belum di-set). Tujuannya: link di pesan WA SELALU absolut
+// (https://...) supaya tetap jadi tombol clickable; URL relatif (/input-shift?...) TIDAK
+// di-linkify oleh WhatsApp.
+const APP_URL_FALLBACK = 'https://utilitas.vercel.app';
+
 export function buildDeepLink(path: string, params: Record<string, string>): string {
     // Strip trailing slash di base supaya tidak hasilkan double slash kalau env-nya
     // di-set seperti "https://app.com/" (browser tolerate tapi jelek).
-    const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
+    let base = (process.env.NEXT_PUBLIC_APP_URL?.trim() || APP_URL_FALLBACK).replace(/\/+$/, '');
+    // Jaga-jaga env di-set tanpa skema (mis. "utilitas.vercel.app") → WhatsApp butuh
+    // skema http(s) untuk menjadikannya link. Tambahkan https:// kalau belum ada.
+    if (!/^https?:\/\//i.test(base)) base = `https://${base}`;
     const q = new URLSearchParams(params).toString();
     return `${base}${path}${q ? `?${q}` : ''}`;
 }

@@ -14,7 +14,7 @@ import { uploadToR2 } from '@/lib/r2';
 import {
     computeBunkerBerasapLines,
     fetchBunkerBerasapSince,
-    buildOperationalCatatan,
+    buildDayCatatanLabeled,
 } from '@/lib/shift-catatan';
 
 // Use node runtime — puppeteer requires it.
@@ -118,13 +118,19 @@ export async function GET(req: NextRequest) {
         demin: (tankRows?.find(t => t.tank_id === 'DEMIN')?.level_m3 as number | null) ?? null,
     };
 
-    // Bunker berasap "sejak ..." — dihitung sekali, dipakai di teks washift, Review, & PDF.
+    // Bunker berasap "sejak ..." — untuk metadata summary.internal (tak dirender, tapi
+    // tetap dihitung dari shift berjalan).
     const berasapSince = await fetchBunkerBerasapSince(supabase, report.date as string, report.shift as string);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const coalRow = Array.isArray(report.shift_coal_bunker) ? (report.shift_coal_bunker as any[])[0] : ((report.shift_coal_bunker as any) ?? null);
     const bunkerLines = computeBunkerBerasapLines(coalRow, report.date as string, report.shift as string, berasapSince);
 
-    const summaryText = buildShiftSummary(report, latestTank, internal, bunkerLines);
+    // Catatan Operasional = blok per-shift hari ini DARI Malam s/d shift berjalan, berlabel.
+    // (mis. review Pagi → "Shift Malam: ..." lalu "Shift Pagi: ..."). Dipakai teks washift,
+    // Review, & PDF agar identik.
+    const catatanText = await buildDayCatatanLabeled(supabase, report.date as string, report.shift as string);
+
+    const summaryText = buildShiftSummary(report, latestTank, catatanText);
     const shiftLabel = (report.shift as string).charAt(0).toUpperCase() + (report.shift as string).slice(1);
     const text = await renderTemplate(supabase, 'shift_share', {
         shift: shiftLabel,
@@ -150,7 +156,7 @@ export async function GET(req: NextRequest) {
         B: (prevBoilers.find((b: any) => b.boiler === 'B')?.totalizer_steam as number | null) ?? null,
     };
 
-    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal, latestTank, bunkerLines);
+    const summary = buildShiftReviewSummary(report, maintenance ?? [], critical ?? [], prevTotalizer, internal, latestTank, bunkerLines, catatanText);
     return NextResponse.json({ text, summary });
 }
 
@@ -206,19 +212,9 @@ export async function POST(req: NextRequest) {
         .neq('item', 'NOTE')
         .order('item', { ascending: true });
 
-    // ── Catatan Operasional KANONIK untuk PDF — IDENTIK dengan teks washift & Review.
-    // Ambil aktivitas solar/fly ash + bunker berasap, lalu rakit lewat builder yang sama. ──
-    const [{ data: ashRows }, { data: solarInRows }, { data: solarOutRows }] = await Promise.all([
-        supabase.from('ash_unloadings').select('silo, perusahaan, tujuan, ritase').eq('date', report.date).eq('shift', report.shift),
-        supabase.from('solar_unloadings').select('supplier, liters').eq('date', report.date).eq('shift', report.shift),
-        supabase.from('solar_usages').select('tujuan, liters').eq('date', report.date).eq('shift', report.shift),
-    ]);
-    const internal = { ash: ashRows ?? [], solarIn: solarInRows ?? [], solarOut: solarOutRows ?? [] };
-    const berasapSince = await fetchBunkerBerasapSince(supabase, report.date as string, report.shift as string);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const coalRow = Array.isArray(report.shift_coal_bunker) ? (report.shift_coal_bunker as any[])[0] : ((report.shift_coal_bunker as any) ?? null);
-    const bunkerLines = computeBunkerBerasapLines(coalRow, report.date as string, report.shift as string, berasapSince);
-    const catatanText = buildOperationalCatatan(report, internal, bunkerLines);
+    // ── Catatan Operasional KANONIK untuk PDF — IDENTIK dengan teks washift & Review:
+    // blok per-shift berlabel (Malam → ... → shift berjalan). ──
+    const catatanText = await buildDayCatatanLabeled(supabase, report.date as string, report.shift as string);
 
     // ────────── Run both sends in parallel ──────────
     const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey, catatanText);
@@ -463,7 +459,7 @@ function buildShiftReportHtml(report: any, maintenance: any[], catatanText: stri
 // parameters + maintenance + catatan shift. The template provides the header
 // (e.g. "*Laporan Shift {{shift}} — {{date}}*").
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftSummary(report: any, latestTank: { rcw: number | null; demin: number | null }, internal?: { ash?: any[]; solarIn?: any[]; solarOut?: any[] }, bunkerLines: string[] = []): string {
+function buildShiftSummary(report: any, latestTank: { rcw: number | null; demin: number | null }, catatanText: string): string {
     const lines: string[] = [];
     lines.push(`Supervisor: ${report.supervisor ?? '-'}`);
     lines.push('');
@@ -471,9 +467,9 @@ function buildShiftSummary(report: any, latestTank: { rcw: number | null; demin:
     // Level RCW/Demin pakai data terakhir dari tank_levels.
     lines.push(buildOperasiParams(report, latestTank));
 
-    // Catatan Operasional shift = catatan manual + aktivitas solar/fly ash + bunker berasap.
+    // Catatan Operasional = blok per-shift berlabel (dari buildDayCatatanLabeled).
     // Blok Maintenance tetap tidak disertakan ke teks washift (hanya untuk PDF & Review).
-    const catatan = buildOperationalCatatan(report, internal, bunkerLines);
+    const catatan = catatanText;
     if (catatan.trim()) {
         lines.push('');
         lines.push('*Catatan Operasional*');
@@ -568,7 +564,7 @@ interface CriticalItem {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }, internal: { ash: any[]; solarIn: any[]; solarOut: any[] }, latestTank: { rcw: number | null; demin: number | null }, bunkerLines: string[]): ShiftReviewSummary {
+function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[], prevTotalizer: { A: number | null; B: number | null }, internal: { ash: any[]; solarIn: any[]; solarOut: any[] }, latestTank: { rcw: number | null; demin: number | null }, bunkerLines: string[], catatanText: string): ShiftReviewSummary {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
     const turbin = first(report.shift_turbin);
@@ -647,7 +643,7 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
         } : null,
         // Level RCW/Demin dari data terakhir di tank_levels (bukan shift_tankyard).
         tankLevels: { rcw: latestTank.rcw, demin: latestTank.demin },
-        catatan: buildOperationalCatatan(report, internal, bunkerLines),
+        catatan: catatanText,
         maintenance: maintenance.map(m => ({
             item: String(m.item ?? '-'),
             uraian: String(m.uraian ?? '-'),

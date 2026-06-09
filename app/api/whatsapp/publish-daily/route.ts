@@ -10,25 +10,15 @@ import {
 } from '@/lib/whatsapp';
 import { htmlToPdf } from '@/lib/pdf';
 import { uploadToR2 } from '@/lib/r2';
-import { getShiftCatatanCanonical } from '@/lib/shift-catatan';
+import { buildDayCatatanLabeled } from '@/lib/shift-catatan';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-/** Catatan Operasional HARIAN = gabungan catatan operasional 3 shift (Pagi→Sore→Malam)
- *  tanggal tsb, satu blok bullet tanpa pembeda. Dipakai di Review & PDF harian; TIDAK
- *  dikirim ke washift (permintaan user). */
+/** Catatan Operasional HARIAN = blok per-shift berlabel (Malam → Pagi → Sore) tanggal tsb.
+ *  Dipakai di Review & PDF harian; TIDAK dikirim ke washift (permintaan user). */
 async function buildDailyCatatan(supabase: ReturnType<typeof createAdminClient>, date: string): Promise<string> {
-    const { data: shiftRows } = await supabase
-        .from('shift_reports')
-        .select('date, shift, catatan, station_catatan, shift_coal_bunker(*)')
-        .eq('date', date)
-        .in('shift', ['pagi', 'sore', 'malam']);
-    const order: Record<string, number> = { pagi: 0, sore: 1, malam: 2 };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sorted = ((shiftRows ?? []) as any[]).sort((a, b) => (order[a.shift] ?? 9) - (order[b.shift] ?? 9));
-    const per = await Promise.all(sorted.map(s => getShiftCatatanCanonical(supabase, s)));
-    return per.filter(t => t.trim()).join('\n');
+    return buildDayCatatanLabeled(supabase, date);
 }
 
 /**

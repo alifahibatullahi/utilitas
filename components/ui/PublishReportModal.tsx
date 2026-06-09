@@ -907,26 +907,10 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
             </ReviewCard>
 
             {/* Maintenance */}
-            <ReviewCard title={`Maintenance (${summary.maintenance.length})`} icon="build" color="slate">
-                {summary.maintenance.length === 0 ? (
-                    <p className="text-[11px] text-slate-500 italic">Tidak ada item maintenance.</p>
-                ) : (
-                    <div className="space-y-2.5 divide-y divide-slate-800/55">
-                        {summary.maintenance.map((m, i) => (
-                            <div key={i} className={`flex flex-col gap-1.5 text-[11px] ${i > 0 ? 'pt-2.5' : ''}`}>
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        <span className="font-mono font-extrabold text-slate-400 text-[10px]">{String(i + 1).padStart(2, '0')}.</span>
-                                        <span className="font-mono font-black text-cyan-400 text-[11px]">{m.item}</span>
-                                        <span className="text-[9px] bg-slate-800/70 text-slate-300 px-2 py-0.5 rounded font-bold uppercase">{humanizeScope(m.scope)}</span>
-                                    </div>
-                                    <StatusBadge value={m.status} />
-                                </div>
-                                <div className="text-slate-300 pl-5 leading-normal font-medium">{capFirst(m.uraian)}</div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+            <ReviewCard title="Maintenance" icon="build" color="slate">
+                <p className="text-[11px] text-slate-400 italic flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm">hourglass_empty</span> Coming soon
+                </p>
             </ReviewCard>
 
             {/* Critical Equipment */}
@@ -1017,26 +1001,10 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                 )}
             </ReviewCard>
 
-            <ReviewCard title={`Maintenance (${summary.maintenance.length})`} icon="build" color="slate">
-                {summary.maintenance.length === 0 ? (
-                    <p className="text-[11px] text-slate-500 italic">Tidak ada item maintenance.</p>
-                ) : (
-                    <div className="space-y-2.5 divide-y divide-slate-800/55">
-                        {summary.maintenance.map((m, i) => (
-                            <div key={i} className={`flex flex-col gap-1.5 text-[11px] ${i > 0 ? 'pt-2.5' : ''}`}>
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        <span className="font-mono font-extrabold text-slate-400 text-[10px]">{String(i + 1).padStart(2, '0')}.</span>
-                                        <span className="font-mono font-black text-cyan-400 text-[11px]">{m.item}</span>
-                                        <span className="text-[9px] bg-slate-800/70 text-slate-300 px-2 py-0.5 rounded font-bold uppercase">{humanizeScope(m.scope)}</span>
-                                    </div>
-                                    <StatusBadge value={m.status} />
-                                </div>
-                                <div className="text-slate-300 pl-5 leading-normal font-medium">{capFirst(m.uraian)}</div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+            <ReviewCard title="Maintenance" icon="build" color="slate">
+                <p className="text-[11px] text-slate-400 italic flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm">hourglass_empty</span> Coming soon
+                </p>
             </ReviewCard>
 
             {summary.critical.length > 0 && (

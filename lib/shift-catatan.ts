@@ -117,6 +117,33 @@ export function buildOperationalCatatan(report: any, internal: { ash?: any[]; so
     return toBullets(parts.join('\n'));
 }
 
+const SHIFT_ORD: Record<string, number> = { malam: 0, pagi: 1, sore: 2 };
+const SHIFT_LBL: Record<string, string> = { malam: 'Shift Malam', pagi: 'Shift Pagi', sore: 'Shift Sore' };
+
+/** Catatan Operasional level-HARI: blok per-shift berlabel (urut Malam → Pagi → Sore).
+ *  Tiap shift: catatan kanonik shift itu (gabungan station + aktivitas, bullet) atau
+ *  "tidak ada catatan". `upToShift` membatasi sampai shift tsb (untuk review SHIFT:
+ *  tampilkan shift-shift sebelumnya s/d shift berjalan); undefined = ketiga shift (HARIAN). */
+export async function buildDayCatatanLabeled(supabase: SupabaseClient, date: string, upToShift?: string): Promise<string> {
+    const shifts = ['malam', 'pagi', 'sore'].filter(s => upToShift == null || SHIFT_ORD[s] <= (SHIFT_ORD[upToShift] ?? 2));
+    const { data: rows } = await supabase
+        .from('shift_reports')
+        .select('date, shift, catatan, station_catatan, shift_coal_bunker(*)')
+        .eq('date', date)
+        .in('shift', shifts);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byShift: Record<string, any> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of (rows ?? []) as any[]) byShift[r.shift] = r;
+    const blocks: string[] = [];
+    for (const s of shifts) {
+        const row = byShift[s];
+        const cat = row ? (await getShiftCatatanCanonical(supabase, row)).trim() : '';
+        blocks.push(`*${SHIFT_LBL[s]}:*\n${cat || 'tidak ada catatan'}`);
+    }
+    return blocks.join('\n\n');
+}
+
 /** Catatan Operasional kanonik untuk SATU shift report row — fetch solar/ash + bunker,
  *  lalu rakit lewat builder. shiftRow wajib punya: date, shift, catatan, station_catatan,
  *  shift_coal_bunker. */

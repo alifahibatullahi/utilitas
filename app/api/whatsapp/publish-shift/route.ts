@@ -11,6 +11,11 @@ import {
 } from '@/lib/whatsapp';
 import { htmlToPdf } from '@/lib/pdf';
 import { uploadToR2 } from '@/lib/r2';
+import {
+    computeBunkerBerasapLines,
+    fetchBunkerBerasapSince,
+    buildOperationalCatatan,
+} from '@/lib/shift-catatan';
 
 // Use node runtime — puppeteer requires it.
 export const runtime = 'nodejs';
@@ -149,126 +154,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ text, summary });
 }
 
-const SHIFT_LABEL_PUBLISH: Record<string, string> = { malam: 'Shift Malam', pagi: 'Shift Pagi', sore: 'Shift Sore' };
-
-/** Format {date,shift} → "DD/MM Shift X" (idem TabCatatanOperasional.formatSince). */
-function formatBerasapSince(info: { date: string; shift: string } | null | undefined): string {
-    if (!info || !info.date) return '';
-    const [y, m, d] = info.date.split('-').map(Number);
-    if (!y || !m || !d) return '';
-    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')} ${SHIFT_LABEL_PUBLISH[info.shift] || info.shift}`;
-}
-
-/** Hitung kapan tiap bunker mulai berasap (walk-back shift-shift berturut berstatus Berasap).
- *  Mirror useBunkerBerasapHistory: lihat shift-shift SEBELUM shift saat ini. null = bunker
- *  baru pertama dilaporkan berasap di shift ini (pemanggil fallback ke date/shift sekarang). */
-async function fetchBunkerBerasapSince(
-    supabase: ReturnType<typeof createAdminClient>,
-    date: string,
-    shift: string,
-): Promise<Record<string, { date: string; shift: string } | null>> {
-    const BUNKER_KEYS = ['status_bunker_a', 'status_bunker_b', 'status_bunker_c', 'status_bunker_d', 'status_bunker_e', 'status_bunker_f'];
-    const { data } = await supabase
-        .from('shift_reports')
-        .select('date, shift, shift_coal_bunker(status_bunker_a, status_bunker_b, status_bunker_c, status_bunker_d, status_bunker_e, status_bunker_f)')
-        .lte('date', date)
-        .order('date', { ascending: false })
-        .limit(30);
-    const shiftOrder: Record<string, number> = { sore: 2, pagi: 1, malam: 0 };
-    const sorted = ((data ?? []) as { date: string; shift: string; shift_coal_bunker: Record<string, string | null>[] | Record<string, string | null> | null }[])
-        .filter(r => {
-            if (r.date === date && r.shift === shift) return false;                                   // exclude current
-            if (r.date === date && (shiftOrder[r.shift] ?? 0) >= (shiftOrder[shift] ?? 0)) return false; // exclude future same-date
-            return true;
-        })
-        .sort((a, b) => a.date !== b.date ? b.date.localeCompare(a.date) : (shiftOrder[b.shift] || 0) - (shiftOrder[a.shift] || 0));
-    const result: Record<string, { date: string; shift: string } | null> = {};
-    for (const key of BUNKER_KEYS) {
-        let since: { date: string; shift: string } | null = null;
-        for (const r of sorted) {
-            const cb = Array.isArray(r.shift_coal_bunker) ? r.shift_coal_bunker[0] : r.shift_coal_bunker;
-            if (!cb) break;
-            if (String(cb[key] ?? '').toLowerCase() === 'berasap') since = { date: r.date, shift: r.shift };
-            else break;
-        }
-        result[key] = since;
-    }
-    return result;
-}
-
 /** Format "2026-05-23" → "Senin, 23 Mei 2026". Parse local agar tidak ke-shift TZ. */
 function formatDateHariTanggal(isoDate: string): string {
     const [y, m, d] = (isoDate || '').split('-').map(Number);
     if (!y || !m || !d) return isoDate ?? '';
     const dt = new Date(y, m - 1, d);
     return dt.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-// Urutan station yang punya catatan operasional sendiri (panel_boiler/turbin).
-const STATION_CATATAN_ORDER = ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin'];
-
-/** Gabungkan catatan utama shift + catatan tiap station jadi SATU teks catatan operasional.
- *  Tanpa label/pembeda per-station (permintaan user: "semua jadi satu, jangan dibedakan"). */
-function mergeShiftCatatan(mainCatatan: string | null | undefined, stationCatatan: Record<string, string> | null | undefined): string {
-    const parts: string[] = [];
-    const main = (mainCatatan ?? '').trim();
-    if (main) parts.push(main);
-    const sc = stationCatatan ?? {};
-    for (const key of STATION_CATATAN_ORDER) {
-        const note = (sc[key] ?? '').trim();
-        if (note) parts.push(note);
-    }
-    return parts.join('\n');
-}
-
-// Baris aktivitas operasional dari tabel terstruktur: kedatangan/permintaan solar &
-// unloading fly ash. Mirror buildAutoCatatanLines di form (TabCatatanOperasional) supaya
-// aktivitas ini MASUK ke Catatan Operasional (Review + teks washift) — bukan cuma
-// tersimpan di tabel terpisah & hilang dari ringkasan.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildActivityLines(internal: { ash?: any[]; solarIn?: any[]; solarOut?: any[] } | undefined): string[] {
-    const lines: string[] = [];
-    for (const s of internal?.solarIn ?? []) {
-        const liters = Number(s.liters);
-        if (liters > 0) lines.push(`Kedatangan solar dari ${s.supplier ?? '-'} sebanyak ${liters.toLocaleString('id-ID')} L`);
-    }
-    for (const s of internal?.solarOut ?? []) {
-        const liters = Number(s.liters);
-        if (liters > 0) lines.push(`Permintaan solar ke ${s.tujuan ?? '-'} sebanyak ${liters.toLocaleString('id-ID')} L`);
-    }
-    for (const a of internal?.ash ?? []) {
-        const ritase = Number(a.ritase);
-        if (ritase > 0) lines.push(`Unloading fly ash Silo ${a.silo ?? '-'} sebanyak ${ritase}× ke ${a.tujuan || '-'}`);
-    }
-    return lines;
-}
-
-// Bangun baris "Bunker X berasap sejak ..." dari status bunker + history (berasapSince).
-// Mirror logika di buildShiftReviewSummary & form buildAutoCatatanLines.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function computeBunkerBerasapLines(coal: any, date: string, shift: string, berasapSince: Record<string, { date: string; shift: string } | null>): string[] {
-    if (!coal) return [];
-    return ['a', 'b', 'c', 'd', 'e', 'f']
-        .filter(k => String(coal[`status_bunker_${k}`] ?? '').toLowerCase() === 'berasap')
-        .map(k => {
-            const since = berasapSince[`status_bunker_${k}`] ?? { date, shift };
-            const s = formatBerasapSince(since);
-            return s ? `Bunker ${k.toUpperCase()} berasap sejak ${s}` : `Bunker ${k.toUpperCase()} berasap`;
-        });
-}
-
-/** SUMBER TUNGGAL "Catatan Operasional" shift = catatan manual (utama + per-station) +
- *  baris aktivitas solar/fly ash + baris bunker berasap. Dedup terhadap catatan manual.
- *  Dipakai bersama oleh teks washift, Review, DAN PDF agar isinya IDENTIK. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildOperationalCatatan(report: any, internal: { ash?: any[]; solarIn?: any[]; solarOut?: any[] } | undefined, bunkerLines: string[] = []): string {
-    const manual = mergeShiftCatatan(report.catatan as string | null, report.station_catatan as Record<string, string> | null);
-    const parts: string[] = [];
-    if (manual.trim()) parts.push(manual.trim());
-    for (const line of [...buildActivityLines(internal), ...bunkerLines]) {
-        if (!manual.includes(line)) parts.push(line);
-    }
-    return parts.join('\n');
 }
 
 interface PublishBody {

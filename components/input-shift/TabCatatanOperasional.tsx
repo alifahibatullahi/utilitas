@@ -109,8 +109,10 @@ export default function TabCatatanOperasional({
     // (permintaan user: "semua jadi satu, jangan dibedakan"). Saat publish pun digabung jadi satu.
     const otherText = CATATAN_STATION_ORDER
         .filter(s => s !== currentStation)
-        .map(s => (sc[s] ?? '').trim())
+        .flatMap(s => (sc[s] ?? '').split('\n'))
+        .map(l => l.trim())
         .filter(Boolean)
+        .map(l => `• ${l}`)
         .join('\n');
 
     return (

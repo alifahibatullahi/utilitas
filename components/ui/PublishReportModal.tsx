@@ -1009,7 +1009,7 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                 </ReviewCard>
             </div>
 
-            <ReviewCard title="Catatan Harian" icon="sticky_note_2" color="amber">
+            <ReviewCard title="Catatan Operasional" icon="sticky_note_2" color="amber">
                 {summary.notes.trim() ? (
                     <pre className="text-[11px] text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">{summary.notes}</pre>
                 ) : (

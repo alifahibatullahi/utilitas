@@ -10,9 +10,26 @@ import {
 } from '@/lib/whatsapp';
 import { htmlToPdf } from '@/lib/pdf';
 import { uploadToR2 } from '@/lib/r2';
+import { getShiftCatatanCanonical } from '@/lib/shift-catatan';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+
+/** Catatan Operasional HARIAN = gabungan catatan operasional 3 shift (Pagi→Sore→Malam)
+ *  tanggal tsb, satu blok bullet tanpa pembeda. Dipakai di Review & PDF harian; TIDAK
+ *  dikirim ke washift (permintaan user). */
+async function buildDailyCatatan(supabase: ReturnType<typeof createAdminClient>, date: string): Promise<string> {
+    const { data: shiftRows } = await supabase
+        .from('shift_reports')
+        .select('date, shift, catatan, station_catatan, shift_coal_bunker(*)')
+        .eq('date', date)
+        .in('shift', ['pagi', 'sore', 'malam']);
+    const order: Record<string, number> = { pagi: 0, sore: 1, malam: 2 };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sorted = ((shiftRows ?? []) as any[]).sort((a, b) => (order[a.shift] ?? 9) - (order[b.shift] ?? 9));
+    const per = await Promise.all(sorted.map(s => getShiftCatatanCanonical(supabase, s)));
+    return per.filter(t => t.trim()).join('\n');
+}
 
 /**
  * Compute operational day window (ISO+WIB offset).
@@ -73,7 +90,8 @@ export async function GET(req: NextRequest) {
         date: formatDateHariTanggal(report.date as string),
         summary: summaryText,
     });
-    const summary = buildDailyReviewSummary(report, maintenance ?? [], critical ?? []);
+    const dailyCatatan = await buildDailyCatatan(supabase, report.date as string);
+    const summary = buildDailyReviewSummary(report, maintenance ?? [], critical ?? [], dailyCatatan);
     return NextResponse.json({ text, summary });
 }
 
@@ -134,7 +152,8 @@ export async function POST(req: NextRequest) {
         .neq('item', 'NOTE')
         .order('item', { ascending: true });
 
-    const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey);
+    const dailyCatatan = await buildDailyCatatan(supabase, report.date as string);
+    const pdfResult = sendPdf(supabase, report, maintenance ?? [], pdfGroupKey, dailyCatatan);
     const textResult = sendText(supabase, washiftMessage, washiftTarget, washiftIsGroupKey ?? false, report);
 
     const [pdf, text] = await Promise.allSettled([pdfResult, textResult]);
@@ -146,11 +165,11 @@ export async function POST(req: NextRequest) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function sendPdf(supabase: ReturnType<typeof createAdminClient>, report: any, maintenance: any[], pdfGroupKey: string) {
+async function sendPdf(supabase: ReturnType<typeof createAdminClient>, report: any, maintenance: any[], pdfGroupKey: string, catatanText: string) {
     const group = await getWhatsappGroup(supabase, pdfGroupKey);
     if (!group) return { ok: false, error: `Group "${pdfGroupKey}" tidak ditemukan` };
 
-    const html = buildDailyReportHtml(report, maintenance);
+    const html = buildDailyReportHtml(report, maintenance, catatanText);
     let pdfBuf: Buffer;
     try { pdfBuf = await htmlToPdf(html); }
     catch (err) { return { ok: false, error: `PDF render gagal: ${err instanceof Error ? err.message : String(err)}` }; }
@@ -197,7 +216,7 @@ async function sendText(supabase: ReturnType<typeof createAdminClient>, message:
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildDailyReportHtml(report: any, maintenance: any[]): string {
+function buildDailyReportHtml(report: any, maintenance: any[], catatanText: string): string {
     const stm = report.daily_report_steam?.[0];
     const pwr = report.daily_report_power?.[0];
     const coal = report.daily_report_coal?.[0];
@@ -305,7 +324,7 @@ function buildDailyReportHtml(report: any, maintenance: any[]): string {
     <tbody>${maintRows}</tbody>
   </table>
 
-  ${report.notes ? `<h2>Catatan Harian</h2><div class="catatan">${escapeHtml(report.notes)}</div>` : ''}
+  ${catatanText.trim() ? `<h2>Catatan Operasional</h2><div class="catatan">${escapeHtml(catatanText)}</div>` : ''}
 
   <div class="footer">PowerOps — Laporan Harian (LHUBB) ${report.date}</div>
 </body></html>`;
@@ -387,7 +406,7 @@ export interface DailyReviewSummary {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildDailyReviewSummary(report: any, maintenance: any[], critical: any[]): DailyReviewSummary {
+function buildDailyReviewSummary(report: any, maintenance: any[], critical: any[], dailyCatatan: string): DailyReviewSummary {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const first = (x: any) => Array.isArray(x) ? x[0] : (x ?? undefined);
     const stm  = first(report.daily_report_steam);
@@ -435,7 +454,7 @@ function buildDailyReviewSummary(report: any, maintenance: any[], critical: any[
             demin: tank.demin_level_00 ?? null,
         } : null,
         stockBatubara: tank?.stock_batubara ?? null,
-        notes: (report.notes as string) ?? '',
+        notes: dailyCatatan, // gabungan catatan operasional 3 shift hari ini (bukan report.notes)
         maintenance: maintenance.map(m => ({
             item: String(m.item ?? '-'),
             uraian: String(m.uraian ?? '-'),

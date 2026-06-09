@@ -380,6 +380,19 @@ export function buildStationLinksBlock(
     return lines.join('\n\n');
 }
 
+const HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+/** Format tanggal ISO (YYYY-MM-DD) ke Indonesia "Hari, DD Bulan YYYY"
+ *  (mis. "Selasa, 10 Juni 2026"). Pakai UTC murni supaya nama hari tidak bergeser
+ *  saat server bukan WIB (Vercel jalan di UTC). */
+export function formatTanggalIndo(iso: string): string {
+    const [y, m, d] = iso.split('-').map(Number);
+    if (!y || !m || !d) return iso;
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return `${HARI_ID[dt.getUTCDay()]}, ${d} ${BULAN_ID[m - 1]} ${y}`;
+}
+
 // Returns the current date+time in WIB (UTC+7), regardless of server TZ.
 export function nowWIB(): { hour: number; minute: number; date: string; isoDate: Date } {
     const now = new Date();

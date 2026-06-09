@@ -3,6 +3,7 @@ import {
     createAdminClient,
     sendFonnteGroup,
     sendWaText,
+    formatTanggalIndo,
     getWhatsappGroup,
     renderTemplate,
     logNotification,
@@ -171,7 +172,7 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
     const message = await renderTemplate(supabase, schedule.kind, {
         shift: schedule.shift ? schedule.shift.charAt(0).toUpperCase() + schedule.shift.slice(1) : '',
         group: groupLetter ?? '',
-        date,
+        date: formatTanggalIndo(date), // {{date}} tampil "Selasa, 10 Juni 2026"; `date` ISO tetap dipakai utk log/DB
         link,
         links,
     });

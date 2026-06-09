@@ -348,23 +348,24 @@ function InputShiftPageInner() {
     // ─── Grace period & submit guard ─────────────────────────────────────────────
     // Shift: submit allowed sampai shift end + 2 jam.
     // Harian: submit allowed sampai shift malam (D+1) berakhir + 2 jam = jam 09:00 (D+2).
-    // Submit window per shift = [reminder_time, shift_end + 2h grace].
-    // Harian: window = [23:00 (D), 09:00 (D+1)].
-    // Reminder times: pagi 12:30, sore 20:30, malam 04:30 (D+1).
+    // Submit window per shift = [start, shift_end + 2h grace].
+    // START dipercepat 15 menit (permintaan user 2026-06-09) supaya operator bisa mulai
+    // mengisi lebih awal: pagi 12:15, sore 20:15, malam 04:15, harian 22:45.
     const SHIFT_GRACE_HOURS = 2;
     const submitWindow = useMemo(() => {
         const [y, m, d] = selectedDate.split('-').map(Number);
         if (inputMode === 'harian') {
-            const start = new Date(y, m - 1, d, 23, 0, 0);     // 23:00 (D)
+            const start = new Date(y, m - 1, d, 22, 45, 0);    // 22:45 (D) — 15 mnt lebih awal dari 23:00
             const end   = new Date(y, m - 1, d + 1, 9, 0, 0);  // 09:00 (D+1)
             return { start, end };
         }
         const shift = shiftMap[selectedShift];
         const win = getShiftWindow(selectedDate, shift);
         let startHour: number, startMin: number;
-        if (shift === 'pagi') { startHour = 12; startMin = 30; }
-        else if (shift === 'sore') { startHour = 20; startMin = 30; }
-        else { startHour = 4; startMin = 30; } // malam reminder = 04:30 D (ENDING convention)
+        // 15 menit lebih awal dari waktu reminder (pagi 12:30 / sore 20:30 / malam 04:30).
+        if (shift === 'pagi') { startHour = 12; startMin = 15; }
+        else if (shift === 'sore') { startHour = 20; startMin = 15; }
+        else { startHour = 4; startMin = 15; } // malam 04:15 D (ENDING convention)
         const start = new Date(y, m - 1, d, startHour, startMin, 0);
         const end   = new Date(win.end.getTime() + SHIFT_GRACE_HOURS * 60 * 60 * 1000);
         return { start, end };

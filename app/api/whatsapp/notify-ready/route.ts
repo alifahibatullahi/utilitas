@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
         logKind: `${NOTIF_KIND}_supervisor`,
         date,
         shift,
+        account: 'publish', // notif siap-publish ke supervisor → Fonnte
     });
 
     return NextResponse.json({ ready: true, sent: send.ok, error: send.error, group: groupKey, supervisor: sv });

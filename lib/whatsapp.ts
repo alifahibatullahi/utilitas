@@ -222,10 +222,11 @@ export async function logNotification(
 
 /** Kirim pesan ke nomor pribadi supervisor (operators.phone_number sesuai nama supervisor
  *  di laporan). No-op (graceful) kalau nama kosong atau operator belum punya phone_number —
- *  notif grup tetap jalan. Dipakai notif "siap dipublish" (shift & harian). */
+ *  notif grup tetap jalan. Dipakai notif "siap dipublish" (shift & harian).
+ *  `account` default 'notif' (Wablas); notif siap-publish memakai 'publish' (Fonnte). */
 export async function notifySupervisorPersonal(
     supabase: SupabaseClient,
-    opts: { supervisorName?: string | null; message: string; logKind: string; date: string; shift?: string | null },
+    opts: { supervisorName?: string | null; message: string; logKind: string; date: string; shift?: string | null; account?: WaAccount },
 ): Promise<{ sent: boolean; skipped?: string }> {
     const name = opts.supervisorName?.trim();
     if (!name) return { sent: false, skipped: 'no_supervisor_name' };
@@ -239,7 +240,7 @@ export async function notifySupervisorPersonal(
         console.warn(`[whatsapp] supervisor "${name}" belum punya phone_number — skip notif pribadi`);
         return { sent: false, skipped: 'no_phone_number' };
     }
-    const send = await sendWaText(phone, opts.message);
+    const send = await sendWaText(phone, opts.message, opts.account ?? 'notif');
     await logNotification(supabase, {
         kind: opts.logKind,
         target_date: opts.date,

@@ -13,6 +13,10 @@ import {
 } from '@/lib/whatsapp';
 import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
 
+// Pesan lanjutan yang dikirim SETELAH reminder pribadi (grup A–C, mode personal):
+// minta penerima meneruskan reminder ke grup WA-nya supaya operator lain ikut mengisi.
+const FORWARD_NOTE = '🙏 Tolong kirim ke grup, agar yang lain bisa mengisi laporan.';
+
 // Reminders run as a single endpoint hit by an external cron every ~15 minutes.
 // Schedule (start/end/throttle per kind) is loaded from `notification_schedule` table — admin-editable.
 
@@ -200,6 +204,8 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
                 sent_to: r.phone_number,
                 payload: message,
             });
+            // Pesan lanjutan: minta penerima meneruskan reminder ke grup WA-nya.
+            await sendWaText(r.phone_number, FORWARD_NOTE);
         }
         return { schedule: schedule.id, mode: 'personal', recipients: recipients.length, personalSent };
     }

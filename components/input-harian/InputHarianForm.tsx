@@ -128,6 +128,19 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         }
         return 'Boiler A';
     });
+
+    // Ganti station via dialog "Pilih Laporan" TIDAK me-remount form (cuma URL param
+    // berubah), jadi initializer useState di atas tidak jalan lagi. Kalau activeTab
+    // lama tidak ada di visibleTabs station baru, konten tampak kosong sampai user
+    // klik tab manual → auto-pindah ke tab pertama yang visible (pola sama dengan
+    // input-shift page).
+    useEffect(() => {
+        if (visibleTabs.length === 0) return;
+        if (!visibleTabs.some(t => t.id === activeTab)) {
+            setActiveTab(visibleTabs[0].id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [station]);
     const [visitedTabs, setVisitedTabs] = useState<Set<HarianTabId>>(new Set());
     const [submitting, setSubmitting] = useState(false);
     const [saveProgress, setSaveProgress] = useState<number | null>(null);

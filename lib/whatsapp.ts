@@ -39,6 +39,11 @@ export function accountForKind(kind: string | null | undefined): WaAccount {
 
 interface WablasConfig { baseUrl: string; auth: string; }
 
+// Batas waktu per request HTTP ke gateway WA. Tanpa ini, satu request yang hang
+// (insiden Wablas 10 Jun 2026 ~20:15: ~60–120 dtk/request) menyandera seluruh job
+// cron sampai function dibunuh maxDuration sebelum semua penerima kebagian.
+const SEND_TIMEOUT_MS = 10_000;
+
 /** Resolve konfigurasi Wablas (akun notif). Auth header = "token.secret_key".
  *  WABLAS_BASE_URL = domain server device kamu (mis. https://solo.wablas.com),
  *  default https://wablas.com. */
@@ -73,6 +78,7 @@ async function sendViaFonnte(payload: Record<string, string>): Promise<SendResul
             method: 'POST',
             headers: { Authorization: token, 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         });
         const body = await res.json().catch(() => null);
         // Fonnte: HTTP 200 walau gagal logis; status terikat ke body.status (boolean).
@@ -110,6 +116,7 @@ async function wablasPost(cfg: WablasConfig, path: string, params: Record<string
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
             body: new URLSearchParams(params).toString(),
+            signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         });
         const body = await res.json().catch(() => null);
         // Wablas: HTTP 200 walau gagal logis; status terikat ke body.status (boolean).

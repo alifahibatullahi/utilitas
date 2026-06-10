@@ -21,6 +21,11 @@ const FORWARD_NOTE = '🙏 Tolong kirim ke grup, agar yang lain bisa mengisi lap
 // Reminders run as a single endpoint hit by an external cron every ~15 minutes.
 // Schedule (start/end/throttle per kind) is loaded from `notification_schedule` table — admin-editable.
 
+// Bersama timeout 10 dtk per request gateway (lib/whatsapp.ts), worst case semua
+// penerima gagal tetap selesai jauh di bawah 60 dtk; yang belum kebagian dilanjutkan
+// tick berikutnya lewat dedup per-penerima di runJob.
+export const maxDuration = 60;
+
 interface ScheduleRow {
     id: string;
     label: string;
@@ -127,16 +132,19 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
         if (data && data.length > 0) return { schedule: schedule.id, skipped: 'already_submitted' };
     }
 
-    // 2. One-shot: kalau notif jenis ini untuk tanggal+shift ini SUDAH PERNAH dikirim, skip.
-    //    (User minta reminder cuma 1x per shift, bukan ulang tiap 15 menit.)
+    // 2. One-shot PER PENERIMA: yang di-log hanya kiriman SUKSES (langkah 4), jadi
+    //    `alreadySent` = nomor/grup yang sudah benar-benar menerima. Penerima yang
+    //    gagal/terlewat (insiden Wablas hang, grup C 10 Jun 2026: 1 dari 3 nomor tak
+    //    pernah dikirimi & dedup lama memblokir retry) otomatis dicoba lagi di tick
+    //    cron berikutnya, tanpa mengirim dobel ke yang sudah dapat.
     let dedupQuery = supabase
         .from('notification_log')
-        .select('id')
+        .select('sent_to')
         .eq('kind', schedule.kind)
         .eq('target_date', date);
     if (schedule.shift) dedupQuery = dedupQuery.eq('target_shift', schedule.shift);
-    const { data: existing } = await dedupQuery.limit(1);
-    if (existing && existing.length > 0) return { schedule: schedule.id, skipped: 'already_sent_once' };
+    const { data: sentRows } = await dedupQuery;
+    const alreadySent = new Set(((sentRows ?? []) as { sent_to: string }[]).map((r) => r.sent_to));
 
     // 3. Build target group + message
     let groupKey: string;
@@ -195,10 +203,18 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
 
     if (recipients.length > 0) {
         // Mode PRIBADI — grup A–C: kirim ke tiap nomor, grup WA dilewati.
+        const pending = recipients.filter((r) => !alreadySent.has(r.phone_number));
+        if (pending.length === 0) return { schedule: schedule.id, skipped: 'already_sent_once' };
         let personalSent = 0;
-        for (const r of recipients) {
+        const failed: string[] = [];
+        for (const r of pending) {
             const ps = await sendWaText(r.phone_number, message);
-            if (ps.ok) personalSent++;
+            if (!ps.ok) {
+                // Gagal → JANGAN log, supaya nomor ini di-retry tick berikutnya.
+                failed.push(`${r.phone_number}: ${ps.error ?? 'unknown'}`);
+                continue;
+            }
+            personalSent++;
             await logNotification(supabase, {
                 kind: schedule.kind,
                 target_date: date,
@@ -210,7 +226,7 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
             // Pesan lanjutan: minta penerima meneruskan reminder ke grup WA-nya.
             await sendWaText(r.phone_number, FORWARD_NOTE);
         }
-        return { schedule: schedule.id, mode: 'personal', recipients: recipients.length, personalSent };
+        return { schedule: schedule.id, mode: 'personal', recipients: recipients.length, pending: pending.length, personalSent, failed };
     }
 
     // Mode GRUP — grup D / management: kirim ke grup WhatsApp. Lookup grup di SINI (bukan
@@ -218,15 +234,18 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
     // penerima pribadi di atas — sebelumnya early-return 'no_group_configured' memblokirnya.
     const group = await getWhatsappGroup(supabase, groupKey);
     if (!group) return { schedule: schedule.id, skipped: 'no_group_configured', groupKey };
+    if (alreadySent.has(group.fonnte_target)) return { schedule: schedule.id, skipped: 'already_sent_once' };
     const send = await sendFonnteGroup(group.fonnte_target, message);
-    await logNotification(supabase, {
-        kind: schedule.kind,
-        target_date: date,
-        target_shift: schedule.shift ?? null,
-        target_group: groupLetter,
-        sent_to: group.fonnte_target,
-        payload: message,
-    });
+    if (send.ok) {
+        await logNotification(supabase, {
+            kind: schedule.kind,
+            target_date: date,
+            target_shift: schedule.shift ?? null,
+            target_group: groupLetter,
+            sent_to: group.fonnte_target,
+            payload: message,
+        });
+    }
 
-    return { schedule: schedule.id, mode: 'group', sent: send.ok, status: send.status };
+    return { schedule: schedule.id, mode: 'group', sent: send.ok, status: send.status, error: send.error };
 }

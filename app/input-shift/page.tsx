@@ -663,10 +663,21 @@ function InputShiftPageInner() {
 
     // Populate form when report data arrives from Supabase
     useEffect(() => {
-        // Jangan overwrite input user yang sedang diketik
-        if (userModifiedRef.current) return;
-
         if (!report) return;
+
+        // Kalau user sudah mulai mengetik sebelum data DB termuat (kasus nyata:
+        // operator buka link station di akhir shift, langsung isi totalizer),
+        // JANGAN skip total — MERGE: field yang user ketik menang, sisanya diisi
+        // dari DB. Tanpa merge, form tampak kosong & save sparse dulu pernah
+        // meng-wipe data turbin (insiden 05–07 Jun 2026, shift sore).
+        const userTyping = userModifiedRef.current;
+        const mergeSet = <T extends Record<string, unknown>>(
+            setter: React.Dispatch<React.SetStateAction<T>>,
+            dbValues: T,
+        ) => {
+            if (userTyping) setter(prev => ({ ...dbValues, ...prev }));
+            else setter(dbValues);
+        };
 
         const boilerAData = report.shift_boiler?.find((b: { boiler: string }) => b.boiler === 'A');
         const boilerBData = report.shift_boiler?.find((b: { boiler: string }) => b.boiler === 'B');
@@ -688,25 +699,25 @@ function InputShiftPageInner() {
         if (boilerAData) {
             const a = extractFields(boilerAData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>;
             if ((a.press_steam == null || a.press_steam === 0) && sharedPressSteam != null) a.press_steam = sharedPressSteam;
-            setBoilerA(a);
+            mergeSet(setBoilerA, a);
         } else if (sharedPressSteam != null) {
             // Row A belum ada; default press_steam dari row B supaya operator A buka form sudah keisi.
-            setBoilerA({ press_steam: sharedPressSteam });
+            mergeSet(setBoilerA, { press_steam: sharedPressSteam } as Record<string, number | string | null>);
         }
         if (boilerBData) {
             const b = extractFields(boilerBData as unknown as Record<string, unknown>, ['boiler', 'batubara_ton']) as Record<string, number | string | null>;
             if ((b.press_steam == null || b.press_steam === 0) && sharedPressSteam != null) b.press_steam = sharedPressSteam;
-            setBoilerB(b);
+            mergeSet(setBoilerB, b);
         } else if (sharedPressSteam != null) {
-            setBoilerB({ press_steam: sharedPressSteam });
+            mergeSet(setBoilerB, { press_steam: sharedPressSteam } as Record<string, number | string | null>);
         }
-        if (turbinData) setTurbin(extractFields(turbinData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
-        if (steamDistData) setSteamDist(extractFields(steamDistData as unknown as Record<string, unknown>) as Record<string, number | null>);
-        if (genData) setGeneratorGi(extractFields(genData as unknown as Record<string, unknown>) as Record<string, number | null>);
-        if (powerData) setPowerDist(extractFields(powerData as unknown as Record<string, unknown>) as Record<string, number | null>);
-        if (espData) setEspHandling(extractFields(espData as unknown as Record<string, unknown>));
-        if (tankyardData) setTankyard(extractFields(tankyardData as unknown as Record<string, unknown>) as Record<string, number | null>);
-        if (coalData) setCoalBunker(extractFields(coalData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
+        if (turbinData) mergeSet(setTurbin, extractFields(turbinData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
+        if (steamDistData) mergeSet(setSteamDist, extractFields(steamDistData as unknown as Record<string, unknown>) as Record<string, number | null>);
+        if (genData) mergeSet(setGeneratorGi, extractFields(genData as unknown as Record<string, unknown>) as Record<string, number | null>);
+        if (powerData) mergeSet(setPowerDist, extractFields(powerData as unknown as Record<string, unknown>) as Record<string, number | null>);
+        if (espData) mergeSet(setEspHandling, extractFields(espData as unknown as Record<string, unknown>));
+        if (tankyardData) mergeSet(setTankyard, extractFields(tankyardData as unknown as Record<string, unknown>) as Record<string, number | null>);
+        if (coalData) mergeSet(setCoalBunker, extractFields(coalData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
 
         // Load water quality & chemical dosing from shift_water_quality
         const wqData = report.shift_water_quality?.[0];
@@ -722,8 +733,8 @@ function InputShiftPageInner() {
                     wqFields[k] = v;
                 }
             }
-            setWaterQuality(wqFields);
-            setChemicalDosing(cdFields);
+            mergeSet(setWaterQuality, wqFields);
+            mergeSet(setChemicalDosing, cdFields);
         }
     }, [report]);
 

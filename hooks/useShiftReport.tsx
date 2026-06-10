@@ -1019,8 +1019,15 @@ export function useShiftReport(date: string, shift: ShiftType) {
         const reportId = (sr as Record<string, unknown>).id as string;
         console.log('[submitReport] reportId:', reportId);
 
-        // Helper: save child table (DELETE existing + INSERT new)
-        // More reliable than upsert which can silently fail on some PostgREST configs
+        // Helper: save child table (MERGE — update kolom yang dikirim saja).
+        // PENTING: jangan DELETE+INSERT. Field yang tidak ada di payload (undefined →
+        // tersaring di pickValidCols) TIDAK boleh menimpa nilai lama. Kasus nyata:
+        // operator buka ulang link station turbin di akhir shift, langsung ketik
+        // totalizer sebelum data lama termuat (userModifiedRef memblok populate) →
+        // payload cuma berisi totalizer+status → DELETE+INSERT meng-wipe semua
+        // parameter lain (insiden 05–07 Jun 2026, shift sore). Dengan UPDATE per
+        // kolom, simpan sparse aman; clearing field yang disengaja tetap jalan
+        // karena key-nya ada di payload dengan nilai null (bukan undefined).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async function saveChild(table: string, data: Record<string, unknown>, extra: Record<string, unknown> = {}) {
             const filtered = pickValidCols(table, data);
@@ -1029,26 +1036,63 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 return;
             }
 
-            // Step 1: Delete existing rows for this report
-            const { error: delErr } = await supabase
+            // Cari row existing (tanpa maybeSingle — legacy DELETE+INSERT bisa
+            // meninggalkan duplikat saat race; kalau ada, keep satu, hapus sisanya).
+            const { data: existingRows, error: selErr } = await supabase
                 .from(table)
-                .delete()
+                .select('id')
                 .eq('shift_report_id', reportId);
-            if (delErr) {
-                console.error(`[submitReport] DELETE "${table}" error:`, delErr.message);
-                errors.push(`${table}: delete failed - ${delErr.message}`);
+            if (selErr) {
+                console.error(`[submitReport] SELECT "${table}" error:`, selErr.message);
+                errors.push(`${table}: select failed - ${selErr.message}`);
                 return;
             }
 
-            // Step 2: Insert new row
+            if (existingRows && existingRows.length > 0) {
+                const keepId = (existingRows[0] as { id: string }).id;
+                if (existingRows.length > 1) {
+                    await supabase.from(table).delete()
+                        .eq('shift_report_id', reportId).neq('id', keepId);
+                }
+                console.log(`[submitReport] UPDATE "${table}":`, Object.keys(filtered));
+                const { error: updErr } = await supabase
+                    .from(table)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    .update({ ...extra, ...filtered } as any)
+                    .eq('id', keepId);
+                if (updErr) {
+                    console.error(`[submitReport] UPDATE "${table}" error:`, updErr.message);
+                    errors.push(`${table}: ${updErr.message}`);
+                } else {
+                    console.log(`[submitReport] "${table}" updated OK, id=${keepId}`);
+                }
+                return;
+            }
+
+            // Belum ada row → insert baru.
             const payload = { shift_report_id: reportId, ...extra, ...filtered };
             console.log(`[submitReport] INSERT "${table}":`, Object.keys(filtered));
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data: inserted, error: insErr } = await supabase
                 .from(table)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .insert(payload as any)
                 .select();
             if (insErr) {
+                // Race: station/tab lain barusan insert → unique violation. Re-fetch + update.
+                const { data: raced } = await supabase
+                    .from(table).select('id').eq('shift_report_id', reportId);
+                if (raced && raced.length > 0) {
+                    const { error: updErr } = await supabase
+                        .from(table)
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        .update({ ...extra, ...filtered } as any)
+                        .eq('id', (raced[0] as { id: string }).id);
+                    if (updErr) {
+                        console.error(`[submitReport] race UPDATE "${table}" error:`, updErr.message);
+                        errors.push(`${table}: ${updErr.message}`);
+                    }
+                    return;
+                }
                 console.error(`[submitReport] INSERT "${table}" error:`, insErr.message);
                 errors.push(`${table}: ${insErr.message}`);
             } else {
@@ -1109,17 +1153,36 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 if (boilerData && Object.keys(boilerData).length > 0) {
                     const filtered = pickValidCols('shift_boiler', boilerData as Record<string, unknown>);
                     if (Object.keys(filtered).length > 0) {
-                        await supabase.from('shift_boiler').delete()
+                        // MERGE seperti saveChild — jangan DELETE+INSERT supaya simpan
+                        // sparse (form belum termuat penuh) tidak menghapus field lain.
+                        const { data: exRows } = await supabase.from('shift_boiler').select('id')
                             .eq('shift_report_id', reportId).eq('boiler', boilerId);
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const { data: ins, error: bErr } = await supabase.from('shift_boiler')
-                            .insert({ shift_report_id: reportId, boiler: boilerId, ...filtered } as any)
-                            .select();
-                        if (bErr) {
-                            console.error(`[submitReport] INSERT shift_boiler ${boilerId} error:`, bErr.message);
-                            errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
+                        if (exRows && exRows.length > 0) {
+                            const keepId = (exRows[0] as { id: string }).id;
+                            if (exRows.length > 1) {
+                                await supabase.from('shift_boiler').delete()
+                                    .eq('shift_report_id', reportId).eq('boiler', boilerId).neq('id', keepId);
+                            }
+                            const { error: bErr } = await supabase.from('shift_boiler')
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                .update(filtered as any).eq('id', keepId);
+                            if (bErr) {
+                                console.error(`[submitReport] UPDATE shift_boiler ${boilerId} error:`, bErr.message);
+                                errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
+                            } else {
+                                console.log(`[submitReport] shift_boiler ${boilerId} updated OK, id=${keepId}`);
+                            }
                         } else {
-                            console.log(`[submitReport] shift_boiler ${boilerId} saved OK, id=${(ins as Record<string, unknown>[])?.[0]?.id}`);
+                            const { data: ins, error: bErr } = await supabase.from('shift_boiler')
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                .insert({ shift_report_id: reportId, boiler: boilerId, ...filtered } as any)
+                                .select();
+                            if (bErr) {
+                                console.error(`[submitReport] INSERT shift_boiler ${boilerId} error:`, bErr.message);
+                                errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
+                            } else {
+                                console.log(`[submitReport] shift_boiler ${boilerId} saved OK, id=${(ins as Record<string, unknown>[])?.[0]?.id}`);
+                            }
                         }
                     }
                 }

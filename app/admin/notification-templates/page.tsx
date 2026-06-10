@@ -6,8 +6,8 @@ import { useOperator } from '@/hooks/useOperator';
 import { listTemplates, updateTemplate, TemplateRow } from './actions';
 
 const PLACEHOLDERS: Record<string, string[]> = {
-    shift_reminder:        ['{{shift}}', '{{group}}', '{{date}}', '{{link}}'],
-    daily_reminder:        ['{{date}}', '{{link}}'],
+    shift_reminder:        ['{{shift}}', '{{group}}', '{{date}}', '{{links}}'],
+    daily_reminder:        ['{{date}}', '{{links}}'],
     shift_share:           ['{{shift}}', '{{group}}', '{{date}}', '{{summary}}'],
     daily_share:           ['{{date}}', '{{summary}}'],
     maintenance_broadcast: ['{{date}}', '{{summary}}'],

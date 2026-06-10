@@ -1267,6 +1267,29 @@ export function useShiftReport(date: string, shift: ShiftType) {
         // Sync ke Google Sheets — DITUNGGU agar kita tahu pasti apakah benar tersimpan.
         // Supabase tetap source of truth: kalau Sheets gagal (setelah retry server-side),
         // kita kembalikan sheetsWarning supaya UI bisa kasih tahu user untuk simpan ulang.
+        //
+        // PENTING: payload Sheets HARUS di-scope sama seperti tulis DB. Tanpa scoping,
+        // station yang tidak memiliki sebuah section tetap mengirim state form-nya
+        // (kosong/derived) dan menimpa sel hasil station pemilik. Insiden nyata:
+        // station non-boiler submit → batubara_ton dihitung 0−prev = −46191 dan bocor
+        // ke kolom CE/CF (malam 10 Jun 2026). Sel null dilewati update Sheets, jadi
+        // section yang di-undefined-kan di sini otomatis preserve nilai lama.
+        const scopeSection = <T,>(table: string, value: T): T | undefined =>
+            canWriteTable(table) ? value : undefined;
+        // Tabel shared (partial cols): kirim hanya kolom yang owned station ini.
+        const scopePartial = (table: string, value: Record<string, unknown> | undefined) => {
+            if (!canWriteTable(table) || !value) return undefined;
+            const partial = getPartialCols(table);
+            if (!partial) return value;
+            const subset: Record<string, unknown> = {};
+            for (const k of partial) if (k in value) subset[k] = value[k];
+            return Object.keys(subset).length > 0 ? subset : undefined;
+        };
+        const allowedBoilersSheets: ('A' | 'B')[] = isStationScoped
+            ? (STATION_OWNS_BOILER_ROW[stationKey!] ?? ['A', 'B'])
+            : ['A', 'B'];
+        const sheetsBoilerA = canWriteTable('shift_boiler') && allowedBoilersSheets.includes('A') ? reportData.boilerA : undefined;
+        const sheetsBoilerB = canWriteTable('shift_boiler') && allowedBoilersSheets.includes('B') ? reportData.boilerB : undefined;
         let sheetsWarning: string | undefined;
         try {
             const res = await fetch('/api/sheets/write', {
@@ -1278,17 +1301,17 @@ export function useShiftReport(date: string, shift: ShiftType) {
                         shift,
                         date,
                         group_name: reportData.group_name,
-                        turbin: reportData.turbin,
-                        steamDist: reportData.steamDist,
-                        generatorGi: reportData.generatorGi,
-                        powerDist: reportData.powerDist,
-                        espHandling: reportData.espHandling,
-                        tankyard: reportData.tankyard,
-                        personnel: reportData.personnel,
-                        boilerA: reportData.boilerA,
-                        boilerB: reportData.boilerB,
-                        coalBunker: reportData.coalBunker,
-                        waterQuality: reportData.waterQuality,
+                        turbin: scopeSection('shift_turbin', reportData.turbin),
+                        steamDist: scopeSection('shift_steam_dist', reportData.steamDist),
+                        generatorGi: scopeSection('shift_generator_gi', reportData.generatorGi),
+                        powerDist: scopeSection('shift_power_dist', reportData.powerDist),
+                        espHandling: scopePartial('shift_esp_handling', reportData.espHandling as Record<string, unknown> | undefined),
+                        tankyard: scopeSection('shift_tankyard', reportData.tankyard),
+                        personnel: scopeSection('shift_personnel', reportData.personnel),
+                        boilerA: sheetsBoilerA,
+                        boilerB: sheetsBoilerB,
+                        coalBunker: scopePartial('shift_coal_bunker', reportData.coalBunker as Record<string, unknown> | undefined),
+                        waterQuality: scopeSection('shift_water_quality', reportData.waterQuality),
                         prevBoilerA: reportData.prevBoilerA,
                         prevBoilerB: reportData.prevBoilerB,
                     },

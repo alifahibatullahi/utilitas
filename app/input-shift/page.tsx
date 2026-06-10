@@ -907,7 +907,7 @@ function InputShiftPageInner() {
         // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
         // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.
         {
-            const dSel = (cur: unknown, prev: unknown) => { const c = Number(cur) || 0, p = Number(prev) || 0; return p > 0 ? c - p : 0; };
+            const dSel = (cur: unknown, prev: unknown) => { const c = Number(cur) || 0, p = Number(prev) || 0; return p > 0 && c > 0 ? Math.max(0, c - p) : 0; };
             const fSel = (key: string) => dSel(coalBunker[key], prevCoalBunker[key]);
             const batubaraA = fSel('feeder_a') + fSel('feeder_b') + fSel('feeder_c');
             const batubaraB = fSel('feeder_d') + fSel('feeder_e') + fSel('feeder_f');
@@ -947,10 +947,14 @@ function InputShiftPageInner() {
                 const p = Number(prev) || 0;
                 return p > 0 ? c - p : null;
             };
+            // Konsumsi = cur − prev. WAJIB cur > 0: kalau form tidak mengisi feeder
+            // (mis. station non-boiler), cur=0 dan cur−prev = −prev → batubara negatif
+            // raksasa pernah bocor ke Sheets (insiden malam 10 Jun 2026). Negatif kecil
+            // (counter reset/koreksi) di-clamp 0 — konsumsi tak mungkin negatif.
             const selisih = (key: string) => {
                 const cur = Number(coalBunker[key]) || 0;
                 const prev = Number(prevCoalBunker[key]) || 0;
-                return prev > 0 ? cur - prev : 0;
+                return prev > 0 && cur > 0 ? Math.max(0, cur - prev) : 0;
             };
             const batubaraA = selisih('feeder_a') + selisih('feeder_b') + selisih('feeder_c');
             const batubaraB = selisih('feeder_d') + selisih('feeder_e') + selisih('feeder_f');

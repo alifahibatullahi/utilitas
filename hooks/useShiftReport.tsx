@@ -922,7 +922,14 @@ export function useShiftReport(date: string, shift: ShiftType) {
             if (!isStationScoped) {
                 updatePayload.group_name = reportData.group_name;
                 updatePayload.supervisor = reportData.supervisor;
-                updatePayload.catatan = reportData.catatan || null;
+                // ANTI-WIPE: catatan hanya di-overwrite kalau payload berisi. Form penuh yang
+                // di-save saat state catatan masih kosong (report belum termuat / halaman baru)
+                // JANGAN menimpa catatan lama jadi null — insiden 10 Jun 2026: catatan pagi
+                // (2 baris fly ash) terhapus oleh re-save 14:16 setelah publish. Konsekuensi:
+                // mengosongkan catatan total via save tidak bisa; edit isinya kalau perlu.
+                if (reportData.catatan != null && reportData.catatan.trim() !== '') {
+                    updatePayload.catatan = reportData.catatan;
+                }
             } else if (stationKey && SUPERVISOR_OWNER_STATIONS.has(stationKey) && reportData.supervisor) {
                 // Panel station: tulis supervisor tanpa overwrite kolom lain.
                 updatePayload.supervisor = reportData.supervisor;
@@ -1015,7 +1022,9 @@ export function useShiftReport(date: string, shift: ShiftType) {
         // ─── Atomic merge station_catatan via RPC (race-proof) ───
         // Catatan operasional per-station (panel_boiler/turbin) di-merge ke JSONB tanpa
         // overwrite station lain. Digabung jadi satu catatan shift saat publish.
-        if (reportData.station_catatan && sr?.id) {
+        // ANTI-WIPE: teks kosong tidak di-merge — re-save station saat state catatan belum
+        // termuat jangan menghapus catatan station yang sudah tersimpan (mirror guard parent).
+        if (reportData.station_catatan && reportData.station_catatan.catatan.trim() !== '' && sr?.id) {
             const { error: rpcErr } = await supabase.rpc('merge_shift_station_catatan', {
                 p_report_id: sr.id,
                 p_station: reportData.station_catatan.station,

@@ -96,7 +96,7 @@ export default function TabSiloFlyAsh({
                                             <div className="flex flex-col gap-0.5">
                                                 {item.perusahaan && (
                                                     <p className="text-sm font-bold text-slate-200 truncate flex items-center">
-                                                        <span className="text-[10px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Perusahaan</span>
+                                                        <span className="text-[10px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Truck Dari Perusahaan</span>
                                                         <span className="text-slate-600 mr-1.5">·</span>
                                                         {item.perusahaan}
                                                     </p>
@@ -161,7 +161,7 @@ export default function TabSiloFlyAsh({
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Perusahaan</label>
+                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Truck Dari Perusahaan</label>
                             <input type="text" className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-teal-500 transition-all"
                                 value={editItem.perusahaan} onChange={e => setEditItem({ ...editItem, perusahaan: e.target.value })} />
                         </div>

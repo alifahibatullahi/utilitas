@@ -75,7 +75,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                                             <span className="text-[10px] font-bold text-orange-300 bg-orange-500/15 border border-orange-500/30 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
                                             <div className="flex flex-col gap-0.5 min-w-0">
                                                 <span className="text-xs font-bold text-slate-200 truncate flex items-center">
-                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Perusahaan</span>
+                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Truck Dari Perusahaan</span>
                                                     <span className="text-slate-600 mr-1.5">·</span>
                                                     {e.perusahaan}
                                                 </span>
@@ -106,7 +106,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                                             <span className="text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
                                             <div className="flex flex-col gap-0.5 min-w-0">
                                                 <span className="text-xs font-bold text-slate-200 truncate flex items-center">
-                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Perusahaan</span>
+                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Truck Dari Perusahaan</span>
                                                     <span className="text-slate-600 mr-1.5">·</span>
                                                     {e.perusahaan}
                                                     <span className="text-[9px] text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded ml-1.5">(baru)</span>
@@ -160,7 +160,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                     placeholder="Pilih Silo..."
                 />
                 <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Perusahaan</label>
+                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Truck Dari Perusahaan</label>
                     <input type="text" value={form.perusahaan} onChange={e => setForm({ ...form, perusahaan: e.target.value })}
                         placeholder="Nama PT..."
                         className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-orange-500 text-sm transition-all" />

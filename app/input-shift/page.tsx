@@ -1116,8 +1116,11 @@ function InputShiftPageInner() {
                     supplier: entry.perusahaan,
                     operator_id: operator?.supabaseId ?? null,
                 }));
-                // Make sure to correctly map to expected 'date' column with ISO time, but wait, if we changed it to use date as YYYY-MM-DD we'd break old code. Let's send the entry.tanggal as date, and passing shift explicitly. 
-                await supabase.from('solar_unloadings').insert(inserts.map(i => ({ date: selectedDate, liters: i.liters, supplier: i.supplier, shift: i.shift, operator_id: i.operator_id })) as any[]);
+                // Make sure to correctly map to expected 'date' column with ISO time, but wait, if we changed it to use date as YYYY-MM-DD we'd break old code. Let's send the entry.tanggal as date, and passing shift explicitly.
+                const { error: solarInErr } = await supabase.from('solar_unloadings').insert(inserts.map(i => ({ date: selectedDate, liters: i.liters, supplier: i.supplier, shift: i.shift, operator_id: i.operator_id })) as any[]);
+                // Error TIDAK boleh ditelan diam-diam: entri yang gagal insert hilang tanpa
+                // jejak padahal auto-line-nya sudah masuk catatan (insiden catatan 10 Jun 2026).
+                if (solarInErr) showToast('Kedatangan solar GAGAL tersimpan: ' + solarInErr.message + '. Mohon simpan ulang.', 'error');
             }
 
             // Save solar usages if filled
@@ -1131,7 +1134,8 @@ function InputShiftPageInner() {
                     tujuan: entry.tujuan,
                     operator_id: operator?.supabaseId ?? null,
                 }));
-                await supabase.from('solar_usages').insert(outInserts as any[]);
+                const { error: solarOutErr } = await supabase.from('solar_usages').insert(outInserts as any[]);
+                if (solarOutErr) showToast('Permintaan solar GAGAL tersimpan: ' + solarOutErr.message + '. Mohon simpan ulang.', 'error');
             }
 
             // Save ash unloadings if filled
@@ -1147,7 +1151,8 @@ function InputShiftPageInner() {
                     ritase: entry.ritase,
                     operator_id: operator?.supabaseId ?? null,
                 }));
-                await supabase.from('ash_unloadings').insert(ashInserts as any[]);
+                const { error: ashErr } = await supabase.from('ash_unloadings').insert(ashInserts as any[]);
+                if (ashErr) showToast('Unloading fly ash GAGAL tersimpan: ' + ashErr.message + '. Mohon simpan ulang.', 'error');
             }
 
             clearInterval(progressInterval);

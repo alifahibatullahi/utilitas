@@ -46,7 +46,7 @@ export function buildActivityLines(internal: { ash?: any[]; solarIn?: any[]; sol
     }
     for (const a of internal?.ash ?? []) {
         const ritase = Number(a.ritase);
-        if (ritase > 0) lines.push(`Unloading fly ash Silo ${a.silo ?? '-'} sebanyak ${ritase}× ke ${a.tujuan || '-'}`);
+        if (ritase > 0) lines.push(`Unloading fly ash Silo ${a.silo ?? '-'} sebanyak ${ritase}rit ke ${a.tujuan || '-'}`);
     }
     return lines;
 }

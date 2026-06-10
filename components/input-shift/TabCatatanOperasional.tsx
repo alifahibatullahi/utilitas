@@ -76,7 +76,7 @@ export function buildAutoCatatanLines(p: AutoCatatanInput): string[] {
     }
     for (const e of p.ash) {
         if (e.silo && e.ritase) {
-            lines.push(`Unloading fly ash Silo ${e.silo} sebanyak ${e.ritase}× ke ${e.tujuan || '-'}`);
+            lines.push(`Unloading fly ash Silo ${e.silo} sebanyak ${e.ritase}rit ke ${e.tujuan || '-'}`);
         }
     }
     for (const k of BUNKER_KEYS) {

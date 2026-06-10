@@ -88,9 +88,12 @@ export function isPiuComplete(s: DailyState): boolean {
     return has(s.turbineMisc, ['totalizer_export', 'totalizer_import', 'pie_dr']);
 }
 
-/** Handling lengkap (level tankyard + totalizer konsumsi/penerimaan). */
+/** Handling lengkap (level tankyard + totalizer konsumsi/penerimaan).
+ *  `solar_boiler` TIDAK diwajibkan: di TabHandling itu CalculatedField (turunan
+ *  aktivitas Permintaan Solar tujuan "Boiler A+B"), bukan input — tidak pernah
+ *  masuk state stockTank, jadi kalau diwajibkan tab tak pernah bisa lengkap. */
 export function isHandlingComplete(s: DailyState): boolean {
-    return has(s.stockTank, ['rcw_level_00', 'demin_level_00', 'solar_tank_a', 'solar_boiler'])
+    return has(s.stockTank, ['rcw_level_00', 'demin_level_00', 'solar_tank_a'])
         && has(s.totalizer, ['tot_rcw_1a', 'tot_demin', 'tot_demin_pb1', 'tot_demin_pb3', 'tot_hydrant', 'tot_basin', 'tot_service']);
 }
 

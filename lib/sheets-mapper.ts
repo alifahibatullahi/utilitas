@@ -223,8 +223,11 @@ export function shiftReportToRow(
     row[COL.esp_b3] = n(eh.esp_b3 as number | null);
     row[COL.silo_a] = n(eh.silo_a as number | null);
     row[COL.silo_b] = n(eh.silo_b as number | null);
-    row[COL.unloading_a] = n(eh.unloading_a as number | null);
-    row[COL.unloading_b] = n(eh.unloading_b as number | null);
+    // Unloading fly ash: 0 BERMAKNA (tidak ada unloading shift ini) → tulis 0
+    // eksplisit via nz(), jangan dilewati. Hanya terkirim dari station handling /
+    // form penuh (scoped), jadi tidak menimpa milik station lain dengan 0 palsu.
+    row[COL.unloading_a] = nz(eh.unloading_a as number | null);
+    row[COL.unloading_b] = nz(eh.unloading_b as number | null);
     row[COL.loading] = s(eh.loading as string | null);
     row[COL.hopper] = s(eh.hopper as string | null);
     row[COL.conveyor] = s(eh.conveyor as string | null);
@@ -246,15 +249,19 @@ export function shiftReportToRow(
     // Personnel boiler: kolom berbeda per shift
     // Pagi: ED=133(grup), EE=134(foreman boiler), EF=135(supervisor)
     // Malam/Sore: DX=127(grup), DY=128(foreman boiler), DZ=129(supervisor)
+    // Grup/kasi: pakai boiler_* kalau ada (submit station panel boiler hanya membawa
+    // boiler_*), fallback ke turbin_* (form penuh mengisi keduanya dengan nilai sama).
     const isPagi = data.shift === 'pagi';
+    const boilerGrup = p.boiler_grup ?? p.turbin_grup;
+    const boilerKasi = p.boiler_kasi ?? p.turbin_kasi;
     if (isPagi) {
-        row[COL.boiler_grup_pagi] = s(p.turbin_grup);
+        row[COL.boiler_grup_pagi] = s(boilerGrup);
         row[COL.boiler_karu_pagi] = s(p.boiler_karu);
-        row[COL.boiler_kasi_pagi] = s(p.turbin_kasi);
+        row[COL.boiler_kasi_pagi] = s(boilerKasi);
     } else {
-        row[COL.boiler_grup_ms] = s(p.turbin_grup);
+        row[COL.boiler_grup_ms] = s(boilerGrup);
         row[COL.boiler_karu_ms] = s(p.boiler_karu);
-        row[COL.boiler_kasi_ms] = s(p.turbin_kasi);
+        row[COL.boiler_kasi_ms] = s(boilerKasi);
     }
 
     // Batubara (konsumsi = selisih totalizer feeder) → CE/CF.

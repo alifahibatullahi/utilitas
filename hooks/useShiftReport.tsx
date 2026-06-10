@@ -821,10 +821,13 @@ export function useShiftReport(date: string, shift: ShiftType) {
         // STATION_PARTIAL_COLS (UPDATE per kolom, bukan DELETE+INSERT) supaya tidak
         // saling overwrite.
         const STATION_OWNS_TABLES: Record<string, string[]> = {
-            panel_boiler: ['shift_boiler', 'shift_coal_bunker'],   // legacy: keduanya + full bunker
-            panel_boiler_a: ['shift_boiler', 'shift_coal_bunker'], // row A + partial cols A/B/C
-            panel_boiler_b: ['shift_boiler', 'shift_coal_bunker'], // row B + partial cols D/E/F
-            panel_turbin: ['shift_turbin', 'shift_steam_dist', 'shift_generator_gi', 'shift_power_dist'],
+            // shift_personnel: station panel own subset kolom (grup/karu/kasi sisi
+            // boiler ATAU turbin — lihat STATION_PARTIAL_COLS) supaya nama personnel
+            // tetap tersimpan (DB + Sheets) saat submit dari station view.
+            panel_boiler: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'],   // legacy: keduanya + full bunker
+            panel_boiler_a: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'], // row A + partial cols A/B/C
+            panel_boiler_b: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'], // row B + partial cols D/E/F
+            panel_turbin: ['shift_turbin', 'shift_steam_dist', 'shift_generator_gi', 'shift_power_dist', 'shift_personnel'],
             // handling: kartu Loading (shift_esp_handling) + kartu Tankyard / Level Tank
             // (shift_tankyard). Tankyard di-edit di TabHandling, jadi station handling yang
             // owns shift_tankyard (sebelumnya keliru di lapangan_boiler → level tank tidak tersimpan).
@@ -849,12 +852,16 @@ export function useShiftReport(date: string, shift: ShiftType) {
         const STATION_PARTIAL_COLS: Record<string, Record<string, string[]>> = {
             handling: { shift_esp_handling: ['hopper', 'conveyor', 'unloading_a', 'unloading_b', 'loading', 'pf1', 'pf2'] },
             esp:      { shift_esp_handling: ['esp_a1', 'esp_a2', 'esp_a3', 'esp_b1', 'esp_b2', 'esp_b3', 'silo_a', 'silo_b'] },
+            panel_boiler: {
+                shift_personnel: ['boiler_grup', 'boiler_karu', 'boiler_kasi'],
+            },
             panel_boiler_a: {
                 shift_coal_bunker: [
                     'feeder_a', 'feeder_b', 'feeder_c',
                     'status_feeder_a', 'status_feeder_b', 'status_feeder_c',
                     'selisih_feeder_a', 'selisih_feeder_b', 'selisih_feeder_c',
                 ],
+                shift_personnel: ['boiler_grup', 'boiler_karu', 'boiler_kasi'],
             },
             panel_boiler_b: {
                 shift_coal_bunker: [
@@ -862,6 +869,10 @@ export function useShiftReport(date: string, shift: ShiftType) {
                     'status_feeder_d', 'status_feeder_e', 'status_feeder_f',
                     'selisih_feeder_d', 'selisih_feeder_e', 'selisih_feeder_f',
                 ],
+                shift_personnel: ['boiler_grup', 'boiler_karu', 'boiler_kasi'],
+            },
+            panel_turbin: {
+                shift_personnel: ['turbin_grup', 'turbin_karu', 'turbin_kasi'],
             },
             bunker: {
                 shift_coal_bunker: [
@@ -1235,10 +1246,16 @@ export function useShiftReport(date: string, shift: ShiftType) {
                 }
             }
         }
-        // shift_personnel = data foreman/supervisor (turbin_karu, boiler_karu, kasi). Hanya
-        // di-tulis pada submit non-station. Station operator tidak boleh overwrite personnel.
+        // shift_personnel = data grup/foreman/supervisor. Form penuh menulis semua kolom;
+        // station panel menulis subset miliknya saja (turbin_* utk panel_turbin,
+        // boiler_* utk panel_boiler*) via partial UPDATE — tidak saling overwrite.
         if (canWriteTable('shift_personnel') && reportData.personnel && Object.keys(reportData.personnel).length > 0) {
-            await saveChild('shift_personnel', reportData.personnel as Record<string, unknown>);
+            const partial = getPartialCols('shift_personnel');
+            if (partial) {
+                await savePartialChild('shift_personnel', reportData.personnel as Record<string, unknown>, partial);
+            } else {
+                await saveChild('shift_personnel', reportData.personnel as Record<string, unknown>);
+            }
         }
         if (canWriteTable('shift_coal_bunker') && reportData.coalBunker && Object.keys(reportData.coalBunker).length > 0) {
             const partial = getPartialCols('shift_coal_bunker');
@@ -1307,7 +1324,11 @@ export function useShiftReport(date: string, shift: ShiftType) {
                         powerDist: scopeSection('shift_power_dist', reportData.powerDist),
                         espHandling: scopePartial('shift_esp_handling', reportData.espHandling as Record<string, unknown> | undefined),
                         tankyard: scopeSection('shift_tankyard', reportData.tankyard),
-                        personnel: scopeSection('shift_personnel', reportData.personnel),
+                        // Personnel (grup/foreman/kasi): station panel kirim subset kolom miliknya
+                        // (turbin_* vs boiler_*) — sama dgn DB. Mapper menulis sel boiler dari
+                        // boiler_* dgn fallback turbin_*, jadi grup+karu+kasi tetap masuk Sheets
+                        // walau submit dari station view.
+                        personnel: scopePartial('shift_personnel', reportData.personnel as Record<string, unknown> | undefined),
                         boilerA: sheetsBoilerA,
                         boilerB: sheetsBoilerB,
                         coalBunker: scopePartial('shift_coal_bunker', reportData.coalBunker as Record<string, unknown> | undefined),

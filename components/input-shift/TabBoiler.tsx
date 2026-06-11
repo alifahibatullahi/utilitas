@@ -1,6 +1,6 @@
 'use client';
-import React, { useEffect } from 'react';
-import { Card, InputField, CalculatedField, SelisihInfo, FeederStatusChip } from './SharedComponents';
+import React, { useEffect, useContext } from 'react';
+import { Card, InputField, CalculatedField, SelisihInfo, FeederStatusChip, FormTheme } from './SharedComponents';
 
 interface TabBoilerProps {
     boilerId: 'A' | 'B';
@@ -36,6 +36,7 @@ const NON_TOTALIZER_BOILER_FIELDS = [
 ];
 
 export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBunkerValues = {}, onCoalBunkerChange, prevTotalizerSteam, prevTotalizerBfw, prevCoalBunkerValues = {}, shutdownSince, currentDate = '' }: TabBoilerProps) {
+    const light = useContext(FormTheme) === 'light';
     const feeders = boilerId === 'A' ? ['A', 'B', 'C'] : ['D', 'E', 'F'];
     const feederKeys = boilerId === 'A' ? ['feeder_a', 'feeder_b', 'feeder_c'] : ['feeder_d', 'feeder_e', 'feeder_f'];
 
@@ -109,8 +110,8 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
         <>
             <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 {isBoilerShutdown && (
-                    <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
-                        <span className="material-symbols-outlined text-[16px] text-rose-400 shrink-0 mt-0.5">power_off</span>
+                    <div className={`mb-4 flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${light ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'}`}>
+                        <span className={`material-symbols-outlined text-[16px] shrink-0 mt-0.5 ${light ? 'text-red-600' : 'text-rose-400'}`}>power_off</span>
                         <span>
                             Boiler {boilerId} <span className="font-bold">shutdown</span>
                             {shutdownSince && currentDate
@@ -151,7 +152,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                             return (
                                 <div key={feeder} className="space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <p className="text-xs font-bold text-white uppercase tracking-wider">Feeder {feeder}</p>
+                                        <p className={`text-xs font-bold uppercase tracking-wider ${light ? 'text-[#141414]' : 'text-white'}`}>Feeder {feeder}</p>
                                         <FeederStatusChip
                                             sk={sk}
                                             value={(coalBunkerValues[sk] as string) ?? ''}
@@ -187,8 +188,8 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                             <InputField label="O2" unit="%" color="orange" name="o2" value={values.o2} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                             <InputField label="Pressure Drum" unit="MPa" color="orange" name="steam_drum_press" value={values.steam_drum_press} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         </div>
-                        <div className="space-y-2 mt-2 pt-3 border-t border-slate-700/50">
-                            <p className="text-xs font-bold text-white uppercase tracking-wider text-left">Solar Usage</p>
+                        <div className={`space-y-2 mt-2 pt-3 border-t ${light ? 'border-[#E8E8E8]' : 'border-slate-700/50'}`}>
+                            <p className={`text-xs font-bold uppercase tracking-wider text-left ${light ? 'text-[#141414]' : 'text-white'}`}>Solar Usage</p>
                             <InputField placeholder="0.00" unit="m³" color="orange" name="solar_m3" value={values.solar_m3} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         </div>
                     </Card>
@@ -205,7 +206,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
                         <CalculatedField key={feeder} label={`Konsumsi Feeder ${feeder}`} value={feederKonsumsi[idx].toFixed(2)} unit="ton" variant="small" />
                     ))}
 
-                    <div className="h-px bg-slate-700/80 w-full my-1"></div>
+                    <div className={`h-px w-full my-1 ${light ? 'bg-[#E8E8E8]' : 'bg-slate-700/80'}`}></div>
 
                     <CalculatedField label="Total Batubara" value={totalBatubara.toFixed(2)} unit="ton" variant="primary" size="large" />
 

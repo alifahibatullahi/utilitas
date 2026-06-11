@@ -18,6 +18,7 @@ import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import StationPickerModal, { type StationSetupSelection } from '@/components/ui/StationPickerModal';
+import { FormTheme } from '@/components/input-shift/SharedComponents';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
@@ -46,21 +47,9 @@ const TABS: { id: TabId; label: string; icon: string; colorClass: string }[] = [
     { id: 'Catatan Operasional', label: 'Catatan Operasional', icon: 'sticky_note_2', colorClass: 'amber' },
 ];
 
-const TAB_STYLES: Record<string, { active: string; inactive: string; icon: string }> = {
-    'rose': { active: 'font-bold bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-inner shadow-rose-500/10', inactive: 'font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border-transparent', icon: 'text-rose-400' },
-    'purple': { active: 'font-bold bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-inner shadow-purple-500/10', inactive: 'font-medium text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 border-transparent', icon: 'text-purple-400' },
-    'cyan': { active: 'font-bold bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-inner shadow-cyan-500/10', inactive: 'font-medium text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border-transparent', icon: 'text-cyan-400' },
-    'amber': { active: 'font-bold bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-inner shadow-amber-500/10', inactive: 'font-medium text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 border-transparent', icon: 'text-amber-400' },
-    'blue': { active: 'font-bold bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-inner shadow-blue-500/10', inactive: 'font-medium text-slate-400 hover:text-blue-300 hover:bg-blue-500/10 border-transparent', icon: 'text-blue-400' },
-    'orange': { active: 'font-bold bg-orange-500/20 text-orange-400 border-orange-500/30 shadow-inner shadow-orange-500/10', inactive: 'font-medium text-slate-400 hover:text-orange-300 hover:bg-orange-500/10 border-transparent', icon: 'text-orange-400' },
-    'stone': { active: 'font-bold bg-stone-500/20 text-stone-400 border-stone-500/30 shadow-inner shadow-stone-500/10', inactive: 'font-medium text-slate-400 hover:text-stone-300 hover:bg-stone-500/10 border-transparent', icon: 'text-stone-400' },
-    'indigo': { active: 'font-bold bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-inner shadow-indigo-500/10', inactive: 'font-medium text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 border-transparent', icon: 'text-indigo-400' },
-    'teal': { active: 'font-bold bg-teal-500/20 text-teal-400 border-teal-500/30 shadow-inner shadow-teal-500/10', inactive: 'font-medium text-slate-400 hover:text-teal-300 hover:bg-teal-500/10 border-transparent', icon: 'text-teal-400' },
-};
-
 export default function InputShiftPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 text-sm font-bold">Memuat...</div>}>
+        <Suspense fallback={<div className="min-h-screen bg-[#F6F6F4] flex items-center justify-center text-[#8A8A8A] text-sm font-semibold">Memuat...</div>}>
             <InputShiftPageInner />
         </Suspense>
     );
@@ -90,8 +79,6 @@ function InputShiftPageInner() {
     // - h≥23 : malam D=tomorrow (shift baru mulai, submit besok)
     const [selectedDate, setSelectedDate] = useState<string>(() => detectCurrentShift().date);
     const [mounted, setMounted] = useState(false);
-    const today = mounted ? todayWIB() : '';
-    const isToday = selectedDate === today;
     const formattedDate = mounted && selectedDate 
         ? new Date(selectedDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { 
             timeZone: 'Asia/Jakarta', 
@@ -1309,7 +1296,24 @@ function InputShiftPageInner() {
         showToast('Data referensi Malam 01 Jan 2026 berhasil dimuat!', 'success');
     };
 
+    // ── Penanda positif "Sesuai jadwal sekarang" (header) ──
+    // Shift: pilihan shift+tanggal = hasil detectCurrentShift.
+    // Harian: tanggal = default LHUBB (rollover 21:00 — sebelum 21:00 masih laporan kemarin).
+    const nowSched = mounted ? detectCurrentShift() : null;
+    const harianDefaultDate = (() => {
+        if (!mounted) return '';
+        const fmtY = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const n = new Date();
+        const t = new Date(n);
+        if (n.getHours() * 60 + n.getMinutes() < 21 * 60) t.setDate(t.getDate() - 1);
+        return fmtY(t);
+    })();
+    const onSchedule = inputMode === 'shift'
+        ? !!nowSched && shiftMap[selectedShift] === nowSched.shift && selectedDate === nowSched.date
+        : mounted && selectedDate === harianDefaultDate;
+
     return (
+        <div className="w-full min-h-screen xl:h-full bg-[#F6F6F4]">
         <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 flex flex-col gap-4 xl:h-full xl:overflow-hidden">
             {/* Pop-up peringatan nilai tidak wajar */}
             {warningModal}
@@ -1472,171 +1476,170 @@ function InputShiftPageInner() {
             )}
 
             {/* Header */}
-            <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 shrink-0 mt-4 mb-2 bg-[#101822]/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-5 lg:p-6 shadow-xl relative overflow-hidden">
-                {/* Background Glow based on shift */}
-                <div className={`absolute -inset-[100px] blur-3xl opacity-20 pointer-events-none transition-colors duration-1000 ${
-                    inputMode === 'harian' ? 'bg-emerald-500/30' :
-                    selectedShift === 1 ? 'bg-indigo-500/30' : 
-                    selectedShift === 2 ? 'bg-amber-500/30' : 'bg-orange-500/30'
-                }`}></div>
-
-                <div className="flex flex-col gap-1 z-10 w-full lg:w-auto">
-                    {/* Row 1: Judul + Badge Shift + Tanggal (Date Picker) */}
+            <header className="flex flex-col gap-4 shrink-0 mt-4 mb-2 bg-white border border-[#E6E6E6] rounded-2xl p-5 lg:p-6">
+                <div className="flex flex-col gap-3 w-full">
+                    {/* Row 1: Judul + chip grup/station/admin */}
                     <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
-                            {inputMode === 'shift' ? 'LAPORAN SHIFT' : 'LAPORAN HARIAN'}
+                        <h2 className="text-2xl lg:text-3xl font-semibold tracking-tight text-[#141414]">
+                            {inputMode === 'shift' ? 'Laporan Shift' : 'Laporan Harian'}
                         </h2>
-                        {inputMode === 'shift' ? (
-                            <span className="px-3 py-1 rounded-lg text-sm font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest">
-                                {SHIFT_LABELS[selectedShift].toUpperCase()}
-                            </span>
-                        ) : (
-                            <span className="px-3 py-1 rounded-lg text-sm font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-widest">
-                                REPORT HARIAN
-                            </span>
-                        )}
-                        {/* Group + Tanggal (Date Picker) — tampil untuk shift maupun harian */}
                         {(() => {
                             const group = inputMode === 'harian'
                                 ? getGroupMalamOnDate(selectedDate)
                                 : currentGroup;
                             return (
-                                <>
-                                    <span className={`px-3 py-1 rounded-lg text-sm font-black border uppercase tracking-widest ${
-                                        group === 'A' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
-                                        group === 'B' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                                        group === 'C' ? 'bg-violet-500/20 text-violet-300 border-violet-500/30' :
-                                        group === 'D' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                                        'bg-slate-700/30 text-slate-400 border-slate-600/30'
-                                    }`}>
-                                        {group ? `Group ${group}` : 'Off'}
-                                    </span>
-
-                                    {/* Tanggal (Date Picker) — input native cover seluruh box.
-                                        Pendekatan mobile-first: input transparan menutupi seluruh kotak,
-                                        semua tap masuk ke input → OS otomatis buka native date dialog
-                                        (tidak perlu showPicker yang kurang reliable di mobile).
-                                        Label/text/icon di-pointer-events-none supaya tidak intercept tap.
-                                        Untuk desktop browser yang tidak auto-buka picker, fallback
-                                        onClick di input call showPicker(). */}
-                                    <div
-                                        className={`relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border transition-all duration-200 rounded-xl pl-2.5 pr-7 py-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px] focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 ${isToday ? 'bg-blue-500/5 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-slate-800'}`}
-                                    >
-                                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest leading-tight select-none pointer-events-none">Tanggal</span>
-                                        <div className="relative w-full flex items-center h-5 overflow-hidden">
-                                            <span className="inline sm:hidden text-[11px] font-black text-blue-100 select-none whitespace-nowrap pointer-events-none">
-                                                {formattedDateShort || selectedDate}
-                                            </span>
-                                            <span className="hidden sm:inline text-xs lg:text-sm font-black text-blue-100 select-none whitespace-nowrap pointer-events-none">
-                                                {formattedDate || selectedDate}
-                                            </span>
-                                        </div>
-                                        <span className="material-symbols-outlined text-[18px] text-blue-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
-                                        {/* Input native overlay seluruh box (bukan cuma inner display).
-                                            Transparan tapi tetap menerima tap → mobile buka native picker. */}
-                                        <input
-                                            ref={dateInputRef}
-                                            type="date"
-                                            value={selectedDate}
-                                            onChange={e => setSelectedDate(e.target.value)}
-                                            onClick={() => {
-                                                // Desktop fallback: panggil showPicker biar Chrome/Firefox
-                                                // langsung buka picker tanpa harus klik calendar icon kecil.
-                                                // Mobile sudah auto-open dari OS, tapi showPicker no-op aman.
-                                                const el = dateInputRef.current;
-                                                if (!el) return;
-                                                try { el.showPicker?.(); } catch { /* ignore */ }
-                                            }}
-                                            className="absolute inset-0 opacity-0 w-full h-full bg-transparent border-none outline-none ring-0 appearance-none cursor-pointer [color-scheme:dark]"
-                                        />
-                                        {isToday && inputMode === 'shift' && (
-                                            <span className="absolute -top-1 -right-1 flex h-2 w-2 pointer-events-none">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Station mode (shift & harian): cuma tampilkan badge station di header.
-                                        Picker "Diisi oleh" ada di sidebar masing-masing form (style sama). */}
-                                    {station && (
-                                        <span className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold border uppercase tracking-wider ${
-                                            inputMode === 'harian' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
-                                        }`}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
-                                            {STATION_LABELS[station]}
-                                        </span>
-                                    )}
-                                </>
+                                <span className="px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] text-[#555555]">
+                                    {group ? `Grup ${group}` : 'Off'}
+                                </span>
                             );
                         })()}
+                        {station && (
+                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] text-[#555555]">
+                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
+                                {STATION_LABELS[station]}
+                            </span>
+                        )}
+                        {isAdmin && (
+                            <span title="Admin — bisa isi semua tanggal/shift" className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] bg-[#FAFAFA] text-[#555555]">
+                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>admin_panel_settings</span>
+                                Admin
+                            </span>
+                        )}
                     </div>
-                    {/* Row 2: Supervisor, Waktu, Foreman Boiler, Foreman Turbin. */}
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-mono mt-3">
-                        {/* Supervisor dropdown - Swapped to Row 2 */}
-                        {!station && (
-                            <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight select-none">Supervisor</span>
+
+                    {/* Row 2: 4 tab Malam/Pagi/Sore/Harian + tanggal + penanda jadwal.
+                        Tab menggantikan toggle Shift/Harian + tombol shift lama: Malam/Pagi/Sore
+                        = mode shift + nomor shift, Harian = mode harian. Titik biru kecil =
+                        shift yang sedang berjalan (detectCurrentShift). */}
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                        <div className="grid grid-cols-4 gap-1 p-1 bg-[#F4F4F4] rounded-xl w-full lg:w-auto lg:min-w-[400px]">
+                            {([
+                                { key: 'malam', num: 1, label: 'Malam' },
+                                { key: 'pagi', num: 2, label: 'Pagi' },
+                                { key: 'sore', num: 3, label: 'Sore' },
+                            ] as { key: 'malam' | 'pagi' | 'sore'; num: 1 | 2 | 3; label: string }[]).map(t => {
+                                const active = inputMode === 'shift' && selectedShift === t.num;
+                                const isCurrent = !!nowSched && nowSched.shift === t.key;
+                                return (
+                                    <button
+                                        key={t.key}
+                                        onClick={() => { setInputMode('shift'); setSelectedShift(t.num); }}
+                                        className={`relative px-3 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${active ? 'bg-[#141414] text-white' : 'text-[#555555] hover:bg-white'}`}
+                                    >
+                                        {t.label}
+                                        {isCurrent && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />}
+                                    </button>
+                                );
+                            })}
+                            <button
+                                onClick={() => setInputMode('harian')}
+                                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${inputMode === 'harian' ? 'bg-[#141414] text-white' : 'text-[#555555] hover:bg-white'}`}
+                            >
+                                Harian
+                            </button>
+                        </div>
+
+                        {/* Tanggal (Date Picker) — input native transparan menutupi seluruh kotak:
+                            tap di mana pun buka native date dialog (mobile), showPicker fallback desktop. */}
+                        <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] transition-colors rounded-xl pl-3 pr-8 py-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
+                            <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none pointer-events-none">Tanggal</span>
+                            <div className="relative w-full flex items-center h-5 overflow-hidden">
+                                <span className="inline sm:hidden text-[11px] font-bold text-[#141414] select-none whitespace-nowrap pointer-events-none">
+                                    {formattedDateShort || selectedDate}
+                                </span>
+                                <span className="hidden sm:inline text-xs lg:text-sm font-bold text-[#141414] select-none whitespace-nowrap pointer-events-none">
+                                    {formattedDate || selectedDate}
+                                </span>
+                            </div>
+                            <span className="material-symbols-outlined text-[18px] text-[#8A8A8A] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">calendar_month</span>
+                            <input
+                                ref={dateInputRef}
+                                type="date"
+                                value={selectedDate}
+                                onChange={e => setSelectedDate(e.target.value)}
+                                onClick={() => {
+                                    const el = dateInputRef.current;
+                                    if (!el) return;
+                                    try { el.showPicker?.(); } catch { /* ignore */ }
+                                }}
+                                className="absolute inset-0 opacity-0 w-full h-full bg-transparent border-none outline-none ring-0 appearance-none cursor-pointer [color-scheme:light]"
+                            />
+                        </div>
+
+                        {/* Penanda positif: pilihan shift+tanggal = jadwal yang sedang berjalan */}
+                        {onSchedule && (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4FD7] whitespace-nowrap">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />
+                                Sesuai jadwal sekarang
+                            </span>
+                        )}
+                    </div>
+                    {/* Row 3: Supervisor + Foreman (form penuh, bukan mode station) */}
+                    {!station && (
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
+                                <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none">Supervisor</span>
                                 <div className="relative w-full flex items-center h-5">
                                     <SearchableSelect
+                                        light
                                         value={supervisor}
                                         onChange={setSupervisor}
                                         options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
                                         ariaLabel="Supervisor"
-                                        triggerClassName="text-[11px] sm:text-xs lg:text-sm font-black text-slate-100"
-                                        placeholderClassName="text-slate-400"
+                                        triggerClassName="text-[11px] sm:text-xs lg:text-sm font-bold text-[#141414]"
+                                        placeholderClassName="text-[#AAAAAA]"
                                     />
                                 </div>
-                                <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
+                                <span className="material-symbols-outlined text-[18px] text-[#8A8A8A] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                             </div>
-                        )}
 
-                        {!station && <span className="text-slate-600 hidden sm:inline">|</span>}
-
-                        {inputMode === 'shift' && !station && (
-                            <>
-                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
-                                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest leading-tight select-none">Foreman Boiler</span>
-                                    <div className="relative w-full flex items-center h-5">
-                                        <SearchableSelect
-                                            value={foremanBoiler}
-                                            onChange={setForemanBoiler}
-                                            options={foremanBoilerOptions.map(op => ({ value: op.name, label: op.name }))}
-                                            ariaLabel="Foreman Boiler"
-                                            triggerClassName="text-[11px] sm:text-xs lg:text-sm font-black text-amber-100"
-                                            placeholderClassName="text-slate-400"
-                                        />
+                            {inputMode === 'shift' && (
+                                <>
+                                    <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
+                                        <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none">Foreman Boiler</span>
+                                        <div className="relative w-full flex items-center h-5">
+                                            <SearchableSelect
+                                                light
+                                                value={foremanBoiler}
+                                                onChange={setForemanBoiler}
+                                                options={foremanBoilerOptions.map(op => ({ value: op.name, label: op.name }))}
+                                                ariaLabel="Foreman Boiler"
+                                                triggerClassName="text-[11px] sm:text-xs lg:text-sm font-bold text-[#141414]"
+                                                placeholderClassName="text-[#AAAAAA]"
+                                            />
+                                        </div>
+                                        <span className="material-symbols-outlined text-[18px] text-[#8A8A8A] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                     </div>
-                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
-                                </div>
 
-                                <div className="relative flex flex-col bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl pl-2.5 pr-7 py-1 transition-all duration-200 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
-                                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-tight select-none">Foreman Turbin</span>
-                                    <div className="relative w-full flex items-center h-5">
-                                        <SearchableSelect
-                                            value={foremanTurbin}
-                                            onChange={setForemanTurbin}
-                                            options={foremanTurbinOptions.map(op => ({ value: op.name, label: op.name }))}
-                                            ariaLabel="Foreman Turbin"
-                                            triggerClassName="text-[11px] sm:text-xs lg:text-sm font-black text-indigo-100"
-                                            placeholderClassName="text-slate-400"
-                                        />
+                                    <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
+                                        <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none">Foreman Turbin</span>
+                                        <div className="relative w-full flex items-center h-5">
+                                            <SearchableSelect
+                                                light
+                                                value={foremanTurbin}
+                                                onChange={setForemanTurbin}
+                                                options={foremanTurbinOptions.map(op => ({ value: op.name, label: op.name }))}
+                                                ariaLabel="Foreman Turbin"
+                                                triggerClassName="text-[11px] sm:text-xs lg:text-sm font-bold text-[#141414]"
+                                                placeholderClassName="text-[#AAAAAA]"
+                                            />
+                                        </div>
+                                        <span className="material-symbols-outlined text-[18px] text-[#8A8A8A] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                     </div>
-                                    <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
 
                     {/* Status banner — penting untuk operator pengganti yang akses link lama.
                         HANYA tampil di mode SHIFT — status di sini baca dari shift_reports.
                         Untuk mode HARIAN, banner equivalent ada di dalam InputHarianForm
                         (baca daily_reports.status sendiri biar tidak salah tampil). */}
                     {inputMode === 'shift' && (isReportSubmitted || isLocked) && (
-                        <div className={`mt-3 px-4 py-2.5 rounded-lg border flex items-center gap-2.5 text-sm font-bold ${
+                        <div className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 text-sm font-semibold ${
                             isLocked
-                                ? 'bg-red-500/15 border-red-500/40 text-red-300'
-                                : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                                ? 'bg-red-50 border-red-200 text-red-700'
+                                : 'bg-amber-50 border-amber-200 text-amber-700'
                         }`}>
                             <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
                                 {isLocked ? 'lock' : 'warning'}
@@ -1652,79 +1655,6 @@ function InputShiftPageInner() {
                     )}
                 </div>
 
-                {/* Mode & Shift Controls */}
-                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-[340px]">
-                    {!station && (
-                        <div className="flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 gap-2 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                            <button
-                                onClick={() => setInputMode('shift')}
-                                className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                    ${inputMode === 'shift' 
-                                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.3)]' 
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-sm">schedule</span>
-                                <span>Shift</span>
-                            </button>
-                            <button
-                                onClick={() => setInputMode('harian')}
-                                className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                    ${inputMode === 'harian' 
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]' 
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-sm">today</span>
-                                <span>Harian</span>
-                            </button>
-                        </div>
-                    )}
-                    {/* Station badge — label statis sudah dipindah ke row 1 header */}
-
-                    {/* Admin badge — admin bypass window submit, bisa isi laporan kapan saja */}
-                    {isAdmin && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-300">
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>admin_panel_settings</span>
-                            <span className="text-xs font-bold uppercase tracking-wider">Admin Override — Bisa isi semua tanggal/shift</span>
-                        </div>
-                    )}
-
-                    {inputMode === 'shift' && (
-                        <div className="flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 gap-2 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                            {[
-                                { 
-                                    id: 1, 
-                                    label: 'Malam (06)', 
-                                    icon: 'bedtime', 
-                                    activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.35)] hover:from-indigo-500 hover:to-violet-500' 
-                                },
-                                { 
-                                    id: 2, 
-                                    label: 'Pagi (14)', 
-                                    icon: 'light_mode', 
-                                    activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_14px_rgba(245,158,11,0.35)] hover:from-amber-400 hover:to-yellow-400' 
-                                },
-                                { 
-                                    id: 3, 
-                                    label: 'Sore (22)', 
-                                    icon: 'wb_twilight', 
-                                    activeClass: 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-[0_4px_14px_rgba(234,88,12,0.35)] hover:from-orange-500 hover:to-red-400' 
-                                }
-                            ].map(shift => (
-                                <button
-                                    key={shift.id}
-                                    onClick={() => setSelectedShift(shift.id as 1 | 2 | 3)}
-                                    className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg text-[10px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                        ${selectedShift === shift.id 
-                                            ? shift.activeClass 
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                                >
-                                    <span className="material-symbols-outlined text-sm">{shift.icon}</span>
-                                    <span>{shift.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
             </header>
 
             {inputMode === 'shift' ? (
@@ -1732,20 +1662,20 @@ function InputShiftPageInner() {
                     {/* Left Sidebar */}
                     <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
                         {/* Action Buttons */}
-                        <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
+                        <div className="bg-white border border-[#E6E6E6] rounded-xl p-4 flex flex-col gap-3">
                             <div>
-                                <h3 className="text-white font-bold text-sm mb-1">Menu Laporan</h3>
-                                <p className="text-[11px] text-slate-400 leading-tight">Pilih kategori area untuk mulai input data shift.</p>
+                                <h3 className="text-[#141414] font-semibold text-sm mb-1">Menu Laporan</h3>
+                                <p className="text-[11px] text-[#8A8A8A] leading-tight">Pilih kategori area untuk mulai input data shift.</p>
                             </div>
                             <div className="flex flex-col gap-2 mt-1">
                                 <button
                                     onClick={handleSubmit}
                                     disabled={submitting || isLocked}
                                     title={isBeforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : isPastDeadline ? 'Window submit sudah berakhir' : undefined}
-                                    className={`flex justify-center items-center gap-2 ${isLocked ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting || isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    className={`flex justify-center items-center gap-2 ${isLocked ? 'bg-[#EAEAEA] text-[#9A9A9A] cursor-not-allowed' : 'bg-[#141414] hover:bg-black text-white cursor-pointer'} px-4 py-3 rounded-[10px] text-sm font-semibold transition-colors w-full ${submitting || isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                                 >
                                     <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
-                                    {submitting ? 'Menyimpan...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
+                                    {submitting ? 'Menyimpan...' : isLocked ? 'Terkunci' : 'Simpan Laporan'}
                                 </button>
                                 {/* Publish — aktif kalau semua tab visible centang lengkap DAN report sudah submit.
                                     Admin bypass: bisa klik tanpa nunggu centang lengkap (untuk testing).
@@ -1758,10 +1688,10 @@ function InputShiftPageInner() {
                                             onClick={goPublishShift}
                                             disabled={publishDisabled}
                                             title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
-                                            className={`flex justify-center items-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
+                                            className={`flex justify-center items-center gap-2 bg-white ${publishDisabled ? 'border border-[#E2E2E2] text-[#B5B5B5] cursor-not-allowed' : 'border border-[#141414] text-[#141414] hover:bg-[#141414] hover:text-white cursor-pointer'} px-4 py-3 rounded-[10px] text-sm font-semibold transition-colors w-full`}
                                         >
                                             <span className="material-symbols-outlined text-[20px]">fact_check</span>
-                                            REVIEW / PUBLISH{isAdmin && !allTabsComplete ? ' (Admin)' : ''}
+                                            Review / Publish{isAdmin && !allTabsComplete ? ' (Admin)' : ''}
                                         </button>
                                     );
                                 })()}
@@ -1769,10 +1699,10 @@ function InputShiftPageInner() {
                                 {cameFromPicker && (
                                     <button
                                         onClick={openChangeReport}
-                                        className="flex justify-center items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-lg text-sm font-bold transition-all border border-slate-700/50 w-full"
+                                        className="flex justify-center items-center gap-2 bg-white border border-[#DCDCDC] hover:bg-[#F5F5F5] text-[#555555] px-4 py-3 rounded-[10px] text-sm font-semibold transition-colors w-full cursor-pointer"
                                     >
                                         <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
-                                        GANTI LAPORAN
+                                        Ganti Laporan
                                     </button>
                                 )}
                             </div>
@@ -1780,43 +1710,47 @@ function InputShiftPageInner() {
 
                         {/* Station info + Diisi oleh — mirror style harian sidebar */}
                         {station && (
-                            <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-[#0f1721]/80 border border-slate-700/50 shadow-lg">
+                            <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-white border border-[#E6E6E6]">
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-blue-400" style={{ fontSize: 18 }}>badge</span>
-                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Station</span>
-                                    <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
+                                    <span className="material-symbols-outlined text-[#707070]" style={{ fontSize: 18 }}>badge</span>
+                                    <span className="text-[10px] font-bold text-[#8A8A8A] uppercase tracking-wider">Station</span>
+                                    <span className="text-sm font-bold text-[#141414]">{STATION_LABELS[station]}</span>
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
-                                    <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                    <span className="text-[10px] font-bold text-[#8A8A8A] uppercase tracking-wider">Diisi oleh</span>
+                                    <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg border border-[#DCDCDC] relative pr-5">
                                         <SearchableSelect
+                                            light
                                             value={fillerName}
                                             onChange={setFillerName}
                                             options={operators.map(op => ({ value: op.name, label: `${op.name}${op.group ? ` (Group ${op.group})` : ''}` }))}
                                             ariaLabel="Diisi oleh"
-                                            triggerClassName="text-sm font-bold text-white"
+                                            triggerClassName="text-sm font-bold text-[#141414]"
+                                            placeholderClassName="text-[#AAAAAA]"
                                         />
-                                        <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                        <span className="material-symbols-outlined text-[16px] text-[#8A8A8A] absolute right-1 pointer-events-none">arrow_drop_down</span>
                                     </div>
                                 </div>
                                 {/* Supervisor — WAJIB di station panel (boiler A/B + turbin).
                                     Dikunci kalau laporan sudah punya supervisor → 1 supervisor konsisten. */}
                                 {isPanelStation && (
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Supervisor <span className="text-red-400">*</span></span>
-                                        <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                        <span className="text-[10px] font-bold text-[#8A8A8A] uppercase tracking-wider">Supervisor <span className="text-red-500">*</span></span>
+                                        <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg border border-[#DCDCDC] relative pr-5">
                                             <SearchableSelect
+                                                light
                                                 value={supervisor}
                                                 onChange={setSupervisor}
                                                 options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
                                                 ariaLabel="Supervisor"
-                                                triggerClassName="text-sm font-bold text-white"
+                                                triggerClassName="text-sm font-bold text-[#141414]"
+                                                placeholderClassName="text-[#AAAAAA]"
                                                 disabled={!!report?.supervisor}
                                             />
-                                            <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                            <span className="material-symbols-outlined text-[16px] text-[#8A8A8A] absolute right-1 pointer-events-none">arrow_drop_down</span>
                                         </div>
                                         {!!report?.supervisor && (
-                                            <span className="text-[9px] text-slate-500">Sudah ditetapkan untuk laporan ini.</span>
+                                            <span className="text-[9px] text-[#9A9A9A]">Sudah ditetapkan untuk laporan ini.</span>
                                         )}
                                     </div>
                                 )}
@@ -1824,18 +1758,20 @@ function InputShiftPageInner() {
                                     (turbin_* utk panel_turbin, boiler_* utk panel_boiler*) ke DB+Sheets. */}
                                 {isPanelStation && (
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+                                        <span className="text-[10px] font-bold text-[#8A8A8A] uppercase tracking-wider">
                                             {station === 'panel_turbin' ? 'Foreman Turbin' : 'Foreman Boiler'}
                                         </span>
-                                        <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                        <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg border border-[#DCDCDC] relative pr-5">
                                             <SearchableSelect
+                                                light
                                                 value={station === 'panel_turbin' ? foremanTurbin : foremanBoiler}
                                                 onChange={station === 'panel_turbin' ? setForemanTurbin : setForemanBoiler}
                                                 options={(station === 'panel_turbin' ? foremanTurbinOptions : foremanBoilerOptions).map(op => ({ value: op.name, label: op.name }))}
                                                 ariaLabel={station === 'panel_turbin' ? 'Foreman Turbin' : 'Foreman Boiler'}
-                                                triggerClassName="text-sm font-bold text-white"
+                                                triggerClassName="text-sm font-bold text-[#141414]"
+                                                placeholderClassName="text-[#AAAAAA]"
                                             />
-                                            <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                            <span className="material-symbols-outlined text-[16px] text-[#8A8A8A] absolute right-1 pointer-events-none">arrow_drop_down</span>
                                         </div>
                                     </div>
                                 )}
@@ -1843,23 +1779,22 @@ function InputShiftPageInner() {
                         )}
 
                         {/* Desktop Tab List */}
-                        <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg hidden lg:flex flex-col gap-1">
+                        <div className="bg-white border border-[#E6E6E6] rounded-xl p-2 hidden lg:flex flex-col gap-1">
                             {visibleTabs.map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 const isComplete = isTabLengkap(tab.id);
-                                const styles = TAB_STYLES[tab.colorClass];
                                 return (
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id as TabId)}
-                                        className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? styles.active : styles.inactive}`}
+                                        className={`w-full text-left px-4 py-3 rounded-[10px] text-sm flex items-center gap-3 transition-colors cursor-pointer ${isActive ? 'bg-[#141414] text-white font-semibold' : 'text-[#555555] hover:bg-[#F2F2F2] font-medium'}`}
                                     >
-                                        <span className={`material-symbols-outlined text-[20px] ${isActive ? styles.icon : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
+                                        <span className={`material-symbols-outlined text-[20px] ${isActive ? 'text-white' : 'text-[#8A8A8A]'}`}>
                                             {tab.icon}
                                         </span>
                                         <span className="flex-1">{tab.label}</span>
                                         {isComplete && (
-                                            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 mr-1 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                                            <div className={`flex items-center justify-center w-5 h-5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-emerald-50 border border-emerald-200 text-emerald-600'}`}>
                                                 <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                                             </div>
                                         )}
@@ -1870,24 +1805,23 @@ function InputShiftPageInner() {
                         </div>
 
                         {/* Mobile Tab List */}
-                        <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg lg:hidden overflow-x-auto">
+                        <div className="bg-white border border-[#E6E6E6] rounded-xl p-2 lg:hidden overflow-x-auto">
                             <div className="flex gap-2 w-max pb-1">
                                 {visibleTabs.map((tab) => {
                                     const isActive = activeTab === tab.id;
                                     const isComplete = isTabLengkap(tab.id);
-                                    const styles = TAB_STYLES[tab.colorClass];
                                     return (
                                         <button
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id as TabId)}
-                                            className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? styles.active : styles.inactive}`}
+                                            className={`px-4 py-2.5 rounded-[10px] text-sm flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${isActive ? 'bg-[#141414] text-white font-semibold' : 'text-[#555555] hover:bg-[#F2F2F2] font-medium'}`}
                                         >
-                                            <span className={`material-symbols-outlined text-[18px] ${isActive ? styles.icon : 'opacity-70'}`}>
+                                            <span className={`material-symbols-outlined text-[18px] ${isActive ? 'text-white' : 'text-[#8A8A8A]'}`}>
                                                 {tab.icon}
                                             </span>
                                             <span>{tab.label}</span>
                                             {isComplete && (
-                                                <div className="flex items-center justify-center w-4 h-4 ml-1 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400">
+                                                <div className={`flex items-center justify-center w-4 h-4 ml-1 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-emerald-50 border border-emerald-200 text-emerald-600'}`}>
                                                     <span className="material-symbols-outlined text-[10px] font-bold">check</span>
                                                 </div>
                                             )}
@@ -1901,28 +1835,27 @@ function InputShiftPageInner() {
                     {/* Tab Content Area */}
                     <div className="flex-1 min-w-0 flex flex-col gap-4">
                         {/* Active Tab Header */}
-                        <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
+                        <div className="bg-white border border-[#E6E6E6] rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 overflow-hidden">
                             {(() => {
                                 const tab = visibleTabs.find(t => t.id === activeTab);
-                                const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
                                 const isBoilerTab = activeTab === 'Boiler A' || activeTab === 'Boiler B';
                                 const currentBoilerState = activeTab === 'Boiler A' ? boilerA : boilerB;
                                 const setCurrentBoiler = activeTab === 'Boiler A' ? setBoilerA : setBoilerB;
                                 const boilerStatus = (currentBoilerState.status_boiler as string) ?? '';
                                 return (
                                     <>
-                                        <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
-                                            <span className={`material-symbols-outlined text-[22px] sm:text-[30px] ${styles.icon}`}>{tab?.icon}</span>
+                                        <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-[#F4F4F4] border border-[#E6E6E6] shrink-0">
+                                            <span className="material-symbols-outlined text-[22px] sm:text-[30px] text-[#444444]">{tab?.icon}</span>
                                         </div>
-                                        <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide shrink-0">{tab?.label}</h2>
+                                        <h2 className="text-[#141414] font-semibold text-xl sm:text-3xl tracking-tight shrink-0">{tab?.label}</h2>
                                         {isBoilerTab && (() => {
-                                            const boilerBorder = boilerStatus === 'running' ? 'border-emerald-500/50' : boilerStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
-                                            const boilerDot = boilerStatus === 'running' ? 'bg-emerald-500' : boilerStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
+                                            const boilerBorder = boilerStatus === 'running' ? 'border-emerald-300' : boilerStatus === 'shutdown' ? 'border-red-300' : 'border-[#DCDCDC]';
+                                            const boilerDot = boilerStatus === 'running' ? 'bg-emerald-500' : boilerStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-400';
                                             return (
-                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${boilerBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-white border ${boilerBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
                                                     <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${boilerDot} shrink-0`} />
                                                     <select
-                                                        className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                        className="bg-transparent appearance-none text-base sm:text-xl text-[#141414] font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
                                                         value={boilerStatus}
                                                         onChange={e => {
                                                             const v = e.target.value === '' ? null : e.target.value;
@@ -1930,9 +1863,9 @@ function InputShiftPageInner() {
                                                             setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
                                                         }}
                                                     >
-                                                        <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                                                        <option value="running" className="bg-[#101822] text-white">Running</option>
-                                                        <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                        <option value="" className="text-[#9A9A9A]">Status...</option>
+                                                        <option value="running">Running</option>
+                                                        <option value="shutdown">Shutdown</option>
                                                     </select>
                                                 </div>
                                             );
@@ -1941,13 +1874,13 @@ function InputShiftPageInner() {
                                             (kecuali kartu deaerator + raw totalizer) dan gen output di tab Generator. */}
                                         {activeTab === 'Turbin' && (() => {
                                             const turbinStatus = (turbin.status_turbin as string) ?? '';
-                                            const tBorder = turbinStatus === 'running' ? 'border-emerald-500/50' : turbinStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
-                                            const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
+                                            const tBorder = turbinStatus === 'running' ? 'border-emerald-300' : turbinStatus === 'shutdown' ? 'border-red-300' : 'border-[#DCDCDC]';
+                                            const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-400';
                                             return (
-                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-white border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
                                                     <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
                                                     <select
-                                                        className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                        className="bg-transparent appearance-none text-base sm:text-xl text-[#141414] font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
                                                         value={turbinStatus}
                                                         onChange={e => {
                                                             const v = e.target.value === '' ? null : e.target.value;
@@ -1955,9 +1888,9 @@ function InputShiftPageInner() {
                                                             setTurbin(prev => ({ ...prev, status_turbin: v }));
                                                         }}
                                                     >
-                                                        <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                                                        <option value="running" className="bg-[#101822] text-white">Running</option>
-                                                        <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                        <option value="" className="text-[#9A9A9A]">Status...</option>
+                                                        <option value="running">Running</option>
+                                                        <option value="shutdown">Shutdown</option>
                                                     </select>
                                                 </div>
                                             );
@@ -1969,30 +1902,42 @@ function InputShiftPageInner() {
 
                         {/* Loading Overlay — tampil saat data sedang di-fetch dari Supabase */}
                         {(loading || !initialDataReady) ? (
-                            <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl">
-                                <div className="w-12 h-12 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin shadow-[0_0_12px_rgba(16,185,129,0.3)]"></div>
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[400px] bg-white border border-[#E6E6E6] rounded-xl">
+                                <div className="w-12 h-12 border-4 border-[#E8E8E8] border-t-[#141414] rounded-full animate-spin"></div>
                                 <div className="text-center">
-                                    <h3 className="text-white font-bold text-base mb-1">Memuat data dari Supabase</h3>
-                                    <p className="text-slate-400 text-sm">Mengambil data laporan shift...</p>
+                                    <h3 className="text-[#141414] font-semibold text-base mb-1">Memuat data dari Supabase</h3>
+                                    <p className="text-[#8A8A8A] text-sm">Mengambil data laporan shift...</p>
                                 </div>
                             </div>
                         ) : (
                             <>
                                 {/* Empty state — station tidak punya tab di mode shift (mis. lapangan_turbin) */}
                                 {visibleTabs.length === 0 && station && (
-                                    <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl text-center px-6">
-                                        <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 56 }}>info</span>
-                                        <h3 className="text-white font-bold text-base">Station <span className="text-blue-400">{STATION_LABELS[station]}</span> tidak punya tab di laporan shift.</h3>
-                                        <p className="text-slate-400 text-sm max-w-md">Station ini hanya mengisi data di laporan harian. Buka link yang sesuai dari grup WA.</p>
+                                    <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[400px] bg-white border border-[#E6E6E6] rounded-xl text-center px-6">
+                                        <span className="material-symbols-outlined text-[#C5C5C5]" style={{ fontSize: 56 }}>info</span>
+                                        <h3 className="text-[#141414] font-semibold text-base">Station <span className="font-bold">{STATION_LABELS[station]}</span> tidak punya tab di laporan shift.</h3>
+                                        <p className="text-[#8A8A8A] text-sm max-w-md">Station ini hanya mengisi data di laporan harian. Buka link yang sesuai dari grup WA.</p>
                                     </div>
                                 )}
                                 {/* Shift Tab Content. Pada lebar < xl, gunakan layout block normal (auto height
                                     per child) supaya form tidak collapse ke 0 height karena flex-1 + min-h-0.
                                     Pada xl+, switch ke flex-row supaya form & sidebar summary sejajar. */}
-                                {visibleTabs.length > 0 && (
-                                <div className="flex flex-col xl:flex-row gap-6 xl:flex-1 xl:min-h-0 pb-6 w-full max-w-full">
-                                    {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
-                                    {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
+                                {visibleTabs.length > 0 && (() => {
+                                    // Tab contoh restyle terang = Boiler A/B. Tab lain masih tampilan
+                                    // lama (dark) → dibungkus panel gelap + chip penanda supaya jelas
+                                    // saat review bahwa sisanya menyusul.
+                                    const isLightTab = activeTab === 'Boiler A' || activeTab === 'Boiler B';
+                                    return (
+                                <div className="flex flex-col gap-2 xl:flex-1 xl:min-h-0 pb-6 w-full max-w-full">
+                                    {!isLightTab && (
+                                        <span className="self-start inline-flex items-center gap-1.5 rounded-full border border-[#E2E2E2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#8A8A8A]">
+                                            <span className="material-symbols-outlined text-[14px]">brush</span>
+                                            Tampilan tab ini belum di-restyle
+                                        </span>
+                                    )}
+                                <div className={`flex flex-col xl:flex-row gap-6 xl:flex-1 xl:min-h-0 w-full max-w-full ${!isLightTab ? 'rounded-2xl bg-[#101822] border border-slate-800 p-3 sm:p-4' : ''}`}>
+                                    {activeTab === 'Boiler A' && <FormTheme.Provider value="light"><TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} /></FormTheme.Provider>}
+                                    {activeTab === 'Boiler B' && <FormTheme.Provider value="light"><TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} /></FormTheme.Provider>}
                                     {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet as number | null} prevTotalizerCondensate={prevTurbin.totalizer_condensate as number | null} />}
                                     {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} isTurbinShutdown={turbin.status_turbin === 'shutdown'} />}
                                     {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
@@ -2002,13 +1947,25 @@ function InputShiftPageInner() {
                                     {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} />}
                                     {activeTab === 'Catatan Operasional' && <TabCatatanOperasional catatan={catatan} onCatatanChange={setCatatan} stationCatatan={report?.station_catatan as Record<string, string> | null | undefined} currentStation={station} solarEntries={solarEntries} outSolarEntries={outSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} ashEntries={ashEntries} savedAshEntries={savedAshEntries} coalBunker={coalBunker} />}
                                 </div>
-                                )}
+                                </div>
+                                    );
+                                })()}
                             </>
                         )}
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={cameFromPicker ? openChangeReport : undefined} />
+                <div className="flex flex-col gap-2 pb-6">
+                    {/* Form harian masih tampilan lama (dark) — dibungkus panel gelap + chip
+                        penanda; restyle menyusul setelah desain disetujui. */}
+                    <span className="self-start inline-flex items-center gap-1.5 rounded-full border border-[#E2E2E2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#8A8A8A]">
+                        <span className="material-symbols-outlined text-[14px]">brush</span>
+                        Tampilan laporan harian belum di-restyle
+                    </span>
+                    <div className="rounded-2xl bg-[#101822] border border-slate-800 p-3 sm:p-4">
+                        <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={cameFromPicker ? openChangeReport : undefined} />
+                    </div>
+                </div>
             )}
             {/* Dialog "Pilih Laporan" — operator yang buka tanpa station (dari app) */}
             {stationPickerOpen && (
@@ -2016,11 +1973,12 @@ function InputShiftPageInner() {
                     initialMode={inputMode}
                     initialDate={selectedDate}
                     initialShift={selectedShift}
-                    allowAllTabs={true}
+                    allowAllTabs={isAdmin}
                     onConfirm={handleConfirmSetup}
                     onCancel={() => { if (pickerManual || station) setStationPickerOpen(false); else router.push('/dashboard'); }}
                 />
             )}
+        </div>
         </div>
     );
 }

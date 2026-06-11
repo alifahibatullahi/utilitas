@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
     STATION_ORDER,
     STATION_LABELS,
     STATION_SHIFT_TABS,
     STATION_HARIAN_TABS,
+    detectCurrentShift,
+    getGroupForShift,
+    getGroupShiftOnDate,
     type OperatorStation,
 } from '@/lib/constants';
 
@@ -13,125 +17,70 @@ export interface StationSetupSelection {
     mode: 'shift' | 'harian';
     date: string;        // YYYY-MM-DD
     shift: 1 | 2 | 3;    // 1=malam, 2=pagi, 3=sore (hanya relevan utk mode shift)
-    station: OperatorStation | 'all';  // 'all' = semua tab (form penuh, foreman/supervisor)
+    station: OperatorStation | 'all';  // 'all' = semua tab (form penuh)
 }
 
 interface StationPickerModalProps {
     initialMode: 'shift' | 'harian';
     initialDate: string;
     initialShift: 1 | 2 | 3;
-    /** Tampilkan opsi "Semua Tab" (form penuh) — tersedia untuk semua user. */
+    /** Tampilkan opsi "Review laporan" (form penuh) — khusus admin. */
     allowAllTabs?: boolean;
     onConfirm: (sel: StationSetupSelection) => void;
     onCancel: () => void;
 }
 
-const SHIFTS: { n: 1 | 2 | 3; label: string }[] = [
-    { n: 1, label: 'Malam' },
-    { n: 2, label: 'Pagi' },
-    { n: 3, label: 'Sore' },
+// 4 pilihan sejajar: 3 shift + harian (tidak ada lagi 2 langkah Shift→Malam/Pagi/Sore).
+type PickerOption = 'malam' | 'pagi' | 'sore' | 'harian';
+
+const OPTIONS: { id: PickerOption; label: string; window: string }[] = [
+    { id: 'malam', label: 'Malam', window: '23.00–07.00' },
+    { id: 'pagi', label: 'Pagi', window: '07.00–15.00' },
+    { id: 'sore', label: 'Sore', window: '15.00–23.00' },
+    { id: 'harian', label: 'Harian', window: 'LHUBB · 1 hari' },
 ];
 
-// Custom icons and styling themes for each shift
-const SHIFT_THEMES = {
-    1: {
-        label: 'Malam',
-        icon: 'bedtime',
-        activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 border-indigo-500/40',
-        inactiveClass: 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50'
-    },
-    2: {
-        label: 'Pagi',
-        icon: 'light_mode',
-        activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-md shadow-amber-500/20 border-amber-400/40',
-        inactiveClass: 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50'
-    },
-    3: {
-        label: 'Sore',
-        icon: 'wb_twilight',
-        activeClass: 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-md shadow-orange-500/20 border-orange-500/40',
-        inactiveClass: 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50'
-    }
-};
+const SHIFT_NUM: Record<Exclude<PickerOption, 'harian'>, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
 
-// Custom icons and color themes for each operator station
-const STATION_THEMES: Record<
-    OperatorStation,
-    { icon: string; color: string; borderHover: string; glow: string; textActive: string; iconBg: string }
-> = {
-    panel_boiler: {
-        icon: 'local_fire_department',
-        color: 'text-rose-400',
-        borderHover: 'hover:border-rose-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(244,63,94,0.15)]',
-        textActive: 'text-rose-400',
-        iconBg: 'bg-rose-500/10',
-    },
-    panel_boiler_a: {
-        icon: 'local_fire_department',
-        color: 'text-rose-400',
-        borderHover: 'hover:border-rose-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(244,63,94,0.15)]',
-        textActive: 'text-rose-400',
-        iconBg: 'bg-rose-500/10',
-    },
-    panel_boiler_b: {
-        icon: 'local_fire_department',
-        color: 'text-orange-400',
-        borderHover: 'hover:border-orange-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]',
-        textActive: 'text-orange-400',
-        iconBg: 'bg-orange-500/10',
-    },
-    panel_turbin: {
-        icon: 'toys_fan',
-        color: 'text-cyan-400',
-        borderHover: 'hover:border-cyan-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]',
-        textActive: 'text-cyan-400',
-        iconBg: 'bg-cyan-500/10',
-    },
-    handling: {
-        icon: 'precision_manufacturing',
-        color: 'text-amber-400',
-        borderHover: 'hover:border-amber-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(251,191,36,0.15)]',
-        textActive: 'text-amber-400',
-        iconBg: 'bg-amber-500/10',
-    },
-    esp: {
-        icon: 'electric_bolt',
-        color: 'text-purple-400',
-        borderHover: 'hover:border-purple-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(192,132,252,0.15)]',
-        textActive: 'text-purple-400',
-        iconBg: 'bg-purple-500/10',
-    },
-    bunker: {
-        icon: 'layers',
-        color: 'text-blue-400',
-        borderHover: 'hover:border-blue-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(96,165,250,0.15)]',
-        textActive: 'text-blue-400',
-        iconBg: 'bg-blue-500/10',
-    },
-    lapangan_boiler: {
-        icon: 'science',
-        color: 'text-teal-400',
-        borderHover: 'hover:border-teal-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(45,212,191,0.15)]',
-        textActive: 'text-teal-400',
-        iconBg: 'bg-teal-500/10',
-    },
-    lapangan_turbin: {
-        icon: 'engineering',
-        color: 'text-emerald-400',
-        borderHover: 'hover:border-emerald-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(52,211,153,0.15)]',
-        textActive: 'text-emerald-400',
-        iconBg: 'bg-emerald-500/10',
-    },
-};
+const LAST_STATION_KEY = 'powerops_last_station';
+
+const fmtYmd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Tanggal default per opsi — user tidak perlu mengetik tanggal sendiri:
+// - pagi/sore: hari ini
+// - malam: konvensi ENDING — mulai 23:00 → laporan tercatat tanggal selesai (besok)
+// - harian: LHUBB rollover 21:00 — sebelum 21:00 masih laporan kemarin
+function defaultDateFor(option: PickerOption): string {
+    const now = new Date();
+    if (option === 'harian') {
+        const t = new Date(now);
+        if (now.getHours() * 60 + now.getMinutes() < 21 * 60) t.setDate(t.getDate() - 1);
+        return fmtYmd(t);
+    }
+    if (option === 'malam' && now.getHours() >= 23) {
+        const t = new Date(now);
+        t.setDate(t.getDate() + 1);
+        return fmtYmd(t);
+    }
+    return fmtYmd(now);
+}
+
+// LHUBB diisi grup yang dinas malam mulai 23:00 hari D (working_start = date).
+function groupMalamOnDate(dateStr: string): string {
+    for (const g of ['A', 'B', 'C', 'D'] as const) {
+        if (getGroupShiftOnDate(g, dateStr) === 'M') return g;
+    }
+    return '';
+}
+
+function StepLabel({ n, label }: { n: string; label: string }) {
+    return (
+        <div className="flex items-baseline gap-2">
+            <span className="font-mono text-xs font-semibold text-[#1D4FD7]">{n}</span>
+            <span className="text-xs font-medium text-[#707070]">{label}</span>
+        </div>
+    );
+}
 
 export default function StationPickerModal({
     initialMode,
@@ -141,203 +90,226 @@ export default function StationPickerModal({
     onConfirm,
     onCancel,
 }: StationPickerModalProps) {
-    const [mode, setMode] = useState<'shift' | 'harian'>(initialMode);
+    const [option, setOption] = useState<PickerOption>(
+        initialMode === 'harian' ? 'harian' : initialShift === 1 ? 'malam' : initialShift === 2 ? 'pagi' : 'sore'
+    );
     const [date, setDate] = useState(initialDate);
-    const [shift, setShift] = useState<1 | 2 | 3>(initialShift);
+    const [now, setNow] = useState(() => new Date());
+    const [lastStation, setLastStation] = useState<string | null>(null);
 
-    const tabsMap = mode === 'shift' ? STATION_SHIFT_TABS : STATION_HARIAN_TABS;
+    // Jam header + deteksi shift berjalan di-refresh tiap 30 detik.
+    useEffect(() => {
+        const t = setInterval(() => setNow(new Date()), 30_000);
+        return () => clearInterval(t);
+    }, []);
+
+    useEffect(() => {
+        try { setLastStation(localStorage.getItem(LAST_STATION_KEY)); } catch { /* ignore */ }
+    }, []);
+
+    const current = useMemo(() => detectCurrentShift(), [now]);
+
+    const selectOption = (o: PickerOption) => {
+        setOption(o);
+        setDate(defaultDateFor(o));
+    };
+
+    // Penanda positif: pilihan persis = jadwal yang sedang berjalan.
+    const isOnSchedule = option === 'harian'
+        ? date === defaultDateFor('harian')
+        : option === current.shift && date === current.date;
+
+    const backToNow = () => {
+        if (option === 'harian') {
+            setDate(defaultDateFor('harian'));
+        } else {
+            setOption(current.shift);
+            setDate(current.date);
+        }
+    };
+
+    const dutyGroup = option === 'harian' ? groupMalamOnDate(date) : getGroupForShift(date, option);
+
+    const tabsMap = option === 'harian' ? STATION_HARIAN_TABS : STATION_SHIFT_TABS;
     const stations = STATION_ORDER.filter((s) => tabsMap[s].length > 0);
 
-    // Tampilan tanggal format Indonesia
+    const confirm = (station: OperatorStation | 'all') => {
+        if (station !== 'all') {
+            try { localStorage.setItem(LAST_STATION_KEY, station); } catch { /* ignore */ }
+        }
+        onConfirm({
+            mode: option === 'harian' ? 'harian' : 'shift',
+            date,
+            shift: option === 'harian' ? SHIFT_NUM[current.shift] : SHIFT_NUM[option],
+            station,
+        });
+    };
+
     const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(date)
         ? new Date(date + 'T00:00:00').toLocaleDateString('id-ID', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
         })
         : '';
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
-            <div className="relative w-full max-w-4xl rounded-3xl border border-slate-700 bg-slate-900 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 duration-200 ease-out">
-                {/* Close Button on top right */}
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-white hover:bg-slate-800/80 p-1.5 rounded-full transition-colors z-20 cursor-pointer flex items-center justify-center"
-                    aria-label="Tutup"
-                >
-                    <span className="material-symbols-outlined text-lg">close</span>
-                </button>
+    const headerDate = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+    const headerClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-                {/* Ambient glow decoration */}
-                <div className="absolute -top-[20%] -right-[20%] w-72 h-72 rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
-                <div className="absolute -bottom-[20%] -left-[20%] w-72 h-72 rounded-full bg-emerald-500/5 blur-[80px] pointer-events-none" />
+    // Portal ke document.body: lepas dari <main> AppShell yang di-zoom 1.25 pada
+    // monitor besar — tanpa ini, fixed inset-0 tidak menutupi viewport penuh.
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[100] bg-white overflow-y-auto overscroll-contain animate-in fade-in duration-150">
+            <div className="mx-auto w-full max-w-md px-5 pt-6 pb-10 sm:pt-10">
 
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-800 relative z-10">
-                    <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-slate-400 tracking-tight flex items-center gap-2">
-                        <span className="material-symbols-outlined text-blue-400">assignment</span>
-                        Pilih Laporan
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-1 font-medium leading-relaxed pr-6">
-                        Tentukan jenis laporan, tanggal, lalu pilih station untuk mulai mengisi data.
-                    </p>
-                </div>
-
-                {/* Content Body */}
-                <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                    
-                    {/* Step 1: Jenis Laporan */}
-                    <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">1. Jenis Laporan</label>
-                        <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-850 gap-1.5 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                            <button
-                                type="button"
-                                onClick={() => setMode('shift')}
-                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                    ${mode === 'shift'
-                                        ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/20'
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-sm">schedule</span>
-                                <span>Shift</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMode('harian')}
-                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                    ${mode === 'harian'
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/20'
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-sm">today</span>
-                                <span>Harian</span>
-                            </button>
-                        </div>
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-[22px] sm:text-2xl font-semibold tracking-tight text-[#141414]">Input laporan</h1>
+                        <p className="mt-0.5 text-sm text-[#707070]">{headerDate} · {headerClock} WIB</p>
                     </div>
-
-                    {/* Step 2: Tanggal */}
-                    <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">2. Tanggal</label>
-                        {/* Native date input transparan di atas; tampilan field memakai
-                            format Indonesia (input native ikut locale browser, jadi disembunyikan). */}
-                        <div className="relative group">
-                            <input
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                onClick={(e) => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* noop */ } }}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 [color-scheme:dark]"
-                                aria-label="Pilih tanggal"
-                            />
-                            <div className="pointer-events-none w-full rounded-2xl border border-slate-800 bg-slate-900/60 group-hover:bg-slate-900/80 px-4 py-3 flex items-center justify-between transition-all">
-                                <span className="flex items-center gap-2 text-white text-sm font-semibold">
-                                    <span className="material-symbols-outlined text-[18px] text-cyan-400">event</span>
-                                    {dateLabel || 'Pilih tanggal'}
-                                </span>
-                                <span className="material-symbols-outlined text-slate-400 text-[18px]">calendar_today</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Step 3: Shift (Hanya jika mode shift) */}
-                    {mode === 'shift' && (
-                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">3. Shift</label>
-                            <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-850 gap-1.5 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                                {SHIFTS.map((s) => {
-                                    const theme = SHIFT_THEMES[s.n];
-                                    const active = shift === s.n;
-                                    return (
-                                        <button
-                                            key={s.n}
-                                            type="button"
-                                            onClick={() => setShift(s.n)}
-                                            className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] border border-transparent
-                                                ${active ? theme.activeClass : theme.inactiveClass}`}
-                                        >
-                                            <span className="material-symbols-outlined text-sm">{theme.icon}</span>
-                                            <span>{theme.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 4: Station Grid */}
-                    <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            {mode === 'shift' ? '4. Pilih Station' : '3. Pilih Station'}
-                        </label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                            {stations.map((s) => {
-                                const theme = STATION_THEMES[s] || {
-                                    icon: 'tune',
-                                    color: 'text-blue-400',
-                                    borderHover: 'hover:border-blue-500/50',
-                                    glow: 'hover:shadow-[0_0_15px_rgba(59,130,246,0.15)]',
-                                    textActive: 'text-blue-400',
-                                    iconBg: 'bg-blue-500/10'
-                                };
-                                const activeTabs = tabsMap[s];
-
-                                return (
-                                    <button
-                                        key={s}
-                                        type="button"
-                                        onClick={() => onConfirm({ mode, date, shift, station: s })}
-                                        className={`group flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 hover:bg-slate-850/60 p-3 text-left text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${theme.borderHover} ${theme.glow}`}
-                                    >
-                                        <div className={`flex items-center justify-center p-2 rounded-xl ${theme.iconBg} ${theme.color} transition-all duration-300 group-hover:scale-110 shrink-0`}>
-                                            <span className="material-symbols-outlined text-lg">{theme.icon}</span>
-                                        </div>
-                                        <div className="min-w-0 flex-1 self-center">
-                                            <h4 className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors tracking-wide leading-tight">
-                                                {STATION_LABELS[s]}
-                                            </h4>
-                                            {activeTabs.length > 0 ? (
-                                                <p className="text-[10px] text-slate-500 group-hover:text-slate-400/80 font-medium tracking-wide mt-0.5 truncate transition-colors">
-                                                    {activeTabs.join(' • ')}
-                                                </p>
-                                            ) : (
-                                                <p className="text-[9px] text-slate-600 font-medium italic mt-0.5">
-                                                    Tidak ada input
-                                                </p>
-                                            )}
-                                        </div>
-                                        <span className="material-symbols-outlined text-slate-600 group-hover:text-slate-400 text-xs self-center transition-colors shrink-0">
-                                            arrow_forward_ios
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Opsi form penuh — hanya foreman/supervisor/admin */}
-                        {allowAllTabs && (
-                            <button
-                                type="button"
-                                onClick={() => onConfirm({ mode, date, shift, station: 'all' })}
-                                className="mt-3 w-full flex items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-3 text-sm font-bold text-indigo-200 transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
-                            >
-                                <span className="material-symbols-outlined text-lg">grid_view</span>
-                                Review laporan
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 py-4 bg-slate-950/20 border-t border-slate-850 flex justify-end gap-3 relative z-10">
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="text-xs text-slate-400 hover:text-white font-bold px-4 py-2 rounded-xl hover:bg-slate-800/60 transition-all duration-200 cursor-pointer"
+                        aria-label="Tutup"
+                        className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E2E2E2] text-[#707070] transition-colors hover:bg-[#F5F5F5] hover:text-[#141414] cursor-pointer"
                     >
-                        Batal
+                        <span className="material-symbols-outlined text-[20px]">close</span>
                     </button>
                 </div>
+
+                {/* 01 — Pilih shift */}
+                <div className="mt-7">
+                    <StepLabel n="01" label="Pilih shift" />
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                        {OPTIONS.map((o) => {
+                            const active = option === o.id;
+                            const isCurrent = o.id !== 'harian' && current.shift === o.id;
+                            return (
+                                <button
+                                    key={o.id}
+                                    type="button"
+                                    onClick={() => selectOption(o.id)}
+                                    className={`relative rounded-[10px] border p-3 text-left transition-colors cursor-pointer ${
+                                        active
+                                            ? 'border-[#141414] bg-[#141414]'
+                                            : 'border-[#E2E2E2] bg-white hover:border-[#BDBDBD]'
+                                    }`}
+                                >
+                                    <span className={`block text-[15px] font-semibold ${active ? 'text-white' : 'text-[#141414]'}`}>
+                                        {o.label}
+                                    </span>
+                                    <span className={`mt-0.5 block text-xs ${active ? 'text-[#A8A8A8]' : 'text-[#8A8A8A]'}`}>
+                                        {o.window}
+                                    </span>
+                                    {isCurrent && (
+                                        <span className={`absolute right-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                            active ? 'bg-white text-[#141414]' : 'bg-[#EFF4FE] text-[#1D4FD7]'
+                                        }`}>
+                                            <span className="h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />
+                                            Sekarang
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* 02 — Tanggal */}
+                <div className="mt-7">
+                    <StepLabel n="02" label="Tanggal" />
+                    <div className="relative mt-3">
+                        <input
+                            type="date"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            onClick={(e) => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* noop */ } }}
+                            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 [color-scheme:light]"
+                            aria-label="Pilih tanggal"
+                        />
+                        <div className="pointer-events-none flex w-full items-center justify-between rounded-[10px] border border-[#E2E2E2] bg-white px-4 py-3">
+                            <span className="text-[15px] font-semibold text-[#141414]">{dateLabel || 'Pilih tanggal'}</span>
+                            <span className="material-symbols-outlined text-[20px] text-[#8A8A8A]">calendar_month</span>
+                        </div>
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                        {dutyGroup && (
+                            <span className="rounded-full border border-[#E2E2E2] px-2.5 py-0.5 text-xs font-semibold text-[#555555]">
+                                Grup {dutyGroup}
+                            </span>
+                        )}
+                        {isOnSchedule ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4FD7]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />
+                                Sesuai jadwal sekarang
+                            </span>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={backToNow}
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-[#1D4FD7] underline underline-offset-2 cursor-pointer"
+                            >
+                                <span className="material-symbols-outlined text-[14px]">history</span>
+                                Kembali ke sekarang
+                            </button>
+                        )}
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-[#9A9A9A]">
+                        Tanggal terisi otomatis mengikuti shift — ubah hanya jika mengisi laporan lama.
+                    </p>
+                </div>
+
+                {/* 03 — Pilih station */}
+                <div className="mt-7">
+                    <StepLabel n="03" label="Pilih station" />
+                    <div className="mt-3 overflow-hidden rounded-xl border border-[#E8E8E8]">
+                        {stations.map((s, i) => (
+                            <button
+                                key={s}
+                                type="button"
+                                onClick={() => confirm(s)}
+                                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFA] cursor-pointer ${i > 0 ? 'border-t border-[#F0F0F0]' : ''}`}
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[15px] font-semibold text-[#141414]">{STATION_LABELS[s]}</span>
+                                        {lastStation === s && (
+                                            <span className="rounded-full border border-[#C9D8FB] bg-[#F4F8FE] px-2 py-px text-[11px] font-semibold text-[#1D4FD7]">
+                                                Terakhir
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="mt-0.5 truncate text-xs text-[#8A8A8A]">{tabsMap[s].join(' · ')}</p>
+                                </div>
+                                <span className="material-symbols-outlined shrink-0 text-[18px] text-[#B5B5B5]">chevron_right</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Form penuh (semua tab) — khusus admin */}
+                    {allowAllTabs && (
+                        <button
+                            type="button"
+                            onClick={() => confirm('all')}
+                            className="mt-3 flex w-full items-center gap-2.5 rounded-xl border border-dashed border-[#D5D5D5] px-4 py-3 text-left transition-colors hover:bg-[#FAFAFA] cursor-pointer"
+                        >
+                            <span className="material-symbols-outlined text-[18px] text-[#707070]">lock_open</span>
+                            <span className="flex-1 text-sm font-semibold text-[#555555]">Review laporan — semua tab</span>
+                            <span className="rounded-full border border-[#E2E2E2] px-2 py-0.5 text-[11px] font-semibold text-[#707070]">Admin</span>
+                        </button>
+                    )}
+                </div>
+
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="mt-8 w-full rounded-[10px] border border-[#E2E2E2] py-2.5 text-sm font-semibold text-[#707070] transition-colors hover:bg-[#F5F5F5] cursor-pointer"
+                >
+                    Batal
+                </button>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

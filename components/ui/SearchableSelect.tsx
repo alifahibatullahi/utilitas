@@ -22,6 +22,8 @@ interface SearchableSelectProps {
     /** Placeholder kotak pencarian. */
     searchPlaceholder?: string;
     ariaLabel?: string;
+    /** Skin terang (dipakai di halaman input laporan gaya baru). Default: dark. */
+    light?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export default function SearchableSelect({
     placeholderClassName = 'text-slate-500',
     searchPlaceholder = 'Cari nama...',
     ariaLabel,
+    light = false,
 }: SearchableSelectProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
@@ -138,9 +141,11 @@ export default function SearchableSelect({
                 <div
                     ref={panelRef}
                     style={{ position: 'fixed', top: rect.top, left: rect.left, width: Math.max(rect.width, 220), zIndex: 9999 }}
-                    className="rounded-xl border border-slate-700 bg-[#0e1621] shadow-2xl shadow-black/60 overflow-hidden"
+                    className={light
+                        ? 'rounded-xl border border-[#E2E2E2] bg-white shadow-xl shadow-black/10 overflow-hidden'
+                        : 'rounded-xl border border-slate-700 bg-[#0e1621] shadow-2xl shadow-black/60 overflow-hidden'}
                 >
-                    <div className="p-2 border-b border-slate-800">
+                    <div className={`p-2 border-b ${light ? 'border-[#EFEFEF]' : 'border-slate-800'}`}>
                         {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
                         <input
                             autoFocus
@@ -148,7 +153,9 @@ export default function SearchableSelect({
                             onChange={e => { setQuery(e.target.value); setHighlight(0); }}
                             onKeyDown={onKeyDown}
                             placeholder={searchPlaceholder}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-blue-500"
+                            className={light
+                                ? 'w-full bg-white border border-[#DCDCDC] rounded-lg px-2.5 py-1.5 text-sm text-[#141414] placeholder:text-[#AAAAAA] outline-none focus:ring-1 focus:ring-[#141414]'
+                                : 'w-full bg-[#101822] border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-blue-500'}
                         />
                     </div>
                     <div className="max-h-60 overflow-y-auto py-1">
@@ -156,13 +163,13 @@ export default function SearchableSelect({
                             <button
                                 type="button"
                                 onClick={() => choose('')}
-                                className="w-full text-left px-3 py-2 text-sm text-slate-500 hover:bg-slate-800/60 transition-colors"
+                                className={`w-full text-left px-3 py-2 text-sm transition-colors ${light ? 'text-[#9A9A9A] hover:bg-[#F7F7F7]' : 'text-slate-500 hover:bg-slate-800/60'}`}
                             >
                                 {placeholder}
                             </button>
                         )}
                         {filtered.length === 0 ? (
-                            <div className="px-3 py-2 text-sm text-slate-500">Tidak ada hasil</div>
+                            <div className={`px-3 py-2 text-sm ${light ? 'text-[#9A9A9A]' : 'text-slate-500'}`}>Tidak ada hasil</div>
                         ) : (
                             filtered.map((o, i) => (
                                 <button
@@ -171,7 +178,9 @@ export default function SearchableSelect({
                                     onMouseEnter={() => setHighlight(i)}
                                     onClick={() => choose(o.value)}
                                     className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                                        i === highlight ? 'bg-blue-500/20 text-white' : 'text-slate-200 hover:bg-slate-800/60'
+                                        light
+                                            ? (i === highlight ? 'bg-[#F2F2F2] text-[#141414]' : 'text-[#333333] hover:bg-[#F7F7F7]')
+                                            : (i === highlight ? 'bg-blue-500/20 text-white' : 'text-slate-200 hover:bg-slate-800/60')
                                     } ${o.value === value ? 'font-bold' : ''}`}
                                 >
                                     {o.label}

@@ -1,6 +1,12 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPortal } from 'react-dom';
+
+// ── Tema form ──────────────────────────────────────────────────────────────────
+// Default 'dark' (tampilan lama). Tab yang sudah di-restyle gaya terang dibungkus
+// <FormTheme.Provider value="light"> dari halaman — komponen bersama di file ini
+// otomatis ikut skin terang tanpa mengubah tab lain.
+export const FormTheme = React.createContext<'dark' | 'light'>('dark');
 
 export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands }: {
     label?: string;
@@ -21,6 +27,13 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     const [thuText, setThuText] = useState('');
     const isFocused = useRef(false);
     const thuFocused = useRef(false);
+    const light = useContext(FormTheme) === 'light';
+
+    const borderCls = light ? 'border-[#DCDCDC]' : 'border-slate-700/80';
+    const focusCls = light ? 'focus:ring-[#141414] focus:border-[#141414]' : `focus:ring-${color}-500 focus:border-${color}-500`;
+    const placeholderCls = light ? 'placeholder-[#B5B5B5]' : 'placeholder-slate-500';
+    const unitCls = light ? 'text-[#8A8A8A]' : 'text-slate-400';
+    const readOnlyCls = light ? 'bg-[#F2F2F2] text-[#9A9A9A] cursor-not-allowed' : 'bg-slate-800/50 text-slate-500 cursor-not-allowed';
 
     const fmtThu = (v: number | string | null | undefined): string => {
         if (v == null || v === '') return '';
@@ -64,7 +77,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     };
 
     const labelEl = label && (
-        <label className="font-bold text-white uppercase tracking-wider block text-left text-xs">
+        <label className={`font-bold ${light ? 'text-[#555555]' : 'text-white'} uppercase tracking-wider block text-left text-xs`}>
             {label}
         </label>
     );
@@ -77,7 +90,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                 {labelEl}
                 <div className="relative">
                     <input
-                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(thuText)} font-mono font-bold tracking-wide transition-all text-left`}
+                        className={`w-full ${readOnly ? readOnlyCls : (light ? `bg-white ${isEmpty ? 'text-[#9A9A9A]' : 'text-[#141414]'}` : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`)} border ${borderCls} rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} ${placeholderCls} focus:ring-1 ${focusCls} ${sizeForLen(thuText)} font-mono font-bold tracking-wide transition-all text-left`}
                         type="text"
                         inputMode="numeric"
                         placeholder={placeholder}
@@ -108,7 +121,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                         }}
                         onKeyDown={handleKeyDown}
                     />
-                    {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
+                    {unit && <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${unitCls} text-xs font-medium`}>{unit}</span>}
                 </div>
             </div>
         );
@@ -119,9 +132,9 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
         <div className="space-y-1.5 w-full">
             {labelEl}
             <div className="relative">
-                {negative && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">−</span>}
+                {negative && <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${unitCls} text-sm font-mono pointer-events-none`}>−</span>}
                 <input
-                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(String(textMode ? rawText : (displayValue ?? '')))} font-mono font-bold tracking-wide transition-all text-left`}
+                    className={`w-full ${readOnly ? readOnlyCls : (light ? 'bg-white text-[#141414]' : 'bg-[#101822]/50 text-white')} border ${borderCls} rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} ${placeholderCls} focus:ring-1 ${focusCls} ${sizeForLen(String(textMode ? rawText : (displayValue ?? '')))} font-mono font-bold tracking-wide transition-all text-left`}
                     placeholder={placeholder}
                     type={textMode ? "text" : "number"}
                     inputMode={textMode ? "text" : "decimal"}
@@ -155,7 +168,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                     }}
                     onKeyDown={handleKeyDown}
                 />
-                {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
+                {unit && <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${unitCls} text-xs font-medium`}>{unit}</span>}
             </div>
         </div>
     );
@@ -170,27 +183,32 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
     onChange?: (name: string, value: string | null) => void;
     name?: string;
     placeholder?: string;
-}) => (
-    <div className="space-y-1.5 w-full">
-        {label && (
-            <label className={`font-medium text-white uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
-                {label}
-            </label>
-        )}
-        <select
-            className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-lg font-mono font-bold tracking-wide transition-all appearance-none cursor-pointer`}
-            value={value ?? ''}
-            onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : e.target.value)}
-        >
-            <option value="" className="bg-[#101822] text-slate-500">{placeholder}</option>
-            {options.map((opt) => (
-                <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">
-                    {opt.label}
-                </option>
-            ))}
-        </select>
-    </div>
-);
+}) => {
+    const light = useContext(FormTheme) === 'light';
+    return (
+        <div className="space-y-1.5 w-full">
+            {label && (
+                <label className={`font-medium ${light ? 'text-[#555555]' : 'text-white'} uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+                    {label}
+                </label>
+            )}
+            <select
+                className={`w-full ${light
+                    ? 'bg-white border-[#DCDCDC] text-[#141414] focus:ring-[#141414] focus:border-[#141414]'
+                    : `bg-[#101822]/50 border-slate-700/80 text-white focus:ring-${color}-500 focus:border-${color}-500`} border rounded-lg py-2.5 px-3 focus:ring-1 text-lg font-mono font-bold tracking-wide transition-all appearance-none cursor-pointer`}
+                value={value ?? ''}
+                onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : e.target.value)}
+            >
+                <option value="" className={light ? 'text-[#9A9A9A]' : 'bg-[#101822] text-slate-500'}>{placeholder}</option>
+                {options.map((opt) => (
+                    <option key={opt.value} value={opt.value} className={light ? '' : 'bg-[#101822] text-white'}>
+                        {opt.label}
+                    </option>
+                ))}
+            </select>
+        </div>
+    );
+};
 
 export const Card = ({ title, icon, color = "blue", children, isSidebar = false, className = '', headerRight }: {
     title: string;
@@ -216,6 +234,24 @@ export const Card = ({ title, icon, color = "blue", children, isSidebar = false,
     };
 
     const c = colorMap[color] || colorMap.blue;
+    const light = useContext(FormTheme) === 'light';
+
+    if (light) {
+        return (
+            <div className={`bg-white border border-[#E4E4E4] rounded-xl overflow-hidden flex flex-col ${className}`}>
+                <div className="p-4 border-b border-[#EFEFEF] flex items-center gap-3 shrink-0">
+                    <div className="p-2 rounded-lg bg-[#F4F4F4]">
+                        <span className="material-symbols-outlined text-[#444444]">{icon}</span>
+                    </div>
+                    <h3 className="text-[#141414] font-semibold text-lg tracking-tight">{title}</h3>
+                    {headerRight}
+                </div>
+                <div className={`${isSidebar ? 'p-4 space-y-2' : 'p-5 space-y-4'} flex flex-col justify-start`}>
+                    {children}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`bg-[#0f1923]/90 backdrop-blur-md border rounded-xl overflow-hidden flex flex-col group transition-all duration-300 ${c.border} shadow-lg ${c.glow} ${className}`}>
@@ -233,21 +269,25 @@ export const Card = ({ title, icon, color = "blue", children, isSidebar = false,
     );
 };
 
-export const SectionLabel = ({ label, badge }: { label: string; badge?: string }) => (
-    <div className="flex items-center gap-2 pt-3 pb-1 first:pt-0">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
-        {badge && <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-300 font-medium">{badge}</span>}
-        <div className="flex-1 border-t border-slate-700/40" />
-    </div>
-);
+export const SectionLabel = ({ label, badge }: { label: string; badge?: string }) => {
+    const light = useContext(FormTheme) === 'light';
+    return (
+        <div className="flex items-center gap-2 pt-3 pb-1 first:pt-0">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${light ? 'text-[#777777]' : 'text-slate-400'}`}>{label}</span>
+            {badge && <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${light ? 'bg-[#F0F0F0] text-[#666666]' : 'bg-slate-700/60 text-slate-300'}`}>{badge}</span>}
+            <div className={`flex-1 border-t ${light ? 'border-[#E8E8E8]' : 'border-slate-700/40'}`} />
+        </div>
+    );
+};
 
 export const SelisihInfo = ({ prev, current }: { prev: number; current: number }) => {
+    const light = useContext(FormTheme) === 'light';
     const diff = current - prev;
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
     return prev > 0 ? (
-        <div className="mt-1.5 text-[10px] text-slate-500 space-y-0.5">
-            <p>Prev: <span className="text-slate-400 font-medium">{fmt(prev)}</span></p>
-            <p>Selisih: <span className={`font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{diff >= 0 ? '+' : ''}{fmt(diff)}</span></p>
+        <div className={`mt-1.5 text-[10px] space-y-0.5 ${light ? 'text-[#9A9A9A]' : 'text-slate-500'}`}>
+            <p>Prev: <span className={`font-medium ${light ? 'text-[#666666]' : 'text-slate-400'}`}>{fmt(prev)}</span></p>
+            <p>Selisih: <span className={`font-bold ${diff >= 0 ? (light ? 'text-emerald-600' : 'text-emerald-400') : (light ? 'text-red-600' : 'text-red-400')}`}>{diff >= 0 ? '+' : ''}{fmt(diff)}</span></p>
         </div>
     ) : null;
 };
@@ -278,25 +318,35 @@ export const FEEDER_STATUS_STYLE: Record<string, { border: string; dot: string }
     'not standby':      { border: 'border-red-500/50',     dot: 'bg-red-500' },
 };
 
+const FEEDER_STATUS_BORDER_LIGHT: Record<string, string> = {
+    'running':           'border-emerald-300',
+    'standby':           'border-amber-300',
+    'emergency standby': 'border-orange-300',
+    'not standby':       'border-red-300',
+};
+
 export function FeederStatusChip({ sk, value, onChange }: {
     sk: string;
     value: string;
     onChange?: (name: string, v: number | string | null) => void;
 }) {
+    const light = useContext(FormTheme) === 'light';
     const style = FEEDER_STATUS_STYLE[value];
-    const border = style?.border ?? 'border-slate-700/60';
+    const border = light
+        ? (FEEDER_STATUS_BORDER_LIGHT[value] ?? 'border-[#DCDCDC]')
+        : (style?.border ?? 'border-slate-700/60');
     const dot = style?.dot ?? 'bg-slate-500';
     return (
-        <div className={`inline-flex items-center gap-1.5 bg-[#101822]/60 border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
+        <div className={`inline-flex items-center gap-1.5 ${light ? 'bg-white' : 'bg-[#101822]/60'} border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
             <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
             <select
-                className="bg-transparent appearance-none text-sm text-white font-semibold pr-3 cursor-pointer outline-none"
+                className={`bg-transparent appearance-none text-sm ${light ? 'text-[#141414]' : 'text-white'} font-semibold pr-3 cursor-pointer outline-none`}
                 value={value}
                 onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
             >
-                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                <option value="" className={light ? 'text-[#9A9A9A]' : 'bg-[#101822] text-slate-500'}>Status...</option>
                 {FEEDER_STATUS_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
+                    <option key={opt.value} value={opt.value} className={light ? '' : 'bg-[#101822] text-white'}>{opt.label}</option>
                 ))}
             </select>
         </div>
@@ -355,7 +405,54 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
         }
     };
 
-    const s = variantStyles[variant];
+    // Skin terang: monokrom — ukuran font mengikuti variant, warna seragam hitam-putih.
+    const lightStyles: typeof variantStyles = {
+        primary: {
+            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3',
+            label: 'text-[#666666] text-xs font-bold uppercase tracking-wider',
+            value: 'text-[#141414] font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-[#999999] text-xs font-bold',
+        },
+        secondary: {
+            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3',
+            label: 'text-[#666666] text-xs font-medium uppercase tracking-wider',
+            value: 'text-[#141414] font-mono font-bold text-xl',
+            unit: 'text-[#999999] text-xs font-medium',
+        },
+        small: {
+            bg: 'bg-[#FAFAFA] border-[#E8E8E8] p-2.5',
+            label: 'text-[#666666] text-[10px] font-medium uppercase tracking-wider',
+            value: 'text-[#141414] font-mono font-bold text-sm',
+            unit: 'text-[#999999] text-[10px] font-medium',
+        },
+        purple: {
+            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3 mt-auto',
+            label: 'text-[#666666] text-xs font-bold uppercase tracking-wider',
+            value: 'text-[#141414] font-mono font-black text-2xl',
+            unit: 'text-[#999999] text-xs font-bold',
+        },
+        amber: {
+            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3',
+            label: 'text-[#666666] text-xs font-bold uppercase tracking-wider',
+            value: 'text-[#141414] font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-[#999999] text-xs font-bold',
+        },
+        rose: {
+            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3',
+            label: 'text-[#666666] text-xs font-bold uppercase tracking-wider',
+            value: 'text-[#141414] font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-[#999999] text-xs font-bold',
+        },
+        transparent: {
+            bg: 'bg-transparent border-[#E4E4E4] p-2.5',
+            label: 'text-[#555555] text-xs font-bold uppercase tracking-wider',
+            value: 'text-[#141414] font-mono font-black text-2xl',
+            unit: 'text-[#999999] text-xs font-bold',
+        }
+    };
+
+    const light = useContext(FormTheme) === 'light';
+    const s = (light ? lightStyles : variantStyles)[variant];
 
     return (
         <div className={`flex flex-col gap-1 rounded-lg border ${s.bg}`}>

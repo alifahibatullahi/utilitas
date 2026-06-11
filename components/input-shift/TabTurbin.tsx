@@ -92,7 +92,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                             <InputField label="Pressure Deaerator" unit="MPa" color="emerald" name="press_deaerator" value={values.press_deaerator} onChange={onFieldChange} />
                             <InputField label="Temp Deaerator" unit="°C" color="emerald" name="temp_deaerator" value={values.temp_deaerator} onChange={onFieldChange} />
                         </div>
-                        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-700/50">
+                        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-[#E8E8E8]">
                             <InputField label="Temp CW In" unit="°C" color="emerald" name="temp_cw_in" value={values.temp_cw_in} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                             <InputField label="Temp CW Out" unit="°C" color="emerald" name="temp_cw_out" value={values.temp_cw_out} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         </div>
@@ -106,7 +106,7 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
                     <CalculatedField label="PRODUKSI STEAM INLET" value={produksiSteamInlet.toFixed(2)} unit="ton" variant="primary" />
                     <CalculatedField label="PRODUKSI CONDENSATE" value={produksiCondensate.toFixed(2)} unit="ton" variant="secondary" />
 
-                    <div className="h-px bg-slate-700/80 w-full my-1"></div>
+                    <div className="h-px bg-[#E8E8E8] w-full my-1"></div>
 
                     <CalculatedField label="TEMP THRUST BEARING" value={String(Number(values.thrust_bearing) || 0)} unit="°C" variant="transparent" />
                     <CalculatedField label="DURASI HPO" value={String(Number(values.hpo_durasi) || 0)} unit="s" variant="transparent" />

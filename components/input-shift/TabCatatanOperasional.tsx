@@ -123,9 +123,9 @@ export default function TabCatatanOperasional({
                     onChange={e => onCatatanChange(e.target.value)}
                     placeholder="Tulis catatan operasional di sini..."
                     rows={16}
-                    className="w-full bg-[#0e1621] border border-slate-700/60 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 rounded-xl px-3 py-2.5 text-sm text-slate-100 outline-none resize-y placeholder:text-slate-600 leading-relaxed font-mono"
+                    className="w-full bg-white border border-[#DCDCDC] focus:border-amber-500 focus:ring-1 focus:ring-amber-400 rounded-xl px-3 py-2.5 text-sm text-[#141414] outline-none resize-y placeholder:text-[#B5B5B5] leading-relaxed font-mono"
                 />
-                <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                <p className="text-[10px] text-[#777777] mt-2 leading-relaxed">
                     Catatan ini akan ikut tampil di pesan publish WhatsApp dan laporan PDF.
                 </p>
             </Card>
@@ -136,10 +136,10 @@ export default function TabCatatanOperasional({
                 Catatan Operasional di atas. (permintaan user) */}
             {currentStation && otherText && (
                 <Card title="Catatan Station Lain" icon="notes" color="slate">
-                    <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
+                    <p className="text-[10px] text-[#777777] mb-2 leading-relaxed">
                         Catatan dari station lain (read-only). Semua digabung jadi satu Catatan Operasional saat publish.
                     </p>
-                    <pre className="text-xs text-slate-200 whitespace-pre-wrap font-sans bg-[#0e1621] border border-slate-700/60 rounded-lg px-3 py-2 leading-relaxed">{otherText}</pre>
+                    <pre className="text-xs text-[#333333] whitespace-pre-wrap font-sans bg-[#FAFAFA] border border-[#E8E8E8] rounded-lg px-3 py-2 leading-relaxed">{otherText}</pre>
                 </Card>
             )}
         </div>

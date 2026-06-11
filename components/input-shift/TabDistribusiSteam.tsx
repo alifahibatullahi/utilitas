@@ -75,7 +75,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                     <CalculatedField label="Steam Pabrik 2" value={produksiP2.toFixed(2)} unit="ton" variant="secondary" size="medium" />
                     <CalculatedField label="Steam Pabrik 3" value={produksiP3.toFixed(2)} unit="ton" variant="secondary" size="medium" />
 
-                    <div className="h-px bg-slate-700/80 w-full my-2"></div>
+                    <div className="h-px bg-[#E8E8E8] w-full my-2"></div>
 
                     <CalculatedField label="GRAND TOTAL STEAM" value={grandTotal.toFixed(2)} unit="ton" variant="primary" size="large" />
                 </Card>

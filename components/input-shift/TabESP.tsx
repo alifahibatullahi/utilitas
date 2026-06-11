@@ -70,30 +70,30 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                         {allAshEntries.length > 0 && (
                             <div className="mb-1 flex flex-col gap-2">
                                 {savedAshEntries.map((e) => (
-                                    <div key={`saved-${e.id}`} className="flex items-center justify-between px-3 py-2.5 bg-[#101822] border border-orange-500/30 rounded-lg group hover:border-orange-500/50 transition-colors">
+                                    <div key={`saved-${e.id}`} className="flex items-center justify-between px-3 py-2.5 bg-white border border-orange-300 rounded-lg group hover:border-orange-400 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0 pr-2">
-                                            <span className="text-[10px] font-bold text-orange-300 bg-orange-500/15 border border-orange-500/30 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
+                                            <span className="text-[10px] font-bold text-orange-700 bg-orange-50 border border-orange-200 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
                                             <div className="flex flex-col gap-0.5 min-w-0">
-                                                <span className="text-xs font-bold text-slate-200 truncate flex items-center">
-                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Truck Dari Perusahaan</span>
-                                                    <span className="text-slate-600 mr-1.5">·</span>
+                                                <span className="text-xs font-bold text-[#141414] truncate flex items-center">
+                                                    <span className="text-[9px] text-[#8A8A8A] font-medium mr-1.5 uppercase tracking-wider">Truck Dari Perusahaan</span>
+                                                    <span className="text-[#C5C5C5] mr-1.5">·</span>
                                                     {e.perusahaan}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400 truncate flex items-center">
-                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Tujuan</span>
-                                                    <span className="text-slate-600 mr-1.5">·</span>
+                                                <span className="text-[10px] text-[#555555] truncate flex items-center">
+                                                    <span className="text-[9px] text-[#8A8A8A] font-medium mr-1.5 uppercase tracking-wider">Tujuan</span>
+                                                    <span className="text-[#C5C5C5] mr-1.5">·</span>
                                                     {e.tujuan}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <div className="flex items-baseline gap-1 bg-[#0f1721] px-2.5 py-1.5 rounded-lg border border-slate-700/50 shadow-inner">
-                                                <span className="text-white font-black text-lg leading-none">{e.ritase}</span>
-                                                <span className="text-orange-400 text-[9px] font-bold uppercase tracking-widest">Rit</span>
+                                            <div className="flex items-baseline gap-1 bg-[#FAFAFA] px-2.5 py-1.5 rounded-lg border border-[#E4E4E4]">
+                                                <span className="text-[#141414] font-black text-lg leading-none">{e.ritase}</span>
+                                                <span className="text-orange-600 text-[9px] font-bold uppercase tracking-widest">Rit</span>
                                             </div>
                                             {e.id && onDeleteSavedAsh && (
                                                 <button type="button" onClick={() => onDeleteSavedAsh(e.id!)}
-                                                    className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors border border-transparent hover:border-red-500/20">
+                                                    className="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors border border-red-200">
                                                     <span className="material-symbols-outlined text-[16px]">delete</span>
                                                 </button>
                                             )}
@@ -101,40 +101,40 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                                     </div>
                                 ))}
                                 {ashEntries.filter(e => e.silo && e.perusahaan).map((e, idx) => (
-                                    <div key={`pending-${idx}`} className="flex items-center justify-between px-3 py-2.5 bg-[#101822]/60 border border-amber-500/30 rounded-lg border-dashed">
+                                    <div key={`pending-${idx}`} className="flex items-center justify-between px-3 py-2.5 bg-amber-50/50 border border-amber-300 rounded-lg border-dashed">
                                         <div className="flex items-center gap-3 min-w-0 pr-2">
-                                            <span className="text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
+                                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
                                             <div className="flex flex-col gap-0.5 min-w-0">
-                                                <span className="text-xs font-bold text-slate-200 truncate flex items-center">
-                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Truck Dari Perusahaan</span>
-                                                    <span className="text-slate-600 mr-1.5">·</span>
+                                                <span className="text-xs font-bold text-[#141414] truncate flex items-center">
+                                                    <span className="text-[9px] text-[#8A8A8A] font-medium mr-1.5 uppercase tracking-wider">Truck Dari Perusahaan</span>
+                                                    <span className="text-[#C5C5C5] mr-1.5">·</span>
                                                     {e.perusahaan}
-                                                    <span className="text-[9px] text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded ml-1.5">(baru)</span>
+                                                    <span className="text-[9px] text-amber-700 bg-amber-100 px-1 py-0.5 rounded ml-1.5">(baru)</span>
                                                 </span>
-                                                <span className="text-[10px] text-slate-400 truncate flex items-center">
-                                                    <span className="text-[9px] text-slate-500 font-medium mr-1.5 uppercase tracking-wider">Tujuan</span>
-                                                    <span className="text-slate-600 mr-1.5">·</span>
+                                                <span className="text-[10px] text-[#555555] truncate flex items-center">
+                                                    <span className="text-[9px] text-[#8A8A8A] font-medium mr-1.5 uppercase tracking-wider">Tujuan</span>
+                                                    <span className="text-[#C5C5C5] mr-1.5">·</span>
                                                     {e.tujuan}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <div className="flex items-baseline gap-1 bg-[#0f1721] px-2.5 py-1.5 rounded-lg border border-slate-700/50 shadow-inner">
-                                                <span className="text-white font-black text-lg leading-none">{e.ritase}</span>
-                                                <span className="text-amber-400 text-[9px] font-bold uppercase tracking-widest">Rit</span>
+                                            <div className="flex items-baseline gap-1 bg-white px-2.5 py-1.5 rounded-lg border border-[#E4E4E4]">
+                                                <span className="text-[#141414] font-black text-lg leading-none">{e.ritase}</span>
+                                                <span className="text-amber-600 text-[9px] font-bold uppercase tracking-widest">Rit</span>
                                             </div>
                                             <button type="button" onClick={() => removeEntry(idx)}
-                                                className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors border border-transparent hover:border-red-500/20">
+                                                className="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors border border-red-200">
                                                 <span className="material-symbols-outlined text-[16px]">delete</span>
                                             </button>
                                         </div>
                                     </div>
                                 ))}
-                                <div className="h-px bg-slate-700/40 mt-1 mb-2" />
+                                <div className="h-px bg-[#E8E8E8] mt-1 mb-2" />
                             </div>
                         )}
                         <button type="button" onClick={() => setShowModal(true)}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-orange-500/40 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 text-sm font-bold transition-colors">
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold transition-colors">
                             <span className="material-symbols-outlined text-[18px]">add_circle</span>
                             Tambah Unloading
                         </button>
@@ -160,22 +160,22 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                     placeholder="Pilih Silo..."
                 />
                 <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Truck Dari Perusahaan</label>
+                    <label className="font-medium text-[#141414] uppercase tracking-wider block text-left text-[10px]">Truck Dari Perusahaan</label>
                     <input type="text" value={form.perusahaan} onChange={e => setForm({ ...form, perusahaan: e.target.value })}
                         placeholder="Nama PT..."
-                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-orange-500 text-sm transition-all" />
+                        className="w-full bg-white border border-[#DCDCDC] rounded-lg py-2.5 px-3 text-[#141414] placeholder-[#B5B5B5] focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all" />
                 </div>
                 <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Tujuan</label>
+                    <label className="font-medium text-[#141414] uppercase tracking-wider block text-left text-[10px]">Tujuan</label>
                     <input type="text" value={form.tujuan} onChange={e => setForm({ ...form, tujuan: e.target.value })}
                         placeholder="Lokasi tujuan..."
-                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-orange-500 text-sm transition-all" />
+                        className="w-full bg-white border border-[#DCDCDC] rounded-lg py-2.5 px-3 text-[#141414] placeholder-[#B5B5B5] focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all" />
                 </div>
                 <InputField label="Jumlah Ritase" unit="Rit" color="orange"
                     value={form.ritase}
                     onChange={(_, v) => setForm({ ...form, ritase: typeof v === 'string' ? parseFloat(v) || null : v })} />
                 <button type="button" onClick={saveEntry} disabled={!form.silo || !form.perusahaan || !form.tujuan || !form.ritase}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm transition-colors mt-1">
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors mt-1">
                     <span className="material-symbols-outlined text-[18px]">save</span>
                     Simpan
                 </button>

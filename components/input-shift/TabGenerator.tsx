@@ -81,8 +81,8 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                     const curTot = Number(totValue) || 0;
 
                                     return (
-                                        <div key={key} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
-                                            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
+                                        <div key={key} className="bg-[#FAFAFA] border border-[#E8E8E8] rounded-lg p-3">
+                                            <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <div>
                                                     <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} placeholder={prevTot > 0 ? String(prevTot) : '0'} />
@@ -95,8 +95,8 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                 })}
 
                                 {/* STG UBB: totalizer only, MW = Load STG */}
-                                <div className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
-                                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
+                                <div className="bg-[#FAFAFA] border border-[#E8E8E8] rounded-lg p-3">
+                                    <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">STG UBB</span>
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <div>
                                             <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} placeholder={Number(prevPowerDist.power_stg_ubb_totalizer) > 0 ? String(Number(prevPowerDist.power_stg_ubb_totalizer)) : '0.0'} />
@@ -104,7 +104,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                         </div>
                                         <div>
                                             <InputField label="MW" unit="MW" color="emerald" size="small" name="_stg_mw" value={genLoad} readOnly />
-                                            <p className="mt-1 text-[10px] text-slate-500">= Load STG</p>
+                                            <p className="mt-1 text-[10px] text-[#777777]">= Load STG</p>
                                         </div>
                                     </div>
                                 </div>
@@ -119,14 +119,14 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                 <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="LOAD STG" value={fmt(gv.gen_load)} unit="MW" variant="primary" />
 
-                    <div className="h-px bg-slate-700/80 w-full my-1" />
+                    <div className="h-px bg-[#E8E8E8] w-full my-1" />
 
                     {DIST_ITEMS.map(({ key, label }) => (
                         <CalculatedField key={key} label={label.toUpperCase()} value={fmt(pv[`power_${key}`])} unit="MW" variant="transparent" />
                     ))}
                     <CalculatedField label="STG UBB" value={fmt(genLoad)} unit="MW" variant="transparent" />
 
-                    <div className="h-px bg-slate-700/80 w-full my-1" />
+                    <div className="h-px bg-[#E8E8E8] w-full my-1" />
 
                     <CalculatedField label="PLN (Σ P)" value={fmt(gv.gi_sum_p)} unit="MW" variant="transparent" />
                     <CalculatedField label="PLN (Σ Q)" value={fmt(gv.gi_sum_q)} unit="MVAR" variant="transparent" />

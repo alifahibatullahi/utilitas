@@ -192,21 +192,23 @@ export default function StationPickerModal({
                                     onClick={() => selectOption(o.id)}
                                     className={`relative rounded-[10px] border p-3 text-left transition-colors cursor-pointer ${
                                         active
-                                            ? 'border-[#141414] bg-[#141414]'
-                                            : 'border-[#E2E2E2] bg-white hover:border-[#BDBDBD]'
+                                            ? (isCurrent ? 'border-[#1D4FD7] bg-[#1D4FD7]' : 'border-[#141414] bg-[#141414]')
+                                            : isCurrent
+                                                ? 'border-[#1D4FD7] bg-[#F4F8FE] hover:bg-[#EAF1FE]'
+                                                : 'border-[#E2E2E2] bg-white hover:border-[#BDBDBD]'
                                     }`}
                                 >
-                                    <span className={`block text-[15px] font-semibold ${active ? 'text-white' : 'text-[#141414]'}`}>
+                                    <span className={`block text-[15px] font-semibold ${active ? 'text-white' : isCurrent ? 'text-[#1D4FD7]' : 'text-[#141414]'}`}>
                                         {o.label}
                                     </span>
-                                    <span className={`mt-0.5 block text-xs ${active ? 'text-[#A8A8A8]' : 'text-[#8A8A8A]'}`}>
+                                    <span className={`mt-0.5 block text-xs ${active ? (isCurrent ? 'text-[#BFD2F8]' : 'text-[#A8A8A8]') : isCurrent ? 'text-[#5B82E0]' : 'text-[#8A8A8A]'}`}>
                                         {o.window}
                                     </span>
                                     {isCurrent && (
                                         <span className={`absolute right-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                            active ? 'bg-white text-[#141414]' : 'bg-[#EFF4FE] text-[#1D4FD7]'
+                                            active ? 'bg-white text-[#1D4FD7]' : 'bg-[#1D4FD7] text-white'
                                         }`}>
-                                            <span className="h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />
+                                            <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-[#1D4FD7]' : 'bg-white'}`} />
                                             Sekarang
                                         </span>
                                     )}

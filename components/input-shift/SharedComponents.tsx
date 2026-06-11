@@ -32,7 +32,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     const borderCls = light ? 'border-[#DCDCDC]' : 'border-slate-700/80';
     const focusCls = light ? 'focus:ring-[#141414] focus:border-[#141414]' : `focus:ring-${color}-500 focus:border-${color}-500`;
     const placeholderCls = light ? 'placeholder-[#B5B5B5]' : 'placeholder-slate-500';
-    const unitCls = light ? 'text-[#8A8A8A]' : 'text-slate-400';
+    const unitCls = light ? 'text-[#141414]' : 'text-slate-400';
     const readOnlyCls = light ? 'bg-[#F2F2F2] text-[#9A9A9A] cursor-not-allowed' : 'bg-slate-800/50 text-slate-500 cursor-not-allowed';
 
     const fmtThu = (v: number | string | null | undefined): string => {
@@ -77,7 +77,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     };
 
     const labelEl = label && (
-        <label className={`font-bold ${light ? 'text-[#555555]' : 'text-white'} uppercase tracking-wider block text-left text-xs`}>
+        <label className={`font-bold ${light ? 'text-[#141414]' : 'text-white'} uppercase tracking-wider block text-left text-xs`}>
             {label}
         </label>
     );
@@ -188,7 +188,7 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
     return (
         <div className="space-y-1.5 w-full">
             {label && (
-                <label className={`font-medium ${light ? 'text-[#555555]' : 'text-white'} uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+                <label className={`font-medium ${light ? 'text-[#141414]' : 'text-white'} uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
                     {label}
                 </label>
             )}
@@ -236,12 +236,28 @@ export const Card = ({ title, icon, color = "blue", children, isSidebar = false,
     const c = colorMap[color] || colorMap.blue;
     const light = useContext(FormTheme) === 'light';
 
+    // Skin terang: kartu putih, ikon tetap berwarna sesuai kategori (aksen highlight).
+    const lightIconMap: Record<string, { icon: string; bg: string }> = {
+        blue:    { icon: 'text-blue-600',    bg: 'bg-blue-50' },
+        cyan:    { icon: 'text-cyan-600',    bg: 'bg-cyan-50' },
+        orange:  { icon: 'text-orange-600',  bg: 'bg-orange-50' },
+        emerald: { icon: 'text-emerald-600', bg: 'bg-emerald-50' },
+        purple:  { icon: 'text-purple-600',  bg: 'bg-purple-50' },
+        indigo:  { icon: 'text-indigo-600',  bg: 'bg-indigo-50' },
+        amber:   { icon: 'text-amber-600',   bg: 'bg-amber-50' },
+        rose:    { icon: 'text-rose-600',    bg: 'bg-rose-50' },
+        teal:    { icon: 'text-teal-600',    bg: 'bg-teal-50' },
+        sky:     { icon: 'text-sky-600',     bg: 'bg-sky-50' },
+        slate:   { icon: 'text-slate-600',   bg: 'bg-slate-100' },
+    };
+
     if (light) {
+        const lc = lightIconMap[color] || lightIconMap.blue;
         return (
             <div className={`bg-white border border-[#E4E4E4] rounded-xl overflow-hidden flex flex-col ${className}`}>
                 <div className="p-4 border-b border-[#EFEFEF] flex items-center gap-3 shrink-0">
-                    <div className="p-2 rounded-lg bg-[#F4F4F4]">
-                        <span className="material-symbols-outlined text-[#444444]">{icon}</span>
+                    <div className={`p-2 rounded-lg ${lc.bg}`}>
+                        <span className={`material-symbols-outlined ${lc.icon}`}>{icon}</span>
                     </div>
                     <h3 className="text-[#141414] font-semibold text-lg tracking-tight">{title}</h3>
                     {headerRight}
@@ -273,7 +289,7 @@ export const SectionLabel = ({ label, badge }: { label: string; badge?: string }
     const light = useContext(FormTheme) === 'light';
     return (
         <div className="flex items-center gap-2 pt-3 pb-1 first:pt-0">
-            <span className={`text-[11px] font-bold uppercase tracking-wider ${light ? 'text-[#777777]' : 'text-slate-400'}`}>{label}</span>
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${light ? 'text-[#141414]' : 'text-slate-400'}`}>{label}</span>
             {badge && <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${light ? 'bg-[#F0F0F0] text-[#666666]' : 'bg-slate-700/60 text-slate-300'}`}>{badge}</span>}
             <div className={`flex-1 border-t ${light ? 'border-[#E8E8E8]' : 'border-slate-700/40'}`} />
         </div>
@@ -318,11 +334,13 @@ export const FEEDER_STATUS_STYLE: Record<string, { border: string; dot: string }
     'not standby':      { border: 'border-red-500/50',     dot: 'bg-red-500' },
 };
 
-const FEEDER_STATUS_BORDER_LIGHT: Record<string, string> = {
-    'running':           'border-emerald-300',
-    'standby':           'border-amber-300',
-    'emergency standby': 'border-orange-300',
-    'not standby':       'border-red-300',
+// Skin terang: chip status feeder warna PENUH (bukan border saja) agar status
+// langsung kebaca dari jauh.
+const FEEDER_STATUS_FILL_LIGHT: Record<string, { box: string; text: string; dot: string }> = {
+    'running':           { box: 'bg-emerald-500 border-emerald-500', text: 'text-white',     dot: 'bg-white' },
+    'standby':           { box: 'bg-amber-400 border-amber-400',     text: 'text-[#422006]', dot: 'bg-[#422006]' },
+    'emergency standby': { box: 'bg-orange-500 border-orange-500',   text: 'text-white',     dot: 'bg-white' },
+    'not standby':       { box: 'bg-red-500 border-red-500',         text: 'text-white',     dot: 'bg-white' },
 };
 
 export function FeederStatusChip({ sk, value, onChange }: {
@@ -332,21 +350,37 @@ export function FeederStatusChip({ sk, value, onChange }: {
 }) {
     const light = useContext(FormTheme) === 'light';
     const style = FEEDER_STATUS_STYLE[value];
-    const border = light
-        ? (FEEDER_STATUS_BORDER_LIGHT[value] ?? 'border-[#DCDCDC]')
-        : (style?.border ?? 'border-slate-700/60');
+    if (light) {
+        const fill = FEEDER_STATUS_FILL_LIGHT[value] ?? { box: 'bg-white border-[#DCDCDC]', text: 'text-[#141414]', dot: 'bg-slate-400' };
+        return (
+            <div className={`inline-flex items-center gap-1.5 border ${fill.box} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
+                <span className={`w-2.5 h-2.5 rounded-full ${fill.dot} shrink-0`} />
+                <select
+                    className={`bg-transparent appearance-none text-sm ${fill.text} font-semibold pr-3 cursor-pointer outline-none`}
+                    value={value}
+                    onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
+                >
+                    <option value="" className="text-[#9A9A9A] bg-white">Status...</option>
+                    {FEEDER_STATUS_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value} className="bg-white text-[#141414]">{opt.label}</option>
+                    ))}
+                </select>
+            </div>
+        );
+    }
+    const border = style?.border ?? 'border-slate-700/60';
     const dot = style?.dot ?? 'bg-slate-500';
     return (
-        <div className={`inline-flex items-center gap-1.5 ${light ? 'bg-white' : 'bg-[#101822]/60'} border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
+        <div className={`inline-flex items-center gap-1.5 bg-[#101822]/60 border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
             <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
             <select
-                className={`bg-transparent appearance-none text-sm ${light ? 'text-[#141414]' : 'text-white'} font-semibold pr-3 cursor-pointer outline-none`}
+                className="bg-transparent appearance-none text-sm text-white font-semibold pr-3 cursor-pointer outline-none"
                 value={value}
                 onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
             >
-                <option value="" className={light ? 'text-[#9A9A9A]' : 'bg-[#101822] text-slate-500'}>Status...</option>
+                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
                 {FEEDER_STATUS_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value} className={light ? '' : 'bg-[#101822] text-white'}>{opt.label}</option>
+                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
                 ))}
             </select>
         </div>
@@ -405,49 +439,50 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
         }
     };
 
-    // Skin terang: monokrom — ukuran font mengikuti variant, warna seragam hitam-putih.
+    // Skin terang: tint berwarna mengikuti variant lama (emerald/sky/purple/amber/rose)
+    // supaya angka summary tetap punya highlight, ukuran font tidak berubah.
     const lightStyles: typeof variantStyles = {
         primary: {
-            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3',
-            label: 'text-[#666666] text-xs font-bold uppercase tracking-wider',
-            value: 'text-[#141414] font-mono font-black text-2xl tracking-tighter',
-            unit: 'text-[#999999] text-xs font-bold',
+            bg: 'bg-emerald-50 border-emerald-200 p-3',
+            label: 'text-emerald-700 text-xs font-bold uppercase tracking-wider',
+            value: 'text-emerald-800 font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-emerald-600 text-xs font-bold',
         },
         secondary: {
-            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3',
-            label: 'text-[#666666] text-xs font-medium uppercase tracking-wider',
-            value: 'text-[#141414] font-mono font-bold text-xl',
-            unit: 'text-[#999999] text-xs font-medium',
+            bg: 'bg-sky-50 border-sky-200 p-3',
+            label: 'text-sky-700 text-xs font-medium uppercase tracking-wider',
+            value: 'text-sky-800 font-mono font-bold text-xl',
+            unit: 'text-sky-600 text-xs font-medium',
         },
         small: {
             bg: 'bg-[#FAFAFA] border-[#E8E8E8] p-2.5',
-            label: 'text-[#666666] text-[10px] font-medium uppercase tracking-wider',
+            label: 'text-[#141414] text-[10px] font-medium uppercase tracking-wider',
             value: 'text-[#141414] font-mono font-bold text-sm',
-            unit: 'text-[#999999] text-[10px] font-medium',
+            unit: 'text-[#777777] text-[10px] font-medium',
         },
         purple: {
-            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3 mt-auto',
-            label: 'text-[#666666] text-xs font-bold uppercase tracking-wider',
-            value: 'text-[#141414] font-mono font-black text-2xl',
-            unit: 'text-[#999999] text-xs font-bold',
+            bg: 'bg-purple-50 border-purple-200 p-3 mt-auto',
+            label: 'text-purple-700 text-xs font-bold uppercase tracking-wider',
+            value: 'text-purple-800 font-mono font-black text-2xl',
+            unit: 'text-purple-600 text-xs font-bold',
         },
         amber: {
-            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3',
-            label: 'text-[#666666] text-xs font-bold uppercase tracking-wider',
-            value: 'text-[#141414] font-mono font-black text-2xl tracking-tighter',
-            unit: 'text-[#999999] text-xs font-bold',
+            bg: 'bg-amber-50 border-amber-200 p-3',
+            label: 'text-amber-700 text-xs font-bold uppercase tracking-wider',
+            value: 'text-amber-800 font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-amber-600 text-xs font-bold',
         },
         rose: {
-            bg: 'bg-[#F7F7F7] border-[#E4E4E4] p-3',
-            label: 'text-[#666666] text-xs font-bold uppercase tracking-wider',
-            value: 'text-[#141414] font-mono font-black text-2xl tracking-tighter',
-            unit: 'text-[#999999] text-xs font-bold',
+            bg: 'bg-rose-50 border-rose-200 p-3',
+            label: 'text-rose-700 text-xs font-bold uppercase tracking-wider',
+            value: 'text-rose-800 font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-rose-600 text-xs font-bold',
         },
         transparent: {
             bg: 'bg-transparent border-[#E4E4E4] p-2.5',
-            label: 'text-[#555555] text-xs font-bold uppercase tracking-wider',
+            label: 'text-[#141414] text-xs font-bold uppercase tracking-wider',
             value: 'text-[#141414] font-mono font-black text-2xl',
-            unit: 'text-[#999999] text-xs font-bold',
+            unit: 'text-[#777777] text-xs font-bold',
         }
     };
 
@@ -473,22 +508,28 @@ export const Modal = ({ open, onClose, title, color = 'blue', children }: {
     children: React.ReactNode;
 }) => {
     const [mounted, setMounted] = useState(false);
+    const light = useContext(FormTheme) === 'light';
     useEffect(() => { setMounted(true); }, []);
     if (!open || !mounted) return null;
 
-    const colorBorder: Record<string, string> = {
-        amber: 'border-amber-500/40', rose: 'border-rose-500/40', orange: 'border-orange-500/40',
-        blue: 'border-blue-500/40', emerald: 'border-emerald-500/40', cyan: 'border-cyan-500/40',
-    };
-    const border = colorBorder[color] ?? 'border-slate-700/80';
+    const colorBorder: Record<string, string> = light
+        ? {
+            amber: 'border-amber-300', rose: 'border-rose-300', orange: 'border-orange-300',
+            blue: 'border-blue-300', emerald: 'border-emerald-300', cyan: 'border-cyan-300',
+        }
+        : {
+            amber: 'border-amber-500/40', rose: 'border-rose-500/40', orange: 'border-orange-500/40',
+            blue: 'border-blue-500/40', emerald: 'border-emerald-500/40', cyan: 'border-cyan-500/40',
+        };
+    const border = colorBorder[color] ?? (light ? 'border-[#E4E4E4]' : 'border-slate-700/80');
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-            <div className={`relative bg-[#16202e] border ${border} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl max-h-[90dvh] flex flex-col`}>
-                <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-800/60 shrink-0">
-                    <h3 className="text-white font-bold text-base tracking-wide">{title}</h3>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-700/50 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div className={`relative ${light ? 'bg-white' : 'bg-[#16202e]'} border ${border} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl max-h-[90dvh] flex flex-col`}>
+                <div className={`flex items-center justify-between px-5 pt-5 pb-4 border-b ${light ? 'border-[#EFEFEF]' : 'border-slate-800/60'} shrink-0`}>
+                    <h3 className={`${light ? 'text-[#141414] font-semibold' : 'text-white font-bold'} text-base tracking-wide`}>{title}</h3>
+                    <button onClick={onClose} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${light ? 'bg-[#F4F4F4] text-[#777777] hover:text-[#141414]' : 'bg-slate-700/50 text-slate-400 hover:text-white'}`}>
                         <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                 </div>

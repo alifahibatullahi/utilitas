@@ -21,8 +21,8 @@ function formatBerasapSince(info: { date: string; shift: string }): string {
 
 function BerasapWarning({ bunkerLabel, info }: { bunkerLabel: string; info: { date: string; shift: string } }) {
     return (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
-            <span className="material-symbols-outlined text-[16px] text-amber-400">warning</span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-800 text-xs">
+            <span className="material-symbols-outlined text-[16px] text-amber-600">warning</span>
             <span><span className="font-bold">{bunkerLabel}</span> berasap sejak {formatBerasapSince(info)}</span>
         </div>
     );
@@ -63,11 +63,11 @@ export default function TabCoalBunker({ values = {}, onFieldChange, onStatusChan
 
                 <Card title="Boiler A" icon="inventory_2" color="blue">
                     <div className="flex flex-col gap-5">
-                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-slate-700/50">
+                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-[#E8E8E8]">
                             <InputField label="Level Bunker A" unit="%" color="blue" name="bunker_a" value={values.bunker_a} onChange={onFieldChange} />
                             <SelectField label="Status Bunker A" color="blue" name="status_bunker_a" value={values.status_bunker_a as string} onChange={h} options={statusOptions} placeholder="Normal / Berasap..." />
                         </div>
-                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-slate-700/50">
+                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-[#E8E8E8]">
                             <InputField label="Level Bunker B" unit="%" color="blue" name="bunker_b" value={values.bunker_b} onChange={onFieldChange} />
                             <SelectField label="Status Bunker B" color="blue" name="status_bunker_b" value={values.status_bunker_b as string} onChange={h} options={statusOptions} placeholder="Normal / Berasap..." />
                         </div>
@@ -80,11 +80,11 @@ export default function TabCoalBunker({ values = {}, onFieldChange, onStatusChan
 
                 <Card title="Boiler B" icon="inventory_2" color="cyan">
                     <div className="flex flex-col gap-5">
-                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-slate-700/50">
+                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-[#E8E8E8]">
                             <InputField label="Level Bunker D" unit="%" color="cyan" name="bunker_d" value={values.bunker_d} onChange={onFieldChange} />
                             <SelectField label="Status Bunker D" color="cyan" name="status_bunker_d" value={values.status_bunker_d as string} onChange={h} options={statusOptions} placeholder="Normal / Berasap..." />
                         </div>
-                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-slate-700/50">
+                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-[#E8E8E8]">
                             <InputField label="Level Bunker E" unit="%" color="cyan" name="bunker_e" value={values.bunker_e} onChange={onFieldChange} />
                             <SelectField label="Status Bunker E" color="cyan" name="status_bunker_e" value={values.status_bunker_e as string} onChange={h} options={statusOptions} placeholder="Normal / Berasap..." />
                         </div>

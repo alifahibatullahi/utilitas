@@ -1524,10 +1524,15 @@ function InputShiftPageInner() {
                                     <button
                                         key={t.key}
                                         onClick={() => { setInputMode('shift'); setSelectedShift(t.num); }}
-                                        className={`relative px-3 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${active ? 'bg-[#141414] text-white' : 'text-[#555555] hover:bg-white'}`}
+                                        className={`relative px-3 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                                            active
+                                                ? (isCurrent ? 'bg-[#1D4FD7] text-white' : 'bg-[#141414] text-white')
+                                                : isCurrent
+                                                    ? 'bg-white text-[#1D4FD7]'
+                                                    : 'text-[#555555] hover:bg-white'}`}
                                     >
                                         {t.label}
-                                        {isCurrent && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />}
+                                        {isCurrent && <span className={`absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : 'bg-[#1D4FD7]'}`} />}
                                     </button>
                                 );
                             })}
@@ -1574,10 +1579,11 @@ function InputShiftPageInner() {
                             </span>
                         )}
                     </div>
-                    {/* Row 3: Supervisor + Foreman (form penuh, bukan mode station) */}
+                    {/* Row 3: Supervisor + Foreman (form penuh, bukan mode station) —
+                        grid 3 kolom sejajar satu garis lurus (stack di layar sempit). */}
                     {!station && (
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                            <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full lg:max-w-3xl">
+                            <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors w-full">
                                 <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none">Supervisor</span>
                                 <div className="relative w-full flex items-center h-5">
                                     <SearchableSelect
@@ -1595,7 +1601,7 @@ function InputShiftPageInner() {
 
                             {inputMode === 'shift' && (
                                 <>
-                                    <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
+                                    <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors w-full">
                                         <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none">Foreman Boiler</span>
                                         <div className="relative w-full flex items-center h-5">
                                             <SearchableSelect
@@ -1611,7 +1617,7 @@ function InputShiftPageInner() {
                                         <span className="material-symbols-outlined text-[18px] text-[#8A8A8A] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none select-none">expand_more</span>
                                     </div>
 
-                                    <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
+                                    <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors w-full">
                                         <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none">Foreman Turbin</span>
                                         <div className="relative w-full flex items-center h-5">
                                             <SearchableSelect
@@ -1672,7 +1678,7 @@ function InputShiftPageInner() {
                                     onClick={handleSubmit}
                                     disabled={submitting || isLocked}
                                     title={isBeforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : isPastDeadline ? 'Window submit sudah berakhir' : undefined}
-                                    className={`flex justify-center items-center gap-2 ${isLocked ? 'bg-[#EAEAEA] text-[#9A9A9A] cursor-not-allowed' : 'bg-[#141414] hover:bg-black text-white cursor-pointer'} px-4 py-3 rounded-[10px] text-sm font-semibold transition-colors w-full ${submitting || isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                    className={`flex justify-center items-center gap-2 ${isLocked ? 'bg-[#EAEAEA] text-[#9A9A9A] cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'} px-4 py-3 rounded-[10px] text-sm font-semibold transition-colors w-full ${submitting || isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                                 >
                                     <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
                                     {submitting ? 'Menyimpan...' : isLocked ? 'Terkunci' : 'Simpan Laporan'}
@@ -1688,7 +1694,7 @@ function InputShiftPageInner() {
                                             onClick={goPublishShift}
                                             disabled={publishDisabled}
                                             title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
-                                            className={`flex justify-center items-center gap-2 bg-white ${publishDisabled ? 'border border-[#E2E2E2] text-[#B5B5B5] cursor-not-allowed' : 'border border-[#141414] text-[#141414] hover:bg-[#141414] hover:text-white cursor-pointer'} px-4 py-3 rounded-[10px] text-sm font-semibold transition-colors w-full`}
+                                            className={`flex justify-center items-center gap-2 ${publishDisabled ? 'bg-white border border-[#E2E2E2] text-[#B5B5B5] cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer'} px-4 py-3 rounded-[10px] text-sm font-semibold transition-colors w-full`}
                                         >
                                             <span className="material-symbols-outlined text-[20px]">fact_check</span>
                                             Review / Publish{isAdmin && !allTabsComplete ? ' (Admin)' : ''}
@@ -1849,13 +1855,15 @@ function InputShiftPageInner() {
                                         </div>
                                         <h2 className="text-[#141414] font-semibold text-xl sm:text-3xl tracking-tight shrink-0">{tab?.label}</h2>
                                         {isBoilerTab && (() => {
-                                            const boilerBorder = boilerStatus === 'running' ? 'border-emerald-300' : boilerStatus === 'shutdown' ? 'border-red-300' : 'border-[#DCDCDC]';
-                                            const boilerDot = boilerStatus === 'running' ? 'bg-emerald-500' : boilerStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-400';
+                                            // Status warna PENUH (bukan border saja) — kebaca dari jauh.
+                                            const boilerBox = boilerStatus === 'running' ? 'bg-emerald-500 border-emerald-500' : boilerStatus === 'shutdown' ? 'bg-red-500 border-red-500' : 'bg-white border-[#DCDCDC]';
+                                            const boilerText = boilerStatus ? 'text-white' : 'text-[#141414]';
+                                            const boilerDot = boilerStatus ? 'bg-white' : 'bg-slate-400';
                                             return (
-                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-white border ${boilerBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                <div className={`inline-flex items-center gap-2 sm:gap-3 border ${boilerBox} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
                                                     <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${boilerDot} shrink-0`} />
                                                     <select
-                                                        className="bg-transparent appearance-none text-base sm:text-xl text-[#141414] font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                        className={`bg-transparent appearance-none text-base sm:text-xl ${boilerText} font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide`}
                                                         value={boilerStatus}
                                                         onChange={e => {
                                                             const v = e.target.value === '' ? null : e.target.value;
@@ -1863,9 +1871,9 @@ function InputShiftPageInner() {
                                                             setCurrentBoiler(prev => ({ ...prev, status_boiler: v }));
                                                         }}
                                                     >
-                                                        <option value="" className="text-[#9A9A9A]">Status...</option>
-                                                        <option value="running">Running</option>
-                                                        <option value="shutdown">Shutdown</option>
+                                                        <option value="" className="text-[#9A9A9A] bg-white">Status...</option>
+                                                        <option value="running" className="bg-white text-[#141414]">Running</option>
+                                                        <option value="shutdown" className="bg-white text-[#141414]">Shutdown</option>
                                                     </select>
                                                 </div>
                                             );
@@ -1874,13 +1882,14 @@ function InputShiftPageInner() {
                                             (kecuali kartu deaerator + raw totalizer) dan gen output di tab Generator. */}
                                         {activeTab === 'Turbin' && (() => {
                                             const turbinStatus = (turbin.status_turbin as string) ?? '';
-                                            const tBorder = turbinStatus === 'running' ? 'border-emerald-300' : turbinStatus === 'shutdown' ? 'border-red-300' : 'border-[#DCDCDC]';
-                                            const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-400';
+                                            const tBox = turbinStatus === 'running' ? 'bg-emerald-500 border-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500 border-red-500' : 'bg-white border-[#DCDCDC]';
+                                            const tText = turbinStatus ? 'text-white' : 'text-[#141414]';
+                                            const tDot = turbinStatus ? 'bg-white' : 'bg-slate-400';
                                             return (
-                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-white border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                <div className={`inline-flex items-center gap-2 sm:gap-3 border ${tBox} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
                                                     <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
                                                     <select
-                                                        className="bg-transparent appearance-none text-base sm:text-xl text-[#141414] font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                        className={`bg-transparent appearance-none text-base sm:text-xl ${tText} font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide`}
                                                         value={turbinStatus}
                                                         onChange={e => {
                                                             const v = e.target.value === '' ? null : e.target.value;
@@ -1888,9 +1897,9 @@ function InputShiftPageInner() {
                                                             setTurbin(prev => ({ ...prev, status_turbin: v }));
                                                         }}
                                                     >
-                                                        <option value="" className="text-[#9A9A9A]">Status...</option>
-                                                        <option value="running">Running</option>
-                                                        <option value="shutdown">Shutdown</option>
+                                                        <option value="" className="text-[#9A9A9A] bg-white">Status...</option>
+                                                        <option value="running" className="bg-white text-[#141414]">Running</option>
+                                                        <option value="shutdown" className="bg-white text-[#141414]">Shutdown</option>
                                                     </select>
                                                 </div>
                                             );
@@ -1922,22 +1931,11 @@ function InputShiftPageInner() {
                                 {/* Shift Tab Content. Pada lebar < xl, gunakan layout block normal (auto height
                                     per child) supaya form tidak collapse ke 0 height karena flex-1 + min-h-0.
                                     Pada xl+, switch ke flex-row supaya form & sidebar summary sejajar. */}
-                                {visibleTabs.length > 0 && (() => {
-                                    // Tab contoh restyle terang = Boiler A/B. Tab lain masih tampilan
-                                    // lama (dark) → dibungkus panel gelap + chip penanda supaya jelas
-                                    // saat review bahwa sisanya menyusul.
-                                    const isLightTab = activeTab === 'Boiler A' || activeTab === 'Boiler B';
-                                    return (
-                                <div className="flex flex-col gap-2 xl:flex-1 xl:min-h-0 pb-6 w-full max-w-full">
-                                    {!isLightTab && (
-                                        <span className="self-start inline-flex items-center gap-1.5 rounded-full border border-[#E2E2E2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#8A8A8A]">
-                                            <span className="material-symbols-outlined text-[14px]">brush</span>
-                                            Tampilan tab ini belum di-restyle
-                                        </span>
-                                    )}
-                                <div className={`flex flex-col xl:flex-row gap-6 xl:flex-1 xl:min-h-0 w-full max-w-full ${!isLightTab ? 'rounded-2xl bg-[#101822] border border-slate-800 p-3 sm:p-4' : ''}`}>
-                                    {activeTab === 'Boiler A' && <FormTheme.Provider value="light"><TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} /></FormTheme.Provider>}
-                                    {activeTab === 'Boiler B' && <FormTheme.Provider value="light"><TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} /></FormTheme.Provider>}
+                                {visibleTabs.length > 0 && (
+                                <FormTheme.Provider value="light">
+                                <div className="flex flex-col xl:flex-row gap-6 xl:flex-1 xl:min-h-0 pb-6 w-full max-w-full">
+                                    {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
+                                    {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
                                     {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet as number | null} prevTotalizerCondensate={prevTurbin.totalizer_condensate as number | null} />}
                                     {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} isTurbinShutdown={turbin.status_turbin === 'shutdown'} />}
                                     {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
@@ -1947,9 +1945,8 @@ function InputShiftPageInner() {
                                     {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} />}
                                     {activeTab === 'Catatan Operasional' && <TabCatatanOperasional catatan={catatan} onCatatanChange={setCatatan} stationCatatan={report?.station_catatan as Record<string, string> | null | undefined} currentStation={station} solarEntries={solarEntries} outSolarEntries={outSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} ashEntries={ashEntries} savedAshEntries={savedAshEntries} coalBunker={coalBunker} />}
                                 </div>
-                                </div>
-                                    );
-                                })()}
+                                </FormTheme.Provider>
+                                )}
                             </>
                         )}
                     </div>

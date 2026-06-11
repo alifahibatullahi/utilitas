@@ -1478,33 +1478,35 @@ function InputShiftPageInner() {
             {/* Header */}
             <header className="flex flex-col gap-4 shrink-0 mt-4 mb-2 bg-white border border-[#E6E6E6] rounded-2xl p-5 lg:p-6">
                 <div className="flex flex-col gap-3 w-full">
-                    {/* Row 1: Judul + chip grup/station/admin */}
+                    {/* Row 1: Judul (kiri) + chip grup/station/admin (kanan) — seimbang kiri-kanan */}
                     <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-2xl lg:text-3xl font-semibold tracking-tight text-[#141414]">
                             {inputMode === 'shift' ? 'Laporan Shift' : 'Laporan Harian'}
                         </h2>
-                        {(() => {
-                            const group = inputMode === 'harian'
-                                ? getGroupMalamOnDate(selectedDate)
-                                : currentGroup;
-                            return (
-                                <span className="px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] text-[#555555]">
-                                    {group ? `Grup ${group}` : 'Off'}
+                        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                            {(() => {
+                                const group = inputMode === 'harian'
+                                    ? getGroupMalamOnDate(selectedDate)
+                                    : currentGroup;
+                                return (
+                                    <span className="px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] text-[#555555]">
+                                        {group ? `Grup ${group}` : 'Off'}
+                                    </span>
+                                );
+                            })()}
+                            {station && (
+                                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] text-[#555555]">
+                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
+                                    {STATION_LABELS[station]}
                                 </span>
-                            );
-                        })()}
-                        {station && (
-                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] text-[#555555]">
-                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>badge</span>
-                                {STATION_LABELS[station]}
-                            </span>
-                        )}
-                        {isAdmin && (
-                            <span title="Admin — bisa isi semua tanggal/shift" className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] bg-[#FAFAFA] text-[#555555]">
-                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>admin_panel_settings</span>
-                                Admin
-                            </span>
-                        )}
+                            )}
+                            {isAdmin && (
+                                <span title="Admin — bisa isi semua tanggal/shift" className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border border-[#E2E2E2] bg-[#FAFAFA] text-[#555555]">
+                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>admin_panel_settings</span>
+                                    Admin
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {/* Row 2: 4 tab Malam/Pagi/Sore/Harian + tanggal + penanda jadwal.
@@ -1512,7 +1514,7 @@ function InputShiftPageInner() {
                         = mode shift + nomor shift, Harian = mode harian. Titik biru kecil =
                         shift yang sedang berjalan (detectCurrentShift). */}
                     <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                        <div className="grid grid-cols-4 gap-1 p-1 bg-[#F4F4F4] rounded-xl w-full lg:w-auto lg:min-w-[400px]">
+                        <div className="grid grid-cols-4 gap-1 p-1 bg-[#F4F4F4] rounded-xl w-full lg:flex-1 lg:min-w-0">
                             {([
                                 { key: 'malam', num: 1, label: 'Malam' },
                                 { key: 'pagi', num: 2, label: 'Pagi' },
@@ -1546,7 +1548,7 @@ function InputShiftPageInner() {
 
                         {/* Tanggal (Date Picker) — input native transparan menutupi seluruh kotak:
                             tap di mana pun buka native date dialog (mobile), showPicker fallback desktop. */}
-                        <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] transition-colors rounded-xl pl-3 pr-8 py-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
+                        <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] transition-colors rounded-xl pl-3 pr-8 py-1 min-w-[200px] sm:min-w-[220px] lg:w-[300px] shrink-0">
                             <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none pointer-events-none">Tanggal</span>
                             <div className="relative w-full flex items-center h-5 overflow-hidden">
                                 <span className="inline sm:hidden text-[11px] font-bold text-[#141414] select-none whitespace-nowrap pointer-events-none">
@@ -1573,7 +1575,7 @@ function InputShiftPageInner() {
 
                         {/* Penanda positif: pilihan shift+tanggal = jadwal yang sedang berjalan */}
                         {onSchedule && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4FD7] whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4FD7] whitespace-nowrap shrink-0">
                                 <span className="h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />
                                 Sesuai jadwal sekarang
                             </span>
@@ -1582,7 +1584,7 @@ function InputShiftPageInner() {
                     {/* Row 3: Supervisor + Foreman (form penuh, bukan mode station) —
                         grid 3 kolom sejajar satu garis lurus (stack di layar sempit). */}
                     {!station && (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full lg:max-w-3xl">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
                             <div className="relative flex flex-col bg-white border border-[#DCDCDC] focus-within:border-[#141414] rounded-xl pl-2.5 pr-7 py-1 transition-colors w-full">
                                 <span className="text-[10px] font-semibold text-[#8A8A8A] uppercase tracking-widest leading-tight select-none">Supervisor</span>
                                 <div className="relative w-full flex items-center h-5">

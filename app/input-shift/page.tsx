@@ -1481,7 +1481,7 @@ function InputShiftPageInner() {
                     {/* Row 1: Judul (kiri) + chip grup/station/admin (kanan) — seimbang kiri-kanan */}
                     <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-2xl lg:text-3xl font-semibold tracking-tight text-[#141414]">
-                            {inputMode === 'shift' ? 'Laporan Shift' : 'Laporan Harian'}
+                            Laporan UBB
                         </h2>
                         <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
                             {(() => {
@@ -1528,13 +1528,13 @@ function InputShiftPageInner() {
                                         onClick={() => { setInputMode('shift'); setSelectedShift(t.num); }}
                                         className={`relative px-3 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                                             active
-                                                ? (isCurrent ? 'bg-[#1D4FD7] text-white' : 'bg-[#141414] text-white')
+                                                ? (isCurrent ? 'bg-emerald-600 text-white' : 'bg-[#141414] text-white')
                                                 : isCurrent
-                                                    ? 'bg-white text-[#1D4FD7]'
+                                                    ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-300'
                                                     : 'text-[#555555] hover:bg-white'}`}
                                     >
                                         {t.label}
-                                        {isCurrent && <span className={`absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : 'bg-[#1D4FD7]'}`} />}
+                                        {isCurrent && <span className={`absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : 'bg-emerald-500'}`} />}
                                     </button>
                                 );
                             })}
@@ -1575,8 +1575,8 @@ function InputShiftPageInner() {
 
                         {/* Penanda positif: pilihan shift+tanggal = jadwal yang sedang berjalan */}
                         {onSchedule && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4FD7] whitespace-nowrap shrink-0">
-                                <span className="h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 whitespace-nowrap shrink-0">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                 Sesuai jadwal sekarang
                             </span>
                         )}

@@ -192,23 +192,23 @@ export default function StationPickerModal({
                                     onClick={() => selectOption(o.id)}
                                     className={`relative rounded-[10px] border p-3 text-left transition-colors cursor-pointer ${
                                         active
-                                            ? (isCurrent ? 'border-[#1D4FD7] bg-[#1D4FD7]' : 'border-[#141414] bg-[#141414]')
+                                            ? (isCurrent ? 'border-emerald-600 bg-emerald-600' : 'border-[#141414] bg-[#141414]')
                                             : isCurrent
-                                                ? 'border-[#1D4FD7] bg-[#F4F8FE] hover:bg-[#EAF1FE]'
+                                                ? 'border-emerald-400 bg-emerald-50 hover:bg-emerald-100'
                                                 : 'border-[#E2E2E2] bg-white hover:border-[#BDBDBD]'
                                     }`}
                                 >
-                                    <span className={`block text-[15px] font-semibold ${active ? 'text-white' : isCurrent ? 'text-[#1D4FD7]' : 'text-[#141414]'}`}>
+                                    <span className={`block text-[15px] font-semibold ${active ? 'text-white' : isCurrent ? 'text-emerald-700' : 'text-[#141414]'}`}>
                                         {o.label}
                                     </span>
-                                    <span className={`mt-0.5 block text-xs ${active ? (isCurrent ? 'text-[#BFD2F8]' : 'text-[#A8A8A8]') : isCurrent ? 'text-[#5B82E0]' : 'text-[#8A8A8A]'}`}>
+                                    <span className={`mt-0.5 block text-xs ${active ? (isCurrent ? 'text-emerald-100' : 'text-[#A8A8A8]') : isCurrent ? 'text-emerald-600' : 'text-[#8A8A8A]'}`}>
                                         {o.window}
                                     </span>
                                     {isCurrent && (
                                         <span className={`absolute right-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                            active ? 'bg-white text-[#1D4FD7]' : 'bg-[#1D4FD7] text-white'
+                                            active ? 'bg-white text-emerald-700' : 'bg-emerald-600 text-white'
                                         }`}>
-                                            <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-[#1D4FD7]' : 'bg-white'}`} />
+                                            <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-emerald-600' : 'bg-white'}`} />
                                             Sekarang
                                         </span>
                                     )}
@@ -242,8 +242,8 @@ export default function StationPickerModal({
                             </span>
                         )}
                         {isOnSchedule ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4FD7]">
-                                <span className="h-1.5 w-1.5 rounded-full bg-[#1D4FD7]" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                 Sesuai jadwal sekarang
                             </span>
                         ) : (

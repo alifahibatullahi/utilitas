@@ -86,6 +86,19 @@ function isSupabaseConfigured(): boolean {
     return !!url && !url.includes('YOUR_PROJECT_ID');
 }
 
+// Kolom eksplisit (bukan '*') untuk menekan egress Supabase
+const TANK_LEVEL_COLS = 'tank_id, level_pct, operator_name, note, trend, created_at';
+const FLOW_READING_COLS = 'tank_id, direction, label, rate, pump, created_at';
+const SOLAR_UNLOADING_COLS = 'id, date, liters, supplier';
+const SOLAR_USAGE_COLS = 'id, date, liters, tujuan';
+
+// Polling hanya safety-net kalau websocket realtime drop — update utama lewat
+// channel realtime di bawah, jadi interval panjang tidak mengurangi kecepatan UI.
+const SAFETY_POLL_MS = 5 * 60 * 1000;
+// Throttle refetch dari event visibility/online supaya gonta-ganti tab tidak
+// memicu full refetch terus-menerus.
+const MIN_REFETCH_GAP_MS = 60 * 1000;
+
 /** Dari history pompa Demin Revamp (desc), hitung kapan pompa aktif mulai */
 function calcPumpActiveSince(rows: TankFlowReadingRow[]): string | null {
     if (!rows.length) return null;
@@ -172,7 +185,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         const fetchTankLevels = async () => {
             const { data } = await supabase
                 .from('tank_levels')
-                .select('*')
+                .select(TANK_LEVEL_COLS)
                 .order('created_at', { ascending: false })
                 .limit(500);
 
@@ -213,7 +226,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         const fetchShiftTankyard = async () => {
             const { data } = await supabase
                 .from('shift_tankyard')
-                .select('*, shift_reports!inner(date, shift, group_name)')
+                .select('tk_rcw, tk_rcw_trend, tk_demin, tk_demin_trend, tk_solar_ab, created_at, shift_reports!inner(date)')
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
@@ -254,11 +267,15 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             }
         };
 
+        // Pompa Demin Revamp terakhir yang diketahui — dipakai handler realtime
+        // INSERT untuk deteksi pergantian pompa tanpa re-fetch history.
+        let lastDeminPump: string | null = null;
+
         // Fetch flow readings (ambil 200 terakhir untuk tiap tank+direction)
         const fetchFlowReadings = async () => {
             const { data } = await supabase
                 .from('tank_flow_readings')
-                .select('*')
+                .select(FLOW_READING_COLS)
                 .order('created_at', { ascending: false })
                 .limit(200);
 
@@ -270,6 +287,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                 const deminRevampHistory = rows.filter(
                     r => r.tank_id === 'DEMIN' && r.direction === 'out' && r.label === 'Demin Revamp'
                 );
+                lastDeminPump = deminRevampHistory[0]?.pump ?? null;
                 setPumpActiveSince(calcPumpActiveSince(deminRevampHistory));
             }
         };
@@ -278,7 +296,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         const fetchSolar = async () => {
             const { data } = await supabase
                 .from('solar_unloadings')
-                .select('*')
+                .select(SOLAR_UNLOADING_COLS)
                 .order('date', { ascending: false })
                 .limit(10);
 
@@ -294,7 +312,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
 
             const { data: usages } = await supabase
                 .from('solar_usages')
-                .select('*')
+                .select(SOLAR_USAGE_COLS)
                 .order('date', { ascending: false })
                 .limit(10);
             
@@ -309,7 +327,10 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             }
         };
 
+        let lastRefreshAt = 0;
+
         const refreshAll = () => {
+            lastRefreshAt = Date.now();
             fetchTankLevels().then(() => fetchShiftTankyard());
             fetchFlowReadings();
             fetchSolar();
@@ -318,13 +339,17 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         refreshAll();
 
         // Safety-net polling — jaga-jaga kalau websocket realtime drop.
-        const autoRefreshInterval = setInterval(refreshAll, 60 * 1000);
+        const autoRefreshInterval = setInterval(refreshAll, SAFETY_POLL_MS);
 
         // Refetch saat tab kembali visible atau jaringan reconnect.
         // Menangani kasus WS drop saat device sleep / network blip — tanpa
         // ini, display harus di-refresh manual setelah idle lama.
-        const handleVisibility = () => { if (!document.hidden) refreshAll(); };
-        const handleOnline = () => refreshAll();
+        // Di-throttle supaya pindah-pindah tab tidak banjir full refetch.
+        const refreshIfStale = () => {
+            if (Date.now() - lastRefreshAt >= MIN_REFETCH_GAP_MS) refreshAll();
+        };
+        const handleVisibility = () => { if (!document.hidden) refreshIfStale(); };
+        const handleOnline = () => refreshIfStale();
         document.addEventListener('visibilitychange', handleVisibility);
         window.addEventListener('online', handleOnline);
 
@@ -378,26 +403,48 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             })
             .subscribe(onSubStatus('tank_levels'));
 
-        // Realtime: tank_flow_readings (INSERT, UPDATE, DELETE)
+        // Realtime: tank_flow_readings.
+        // INSERT (jalur umum) di-apply langsung dari payload — tanpa re-fetch
+        // 200 baris yang dulu bikin egress membengkak di tiap client.
+        // UPDATE/DELETE (jarang) tetap full re-fetch karena payload-nya tidak
+        // cukup untuk merekonstruksi state "latest per label".
         const flowChannel = supabase
             .channel('tank_flow_readings_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'tank_flow_readings' }, async () => {
-                // Re-fetch all flow readings untuk update state lengkap
-                const { data } = await supabase
-                    .from('tank_flow_readings')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(200);
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tank_flow_readings' }, (payload) => {
+                const row = payload.new as TankFlowReadingRow;
+                const tankId = row.tank_id as TankId;
+                if (!TANK_IDS.includes(tankId)) return;
 
-                if (data && data.length > 0) {
-                    const rows = data as unknown as TankFlowReadingRow[];
-                    applyFlowReadings(rows);
-                    const deminRevampHistory = rows.filter(
-                        r => r.tank_id === 'DEMIN' && r.direction === 'out' && r.label === 'Demin Revamp'
-                    );
-                    setPumpActiveSince(calcPumpActiveSince(deminRevampHistory));
+                if (row.direction === 'in') {
+                    setFlowRates(prev => ({
+                        ...prev,
+                        [tankId]: [
+                            ...prev[tankId].filter(f => f.sourceLabel !== row.label),
+                            { sourceLabel: row.label, rate: Number(row.rate) },
+                        ],
+                    }));
+                } else {
+                    setOutputFlowRates(prev => ({
+                        ...prev,
+                        [tankId]: [
+                            ...prev[tankId].filter(f => f.destinationLabel !== row.label),
+                            { destinationLabel: row.label, rate: Number(row.rate), pump: row.pump ?? undefined },
+                        ],
+                    }));
+
+                    if (tankId === 'DEMIN' && row.label === 'Demin Revamp') {
+                        if (!row.pump) {
+                            setPumpActiveSince(null);
+                        } else if (row.pump !== lastDeminPump) {
+                            // Pompa baru aktif / ganti pompa — streak dimulai dari baris ini
+                            setPumpActiveSince(row.created_at);
+                        }
+                        lastDeminPump = row.pump;
+                    }
                 }
             })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tank_flow_readings' }, () => fetchFlowReadings())
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tank_flow_readings' }, () => fetchFlowReadings())
             .subscribe(onSubStatus('tank_flow_readings'));
 
         // Realtime: solar_unloadings (INSERT, UPDATE, DELETE)
@@ -407,7 +454,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                 // Re-fetch solar unloadings on any change
                 const { data } = await supabase
                     .from('solar_unloadings')
-                    .select('*')
+                    .select(SOLAR_UNLOADING_COLS)
                     .order('date', { ascending: false })
                     .limit(10);
 
@@ -431,7 +478,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'solar_usages' }, async () => {
                 const { data } = await supabase
                     .from('solar_usages')
-                    .select('*')
+                    .select(SOLAR_USAGE_COLS)
                     .order('date', { ascending: false })
                     .limit(10);
                 if (data && data.length > 0) {

@@ -40,7 +40,7 @@ const TANK_COLORS: Record<string, {
 };
 
 function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankId; compact?: boolean; readOnly?: boolean }) {
-    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, solarUsages, pumpActiveSince, trendData, deleteSolarUnloading, updateSolarUnloading, deleteSolarUsage, updateSolarUsage } = useTankData();
+    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, solarUsages, pumpActiveSince, trendData, loadHistory, deleteSolarUnloading, updateSolarUnloading, deleteSolarUsage, updateSolarUsage } = useTankData();
     // Edit unloading state
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editDate, setEditDate] = useState('');
@@ -63,7 +63,13 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
     const [unloadingPage, setUnloadingPage] = useState(1);
     const [usagePage, setUsagePage] = useState(1);
     const [trendRange, setTrendRange] = useState<'24h' | '7d' | '30d' | 'all'>('24h');
-    
+
+    // History level di-fetch lazy saat modal trend dibuka (hemat egress)
+    useEffect(() => {
+        if (isTrendModalOpen) loadHistory();
+    }, [isTrendModalOpen, loadHistory]);
+
+
     const tank = TANKS[tankId];
     const data = currentLevels[tankId];
     const level = data?.level || 0;

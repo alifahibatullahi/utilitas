@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { TankId, TANK_IDS, TANKS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import type { SolarUnloadingRow, SolarUsageRow, TankLevelRow, TankFlowReadingRow } from '@/lib/supabase/types';
@@ -60,6 +60,9 @@ interface TankDataContextType {
     solarUsages: SolarUsage[];
     /** ISO timestamp kapan pompa Demin Revamp mulai aktif (null = mati) */
     pumpActiveSince: string | null;
+    /** Fetch history level on-demand (modal trend / halaman detail). Hasil di-cache
+     *  sebentar; pemanggilan berulang dalam waktu dekat tidak memicu fetch ulang. */
+    loadHistory: () => Promise<void>;
     submitLevel: (tankId: TankId, level: number, levelM3: number, operator: string, note?: string, trend?: string) => void;
     submitFlowRates: (tankId: TankId, rates: FlowRate[], operatorName?: string) => void;
     submitOutputFlowRates: (tankId: TankId, rates: OutputFlowRate[], operatorName?: string) => void;
@@ -88,6 +91,7 @@ function isSupabaseConfigured(): boolean {
 
 // Kolom eksplisit (bukan '*') untuk menekan egress Supabase
 const TANK_LEVEL_COLS = 'tank_id, level_pct, operator_name, note, trend, created_at';
+const TANK_LEVEL_HISTORY_COLS = 'tank_id, level_pct, operator_name, note, created_at';
 const FLOW_READING_COLS = 'tank_id, direction, label, rate, pump, created_at';
 const SOLAR_UNLOADING_COLS = 'id, date, liters, supplier';
 const SOLAR_USAGE_COLS = 'id, date, liters, tujuan';
@@ -175,51 +179,86 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         setOutputFlowRates(newOutputFlowRates);
     }, []);
 
+    // History level (sampai 500 baris) hanya di-fetch on-demand — saat modal
+    // trend / halaman detail tank dibuka — tidak ikut polling berkala. Setelah
+    // dimuat, realtime INSERT tetap menambah history sehingga chart ikut update.
+    const lastHistoryLoadAt = useRef(0);
+    const loadHistory = useCallback(async () => {
+        if (!isSupabaseConfigured()) return;
+        if (Date.now() - lastHistoryLoadAt.current < SAFETY_POLL_MS) return;
+        lastHistoryLoadAt.current = Date.now();
+
+        const supabase = createClient();
+        const { data, error } = await supabase
+            .from('tank_levels')
+            .select(TANK_LEVEL_HISTORY_COLS)
+            .order('created_at', { ascending: false })
+            .limit(500);
+
+        if (error || !data) {
+            lastHistoryLoadAt.current = 0; // gagal — boleh langsung dicoba lagi
+            return;
+        }
+
+        const rows = data as unknown as TankLevelRow[];
+        const historyItems: TankLevelHistory[] = rows.map((r, idx) => ({
+            id: idx + 1,
+            tankId: r.tank_id as TankId,
+            level: Number(r.level_pct),
+            operator: r.operator_name,
+            timestamp: r.created_at,
+            note: r.note || undefined,
+        }));
+        setHistory(historyItems);
+        setTrendData(buildTrendData(historyItems));
+    }, [buildTrendData]);
+
     // Fetch from Supabase on mount
     useEffect(() => {
         if (!isSupabaseConfigured()) return;
 
         const supabase = createClient();
 
-        // Fetch latest tank levels + history from tank_levels table
-        const fetchTankLevels = async () => {
-            const { data } = await supabase
-                .from('tank_levels')
-                .select(TANK_LEVEL_COLS)
-                .order('created_at', { ascending: false })
-                .limit(500);
+        // Level terkini: cukup 1 baris terakhir per tank, bukan 500 baris history
+        const fetchCurrentLevels = async () => {
+            await Promise.all(TANK_IDS.map(async tankId => {
+                const { data } = await supabase
+                    .from('tank_levels')
+                    .select(TANK_LEVEL_COLS)
+                    .eq('tank_id', tankId)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
 
-            if (data && data.length > 0) {
-                const rows = data as unknown as TankLevelRow[];
+                const latest = (data?.[0] ?? null) as TankLevelRow | null;
+                if (!latest) return;
 
-                TANK_IDS.forEach(tankId => {
-                    const latest = rows.find(r => r.tank_id === tankId);
-                    if (latest) {
-                        setCurrentLevels(prev => ({
-                            ...prev,
-                            [tankId]: {
-                                tankId,
-                                level: Number(latest.level_pct),
-                                operator: latest.operator_name,
-                                timestamp: latest.created_at,
-                                note: latest.note || undefined,
-                                trend: latest.trend as any || undefined,
-                            },
-                        }));
-                    }
-                });
+                // Trend opsional di form input — kalau baris terakhir tidak
+                // menyertakan trend, pakai trend terakhir yang pernah diisi
+                // supaya indikator naik/turun/stabil tidak hilang dari tampilan.
+                let trend = latest.trend ?? null;
+                if (!trend) {
+                    const { data: prevTrend } = await supabase
+                        .from('tank_levels')
+                        .select('trend')
+                        .eq('tank_id', tankId)
+                        .not('trend', 'is', null)
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+                    trend = (prevTrend?.[0] as { trend?: string } | undefined)?.trend ?? null;
+                }
 
-                const historyItems: TankLevelHistory[] = rows.map((r, idx) => ({
-                    id: idx + 1,
-                    tankId: r.tank_id as TankId,
-                    level: Number(r.level_pct),
-                    operator: r.operator_name,
-                    timestamp: r.created_at,
-                    note: r.note || undefined,
+                setCurrentLevels(prev => ({
+                    ...prev,
+                    [tankId]: {
+                        tankId,
+                        level: Number(latest.level_pct),
+                        operator: latest.operator_name,
+                        timestamp: latest.created_at,
+                        note: latest.note || undefined,
+                        trend: trend as 'naik' | 'turun' | 'tetap' || undefined,
+                    },
                 }));
-                setHistory(historyItems);
-                setTrendData(buildTrendData(historyItems));
-            }
+            }));
         };
 
         // Fallback: shift_tankyard jika tank_levels kosong
@@ -331,7 +370,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
 
         const refreshAll = () => {
             lastRefreshAt = Date.now();
-            fetchTankLevels().then(() => fetchShiftTankyard());
+            fetchCurrentLevels().then(() => fetchShiftTankyard());
             fetchFlowReadings();
             fetchSolar();
         };
@@ -373,7 +412,11 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     note: row.note || undefined,
                     trend: row.trend as 'naik' | 'turun' | 'tetap' || undefined,
                 };
-                setCurrentLevels(prev => ({ ...prev, [tankId]: newLevel }));
+                setCurrentLevels(prev => ({
+                    ...prev,
+                    // Input tanpa trend tidak menghapus trend yang sedang tampil
+                    [tankId]: { ...newLevel, trend: newLevel.trend ?? prev[tankId]?.trend },
+                }));
                 setHistory(prev => {
                     const newHistory = [{ id: prev.length + 1, ...newLevel }, ...prev];
                     setTrendData(buildTrendData(newHistory));
@@ -396,7 +439,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                             operator: row.operator_name,
                             timestamp: row.created_at,
                             note: row.note || undefined,
-                            trend: row.trend as 'naik' | 'turun' | 'tetap' || undefined,
+                            trend: (row.trend as 'naik' | 'turun' | 'tetap') || existing?.trend,
                         },
                     };
                 });
@@ -510,7 +553,11 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         const timestamp = new Date().toISOString();
         const newEntry: TankLevel = { tankId, level, operator, timestamp, note, trend: trend as any };
 
-        setCurrentLevels(prev => ({ ...prev, [tankId]: newEntry }));
+        setCurrentLevels(prev => ({
+            ...prev,
+            // Submit tanpa trend tidak menghapus trend yang sedang tampil
+            [tankId]: { ...newEntry, trend: newEntry.trend ?? prev[tankId]?.trend },
+        }));
         setHistory(prev => {
             const newHistory = [{ id: prev.length + 1, ...newEntry }, ...prev];
             setTrendData(buildTrendData(newHistory));
@@ -671,7 +718,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         <TankDataContext.Provider value={{
             currentLevels, history, trendData,
             flowRates, outputFlowRates,
-            solarUnloadings, solarUsages, pumpActiveSince,
+            solarUnloadings, solarUsages, pumpActiveSince, loadHistory,
             submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading,
             deleteSolarUnloading, updateSolarUnloading,
             submitSolarUsage, deleteSolarUsage, updateSolarUsage,

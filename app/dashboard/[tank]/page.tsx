@@ -13,8 +13,13 @@ import { getAlertStatus } from '@/lib/utils';
 export default function TankDetailPage({ params }: { params: Promise<{ tank: string }> }) {
     const { tank: tankSlug } = use(params);
     const { operator } = useOperator();
-    const { currentLevels, history } = useTankData();
+    const { currentLevels, history, loadHistory } = useTankData();
     const router = useRouter();
+
+    // History level di-fetch lazy saat halaman detail dibuka (hemat egress)
+    useEffect(() => {
+        loadHistory();
+    }, [loadHistory]);
 
     // Find tank by slug (lowercase id)
     const tankId = TANK_IDS.find(t => t.toLowerCase() === tankSlug.toLowerCase()) as TankId | undefined;

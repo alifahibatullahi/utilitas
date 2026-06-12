@@ -10,7 +10,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift } from '@/lib/google-sheets';
+import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift, upsertCatatanOperasional } from '@/lib/google-sheets';
+import { getShiftCatatanCanonical } from '@/lib/shift-catatan';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
 import { dailyReportToRow, type SolarSummary, type ChemicalSummary, type CoalSummary } from '@/lib/daily-sheets-mapper';
 import type { ShiftTab } from '@/lib/google-sheets';
@@ -234,6 +235,37 @@ export async function POST(req: NextRequest) {
             console.error('[sheets/write] tank_levels_shift error:', err);
             return NextResponse.json({
                 warning: `Tank levels Sheets gagal: ${err instanceof Error ? err.message : String(err)}`,
+            });
+        }
+    }
+
+    // ─── Catatan Operasional (spreadsheet catatan, kolom B/C/D) ───────────────
+    if (type === 'catatan_operasional') {
+        const { date, shift } = data as { date: string; shift: 'malam' | 'pagi' | 'sore' };
+        if (!date || !shift || !['malam', 'pagi', 'sore'].includes(shift)) {
+            return NextResponse.json({ error: 'Missing/invalid date or shift' }, { status: 400 });
+        }
+        try {
+            const supabase = getSupabase();
+            const { data: row } = await supabase
+                .from('shift_reports')
+                .select('date, shift, catatan, station_catatan, shift_coal_bunker(*)')
+                .eq('date', date)
+                .eq('shift', shift)
+                .maybeSingle();
+            if (!row) {
+                return NextResponse.json({ action: 'skipped', reason: `shift report ${date}/${shift} tidak ditemukan` });
+            }
+            // Catatan kanonik dari DB (catatan utama + semua station + auto-lines);
+            // skip-kosong & anti-wipe ditangani di upsertCatatanOperasional.
+            const canonical = await getShiftCatatanCanonical(supabase, row);
+            const result = await upsertCatatanOperasional(date, shift, canonical);
+            console.log(`[sheets/write] catatan_operasional ${date}/${shift} →`, result);
+            return NextResponse.json(result);
+        } catch (err) {
+            console.error('[sheets/write] catatan_operasional error:', err);
+            return NextResponse.json({
+                warning: `Supabase OK, Sheets catatan gagal: ${err instanceof Error ? err.message : String(err)}`,
             });
         }
     }

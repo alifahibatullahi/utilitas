@@ -300,14 +300,22 @@ function InputShiftPageInner() {
     // 22.00 → shift sore  (afternoon shift makes 22.00 report)
     const shiftMap: Record<number, ShiftType> = { 1: 'malam', 2: 'pagi', 3: 'sore' };
     const SHIFT_LABELS: Record<number, string> = { 1: 'Shift Malam 06.00', 2: 'Shift Pagi 14.00', 3: 'Shift Sore 22.00' };
-    const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift]);
+    // Mode station: fetch hanya tabel milik station tsb (hemat beban DB & egress saat
+    // jam sibuk pergantian shift — follow-up outage 12 Jun 2026). Hook history yang
+    // tidak dipakai station ini di-disable total (enabled=false → tidak ada query).
+    const isBoilerStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b'].includes(station);
+    const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift], station);
     // Deep-link ?review=1 (dari notif "siap dipublish") → navigasi ke halaman
     // Review/Publish begitu report target selesai di-load. Sekali pakai.
     const autoReviewRef = useRef(false);
-    const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift]);
-    const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift]);
-    const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift]);
-    const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift]);
+    // prev data: dipakai tab Boiler/Turbin/Generator/Distribusi Steam (selisih totalizer).
+    const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift], !station || isPanelStation);
+    // berasap history: tab Coal Bunker (station bunker) + auto-line catatan (form penuh).
+    const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift], !station || station === 'bunker');
+    // shutdown history: badge "shutdown sejak" di tab Boiler A/B.
+    const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift], !station || isBoilerStation);
+    // inherit status boiler/turbin/feeder: hanya relevan untuk station panel & form penuh.
+    const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift], !station || isPanelStation);
     const { operator, operators } = useOperator();
     const isAdmin = operator?.role === 'admin';
 

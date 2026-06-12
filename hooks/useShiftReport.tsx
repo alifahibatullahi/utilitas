@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, ReportStatus } from '@/lib/supabase/types';
+import type { OperatorStation } from '@/lib/constants';
 
 // Determine the previous shift based on chronological report order:
 // 06.00 (malam) → prev is sore (22.00) from yesterday
@@ -19,7 +20,9 @@ function getPreviousShift(date: string, shift: ShiftType): { prevDate: string; p
     return { prevDate: date, prevShift: 'pagi' };
 }
 
-export function usePreviousShiftData(date: string, shift: ShiftType) {
+// `enabled` = false men-skip fetch total (mode station yang tidak butuh data prev —
+// hemat query saat jam sibuk). Default true supaya pemanggil lama tidak berubah.
+export function usePreviousShiftData(date: string, shift: ShiftType, enabled: boolean = true) {
     const [prevBoilerA, setPrevBoilerA] = useState<Record<string, number | string | null>>({});
     const [prevBoilerB, setPrevBoilerB] = useState<Record<string, number | string | null>>({});
     const [prevCoalBunker, setPrevCoalBunker] = useState<Record<string, number | string | null>>({});
@@ -30,7 +33,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
     const { prevDate, prevShift } = useMemo(() => getPreviousShift(date, shift), [date, shift]);
 
     useEffect(() => {
-        if (!isSupabaseConfigured() || !date) {
+        if (!enabled || !isSupabaseConfigured() || !date) {
             setPrevBoilerA({});
             setPrevBoilerB({});
             setPrevCoalBunker({});
@@ -137,7 +140,7 @@ export function usePreviousShiftData(date: string, shift: ShiftType) {
 
         fetchPrev();
         return () => { stale = true; };
-    }, [prevDate, prevShift, date]);
+    }, [prevDate, prevShift, date, enabled]);
 
     return { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist };
 }
@@ -147,11 +150,11 @@ export interface BunkerBerasapInfo {
     [bunkerKey: string]: { date: string; shift: ShiftType } | null;
 }
 
-export function useBunkerBerasapHistory(date: string, shift: ShiftType) {
+export function useBunkerBerasapHistory(date: string, shift: ShiftType, enabled: boolean = true) {
     const [berasapSince, setBerasapSince] = useState<BunkerBerasapInfo>({});
 
     useEffect(() => {
-        if (!isSupabaseConfigured() || !date) {
+        if (!enabled || !isSupabaseConfigured() || !date) {
             setBerasapSince({});
             return;
         }
@@ -210,7 +213,7 @@ export function useBunkerBerasapHistory(date: string, shift: ShiftType) {
 
         fetchHistory();
         return () => { stale = true; };
-    }, [date, shift]);
+    }, [date, shift, enabled]);
 
     return berasapSince;
 }
@@ -224,13 +227,13 @@ export interface LatestBoilerStatus {
 
 // Cari status boiler & feeder terbaru dengan walkback hingga 10 shift ke belakang
 // Lebih andal dari usePreviousShiftData yang hanya lihat 1 shift sebelumnya
-export function useLatestBoilerStatus(date: string, shift: ShiftType | 'harian'): LatestBoilerStatus {
+export function useLatestBoilerStatus(date: string, shift: ShiftType | 'harian', enabled: boolean = true): LatestBoilerStatus {
     const [result, setResult] = useState<LatestBoilerStatus>({
         statusBoilerA: null, statusBoilerB: null, statusTurbin: null, statusFeeders: {},
     });
 
     useEffect(() => {
-        if (!isSupabaseConfigured() || !date) return;
+        if (!enabled || !isSupabaseConfigured() || !date) return;
         const supabase = createClient();
         let stale = false;
         // Cycle: malam(0) → pagi(1) → sore(2) → harian(3) → malam-besok(0). Harian
@@ -339,7 +342,7 @@ export function useLatestBoilerStatus(date: string, shift: ShiftType | 'harian')
 
         fetch();
         return () => { stale = true; };
-    }, [date, shift]);
+    }, [date, shift, enabled]);
 
     return result;
 }
@@ -349,11 +352,11 @@ export interface BoilerShutdownInfo {
     boiler_b: { date: string; shift: ShiftType } | null;
 }
 
-export function useBoilerShutdownHistory(date: string, shift: ShiftType): BoilerShutdownInfo {
+export function useBoilerShutdownHistory(date: string, shift: ShiftType, enabled: boolean = true): BoilerShutdownInfo {
     const [info, setInfo] = useState<BoilerShutdownInfo>({ boiler_a: null, boiler_b: null });
 
     useEffect(() => {
-        if (!isSupabaseConfigured() || !date) { setInfo({ boiler_a: null, boiler_b: null }); return; }
+        if (!enabled || !isSupabaseConfigured() || !date) { setInfo({ boiler_a: null, boiler_b: null }); return; }
         const supabase = createClient();
         let stale = false;
         const shiftOrder: Record<string, number> = { sore: 2, pagi: 1, malam: 0 };
@@ -394,7 +397,7 @@ export function useBoilerShutdownHistory(date: string, shift: ShiftType): Boiler
 
         fetchHistory();
         return () => { stale = true; };
-    }, [date, shift]);
+    }, [date, shift, enabled]);
 
     return info;
 }
@@ -624,7 +627,54 @@ function isSupabaseConfigured(): boolean {
     return !!url && !url.includes('YOUR_PROJECT_ID');
 }
 
-export function useShiftReport(date: string, shift: ShiftType) {
+// ─── Station scope mapping ───
+// Tabel yang DI-OWNED penuh oleh tiap station. Dipakai dua arah:
+// - fetch: mode station hanya men-join tabel miliknya (hemat beban DB & egress
+//   saat jam sibuk pergantian shift — follow-up outage 12 Jun 2026)
+// - submit: gate tabel mana yang boleh ditulis (DELETE+INSERT/UPDATE)
+// CATATAN: panel_boiler_a/b + bunker share shift_coal_bunker → tulis di-handle via
+// STATION_PARTIAL_COLS (UPDATE per kolom, bukan DELETE+INSERT) supaya tidak
+// saling overwrite.
+const STATION_OWNS_TABLES: Record<string, string[]> = {
+    // shift_personnel: station panel own subset kolom (grup/karu/kasi sisi
+    // boiler ATAU turbin — lihat STATION_PARTIAL_COLS) supaya nama personnel
+    // tetap tersimpan (DB + Sheets) saat submit dari station view.
+    panel_boiler: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'],   // legacy: keduanya + full bunker
+    panel_boiler_a: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'], // row A + partial cols A/B/C
+    panel_boiler_b: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'], // row B + partial cols D/E/F
+    panel_turbin: ['shift_turbin', 'shift_steam_dist', 'shift_generator_gi', 'shift_power_dist', 'shift_personnel'],
+    // handling: kartu Loading (shift_esp_handling) + kartu Tankyard / Level Tank
+    // (shift_tankyard). Tankyard di-edit di TabHandling, jadi station handling yang
+    // owns shift_tankyard (sebelumnya keliru di lapangan_boiler → level tank tidak tersimpan).
+    handling: ['shift_esp_handling', 'shift_tankyard'],
+    esp: ['shift_esp_handling'],
+    bunker: ['shift_coal_bunker'],                          // hanya bunker_* + status_bunker_*
+    lapangan_boiler: ['shift_water_quality'],
+    lapangan_turbin: [],
+};
+
+// Semua child table laporan shift, urutan kanonik untuk select.
+const SHIFT_CHILD_TABLES = [
+    'shift_boiler', 'shift_turbin', 'shift_steam_dist', 'shift_generator_gi',
+    'shift_power_dist', 'shift_esp_handling', 'shift_tankyard', 'shift_personnel',
+    'shift_coal_bunker', 'shift_water_quality',
+    'critical_equipment', 'maintenance_logs', 'shift_notes',
+] as const;
+
+// Select string untuk fetch laporan shift. Mode station → parent + tabel owned saja
+// (+ shift_personnel untuk restore nama foreman/supervisor di form). Tabel
+// critical/maintenance/notes hanya untuk form penuh & halaman laporan.
+function buildShiftReportSelect(station: OperatorStation | null): string {
+    if (!station || !(station in STATION_OWNS_TABLES)) {
+        return `*, ${SHIFT_CHILD_TABLES.map(t => `${t}(*)`).join(', ')}`;
+    }
+    const owned = new Set(STATION_OWNS_TABLES[station]);
+    owned.add('shift_personnel');
+    const children = SHIFT_CHILD_TABLES.filter(t => owned.has(t));
+    return ['*', ...children.map(t => `${t}(*)`)].join(', ');
+}
+
+export function useShiftReport(date: string, shift: ShiftType, station: OperatorStation | null = null) {
     const [report, setReport] = useState<ShiftReportData | null>(null);
     const [activeMaintenance, setActiveMaintenance] = useState<import('@/lib/supabase/types').MaintenanceWithCritical[]>([]);
     const [openCriticals, setOpenCriticals] = useState<import('@/lib/supabase/types').CriticalEquipmentRow[]>([]);
@@ -660,44 +710,39 @@ export function useShiftReport(date: string, shift: ShiftType) {
             const winStart = win.start.toISOString();
             const winEnd = win.end.toISOString();
 
+            // Mode station: hanya join tabel milik station + skip query maintenance/critical
+            // (tidak ada tab station yang menampilkannya) — hemat beban DB saat jam sibuk.
+            const stationScoped = !!station && station in STATION_OWNS_TABLES;
+            const emptyRes = Promise.resolve({ data: null, error: null });
+
             // Filter timestamp-based: maintenance status IP/OK dengan updated_at di dalam window shift
-            const [{ data, error: fetchError }, maintRes, critRes] = await Promise.all([
+            const [reportRes, maintRes, critRes] = await Promise.all([
                 supabase
                     .from('shift_reports')
-                    .select(`
-                        *,
-                        shift_boiler(*),
-                        shift_turbin(*),
-                        shift_steam_dist(*),
-                        shift_generator_gi(*),
-                        shift_power_dist(*),
-                        shift_esp_handling(*),
-                        shift_tankyard(*),
-                        shift_personnel(*),
-                        shift_coal_bunker(*),
-                        shift_water_quality(*),
-                        critical_equipment(*),
-                        maintenance_logs(*),
-                        shift_notes(*)
-                    `)
+                    .select(buildShiftReportSelect(station))
                     .eq('date', date)
                     .eq('shift', shift)
                     .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle(),
-                supabase
+                stationScoped ? emptyRes : supabase
                     .from('maintenance_logs')
                     .select('*, critical_equipment(item, deskripsi)')
                     .in('status', ['IP', 'OK'])
                     .gte('updated_at', winStart)
                     .lte('updated_at', winEnd)
                     .order('created_at', { ascending: true }),
-                supabase
+                stationScoped ? emptyRes : supabase
                     .from('critical_equipment')
                     .select('*')
                     .eq('status', 'OPEN')
                     .order('created_at', { ascending: true }),
             ]);
+            // Select string dinamis (per-station) → supabase-js tidak bisa infer tipe row.
+            const { data, error: fetchError } = reportRes as unknown as {
+                data: Record<string, unknown[]> | null;
+                error: { message: string } | null;
+            };
 
             if (stale) {
                 console.log(`[useShiftReport] STALE fetch discarded: date=${date}, shift=${shift}`);
@@ -748,7 +793,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         fetchReport();
 
         return () => { stale = true; };
-    }, [date, shift, fetchKey]);
+    }, [date, shift, fetchKey, station]);
 
     // Valid DB columns per table (prevents unknown column errors)
     const VALID_COLS: Record<string, string[]> = {
@@ -816,27 +861,7 @@ export function useShiftReport(date: string, shift: ShiftType) {
         const validCreatedBy = reportData.created_by && UUID_REGEX.test(reportData.created_by) ? reportData.created_by : null;
 
         // ─── Station scope mapping ───
-        // Tabel yang DI-OWNED penuh oleh tiap station (DELETE+INSERT seperti normal).
-        // CATATAN: panel_boiler_a/b + bunker share shift_coal_bunker → di-handle via
-        // STATION_PARTIAL_COLS (UPDATE per kolom, bukan DELETE+INSERT) supaya tidak
-        // saling overwrite.
-        const STATION_OWNS_TABLES: Record<string, string[]> = {
-            // shift_personnel: station panel own subset kolom (grup/karu/kasi sisi
-            // boiler ATAU turbin — lihat STATION_PARTIAL_COLS) supaya nama personnel
-            // tetap tersimpan (DB + Sheets) saat submit dari station view.
-            panel_boiler: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'],   // legacy: keduanya + full bunker
-            panel_boiler_a: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'], // row A + partial cols A/B/C
-            panel_boiler_b: ['shift_boiler', 'shift_coal_bunker', 'shift_personnel'], // row B + partial cols D/E/F
-            panel_turbin: ['shift_turbin', 'shift_steam_dist', 'shift_generator_gi', 'shift_power_dist', 'shift_personnel'],
-            // handling: kartu Loading (shift_esp_handling) + kartu Tankyard / Level Tank
-            // (shift_tankyard). Tankyard di-edit di TabHandling, jadi station handling yang
-            // owns shift_tankyard (sebelumnya keliru di lapangan_boiler → level tank tidak tersimpan).
-            handling: ['shift_esp_handling', 'shift_tankyard'],
-            esp: ['shift_esp_handling'],
-            bunker: ['shift_coal_bunker'],                          // hanya bunker_* + status_bunker_*
-            lapangan_boiler: ['shift_water_quality'],
-            lapangan_turbin: [],
-        };
+        // STATION_OWNS_TABLES dideklarasi di module scope (dipakai juga oleh fetch).
         // Row-level filter untuk shift_boiler (multi-row by `boiler` column).
         const STATION_OWNS_BOILER_ROW: Record<string, ('A' | 'B')[]> = {
             panel_boiler: ['A', 'B'],

@@ -11,6 +11,8 @@ export interface LogRow {
     sent_to: string;
     payload: string | null;
     sent_at: string;
+    status: 'sent' | 'failed' | null;  // null = baris lama (sebelum status dicatat)
+    error: string | null;              // alasan gagal dari gateway WA
     target_label: string;  // resolved from whatsapp_groups, fallback to sent_to
 }
 

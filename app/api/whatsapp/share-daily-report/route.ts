@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
         target_date: report.date as string,
         sent_to: group.fonnte_target,
         payload: message,
+        result: send,
     });
 
     return NextResponse.json({ ok: send.ok, status: send.status });

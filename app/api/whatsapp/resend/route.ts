@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
         target_group: (row.target_group as string | null) ?? null,
         sent_to: row.sent_to as string,
         payload: row.payload as string,
+        result: send,
     });
 
     return NextResponse.json({ ok: send.ok, status: send.status });

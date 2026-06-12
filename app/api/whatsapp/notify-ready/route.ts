@@ -42,12 +42,15 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient();
 
     // 1. Sudah pernah kirim notif "siap" untuk shift ini? → skip (1x per shift).
+    // Hanya hitung kiriman SUKSES (status NULL = baris lama, dianggap sukses) — kalau
+    // semua percobaan sebelumnya gagal di gateway, SIMPAN berikutnya boleh retry.
     const { data: existing } = await supabase
         .from('notification_log')
         .select('id')
         .eq('kind', NOTIF_KIND)
         .eq('target_date', date)
         .eq('target_shift', shift)
+        .or('status.is.null,status.eq.sent')
         .limit(1);
     if (existing && existing.length > 0) {
         return NextResponse.json({ skipped: 'already_sent' });
@@ -142,14 +145,14 @@ export async function POST(req: NextRequest) {
         for (const r of recips as { name: string; phone_number: string }[]) {
             const ps = await sendFonnteGroup(r.phone_number, msg);
             if (ps.ok) sent++;
-            await logNotification(supabase, { kind: NOTIF_KIND, target_date: date, target_shift: shift, target_group: groupLetter, sent_to: r.phone_number, payload: msg });
+            await logNotification(supabase, { kind: NOTIF_KIND, target_date: date, target_shift: shift, target_group: groupLetter, sent_to: r.phone_number, payload: msg, result: ps });
         }
         dispatch = { mode: 'personal', recipients: recips.length, sent };
     } else {
         const group = await getWhatsappGroup(supabase, groupKey);
         if (group) {
             const send = await sendFonnteGroup(group.fonnte_target, msg);
-            await logNotification(supabase, { kind: NOTIF_KIND, target_date: date, target_shift: shift, target_group: groupLetter, sent_to: group.fonnte_target, payload: msg });
+            await logNotification(supabase, { kind: NOTIF_KIND, target_date: date, target_shift: shift, target_group: groupLetter, sent_to: group.fonnte_target, payload: msg, result: send });
             dispatch = { mode: 'group', sent: send.ok, error: send.error };
         } else {
             dispatch = { mode: 'none', skipped: 'no_group_configured', groupKey };

@@ -30,7 +30,13 @@ export type FonnteAccount = WaAccount;
 
 // notification_log.kind yang berasal dari akun PUBLISH — dipakai resend agar kirim
 // ulang lewat akun/provider yang sama dengan pengiriman aslinya.
-const PUBLISH_KINDS = new Set(['shift_share', 'daily_share', 'turbin_save_shift', 'turbin_save_harian']);
+const PUBLISH_KINDS = new Set([
+    'shift_share', 'daily_share', 'turbin_save_shift', 'turbin_save_harian',
+    // Notif "siap dipublish" ke nomor pribadi supervisor juga dikirim via akun publish
+    // (notify-ready & notify-ready-daily memanggil notifySupervisorPersonal dengan
+    // account 'publish') — tanpa entri ini, resend dari log admin nyasar ke Wablas.
+    'report_ready_shift_supervisor', 'report_ready_daily_supervisor',
+]);
 
 /** Tentukan akun dari kind notification_log (untuk resend). Default 'notif'. */
 export function accountForKind(kind: string | null | undefined): WaAccount {
@@ -221,9 +227,18 @@ export async function logNotification(
         target_group?: string | null;
         sent_to: string;
         payload: string;
+        // Hasil kirim gateway. Tanpa ini, "ada di log" tidak berarti pesan terkirim —
+        // kegagalan Fonnte/Wablas dulu hanya muncul sebagai console.warn di Vercel.
+        result?: SendResult;
     },
 ): Promise<void> {
-    const { error } = await supabase.from('notification_log').insert(entry);
+    const { result, ...rest } = entry;
+    const row = {
+        ...rest,
+        status: result ? (result.ok ? 'sent' : 'failed') : null,
+        error: result && !result.ok ? (result.error ?? 'unknown') : null,
+    };
+    const { error } = await supabase.from('notification_log').insert(row);
     if (error) console.warn('[whatsapp] logNotification error:', error);
 }
 
@@ -234,7 +249,7 @@ export async function logNotification(
 export async function notifySupervisorPersonal(
     supabase: SupabaseClient,
     opts: { supervisorName?: string | null; message: string; logKind: string; date: string; shift?: string | null; account?: WaAccount },
-): Promise<{ sent: boolean; skipped?: string }> {
+): Promise<{ sent: boolean; skipped?: string; error?: string }> {
     const name = opts.supervisorName?.trim();
     if (!name) return { sent: false, skipped: 'no_supervisor_name' };
     const { data } = await supabase
@@ -255,8 +270,9 @@ export async function notifySupervisorPersonal(
         target_group: null,
         sent_to: phone,
         payload: opts.message,
+        result: send,
     });
-    return { sent: send.ok };
+    return { sent: send.ok, error: send.error };
 }
 
 // ─── Shared report formatting ───

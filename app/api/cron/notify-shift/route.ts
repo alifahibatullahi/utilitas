@@ -137,11 +137,14 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
     //    gagal/terlewat (insiden Wablas hang, grup C 10 Jun 2026: 1 dari 3 nomor tak
     //    pernah dikirimi & dedup lama memblokir retry) otomatis dicoba lagi di tick
     //    cron berikutnya, tanpa mengirim dobel ke yang sudah dapat.
+    // Abaikan baris status='failed' (resend manual dari log admin kini mencatat
+    // kegagalan juga) supaya percobaan gagal tidak memblokir retry tick berikutnya.
     let dedupQuery = supabase
         .from('notification_log')
         .select('sent_to')
         .eq('kind', schedule.kind)
-        .eq('target_date', date);
+        .eq('target_date', date)
+        .or('status.is.null,status.eq.sent');
     if (schedule.shift) dedupQuery = dedupQuery.eq('target_shift', schedule.shift);
     const { data: sentRows } = await dedupQuery;
     const alreadySent = new Set(((sentRows ?? []) as { sent_to: string }[]).map((r) => r.sent_to));
@@ -222,6 +225,7 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
                 target_group: groupLetter,
                 sent_to: r.phone_number,
                 payload: message,
+                result: ps,
             });
             // Pesan lanjutan: minta penerima meneruskan reminder ke grup WA-nya.
             await sendWaText(r.phone_number, FORWARD_NOTE);
@@ -244,6 +248,7 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
             target_group: groupLetter,
             sent_to: group.fonnte_target,
             payload: message,
+            result: send,
         });
     }
 

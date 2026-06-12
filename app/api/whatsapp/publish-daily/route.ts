@@ -176,6 +176,7 @@ async function sendPdf(supabase: ReturnType<typeof createAdminClient>, report: a
         target_date: report.date,
         sent_to: group.fonnte_target,
         payload: `[PDF] ${pdfUrl}`,
+        result: send,
     });
 
     return { ok: send.ok, status: send.status, pdfUrl };
@@ -201,6 +202,7 @@ async function sendText(supabase: ReturnType<typeof createAdminClient>, message:
         target_date: report.date,
         sent_to: fonnteTarget,
         payload: message,
+        result: send,
     });
     return { ok: send.ok, status: send.status };
 }

@@ -30,6 +30,14 @@ function truncate(s: string | null, n = 100): string {
     return s.length > n ? s.slice(0, n) + '…' : s;
 }
 
+// Badge status kirim gateway. null = baris lama sebelum status dicatat — tampil "–"
+// karena hasil kirimnya memang tidak diketahui (dulu log ditulis tanpa cek hasil).
+function StatusBadge({ status }: { status: 'sent' | 'failed' | null }) {
+    if (status === 'sent') return <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold border bg-emerald-500/20 text-emerald-300 border-emerald-500/30">✓ terkirim</span>;
+    if (status === 'failed') return <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold border bg-rose-500/20 text-rose-300 border-rose-500/30">✗ gagal</span>;
+    return <span className="text-text-secondary text-xs">–</span>;
+}
+
 export default function LogPanel() {
     const [rows, setRows] = useState<LogRow[]>([]);
     const [kind, setKind] = useState('');
@@ -99,13 +107,14 @@ export default function LogPanel() {
                                 <th className="text-left text-xs text-text-secondary uppercase py-3 px-3">Jenis</th>
                                 <th className="text-left text-xs text-text-secondary uppercase py-3 px-3">Target</th>
                                 <th className="text-left text-xs text-text-secondary uppercase py-3 px-3">Konteks</th>
+                                <th className="text-left text-xs text-text-secondary uppercase py-3 px-3">Status</th>
                                 <th className="text-left text-xs text-text-secondary uppercase py-3 px-3">Pesan (preview)</th>
                                 <th className="text-center text-xs text-text-secondary uppercase py-3 px-5">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">
-                            {loading && <tr><td colSpan={6} className="text-center py-8 text-text-secondary">Memuat...</td></tr>}
-                            {!loading && rows.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-text-secondary">Belum ada notifikasi terkirim.</td></tr>}
+                            {loading && <tr><td colSpan={7} className="text-center py-8 text-text-secondary">Memuat...</td></tr>}
+                            {!loading && rows.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-text-secondary">Belum ada notifikasi terkirim.</td></tr>}
                             {rows.map(r => (
                                 <tr key={r.id} onClick={() => setDetail(r)} className="hover:bg-surface-highlight/30 cursor-pointer transition-colors">
                                     <td className="py-3 px-5 text-xs text-text-secondary font-mono whitespace-nowrap">{fmtWIB(r.sent_at)}</td>
@@ -127,6 +136,7 @@ export default function LogPanel() {
                                             </div>
                                         )}
                                     </td>
+                                    <td className="py-3 px-3" title={r.error ?? undefined}><StatusBadge status={r.status} /></td>
                                     <td className="py-3 px-3 text-xs text-text-secondary max-w-md">{truncate(r.payload, 100)}</td>
                                     <td className="py-3 px-5 text-center" onClick={e => e.stopPropagation()}>
                                         <button onClick={() => resend(r.id)} disabled={resending === r.id} title="Kirim ulang"
@@ -157,6 +167,8 @@ export default function LogPanel() {
                             <div><span className="text-text-secondary text-xs uppercase">Fonnte Target</span><code className="text-xs text-emerald-400">{detail.sent_to}</code></div>
                             <div><span className="text-text-secondary text-xs uppercase">Tanggal Konteks</span><div className="text-white">{detail.target_date}</div></div>
                             <div><span className="text-text-secondary text-xs uppercase">Shift/Grup</span><div className="text-white">{detail.target_shift ?? '—'} {detail.target_group && `· ${detail.target_group}`}</div></div>
+                            <div><span className="text-text-secondary text-xs uppercase">Status Kirim</span><div><StatusBadge status={detail.status} /></div></div>
+                            {detail.error && <div><span className="text-text-secondary text-xs uppercase">Error Gateway</span><div className="text-rose-300 text-xs">{detail.error}</div></div>}
                         </div>
                         <div>
                             <span className="text-text-secondary text-xs uppercase block mb-1.5">Pesan Lengkap</span>

@@ -93,6 +93,7 @@ async function sendShiftNotifications(supabase: any, reportId: string, date: str
             target_group: 'utilitas_2',
             sent_to: u2Group.fonnte_target,
             payload: msg,
+            result: send,
         });
         results.push({ target: 'utilitas_2', label: 'Utilitas 2', ok: send.ok, error: send.error, message: msg });
     }
@@ -117,6 +118,7 @@ async function sendShiftNotifications(supabase: any, reportId: string, date: str
             target_group: 'su_3a',
             sent_to: su3aGroup.fonnte_target,
             payload: msg,
+            result: send,
         });
         results.push({ target: 'su_3a', label: 'SU 3A', ok: send.ok, error: send.error, message: msg });
     }
@@ -171,6 +173,7 @@ async function sendHarianNotifications(supabase: any, reportId: string, date: st
             target_group: 'utilitas_2',
             sent_to: u2Group.fonnte_target,
             payload: msg,
+            result: send,
         });
         results.push({ target: 'utilitas_2', label: 'Utilitas 2', ok: send.ok, error: send.error, message: msg });
     }
@@ -197,6 +200,7 @@ async function sendHarianNotifications(supabase: any, reportId: string, date: st
             target_group: 'su_3a',
             sent_to: su3aGroup.fonnte_target,
             payload: msg,
+            result: send,
         });
         results.push({ target: 'su_3a', label: 'SU 3A', ok: send.ok, error: send.error, message: msg });
     }

@@ -39,9 +39,13 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
         if (onPowerChange && prevStgTot != null && pv.power_stg_ubb_totalizer == null) {
             onPowerChange('power_stg_ubb_totalizer', prevStgTot);
         }
+        // Set 0 utk semua field Generator Output yang belum bernilai 0 — TERMASUK yang masih
+        // null (laporan baru). Field ini readOnly saat shutdown, jadi kalau dibiarkan null
+        // operator tak bisa mengisinya dan tab Generator tak pernah "lengkap" → laporan turbin
+        // shutdown tak bisa disimpan.
         if (onGeneratorChange) {
             GEN_OUTPUT_FIELDS.forEach(k => {
-                if (gv[k] != null && gv[k] !== 0) onGeneratorChange(k, 0);
+                if (gv[k] !== 0) onGeneratorChange(k, 0);
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

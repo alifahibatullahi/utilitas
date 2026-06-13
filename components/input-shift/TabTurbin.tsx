@@ -39,8 +39,12 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
             onFieldChange('totalizer_steam_inlet', prevTotalizerSteamInlet);
         if (prevTotalizerCondensate != null && values.totalizer_condensate == null)
             onFieldChange('totalizer_condensate', prevTotalizerCondensate);
+        // Set 0 utk semua field operasional yang belum bernilai 0 — TERMASUK yang masih
+        // null (laporan baru). Field ini readOnly saat shutdown, jadi kalau dibiarkan null
+        // operator tak bisa mengisinya dan tab Turbin tak pernah "lengkap" → laporan turbin
+        // shutdown tak bisa disimpan (beda dgn boiler yg punya cabang shutdown di isTabLengkap).
         TURBIN_NON_TOTALIZER_FIELDS.forEach(k => {
-            if (values[k] != null && values[k] !== 0) onFieldChange(k, 0);
+            if (values[k] !== 0) onFieldChange(k, 0);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isTurbinShutdown]);

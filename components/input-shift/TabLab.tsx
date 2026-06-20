@@ -37,10 +37,10 @@ export default function TabLab({
 
                     {/* Operator Boiler (dipilih petugas lapangan) */}
                     <div className="col-span-1 md:col-span-2 rounded-xl ring-1 ring-blue-500/30">
-                        <Card title="Operator Boiler (Lapangan)" icon="engineering" color="blue">
+                        <Card title="Operator Lapangan Boiler" icon="engineering" color="blue">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <SelectField label="Operator Boiler A" color="blue" name="operator_boiler_a" placeholder="Pilih operator..." options={operatorOptions} value={(wq.operator_boiler_a as string | null) ?? null} onChange={onOperatorChange} />
-                                <SelectField label="Operator Boiler B" color="blue" name="operator_boiler_b" placeholder="Pilih operator..." options={operatorOptions} value={(wq.operator_boiler_b as string | null) ?? null} onChange={onOperatorChange} />
+                                <SelectField label="Operator Lapangan Boiler A" color="blue" name="operator_boiler_a" placeholder="Pilih operator..." options={operatorOptions} value={(wq.operator_boiler_a as string | null) ?? null} onChange={onOperatorChange} />
+                                <SelectField label="Operator Lapangan Boiler B" color="blue" name="operator_boiler_b" placeholder="Pilih operator..." options={operatorOptions} value={(wq.operator_boiler_b as string | null) ?? null} onChange={onOperatorChange} />
                             </div>
                         </Card>
                     </div>

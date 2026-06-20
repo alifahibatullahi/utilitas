@@ -301,6 +301,8 @@ CREATE TABLE shift_water_quality (
     -- Chemical Dosing: Hydrazine
     hydrazine_level_tanki NUMERIC, hydrazine_stroke_pompa NUMERIC,
     hydrazine_penambahan_air NUMERIC, hydrazine_penambahan_chemical NUMERIC,
+    -- Operator Boiler lapangan (dipilih di form Lab, utk LogSheet Boiler kolom EL/EM)
+    operator_boiler_a TEXT, operator_boiler_b TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)
 );

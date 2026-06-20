@@ -287,8 +287,10 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-            // Personnel/operator untuk blok lab dibaca dari DB (apa adanya): nama operator
-            // tiap station dari station_fillers, foreman/supervisor/grup dari shift_personnel.
+            // Personnel untuk blok lab:
+            //  - Operator Boiler A/B → DIKETIK di form Lapangan Boiler (dropdown), ikut di payload lab.
+            //  - Operator Coal Mill  → otomatis dari pengisi station bunker (station_fillers).
+            //  - Foreman/Supervisor/Grup → otomatis dari shift_personnel.
             let personnel: LogsheetPersonnel | undefined;
             if (lab) {
                 const supabase = getSupabase();
@@ -306,9 +308,10 @@ export async function POST(req: NextRequest) {
                 const sp = (Array.isArray(rep?.shift_personnel) ? rep?.shift_personnel[0] : rep?.shift_personnel) as
                     | { boiler_karu?: string | null; boiler_kasi?: string | null; boiler_grup?: string | null }
                     | undefined;
+                const labRec = lab as Record<string, unknown>;
                 personnel = {
-                    operator_boiler_a: sf['panel_boiler_a'] ?? sf['panel_boiler'] ?? null,
-                    operator_boiler_b: sf['panel_boiler_b'] ?? sf['panel_boiler'] ?? null,
+                    operator_boiler_a: (labRec.operator_boiler_a as string | null) ?? null,
+                    operator_boiler_b: (labRec.operator_boiler_b as string | null) ?? null,
                     operator_coal_mill: sf['bunker'] ?? null,
                     foreman: sp?.boiler_karu ?? null,
                     supervisor: sp?.boiler_kasi ?? null,

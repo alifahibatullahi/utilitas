@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift, upsertCatatanOperasional } from '@/lib/google-sheets';
 import { getShiftCatatanCanonical } from '@/lib/shift-catatan';
+import { upsertLogsheetBoiler, type LogsheetShift, type LogsheetBunker, type LogsheetLab, type LogsheetPersonnel } from '@/lib/logsheet-boiler';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
 import { dailyReportToRow, type SolarSummary, type ChemicalSummary, type CoalSummary } from '@/lib/daily-sheets-mapper';
 import type { ShiftTab } from '@/lib/google-sheets';
@@ -266,6 +267,62 @@ export async function POST(req: NextRequest) {
             console.error('[sheets/write] catatan_operasional error:', err);
             return NextResponse.json({
                 warning: `Supabase OK, Sheets catatan gagal: ${err instanceof Error ? err.message : String(err)}`,
+            });
+        }
+    }
+
+    // ─── LogSheet Boiler (Bunker + Lapangan Boiler → spreadsheet terpisah) ───────
+    if (type === 'logsheet_boiler') {
+        const { shift, date, bunker, lab } = data as {
+            shift: LogsheetShift;
+            date: string;
+            bunker?: LogsheetBunker;
+            lab?: LogsheetLab;
+        };
+        if (!shift || !date) {
+            return NextResponse.json({ error: 'Missing shift or date' }, { status: 400 });
+        }
+        if (!bunker && !lab) {
+            return NextResponse.json({ error: 'No block provided' }, { status: 400 });
+        }
+
+        try {
+            // Personnel/operator untuk blok lab dibaca dari DB (apa adanya): nama operator
+            // tiap station dari station_fillers, foreman/supervisor/grup dari shift_personnel.
+            let personnel: LogsheetPersonnel | undefined;
+            if (lab) {
+                const supabase = getSupabase();
+                const { data: reps } = await supabase
+                    .from('shift_reports')
+                    .select('group_name, station_fillers, shift_personnel(boiler_karu, boiler_kasi, boiler_grup)')
+                    .eq('date', date)
+                    .eq('shift', shift)
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
+                const rep = (reps ?? [])[0] as
+                    | { group_name?: string; station_fillers?: Record<string, string> | null; shift_personnel?: unknown }
+                    | undefined;
+                const sf = (rep?.station_fillers ?? {}) as Record<string, string>;
+                const sp = (Array.isArray(rep?.shift_personnel) ? rep?.shift_personnel[0] : rep?.shift_personnel) as
+                    | { boiler_karu?: string | null; boiler_kasi?: string | null; boiler_grup?: string | null }
+                    | undefined;
+                personnel = {
+                    operator_boiler_a: sf['panel_boiler_a'] ?? sf['panel_boiler'] ?? null,
+                    operator_boiler_b: sf['panel_boiler_b'] ?? sf['panel_boiler'] ?? null,
+                    operator_coal_mill: sf['bunker'] ?? null,
+                    foreman: sp?.boiler_karu ?? null,
+                    supervisor: sp?.boiler_kasi ?? null,
+                    group: sp?.boiler_grup ?? rep?.group_name ?? null,
+                };
+            }
+
+            const result = await upsertLogsheetBoiler(shift, date, { bunker, lab, personnel });
+            console.log(`[sheets/write] logsheet_boiler ${date} ${shift} →`, result);
+            return NextResponse.json(result);
+        } catch (err) {
+            console.error('[sheets/write] logsheet_boiler error:', err);
+            return NextResponse.json({
+                warning: `LogSheet Boiler gagal: ${err instanceof Error ? err.message : String(err)}`,
             });
         }
     }

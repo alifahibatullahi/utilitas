@@ -139,6 +139,7 @@ export default function TabLab({
                             <InputField label="NH₄" unit="ppm" color="emerald" name="bfw_nh4" value={wq.bfw_nh4} onChange={onWaterQualityChange} />
                             <InputField label="CHZ" unit="ppb" color="emerald" name="bfw_chz" value={wq.bfw_chz} onChange={onWaterQualityChange} />
                         </div>
+                        <InputField label="Fe" unit="ppm" color="emerald" name="bfw_fe" value={wq.bfw_fe} onChange={onWaterQualityChange} />
                     </Card>
 
                     <Card title="Boiler Water A" icon="science" color="blue">
@@ -147,9 +148,10 @@ export default function TabLab({
                             <InputField label="Conductivity" unit="μS/cm" color="blue" name="boiler_water_a_conduct" value={wq.boiler_water_a_conduct} onChange={onWaterQualityChange} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
+                            <InputField label="TH" unit="ppm" color="blue" name="boiler_water_a_th" value={wq.boiler_water_a_th} onChange={onWaterQualityChange} />
                             <InputField label="SiO₂" unit="ppb" color="blue" name="boiler_water_a_sio2" value={wq.boiler_water_a_sio2} onChange={onWaterQualityChange} />
-                            <InputField label="PO₄" unit="ppm" color="blue" name="boiler_water_a_po4" value={wq.boiler_water_a_po4} onChange={onWaterQualityChange} />
                         </div>
+                        <InputField label="PO₄" unit="ppm" color="blue" name="boiler_water_a_po4" value={wq.boiler_water_a_po4} onChange={onWaterQualityChange} />
                     </Card>
 
                     <Card title="Boiler Water B" icon="science" color="cyan">
@@ -158,9 +160,10 @@ export default function TabLab({
                             <InputField label="Conductivity" unit="μS/cm" color="cyan" name="boiler_water_b_conduct" value={wq.boiler_water_b_conduct} onChange={onWaterQualityChange} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
+                            <InputField label="TH" unit="ppm" color="cyan" name="boiler_water_b_th" value={wq.boiler_water_b_th} onChange={onWaterQualityChange} />
                             <InputField label="SiO₂" unit="ppb" color="cyan" name="boiler_water_b_sio2" value={wq.boiler_water_b_sio2} onChange={onWaterQualityChange} />
-                            <InputField label="PO₄" unit="ppm" color="cyan" name="boiler_water_b_po4" value={wq.boiler_water_b_po4} onChange={onWaterQualityChange} />
                         </div>
+                        <InputField label="PO₄" unit="ppm" color="cyan" name="boiler_water_b_po4" value={wq.boiler_water_b_po4} onChange={onWaterQualityChange} />
                     </Card>
 
                     <Card title="Product Steam" icon="air" color="orange">

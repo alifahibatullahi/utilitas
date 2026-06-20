@@ -806,7 +806,7 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
         shift_tankyard: ['tk_rcw','tk_demin','tk_solar_ab'],
         shift_personnel: ['turbin_grup','turbin_karu','turbin_kasi','boiler_grup','boiler_karu','boiler_kasi'],
         shift_coal_bunker: ['feeder_a','feeder_b','feeder_c','feeder_d','feeder_e','feeder_f','bunker_a','bunker_b','bunker_c','bunker_d','bunker_e','bunker_f','status_bunker_a','status_bunker_b','status_bunker_c','status_bunker_d','status_bunker_e','status_bunker_f','status_feeder_a','status_feeder_b','status_feeder_c','status_feeder_d','status_feeder_e','status_feeder_f','selisih_feeder_a','selisih_feeder_b','selisih_feeder_c','selisih_feeder_d','selisih_feeder_e','selisih_feeder_f'],
-        shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4','phosphate_level_tanki','phosphate_stroke_pompa','phosphate_penambahan_air','phosphate_penambahan_chemical','phosphate_b_level_tanki','phosphate_b_stroke_pompa','phosphate_b_penambahan_air','phosphate_b_penambahan_chemical','amine_level_tanki','amine_stroke_pompa','amine_penambahan_air','amine_penambahan_chemical','hydrazine_level_tanki','hydrazine_stroke_pompa','hydrazine_penambahan_air','hydrazine_penambahan_chemical','stock_phosphate','stock_amine','stock_hydrazine'],
+        shift_water_quality: ['demin_1250_ph','demin_1250_conduct','demin_1250_th','demin_1250_sio2','demin_750_ph','demin_750_conduct','demin_750_th','demin_750_sio2','bfw_ph','bfw_conduct','bfw_th','bfw_sio2','bfw_nh4','bfw_chz','bfw_fe','boiler_water_a_ph','boiler_water_a_conduct','boiler_water_a_th','boiler_water_a_sio2','boiler_water_a_po4','boiler_water_b_ph','boiler_water_b_conduct','boiler_water_b_th','boiler_water_b_sio2','boiler_water_b_po4','product_steam_ph','product_steam_conduct','product_steam_th','product_steam_sio2','product_steam_nh4','phosphate_level_tanki','phosphate_stroke_pompa','phosphate_penambahan_air','phosphate_penambahan_chemical','phosphate_b_level_tanki','phosphate_b_stroke_pompa','phosphate_b_penambahan_air','phosphate_b_penambahan_chemical','amine_level_tanki','amine_stroke_pompa','amine_penambahan_air','amine_penambahan_chemical','hydrazine_level_tanki','hydrazine_stroke_pompa','hydrazine_penambahan_air','hydrazine_penambahan_chemical','stock_phosphate','stock_amine','stock_hydrazine'],
     };
 
     // Filter object to only include valid DB columns
@@ -1400,6 +1400,51 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'catatan_operasional', data: { date, shift } }),
         }).catch(err => console.warn('[submitReport] catatan_operasional sync failed:', err));
+
+        // ─── Sync ke LogSheet Boiler (spreadsheet terpisah) ───
+        // Hanya station Bunker (blok level bunker) & Lapangan Boiler (blok lab +
+        // personnel) — atau form penuh (keduanya). Sesuai station masing-masing;
+        // sel null dilewati update sehingga blok antar-station tidak saling timpa.
+        const writeBunker = stationKey === null || stationKey === 'bunker';
+        const writeLab = stationKey === null || stationKey === 'lapangan_boiler';
+        if (writeBunker || writeLab) {
+            const cb = (reportData.coalBunker ?? {}) as Record<string, unknown>;
+            const bunkerBlock = {
+                bunker_a: cb.bunker_a, bunker_b: cb.bunker_b, bunker_c: cb.bunker_c,
+                bunker_d: cb.bunker_d, bunker_e: cb.bunker_e, bunker_f: cb.bunker_f,
+            };
+            const hasAny = (o: Record<string, unknown>) => Object.values(o).some(v => v != null && v !== '');
+            const sendBunker = writeBunker && hasAny(bunkerBlock);
+            const labBlock = (reportData.waterQuality ?? {}) as Record<string, unknown>;
+            const sendLab = writeLab && hasAny(labBlock);
+            if (sendBunker || sendLab) {
+                try {
+                    const res = await fetch('/api/sheets/write', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: 'logsheet_boiler',
+                            data: {
+                                shift,
+                                date,
+                                bunker: sendBunker ? bunkerBlock : undefined,
+                                lab: sendLab ? labBlock : undefined,
+                            },
+                        }),
+                    });
+                    const result = res.ok ? await res.json() : { warning: `LogSheet Boiler HTTP ${res.status}` };
+                    if (result.warning) {
+                        if (!sheetsWarning) sheetsWarning = result.warning;
+                        console.warn('[submitReport] LogSheet Boiler warning:', result.warning);
+                    } else {
+                        console.log('[submitReport] LogSheet Boiler OK:', result);
+                    }
+                } catch (lsErr) {
+                    if (!sheetsWarning) sheetsWarning = lsErr instanceof Error ? lsErr.message : String(lsErr);
+                    console.warn('[submitReport] LogSheet Boiler sync failed:', lsErr);
+                }
+            }
+        }
 
         if (errors.length > 0) {
             console.error('Child table errors:', errors);

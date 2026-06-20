@@ -30,7 +30,7 @@ export type ShiftTab = 'pagi' | 'sore' | 'malam';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-function getSheetsClient() {
+export function getSheetsClient() {
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
         throw new Error('Google Sheets credentials not configured (GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY)');
     }
@@ -55,7 +55,7 @@ function getSheetsClient() {
  * jaringan terputus/timeout). Error non-transien (mis. 400/403 — kredensial/range
  * salah) langsung dilempar tanpa retry. Backoff: 400ms, 800ms.
  */
-async function withRetry<T>(fn: () => Promise<T>, label: string, maxAttempts = 3): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, label: string, maxAttempts = 3): Promise<T> {
     let lastErr: unknown;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {

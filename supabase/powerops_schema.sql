@@ -278,12 +278,12 @@ CREATE TABLE shift_water_quality (
     demin_750_th NUMERIC, demin_750_sio2 NUMERIC,
     -- BFW
     bfw_ph NUMERIC, bfw_conduct NUMERIC, bfw_th NUMERIC,
-    bfw_sio2 NUMERIC, bfw_nh4 NUMERIC, bfw_chz NUMERIC,
+    bfw_sio2 NUMERIC, bfw_nh4 NUMERIC, bfw_chz NUMERIC, bfw_fe NUMERIC,
     -- Boiler Water A
-    boiler_water_a_ph NUMERIC, boiler_water_a_conduct NUMERIC,
+    boiler_water_a_ph NUMERIC, boiler_water_a_conduct NUMERIC, boiler_water_a_th NUMERIC,
     boiler_water_a_sio2 NUMERIC, boiler_water_a_po4 NUMERIC,
     -- Boiler Water B
-    boiler_water_b_ph NUMERIC, boiler_water_b_conduct NUMERIC,
+    boiler_water_b_ph NUMERIC, boiler_water_b_conduct NUMERIC, boiler_water_b_th NUMERIC,
     boiler_water_b_sio2 NUMERIC, boiler_water_b_po4 NUMERIC,
     -- Product Steam
     product_steam_ph NUMERIC, product_steam_conduct NUMERIC,

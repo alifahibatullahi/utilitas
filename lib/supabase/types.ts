@@ -263,12 +263,15 @@ export interface ShiftWaterQualityRow {
     bfw_sio2: number | null;
     bfw_nh4: number | null;
     bfw_chz: number | null;
+    bfw_fe: number | null;
     boiler_water_a_ph: number | null;
     boiler_water_a_conduct: number | null;
+    boiler_water_a_th: number | null;
     boiler_water_a_sio2: number | null;
     boiler_water_a_po4: number | null;
     boiler_water_b_ph: number | null;
     boiler_water_b_conduct: number | null;
+    boiler_water_b_th: number | null;
     boiler_water_b_sio2: number | null;
     boiler_water_b_po4: number | null;
     product_steam_ph: number | null;

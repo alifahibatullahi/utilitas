@@ -1853,13 +1853,9 @@ function InputShiftPageInner() {
                                                 options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
                                                 ariaLabel="Supervisor"
                                                 triggerClassName="text-sm font-bold text-white"
-                                                disabled={!!report?.supervisor}
                                             />
                                             <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                         </div>
-                                        {!!report?.supervisor && (
-                                            <span className="text-[9px] text-slate-500">Sudah ditetapkan untuk laporan ini.</span>
-                                        )}
                                     </div>
                                 )}
                                 {/* Foreman — station panel ikut menyimpan grup/foreman/kasi sisi-nya

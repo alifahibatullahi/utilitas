@@ -171,10 +171,11 @@ export async function upsertLogsheetBoiler(
     const shiftOffset = shift === 'malam' ? 0 : 1;
     const sheets = getSheetsClient();
 
-    // Cari baris berdasar tanggal di kolom A.
+    // Tanggal ada di kolom A (Shift Malam) / kolom B (Shift Pagi & Sore — layout geser +1).
+    const dateCol = colLetter(1 + shiftOffset);
     const colA = await withRetry(
-        () => sheets.spreadsheets.values.get({ spreadsheetId: LOGSHEET_BOILER_ID, range: `${tab}!A1:A` }),
-        `logsheet get ${tab}!A`,
+        () => sheets.spreadsheets.values.get({ spreadsheetId: LOGSHEET_BOILER_ID, range: `${tab}!${dateCol}1:${dateCol}` }),
+        `logsheet get ${tab}!${dateCol}`,
     );
     const rows = (colA.data.values ?? []) as string[][];
     let row = -1;
@@ -186,7 +187,7 @@ export async function upsertLogsheetBoiler(
 
     const data: { range: string; values: Cell[][] }[] = [];
     if (appending) {
-        data.push({ range: `${tab}!A${row}`, values: [[toLogsheetDate(isoDate)]] });
+        data.push({ range: `${tab}!${dateCol}${row}`, values: [[toLogsheetDate(isoDate)]] });
     }
     if (payload.bunker) {
         const startLetter = colLetter(BUNKER_START_COL_MALAM + shiftOffset);

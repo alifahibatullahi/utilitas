@@ -1138,7 +1138,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 </div>
                             </div>
                             {/* Supervisor (KASI) — WAJIB di station panel (boiler A/B + turbin).
-                                Dikunci kalau laporan sudah punya KASI → 1 supervisor konsisten. */}
+                                Selalu bisa dipilih/diganti; default mengikuti nilai yang sudah ada. */}
                             {isPanelStation && (
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Supervisor <span className="text-red-400">*</span></span>
@@ -1149,13 +1149,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                             options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
                                             ariaLabel="Supervisor"
                                             triggerClassName="text-sm font-bold text-white"
-                                            disabled={!!report?.daily_report_totalizer?.[0]?.kasi_name}
                                         />
                                         <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                     </div>
-                                    {!!report?.daily_report_totalizer?.[0]?.kasi_name && (
-                                        <span className="text-[9px] text-slate-500">Sudah ditetapkan untuk laporan ini.</span>
-                                    )}
                                 </div>
                             )}
                         </div>

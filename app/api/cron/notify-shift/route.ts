@@ -13,6 +13,7 @@ import {
     shiftYesterdayWIB,
 } from '@/lib/whatsapp';
 import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
+import { autofillShutdownShift, autofillShutdownDaily } from '@/lib/shutdown-autofill';
 
 // Pesan lanjutan yang dikirim SETELAH reminder pribadi (grup A–C, mode personal):
 // minta penerima meneruskan reminder ke grup WA-nya supaya operator lain ikut mengisi.
@@ -108,6 +109,22 @@ export async function GET(req: NextRequest) {
 
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {
     const { schedule, date } = job;
+
+    // 0. Auto-isi unit SHUTDOWN (idempotent) lalu picu cek "siap publish".
+    //    Selama unit shutdown, operator tidak perlu buka station tiap shift/harian:
+    //    sistem mengisi status+totalizer+nol & sync Sheets, dan kalau auto-fill ini
+    //    yang melengkapi laporan, notif siap-publish tetap terkirim (dedup 1×).
+    try {
+        if (schedule.kind === 'shift_reminder' && schedule.shift) {
+            await autofillShutdownShift(supabase, date, schedule.shift as 'pagi' | 'sore' | 'malam');
+            await triggerReady(supabase, 'shift', date, schedule.shift);
+        } else if (schedule.kind === 'daily_reminder') {
+            await autofillShutdownDaily(supabase, date);
+            await triggerReady(supabase, 'daily', date, null);
+        }
+    } catch (e) {
+        console.warn('[cron] autofill/siap-publish gagal:', e);
+    }
 
     // 1. Sudah SUBMIT (bukan sekadar ada baris draft)? → skip.
     //    Penting: laporan harian sering dibuat sebagai 'draft' siang hari (jauh sebelum grup
@@ -253,4 +270,41 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
     }
 
     return { schedule: schedule.id, mode: 'group', sent: send.ok, status: send.status, error: send.error };
+}
+
+/**
+ * Picu cek "siap publish" (notify-ready / notify-ready-daily) lewat HTTP internal,
+ * supaya kalau auto-fill shutdown yang melengkapi laporan, notifnya tetap terkirim.
+ * Endpoint punya dedup 1×/periode sendiri, jadi aman dipanggil tiap tick.
+ */
+async function triggerReady(
+    supabase: ReturnType<typeof createAdminClient>,
+    mode: 'shift' | 'daily',
+    date: string,
+    shift: string | null,
+): Promise<void> {
+    const base = process.env.NEXT_PUBLIC_APP_URL;
+    if (!base) return;
+    const url = base.replace(/\/$/, '');
+    try {
+        if (mode === 'shift' && shift) {
+            const { data } = await supabase.from('shift_reports').select('id').eq('date', date).eq('shift', shift).limit(1);
+            const reportId = (data ?? [])[0] ? ((data as { id: string }[])[0]).id : null;
+            if (!reportId) return;
+            await fetch(`${url}/api/whatsapp/notify-ready`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, shift, reportId }),
+            });
+        } else if (mode === 'daily') {
+            const { data } = await supabase.from('daily_reports').select('id').eq('date', date).limit(1);
+            const reportId = (data ?? [])[0] ? ((data as { id: string }[])[0]).id : null;
+            if (!reportId) return;
+            await fetch(`${url}/api/whatsapp/notify-ready-daily`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, reportId }),
+            });
+        }
+    } catch (e) {
+        console.warn('[cron] triggerReady gagal:', e);
+    }
 }

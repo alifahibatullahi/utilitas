@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
             id,
             supervisor,
             shift_boiler (boiler, press_steam, temp_steam, flow_steam, batubara_ton, temp_furnace, status_boiler),
-            shift_turbin (press_steam, temp_steam, flow_steam, vacuum, thrust_bearing),
+            shift_turbin (press_steam, temp_steam, flow_steam, vacuum, thrust_bearing, status_turbin),
             shift_generator_gi (gen_load, gi_sum_p),
             shift_steam_dist (pabrik1_flow, pabrik2_flow, pabrik3a_flow, pabrik3b_flow),
             shift_power_dist (power_ubb, power_pabrik2, power_pabrik3a, power_revamping, power_pie),
@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
     const missing: string[] = [];
     if (!boilerFilled(boilerA)) missing.push('Boiler A');
     if (!boilerFilled(boilerB)) missing.push('Boiler B');
-    if (!turbin || !filled(turbin.flow_steam) || !filled(turbin.press_steam) || !filled(turbin.temp_steam)) missing.push('Turbin');
+    const turbinFilled = !!turbin && ((turbin as { status_turbin?: string }).status_turbin === 'shutdown' || (filled(turbin.flow_steam) && filled(turbin.press_steam) && filled(turbin.temp_steam)));
+    if (!turbinFilled) missing.push('Turbin');
     if (!sd || !filled(sd.pabrik1_flow) || !filled(sd.pabrik2_flow) || !filled(sd.pabrik3a_flow)) missing.push('Distribusi Steam');
     if (!pd || !filled(pd.power_ubb) || !filled(pd.power_pabrik2) || !filled(pd.power_pabrik3a)) missing.push('Power');
     if (!gen || !filled(gen.gen_load)) missing.push('STG UBB');

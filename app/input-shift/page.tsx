@@ -1281,7 +1281,10 @@ function InputShiftPageInner() {
                 if (boilerB.status_boiler === 'shutdown')
                     return hasVal(boilerB, ['totalizer_steam', 'totalizer_bfw']) && hasVal(coalBunker, ['feeder_d', 'feeder_e', 'feeder_f']);
                 return hasVal(boilerB, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam', 'bfw_press', 'temp_bfw', 'flow_bfw', 'totalizer_bfw', 'temp_furnace', 'air_heater_ti113', 'excess_air', 'temp_flue_gas', 'primary_air', 'secondary_air', 'o2', 'steam_drum_press']) && hasVal(coalBunker, ['feeder_d', 'feeder_e', 'feeder_f']);
-            case 'Turbin': return hasVal(turbin, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam_inlet', 'flow_cond', 'exh_steam', 'vacuum', 'level_condenser', 'hpo_durasi', 'totalizer_condensate', 'thrust_bearing', 'metal_bearing', 'vibrasi', 'winding', 'axial_displacement', 'press_deaerator', 'temp_deaerator', 'temp_cw_in', 'temp_cw_out']);
+            case 'Turbin':
+                if (turbin.status_turbin === 'shutdown')
+                    return hasVal(turbin, ['totalizer_steam_inlet', 'totalizer_condensate']);
+                return hasVal(turbin, ['press_steam', 'temp_steam', 'flow_steam', 'totalizer_steam_inlet', 'flow_cond', 'exh_steam', 'vacuum', 'level_condenser', 'hpo_durasi', 'totalizer_condensate', 'thrust_bearing', 'metal_bearing', 'vibrasi', 'winding', 'axial_displacement', 'press_deaerator', 'temp_deaerator', 'temp_cw_in', 'temp_cw_out']);
             case 'Generator': return hasVal(generatorGi, ['gen_load', 'gen_ampere', 'gen_tegangan', 'gen_amp_react', 'gen_frequensi', 'gen_cos_phi', 'gi_sum_p', 'gi_sum_q', 'gi_cos_phi']) && hasVal(powerDist, ['power_ubb', 'power_ubb_totalizer', 'power_pabrik2', 'power_pabrik2_totalizer', 'power_pabrik3a', 'power_pabrik3a_totalizer', 'power_revamping', 'power_revamping_totalizer', 'power_pie', 'power_pie_totalizer', 'power_stg_ubb_totalizer']);
             case 'Distribusi Steam': return hasVal(steamDist, ['pabrik1_flow', 'pabrik1_temp', 'pabrik1_totalizer', 'pabrik2_flow', 'pabrik2_temp', 'pabrik2_totalizer', 'press_lps', 'pabrik3a_flow', 'pabrik3a_temp', 'pabrik3a_totalizer']);
             case 'Handling': return hasVal(espHandling, ['loading', 'hopper', 'conveyor']) && hasVal(tankyard, ['tk_rcw', 'tk_demin', 'tk_solar_ab']);

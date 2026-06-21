@@ -58,6 +58,10 @@ export function isBoilerComplete(s: DailyState, boiler: 'a' | 'b'): boolean {
 
 /** Turbin & Distribusi Steam lengkap (totalizer + flow tiap distribusi + parameter turbin). */
 export function isTurbinComplete(s: DailyState): boolean {
+    // Turbin shutdown → cukup totalizer produksi 24h (mirror short-circuit boiler).
+    if (s.turbineMisc?.['status_turbin'] === 'shutdown') {
+        return has(s.steam, ['inlet_turbine_24']);
+    }
     return has(s.steam, [
         'inlet_turbine_24', 'inlet_turbine_00',
         'mps_i_24', 'mps_i_00',

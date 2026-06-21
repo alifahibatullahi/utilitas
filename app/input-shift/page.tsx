@@ -1809,6 +1809,38 @@ function InputShiftPageInner() {
                                         <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
                                     </div>
                                 </div>
+                                {/* Operator Lapangan Boiler A & B — hanya station lapangan_boiler.
+                                    Dua operator lapangan; nilainya mengisi kolom EL/EM LogSheet Boiler. */}
+                                {station === 'lapangan_boiler' && (
+                                    <>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Operator Lapangan Boiler A</span>
+                                            <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                                <SearchableSelect
+                                                    value={(waterQuality.operator_boiler_a as unknown as string) ?? ''}
+                                                    onChange={(val) => setWaterQuality(prev => ({ ...prev, operator_boiler_a: val as unknown as number }))}
+                                                    options={labOperatorOptions}
+                                                    ariaLabel="Operator Lapangan Boiler A"
+                                                    triggerClassName="text-sm font-bold text-white"
+                                                />
+                                                <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Operator Lapangan Boiler B</span>
+                                            <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                                <SearchableSelect
+                                                    value={(waterQuality.operator_boiler_b as unknown as string) ?? ''}
+                                                    onChange={(val) => setWaterQuality(prev => ({ ...prev, operator_boiler_b: val as unknown as number }))}
+                                                    options={labOperatorOptions}
+                                                    ariaLabel="Operator Lapangan Boiler B"
+                                                    triggerClassName="text-sm font-bold text-white"
+                                                />
+                                                <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                                 {/* Supervisor — WAJIB di station panel (boiler A/B + turbin).
                                     Dikunci kalau laporan sudah punya supervisor → 1 supervisor konsisten. */}
                                 {isPanelStation && (
@@ -2009,7 +2041,7 @@ function InputShiftPageInner() {
                                     {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} onDeleteSavedSolar={handleDeleteSavedSolar} onDeleteSavedOutSolar={handleDeleteSavedOutSolar} />}
                                     {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} onDeleteSavedAsh={handleDeleteSavedAsh} />}
                                     {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
-                                    {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} operatorOptions={labOperatorOptions} onOperatorChange={(name, value) => setWaterQuality(prev => ({ ...prev, [name]: value as unknown as number }))} />}
+                                    {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} />}
                                     {activeTab === 'Catatan Operasional' && <TabCatatanOperasional catatan={catatan} onCatatanChange={setCatatan} stationCatatan={report?.station_catatan as Record<string, string> | null | undefined} currentStation={station} solarEntries={solarEntries} outSolarEntries={outSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} ashEntries={ashEntries} savedAshEntries={savedAshEntries} coalBunker={coalBunker} />}
                                 </div>
                                 )}

@@ -1342,7 +1342,11 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
         const sheetsBoilerA = canWriteTable('shift_boiler') && allowedBoilersSheets.includes('A') ? reportData.boilerA : undefined;
         const sheetsBoilerB = canWriteTable('shift_boiler') && allowedBoilersSheets.includes('B') ? reportData.boilerB : undefined;
         let sheetsWarning: string | undefined;
-        try {
+        // Retry sisi-klien (hingga 3x): PASTIKAN data benar-benar terkirim ke Sheets saat
+        // user simpan. Server juga sudah retry error transient (withRetry). Sukses → keluar
+        // loop & warning dibersihkan; gagal/`warning` → ulang dgn jeda kecil.
+        for (let sheetAttempt = 1; sheetAttempt <= 3; sheetAttempt++) {
+          try {
             const res = await fetch('/api/sheets/write', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1374,20 +1378,22 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
             });
             if (!res.ok) {
                 sheetsWarning = `Google Sheets HTTP ${res.status}`;
-                console.warn('[submitReport] Sheets sync HTTP error:', res.status);
             } else {
                 const result = await res.json();
                 if (result.warning) {
                     sheetsWarning = result.warning;
-                    console.warn('[submitReport] Sheets warning:', result.warning);
                 } else {
-                    console.log('[submitReport] Sheets sync OK:', result);
+                    sheetsWarning = undefined; // sukses
                 }
             }
-        } catch (sheetsErr) {
+          } catch (sheetsErr) {
             sheetsWarning = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
-            console.warn('[submitReport] Sheets sync failed:', sheetsErr);
+          }
+          if (!sheetsWarning) break; // terkirim → stop retry
+          if (sheetAttempt < 3) await new Promise(r => setTimeout(r, 600 * sheetAttempt));
         }
+        if (sheetsWarning) console.warn('[submitReport] Sheets sync gagal setelah 3x:', sheetsWarning);
+        else console.log('[submitReport] Sheets sync OK');
 
         // Sync Catatan Operasional ke spreadsheet catatan — fire-and-forget.
         // Server re-fetch dari DB (sudah termasuk merge station_catatan via RPC di

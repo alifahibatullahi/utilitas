@@ -122,17 +122,27 @@ export async function getSheetRows(tab: string): Promise<string[][]> {
 }
 
 /**
- * Find the 1-based row index in the spreadsheet for a given date + group name.
- * Searches col A (No) and col B (Tanggal). Returns null if not found.
- * rowIndex is the actual Sheets row number (accounting for 5 header rows).
+ * Baca HANYA kolom B (Tanggal) mulai baris 6 → array string ter-trim.
+ * Jauh lebih kecil/cepat dari getSheetRows (A6:EZ, ~150 kolom × ribuan baris),
+ * sehingga lookup tanggal saat user simpan cepat & kecil peluang timeout.
+ */
+async function getDateColumn(tab: string): Promise<string[]> {
+    const sheets = getSheetsClient();
+    const res = await withRetry(() => sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${tab}!B6:B`,
+    }), `get ${tab}!B6:B`);
+    return ((res.data.values ?? []) as string[][]).map(r => (r[0] ?? '').trim());
+}
+
+/**
+ * Find the 1-based row index for a given date (kolom B). Returns null if not found.
  */
 export async function findShiftRow(tab: string, isoDate: string): Promise<number | null> {
-    const rows = await getSheetRows(tab);
+    const dates = await getDateColumn(tab);
     const targetDate = toIndonesianDate(isoDate);
-
-    for (let i = 0; i < rows.length; i++) {
-        const rowDate = (rows[i][1] ?? '').trim(); // col B = Tanggal (0-indexed col 1)
-        if (rowDate === targetDate) return i + 6;  // 5 headers + 1-based index
+    for (let i = 0; i < dates.length; i++) {
+        if (dates[i] === targetDate) return i + 6; // 5 headers + 1-based index
     }
     return null;
 }
@@ -154,8 +164,8 @@ export async function getShiftRow(tab: string, rowIndex: number): Promise<string
  * Count existing data rows in a tab (to generate the next row number).
  */
 async function countDataRows(tab: string): Promise<number> {
-    const rows = await getSheetRows(tab);
-    return rows.filter(r => r.some(c => c && c.trim() !== '')).length;
+    const dates = await getDateColumn(tab);
+    return dates.filter(d => d !== '').length;
 }
 
 /**
@@ -240,23 +250,19 @@ export async function upsertDailyRow(
     values: (string | number | null)[],
 ): Promise<{ action: 'updated' | 'appended'; rowIndex: number }> {
     const tab = SHEET_TABS.harian;
-    const rows = await getSheetRows(tab);
+    const dates = await getDateColumn(tab);
     const targetDate = toIndonesianDate(isoDate);
 
     let existingRow: number | null = null;
-    for (let i = 0; i < rows.length; i++) {
-        const rowDate = (rows[i][1] ?? '').trim();
-        if (rowDate === targetDate) {
-            existingRow = i + 6;
-            break;
-        }
+    for (let i = 0; i < dates.length; i++) {
+        if (dates[i] === targetDate) { existingRow = i + 6; break; }
     }
 
     if (existingRow !== null) {
         await updateSheetRow(tab, existingRow, values);
         return { action: 'updated', rowIndex: existingRow };
     } else {
-        const rowCount = rows.filter(r => r.some(c => c && c.trim() !== '')).length;
+        const rowCount = dates.filter(d => d !== '').length;
         values[0] = rowCount + 1;
         await appendSheetRow(tab, values);
         return { action: 'appended', rowIndex: rowCount + 6 };

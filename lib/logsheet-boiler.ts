@@ -12,6 +12,7 @@
  * pola merge yang sama dengan sheet utama.
  */
 
+import { sheets_v4 } from 'googleapis';
 import { getSheetsClient, withRetry } from './google-sheets';
 
 const LOGSHEET_BOILER_ID =
@@ -34,6 +35,17 @@ const BULAN = [
 // Kolom 1-based pada tab "Shift Malam". Pagi/Sore = +1.
 const BUNKER_START_COL_MALAM = 90; // CL
 const LAB_START_COL_MALAM = 97;    // CS (blok lab + personnel kontigu CS..EQ)
+
+// Blok chemical dosing (4 chemical × 4 field) — basis Shift Malam, kolom 1-based.
+// Phosphate A level_tanki = DS = LAB_START + 26; tiap chemical 4 kolom berurutan:
+//   [level_tanki, stroke_pompa, penambahan_air, penambahan_chemical].
+// Offset kolom level_tanki tiap chemical dari LAB_START_COL_MALAM:
+const CHEM_LEVEL_OFFSETS = [26, 30, 34, 38]; // Phosphate A, Phosphate B, Amine, Hydrazine
+// Sel di sheet ter-set format salah (semua persen) → set eksplisit saat tulis:
+//   level_tanki, stroke_pompa, penambahan_air = PERSEN (nilai pecahan, mis. 1 → "100%");
+//   penambahan_chemical = NUMBER (Kg, nilai apa adanya, mis. 100 → "100").
+const PCT_NUMFMT: sheets_v4.Schema$NumberFormat = { type: 'PERCENT', pattern: '0.##%' };
+const NUM_NUMFMT: sheets_v4.Schema$NumberFormat = { type: 'NUMBER', pattern: '0.##' };
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -149,20 +161,66 @@ function labValues(lab: LogsheetLab, p: LogsheetPersonnel): Cell[] {
         num(L.boiler_water_a_ph), num(L.boiler_water_a_conduct), num(L.boiler_water_a_th), num(L.boiler_water_a_sio2), num(L.boiler_water_a_po4),
         // Boiler Water B (5) — termasuk TH
         num(L.boiler_water_b_ph), num(L.boiler_water_b_conduct), num(L.boiler_water_b_th), num(L.boiler_water_b_sio2), num(L.boiler_water_b_po4),
-        // Phosphate A (4) — level_tanki diformat persen di sheet
-        pct(L.phosphate_level_tanki), num(L.phosphate_stroke_pompa), num(L.phosphate_penambahan_air), num(L.phosphate_penambahan_chemical),
+        // Phosphate A (4) — level_tanki, stroke_pompa, penambahan_air persen (pct=/100); penambahan_chemical angka (Kg)
+        pct(L.phosphate_level_tanki), pct(L.phosphate_stroke_pompa), pct(L.phosphate_penambahan_air), num(L.phosphate_penambahan_chemical),
         // Phosphate B (4)
-        pct(L.phosphate_b_level_tanki), num(L.phosphate_b_stroke_pompa), num(L.phosphate_b_penambahan_air), num(L.phosphate_b_penambahan_chemical),
+        pct(L.phosphate_b_level_tanki), pct(L.phosphate_b_stroke_pompa), pct(L.phosphate_b_penambahan_air), num(L.phosphate_b_penambahan_chemical),
         // Amine (4)
-        pct(L.amine_level_tanki), num(L.amine_stroke_pompa), num(L.amine_penambahan_air), num(L.amine_penambahan_chemical),
+        pct(L.amine_level_tanki), pct(L.amine_stroke_pompa), pct(L.amine_penambahan_air), num(L.amine_penambahan_chemical),
         // Hydrazine (4)
-        pct(L.hydrazine_level_tanki), num(L.hydrazine_stroke_pompa), num(L.hydrazine_penambahan_air), num(L.hydrazine_penambahan_chemical),
+        pct(L.hydrazine_level_tanki), pct(L.hydrazine_stroke_pompa), pct(L.hydrazine_penambahan_air), num(L.hydrazine_penambahan_chemical),
         // Stock Chemical (3)
         num(L.stock_phosphate), num(L.stock_amine), num(L.stock_hydrazine),
         // Operator (3) + Atasan (2) + Group (1)
         str(p.operator_boiler_a), str(p.operator_boiler_b), str(p.operator_coal_mill),
         str(p.foreman), str(p.supervisor), str(p.group),
     ];
+}
+
+// ─── Number format (chemical dosing) ──────────────────────────────────────────
+
+// Cache sheetId (gid) per judul tab — dipakai GridRange utk set number format.
+let sheetIdCache: Record<string, number> | null = null;
+
+async function resolveSheetId(sheets: ReturnType<typeof getSheetsClient>, title: string): Promise<number> {
+    if (!sheetIdCache) {
+        const meta = await withRetry(
+            () => sheets.spreadsheets.get({ spreadsheetId: LOGSHEET_BOILER_ID, fields: 'sheets.properties(sheetId,title)' }),
+            'logsheet get sheetIds',
+        );
+        sheetIdCache = {};
+        for (const s of meta.data.sheets ?? []) {
+            const p = s.properties;
+            if (p?.title != null && p.sheetId != null) sheetIdCache[p.title] = p.sheetId;
+        }
+    }
+    const id = sheetIdCache[title];
+    if (id == null) throw new Error(`Tab "${title}" tidak ditemukan di LogSheet Boiler`);
+    return id;
+}
+
+/**
+ * Request set number format utk 16 sel chemical dosing di `row` (0-based row index).
+ * Tiap chemical: level_tanki & stroke_pompa = PERSEN, penambahan_air & _chemical = NUMBER.
+ * Mengatasi sel yang ter-format persen menyeluruh (input 100 → tampil 10000).
+ */
+function chemFormatRequests(sheetId: number, row: number, shiftOffset: number): sheets_v4.Schema$Request[] {
+    const r0 = row - 1; // GridRange row index 0-based
+    const reqs: sheets_v4.Schema$Request[] = [];
+    const mk = (c0: number, c1: number, fmt: sheets_v4.Schema$NumberFormat): sheets_v4.Schema$Request => ({
+        repeatCell: {
+            range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 1, startColumnIndex: c0, endColumnIndex: c1 },
+            cell: { userEnteredFormat: { numberFormat: fmt } },
+            fields: 'userEnteredFormat.numberFormat',
+        },
+    });
+    for (const off of CHEM_LEVEL_OFFSETS) {
+        // 0-based kolom level_tanki chemical ini (1-based = LAB_START + off, +shiftOffset).
+        const level0 = (LAB_START_COL_MALAM + off - 1) + shiftOffset;
+        reqs.push(mk(level0, level0 + 3, PCT_NUMFMT));     // level_tanki + stroke_pompa + penambahan_air
+        reqs.push(mk(level0 + 3, level0 + 4, NUM_NUMFMT)); // penambahan_chemical (Kg)
+    }
+    return reqs;
 }
 
 // ─── Upsert ───────────────────────────────────────────────────────────────────
@@ -220,6 +278,22 @@ export async function upsertLogsheetBoiler(
             }),
             `logsheet batchUpdate ${tab} row ${row}`,
         );
+    }
+
+    // Pastikan format sel chemical dosing benar (level/stroke = persen, air/chemical = angka).
+    // Sel di sheet ter-set persen menyeluruh → tanpa ini input 100 tampil 10000.
+    if (payload.lab) {
+        try {
+            const sheetId = await resolveSheetId(sheets, tab);
+            const requests = chemFormatRequests(sheetId, row, shiftOffset);
+            await withRetry(
+                () => sheets.spreadsheets.batchUpdate({ spreadsheetId: LOGSHEET_BOILER_ID, requestBody: { requests } }),
+                `logsheet format ${tab} row ${row}`,
+            );
+        } catch (err) {
+            // Format gagal tidak boleh menggagalkan simpan nilai — log saja.
+            console.warn(`[logsheet-boiler] set format chemical gagal ${tab} row ${row}:`, err instanceof Error ? err.message : err);
+        }
     }
 
     console.log(`[logsheet-boiler] ${tab} row=${row} ${appending ? 'appended' : 'updated'} blocks=${blocks.join('+') || 'none'}`);

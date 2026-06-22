@@ -37,7 +37,7 @@ export default function TabLab({
                                 <InputField label="Stroke Pompa" unit="%" color="purple" name="phosphate_stroke_pompa" value={cd.phosphate_stroke_pompa} onChange={onChemicalDosingChange} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <InputField label="Penambahan Air" unit="liter" color="purple" name="phosphate_penambahan_air" value={cd.phosphate_penambahan_air} onChange={onChemicalDosingChange} />
+                                <InputField label="Penambahan Air" unit="%" color="purple" name="phosphate_penambahan_air" value={cd.phosphate_penambahan_air} onChange={onChemicalDosingChange} />
                                 <InputField label="Penambahan Chemical" unit="kg" color="purple" name="phosphate_penambahan_chemical" value={cd.phosphate_penambahan_chemical} onChange={onChemicalDosingChange} />
                             </div>
                         </Card>
@@ -50,7 +50,7 @@ export default function TabLab({
                                 <InputField label="Stroke Pompa" unit="%" color="rose" name="phosphate_b_stroke_pompa" value={cd.phosphate_b_stroke_pompa} onChange={onChemicalDosingChange} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <InputField label="Penambahan Air" unit="liter" color="rose" name="phosphate_b_penambahan_air" value={cd.phosphate_b_penambahan_air} onChange={onChemicalDosingChange} />
+                                <InputField label="Penambahan Air" unit="%" color="rose" name="phosphate_b_penambahan_air" value={cd.phosphate_b_penambahan_air} onChange={onChemicalDosingChange} />
                                 <InputField label="Penambahan Chemical" unit="kg" color="rose" name="phosphate_b_penambahan_chemical" value={cd.phosphate_b_penambahan_chemical} onChange={onChemicalDosingChange} />
                             </div>
                         </Card>
@@ -63,7 +63,7 @@ export default function TabLab({
                                 <InputField label="Stroke Pompa" unit="%" color="indigo" name="amine_stroke_pompa" value={cd.amine_stroke_pompa} onChange={onChemicalDosingChange} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <InputField label="Penambahan Air" unit="liter" color="indigo" name="amine_penambahan_air" value={cd.amine_penambahan_air} onChange={onChemicalDosingChange} />
+                                <InputField label="Penambahan Air" unit="%" color="indigo" name="amine_penambahan_air" value={cd.amine_penambahan_air} onChange={onChemicalDosingChange} />
                                 <InputField label="Penambahan Chemical" unit="liter" color="indigo" name="amine_penambahan_chemical" value={cd.amine_penambahan_chemical} onChange={onChemicalDosingChange} />
                             </div>
                         </Card>
@@ -76,7 +76,7 @@ export default function TabLab({
                                 <InputField label="Stroke Pompa" unit="%" color="orange" name="hydrazine_stroke_pompa" value={cd.hydrazine_stroke_pompa} onChange={onChemicalDosingChange} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <InputField label="Penambahan Air" unit="liter" color="orange" name="hydrazine_penambahan_air" value={cd.hydrazine_penambahan_air} onChange={onChemicalDosingChange} />
+                                <InputField label="Penambahan Air" unit="%" color="orange" name="hydrazine_penambahan_air" value={cd.hydrazine_penambahan_air} onChange={onChemicalDosingChange} />
                                 <InputField label="Penambahan Chemical" unit="liter" color="orange" name="hydrazine_penambahan_chemical" value={cd.hydrazine_penambahan_chemical} onChange={onChemicalDosingChange} />
                             </div>
                         </Card>

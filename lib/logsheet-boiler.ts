@@ -87,6 +87,16 @@ function str(v: unknown): Cell {
     return s === '' ? null : s;
 }
 
+/**
+ * Level tanki: sel di sheet diformat PERSEN. Nilai numerik di sheet = pecahan
+ * (1 = 100%), jadi inputan user (mis. 100) ditulis /100 (→ 1) supaya tampil "100%".
+ * DB tetap simpan nilai mentah; konversi hanya untuk penyajian di sheet.
+ */
+function pct(v: unknown): Cell {
+    const n = num(v);
+    return n == null ? null : (n as number) / 100;
+}
+
 // ─── Input types ──────────────────────────────────────────────────────────────
 
 export interface LogsheetBunker {
@@ -139,14 +149,14 @@ function labValues(lab: LogsheetLab, p: LogsheetPersonnel): Cell[] {
         num(L.boiler_water_a_ph), num(L.boiler_water_a_conduct), num(L.boiler_water_a_th), num(L.boiler_water_a_sio2), num(L.boiler_water_a_po4),
         // Boiler Water B (5) — termasuk TH
         num(L.boiler_water_b_ph), num(L.boiler_water_b_conduct), num(L.boiler_water_b_th), num(L.boiler_water_b_sio2), num(L.boiler_water_b_po4),
-        // Phosphate A (4)
-        num(L.phosphate_level_tanki), num(L.phosphate_stroke_pompa), num(L.phosphate_penambahan_air), num(L.phosphate_penambahan_chemical),
+        // Phosphate A (4) — level_tanki diformat persen di sheet
+        pct(L.phosphate_level_tanki), num(L.phosphate_stroke_pompa), num(L.phosphate_penambahan_air), num(L.phosphate_penambahan_chemical),
         // Phosphate B (4)
-        num(L.phosphate_b_level_tanki), num(L.phosphate_b_stroke_pompa), num(L.phosphate_b_penambahan_air), num(L.phosphate_b_penambahan_chemical),
+        pct(L.phosphate_b_level_tanki), num(L.phosphate_b_stroke_pompa), num(L.phosphate_b_penambahan_air), num(L.phosphate_b_penambahan_chemical),
         // Amine (4)
-        num(L.amine_level_tanki), num(L.amine_stroke_pompa), num(L.amine_penambahan_air), num(L.amine_penambahan_chemical),
+        pct(L.amine_level_tanki), num(L.amine_stroke_pompa), num(L.amine_penambahan_air), num(L.amine_penambahan_chemical),
         // Hydrazine (4)
-        num(L.hydrazine_level_tanki), num(L.hydrazine_stroke_pompa), num(L.hydrazine_penambahan_air), num(L.hydrazine_penambahan_chemical),
+        pct(L.hydrazine_level_tanki), num(L.hydrazine_stroke_pompa), num(L.hydrazine_penambahan_air), num(L.hydrazine_penambahan_chemical),
         // Stock Chemical (3)
         num(L.stock_phosphate), num(L.stock_amine), num(L.stock_hydrazine),
         // Operator (3) + Atasan (2) + Group (1)

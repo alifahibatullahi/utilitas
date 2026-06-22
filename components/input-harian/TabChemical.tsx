@@ -139,7 +139,7 @@ export default function TabChemical({ date }: TabChemicalProps) {
                         <div className="flex flex-col gap-4">
                             <ChemRow
                                 label="Phosphate"
-                                unit="Ltr"
+                                unit="Kg"
                                 color="purple"
                                 shifts={SHIFT_ORDER.map(s => getShiftVal('phosphate', s))}
                                 total={getTotal('phosphate')}

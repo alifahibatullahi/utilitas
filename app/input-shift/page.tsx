@@ -616,6 +616,15 @@ function InputShiftPageInner() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [report, station]);
 
+    // Station lapangan_boiler: "Diisi oleh" disembunyikan → fillerName mengikuti
+    // "Operator Lapangan Boiler A" supaya station_filler tetap tersimpan benar.
+    useEffect(() => {
+        if (station !== 'lapangan_boiler') return;
+        const opA = (waterQuality.operator_boiler_a as unknown as string) ?? '';
+        if (opA && opA !== fillerName) setFillerName(opA);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [station, waterQuality.operator_boiler_a]);
+
     const handleNavLeave = useCallback(() => {
         bypassNavRef.current = true;
         const url = pendingNavUrl.current!;
@@ -1799,19 +1808,23 @@ function InputShiftPageInner() {
                                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Station</span>
                                     <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
-                                    <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
-                                        <SearchableSelect
-                                            value={fillerName}
-                                            onChange={setFillerName}
-                                            options={operators.map(op => ({ value: op.name, label: `${op.name}${op.group ? ` (Group ${op.group})` : ''}` }))}
-                                            ariaLabel="Diisi oleh"
-                                            triggerClassName="text-sm font-bold text-white"
-                                        />
-                                        <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                {/* "Diisi oleh" disembunyikan di station lapangan_boiler —
+                                    sudah terwakili "Operator Lapangan Boiler A" (fillerName disinkron dari operator A). */}
+                                {station !== 'lapangan_boiler' && (
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
+                                        <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                            <SearchableSelect
+                                                value={fillerName}
+                                                onChange={setFillerName}
+                                                options={operators.map(op => ({ value: op.name, label: `${op.name}${op.group ? ` (Group ${op.group})` : ''}` }))}
+                                                ariaLabel="Diisi oleh"
+                                                triggerClassName="text-sm font-bold text-white"
+                                            />
+                                            <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                                 {/* Operator Lapangan Boiler A & B — hanya station lapangan_boiler.
                                     Dua operator lapangan; nilainya mengisi kolom EL/EM LogSheet Boiler. */}
                                 {station === 'lapangan_boiler' && (

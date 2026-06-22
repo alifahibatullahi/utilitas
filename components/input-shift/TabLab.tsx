@@ -33,12 +33,12 @@ export default function TabLab({
                     <div className="rounded-xl ring-1 ring-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.15)]">
                         <Card title="Phosphate Boiler A" icon="science" color="purple">
                             <div className="grid grid-cols-2 gap-3">
-                                <InputField label="Level Tanki" unit="cm" color="purple" name="phosphate_level_tanki" value={cd.phosphate_level_tanki} onChange={onChemicalDosingChange} />
+                                <InputField label="Level Tanki" unit="%" color="purple" name="phosphate_level_tanki" value={cd.phosphate_level_tanki} onChange={onChemicalDosingChange} />
                                 <InputField label="Stroke Pompa" unit="%" color="purple" name="phosphate_stroke_pompa" value={cd.phosphate_stroke_pompa} onChange={onChemicalDosingChange} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <InputField label="Penambahan Air" unit="liter" color="purple" name="phosphate_penambahan_air" value={cd.phosphate_penambahan_air} onChange={onChemicalDosingChange} />
-                                <InputField label="Penambahan Chemical" unit="liter" color="purple" name="phosphate_penambahan_chemical" value={cd.phosphate_penambahan_chemical} onChange={onChemicalDosingChange} />
+                                <InputField label="Penambahan Chemical" unit="kg" color="purple" name="phosphate_penambahan_chemical" value={cd.phosphate_penambahan_chemical} onChange={onChemicalDosingChange} />
                             </div>
                         </Card>
                     </div>
@@ -46,12 +46,12 @@ export default function TabLab({
                     <div className="rounded-xl ring-1 ring-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.15)]">
                         <Card title="Phosphate Boiler B" icon="science" color="rose">
                             <div className="grid grid-cols-2 gap-3">
-                                <InputField label="Level Tanki" unit="cm" color="rose" name="phosphate_b_level_tanki" value={cd.phosphate_b_level_tanki} onChange={onChemicalDosingChange} />
+                                <InputField label="Level Tanki" unit="%" color="rose" name="phosphate_b_level_tanki" value={cd.phosphate_b_level_tanki} onChange={onChemicalDosingChange} />
                                 <InputField label="Stroke Pompa" unit="%" color="rose" name="phosphate_b_stroke_pompa" value={cd.phosphate_b_stroke_pompa} onChange={onChemicalDosingChange} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <InputField label="Penambahan Air" unit="liter" color="rose" name="phosphate_b_penambahan_air" value={cd.phosphate_b_penambahan_air} onChange={onChemicalDosingChange} />
-                                <InputField label="Penambahan Chemical" unit="liter" color="rose" name="phosphate_b_penambahan_chemical" value={cd.phosphate_b_penambahan_chemical} onChange={onChemicalDosingChange} />
+                                <InputField label="Penambahan Chemical" unit="kg" color="rose" name="phosphate_b_penambahan_chemical" value={cd.phosphate_b_penambahan_chemical} onChange={onChemicalDosingChange} />
                             </div>
                         </Card>
                     </div>
@@ -59,7 +59,7 @@ export default function TabLab({
                     <div className="rounded-xl ring-1 ring-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.15)]">
                         <Card title="Amine" icon="science" color="indigo">
                             <div className="grid grid-cols-2 gap-3">
-                                <InputField label="Level Tanki" unit="cm" color="indigo" name="amine_level_tanki" value={cd.amine_level_tanki} onChange={onChemicalDosingChange} />
+                                <InputField label="Level Tanki" unit="%" color="indigo" name="amine_level_tanki" value={cd.amine_level_tanki} onChange={onChemicalDosingChange} />
                                 <InputField label="Stroke Pompa" unit="%" color="indigo" name="amine_stroke_pompa" value={cd.amine_stroke_pompa} onChange={onChemicalDosingChange} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
@@ -72,7 +72,7 @@ export default function TabLab({
                     <div className="rounded-xl ring-1 ring-orange-500/30 shadow-[0_0_12px_rgba(249,115,22,0.15)]">
                         <Card title="Hydrazine" icon="science" color="orange">
                             <div className="grid grid-cols-2 gap-3">
-                                <InputField label="Level Tanki" unit="cm" color="orange" name="hydrazine_level_tanki" value={cd.hydrazine_level_tanki} onChange={onChemicalDosingChange} />
+                                <InputField label="Level Tanki" unit="%" color="orange" name="hydrazine_level_tanki" value={cd.hydrazine_level_tanki} onChange={onChemicalDosingChange} />
                                 <InputField label="Stroke Pompa" unit="%" color="orange" name="hydrazine_stroke_pompa" value={cd.hydrazine_stroke_pompa} onChange={onChemicalDosingChange} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
@@ -183,8 +183,8 @@ export default function TabLab({
 
             <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
                 <Card title="Lab Summary" icon="summarize" color="purple" isSidebar={true}>
-                    <CalculatedField label="PHOSPHATE A" value={(Number(cd.phosphate_penambahan_chemical) || 0).toFixed(1)} unit="liter" variant="primary" />
-                    <CalculatedField label="PHOSPHATE B" value={(Number(cd.phosphate_b_penambahan_chemical) || 0).toFixed(1)} unit="liter" variant="transparent" />
+                    <CalculatedField label="PHOSPHATE A" value={(Number(cd.phosphate_penambahan_chemical) || 0).toFixed(1)} unit="kg" variant="primary" />
+                    <CalculatedField label="PHOSPHATE B" value={(Number(cd.phosphate_b_penambahan_chemical) || 0).toFixed(1)} unit="kg" variant="transparent" />
                     <CalculatedField label="AMINE" value={(Number(cd.amine_penambahan_chemical) || 0).toFixed(1)} unit="liter" variant="transparent" />
                     <CalculatedField label="HYDRAZINE" value={(Number(cd.hydrazine_penambahan_chemical) || 0).toFixed(1)} unit="liter" variant="transparent" />
 

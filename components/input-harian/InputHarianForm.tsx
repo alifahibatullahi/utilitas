@@ -337,6 +337,25 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         setSolarUsages(prev => prev.filter(e => e.id !== id));
     };
 
+    // ─── Solar add handlers ─── (operator_id solar_unloadings = UUID → null)
+    const handleAddSolarUnloading = async (fields: { liters: number; supplier: string }) => {
+        const supabase = createClient();
+        const { data, error } = await supabase.from('solar_unloadings')
+            .insert({ date, liters: fields.liters, supplier: fields.supplier, shift: null, operator_id: null })
+            .select('id').single();
+        if (error) { alert('Gagal simpan kedatangan solar: ' + error.message); return; }
+        setSolarUnloadings(prev => [{ id: data?.id as string, date, liters: fields.liters, supplier: fields.supplier }, ...prev]);
+    };
+
+    const handleAddSolarUsage = async (fields: { liters: number; tujuan: string; shift: string }) => {
+        const supabase = createClient();
+        const { data, error } = await supabase.from('solar_usages')
+            .insert({ date, liters: fields.liters, tujuan: fields.tujuan, shift: fields.shift, operator_id: operator?.name ?? null })
+            .select('id').single();
+        if (error) { alert('Gagal simpan permintaan solar: ' + error.message); return; }
+        setSolarUsages(prev => [{ id: data?.id as string, date, shift: fields.shift, liters: fields.liters, tujuan: fields.tujuan }, ...prev]);
+    };
+
     const handleDeleteAshUnloading = async (id: string) => {
         if (!confirm('Hapus data unloading fly ash ini?')) return;
         const supabase = createClient();
@@ -1313,6 +1332,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     onDeleteSolarUsage: handleDeleteSolarUsage,
                                     onEditSolarUnloading: handleEditSolarUnloading,
                                     onEditSolarUsage: handleEditSolarUsage,
+                                    onAddSolarUnloading: handleAddSolarUnloading,
+                                    onAddSolarUsage: handleAddSolarUsage,
                                     ashUnloadings,
                                     onDeleteAshUnloading: handleDeleteAshUnloading,
                                     onEditAshUnloading: handleEditAshUnloading,

@@ -133,11 +133,11 @@ export async function POST(req: NextRequest) {
             ]);
             const sumByTujuan = (t: string) =>
                 (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === t).reduce((s, r) => s + (Number(r.liters) || 0), 0);
+            // Boiler A+B (CL) TIDAK diagregasi di sini — diambil mapper dari daily_report_stock_tank.solar_boiler (manual supervisor).
             const solarSummary: SolarSummary = {
                 kedatangan: (solarIn.data ?? []).reduce((s, r) => s + (Number(r.liters) || 0), 0),
                 bengkel:    sumByTujuan('Bengkel'),
                 sasu:       sumByTujuan('SA/SU 3B'),
-                boiler:     sumByTujuan('Boiler A+B'),
             };
 
             let phosphateTotal = 0, amineTotal = 0, hydrazineTotal = 0;

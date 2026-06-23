@@ -226,10 +226,10 @@ function sel(
 }
 
 export type SolarSummary = {
-    kedatangan: number; // total Liter dari solar_unloadings
-    bengkel:    number; // total Liter dari solar_usages tujuan=Bengkel
-    sasu:       number; // total Liter dari solar_usages tujuan=SA/SU 3B
-    boiler:     number; // total Liter dari solar_usages tujuan=Boiler A+B → CL
+    kedatangan: number; // total Liter dari solar_unloadings → CK
+    bengkel:    number; // total Liter dari solar_usages tujuan=Bengkel → CM
+    sasu:       number; // total Liter dari solar_usages tujuan=SA/SU 3B → CN
+    // Boiler A+B (CL) TIDAK dari sini — input manual supervisor di daily_report_stock_tank.solar_boiler.
 };
 
 export type CoalSummary = {
@@ -394,13 +394,13 @@ export function dailyReportToRow(
         set(row, COL.solar_tank_a, stock.solar_tank_a); // CH
         set(row, COL.solar_tank_b, stock.solar_tank_a); // CI (sama dengan CH)
         // CJ(87) = formula: solar_tank_total — skip
-        // Solar: input dalam Liter → Sheets simpan m³ (÷1000).
+        // CL — Pemakaian Boiler A+B: input manual supervisor (m³) dari solar_boiler. Blank bila belum direview.
+        set(row, COL.solar_boiler, stock.solar_boiler); // CL — m³
+        // Solar aktivitas: input Liter → m³ (÷1000). Selalu tulis 0 saat kosong (konsisten dgn batubara).
         if (solar) {
-            if (solar.kedatangan) row[COL.kedatangan_solar] = solar.kedatangan / 1000; // CK — m³ kedatangan
-            if (solar.bengkel)    row[COL.solar_bengkel]    = solar.bengkel / 1000;    // CM — m³ bengkel
-            if (solar.sasu)       row[COL.solar_3b]         = solar.sasu / 1000;       // CN — m³ SA/SU 3B
-            // CL — pemakaian Boiler A+B: turunan dari aktivitas (tujuan "Boiler A+B"), m³.
-            if (solar.boiler)     row[COL.solar_boiler]     = solar.boiler / 1000;     // CL — m³ Boiler A+B
+            setNum0(row, COL.kedatangan_solar, (solar.kedatangan || 0) / 1000); // CK — m³ kedatangan
+            setNum0(row, COL.solar_bengkel,    (solar.bengkel || 0) / 1000);    // CM — m³ bengkel
+            setNum0(row, COL.solar_3b,         (solar.sasu || 0) / 1000);       // CN — m³ SA/SU 3B
         }
         const ps2 = prev?.stock;
         set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO

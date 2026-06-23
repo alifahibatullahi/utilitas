@@ -44,6 +44,8 @@ export interface DailyTabProps {
     onDeleteSolarUsage?: (id: string) => void;
     onEditSolarUnloading?: (id: string, fields: { liters: number; supplier: string }) => void;
     onEditSolarUsage?: (id: string, fields: { liters: number; tujuan: string; shift: string }) => void;
+    onAddSolarUnloading?: (fields: { liters: number; supplier: string }) => void | Promise<void>;
+    onAddSolarUsage?: (fields: { liters: number; tujuan: string; shift: string }) => void | Promise<void>;
     onDeleteAshUnloading?: (id: string) => void;
     onEditAshUnloading?: (id: string, fields: { silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number }) => void;
 
@@ -76,3 +78,30 @@ export type CoalReviewProps = Pick<DailyTabProps,
     | 'onAddCoalActivity'
     | 'onDeleteCoalActivity'
 >;
+
+export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string }
+export interface SolarUsageEntry { id?: string; date: string; shift: string; liters: number; tujuan: string }
+
+/** Prop TabSolarReview — editor solar penuh (kedatangan + permintaan + level + Boiler A+B
+ *  + neraca). Semua via callback supaya bisa dipakai di form harian (operator) & panel
+ *  publish (supervisor). Boiler A+B hanya bisa diedit saat `canEditBoilerAB` (review). */
+export interface SolarReviewProps {
+    solarUnloadings?: SolarUnloadingEntry[];
+    solarUsages?: SolarUsageEntry[];
+    /** Level tank solar hari ini (m³) — daily_report_stock_tank.solar_tank_a. */
+    solarLevel?: number | null;
+    /** Level tank solar hari sebelumnya (m³) — display read-only untuk neraca. */
+    prevSolarLevel?: number | null;
+    /** Pemakaian solar Boiler A+B (m³) — daily_report_stock_tank.solar_boiler, manual supervisor. */
+    boilerAB?: number | null;
+    /** True di panel review supervisor → input Boiler A+B aktif. False di form operator → read-only. */
+    canEditBoilerAB?: boolean;
+    onAddUnloading?: (f: { liters: number; supplier: string }) => void | Promise<void>;
+    onEditUnloading?: (id: string, f: { liters: number; supplier: string }) => void | Promise<void>;
+    onDeleteUnloading?: (id: string) => void | Promise<void>;
+    onAddUsage?: (f: { liters: number; tujuan: string; shift: string }) => void | Promise<void>;
+    onEditUsage?: (id: string, f: { liters: number; tujuan: string; shift: string }) => void | Promise<void>;
+    onDeleteUsage?: (id: string) => void | Promise<void>;
+    onLevelChange?: (value: number | null) => void;
+    onBoilerABChange?: (value: number | null) => void;
+}

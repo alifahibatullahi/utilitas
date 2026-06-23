@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { parseSheetNumber } from '@/lib/utils';
 import TabStockBatubara from '@/components/input-harian/TabStockBatubara';
-import type { CoalActivity, CoalActivityInput } from '@/components/input-harian/types';
+import TabSolarReview from '@/components/input-harian/TabSolarReview';
+import type { CoalActivity, CoalActivityInput, SolarUnloadingEntry, SolarUsageEntry } from '@/components/input-harian/types';
 
 /** Satu langkah di panel publish. Daftar step dibangun per-`kind` (lihat buildSteps di
  *  komponen) sehingga menambah step pra-publish ke depan = cukup push entri baru. */
@@ -166,6 +167,15 @@ export function PublishReportModal({
     // null = belum dijawab, true = isi form, false = langsung ke publish.
     const [coalHasActivity, setCoalHasActivity] = useState<boolean | null>(null);
     const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
+
+    // ── State Review Solar (step 'solar' di laporan harian) ──
+    // Bukan gate Ya/Tidak — selalu tampil review. Supervisor boleh edit semua entri operator
+    // (kedatangan/permintaan/level) DAN mengisi Pemakaian Boiler A+B (manual) yang operator tak bisa.
+    const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloadingEntry[]>([]);
+    const [solarUsages, setSolarUsages] = useState<SolarUsageEntry[]>([]);
+    const [solarLevel, setSolarLevel] = useState<number | null>(null);     // solar_tank_a (m³) hari ini
+    const [boilerAB, setBoilerAB] = useState<number | null>(null);         // solar_boiler (m³) manual
+    const [prevSolarLevel, setPrevSolarLevel] = useState<number | null>(null); // level kemarin (Sheets CH)
 
     // Sync state dari props saat modal open atau initial values berubah dari parent.
     // Direksi: parent (input laporan / fetched report) → modal.
@@ -356,6 +366,110 @@ export function PublishReportModal({
         const { error } = await supabase.from('coal_activities').delete().eq('id', id);
         if (error) { alert('Gagal hapus: ' + error.message); return; }
         setCoalActivities(prev => prev.filter(e => e.id !== id));
+    };
+
+    // ── Review Solar: fetch entri + level saat panel harian dibuka ──
+    useEffect(() => {
+        if (!open || kind !== 'daily' || !reportDate) return;
+        const supabase = createClient();
+        supabase.from('solar_unloadings').select('id, date, liters, supplier').eq('date', reportDate)
+            .order('created_at', { ascending: false })
+            .then(({ data }) => setSolarUnloadings((data ?? []).map(r => ({
+                id: r.id as string, date: r.date as string, liters: Number(r.liters) || 0, supplier: (r.supplier as string) || '',
+            }))));
+        supabase.from('solar_usages').select('id, date, shift, liters, tujuan').eq('date', reportDate)
+            .order('created_at', { ascending: false })
+            .then(({ data }) => setSolarUsages((data ?? []).map(r => ({
+                id: r.id as string, date: r.date as string, shift: (r.shift as string) || '', liters: Number(r.liters) || 0, tujuan: (r.tujuan as string) || '',
+            }))));
+        if (reportId) {
+            supabase.from('daily_report_stock_tank').select('solar_tank_a, solar_boiler').eq('daily_report_id', reportId).maybeSingle()
+                .then(({ data }) => {
+                    setSolarLevel(data?.solar_tank_a != null ? Number(data.solar_tank_a) : null);
+                    setBoilerAB(data?.solar_boiler != null ? Number(data.solar_boiler) : null);
+                });
+        }
+    }, [open, kind, reportDate, reportId]);
+
+    // Level solar kemarin dari Sheets LHUBB hari sebelumnya: CH(85)=solar_tank_a.
+    useEffect(() => {
+        if (!open || kind !== 'daily' || !reportDate) return;
+        let stale = false;
+        setPrevSolarLevel(null);
+        const [py, pm, pd] = reportDate.split('-').map(Number);
+        const prevDate = new Date(Date.UTC(py, pm - 1, pd - 1)).toISOString().slice(0, 10);
+        fetch(`/api/sheets/read?type=daily_report&date=${prevDate}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(j => {
+                if (stale || !j?.found || !Array.isArray(j?.data?.raw)) return;
+                const raw = j.data.raw[85];
+                const v = raw == null ? '' : String(raw).trim();
+                setPrevSolarLevel(v && v !== '-' ? parseSheetNumber(v) : null);
+            })
+            .catch(() => { /* non-blocking */ });
+        return () => { stale = true; };
+    }, [open, kind, reportDate]);
+
+    // Persist level/boilerAB ke daily_report_stock_tank (upsert by daily_report_id).
+    const persistStockTank = async (patch: Record<string, number | null>) => {
+        if (!reportId) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('daily_report_stock_tank')
+            .upsert({ daily_report_id: reportId, ...patch }, { onConflict: 'daily_report_id' });
+        if (error) console.warn('[PublishReportModal] persist stock_tank solar failed', error.message);
+    };
+
+    const handleAddSolarUnloading = async (f: { liters: number; supplier: string }) => {
+        if (!reportDate) return;
+        const supabase = createClient();
+        const { data, error } = await supabase.from('solar_unloadings')
+            .insert({ date: reportDate, liters: f.liters, supplier: f.supplier, shift: null, operator_id: null })
+            .select('id').single();
+        if (error) { alert('Gagal simpan kedatangan solar: ' + error.message); return; }
+        setSolarUnloadings(prev => [{ id: data?.id as string, date: reportDate, liters: f.liters, supplier: f.supplier }, ...prev]);
+    };
+    const handleEditSolarUnloading = async (id: string, f: { liters: number; supplier: string }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').update(f).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        setSolarUnloadings(prev => prev.map(e => e.id === id ? { ...e, ...f } : e));
+    };
+    const handleDeleteSolarUnloading = async (id: string) => {
+        if (!confirm('Hapus data kedatangan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setSolarUnloadings(prev => prev.filter(e => e.id !== id));
+    };
+    const handleAddSolarUsage = async (f: { liters: number; tujuan: string; shift: string }) => {
+        if (!reportDate) return;
+        const supabase = createClient();
+        const { data, error } = await supabase.from('solar_usages')
+            .insert({ date: reportDate, liters: f.liters, tujuan: f.tujuan, shift: f.shift, operator_id: reviewerName || null })
+            .select('id').single();
+        if (error) { alert('Gagal simpan permintaan solar: ' + error.message); return; }
+        setSolarUsages(prev => [{ id: data?.id as string, date: reportDate, liters: f.liters, tujuan: f.tujuan, shift: f.shift }, ...prev]);
+    };
+    const handleEditSolarUsage = async (id: string, f: { liters: number; tujuan: string; shift: string }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').update(f).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        setSolarUsages(prev => prev.map(e => e.id === id ? { ...e, ...f } : e));
+    };
+    const handleDeleteSolarUsage = async (id: string) => {
+        if (!confirm('Hapus data permintaan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setSolarUsages(prev => prev.filter(e => e.id !== id));
+    };
+    const handleSolarLevelChange = (value: number | null) => {
+        setSolarLevel(value);
+        void persistStockTank({ solar_tank_a: value, solar_tank_b: value, solar_tank_total: value != null ? value * 2 : null });
+    };
+    const handleBoilerABChange = (value: number | null) => {
+        setBoilerAB(value);
+        void persistStockTank({ solar_boiler: value });
     };
 
     if (!open) return null;
@@ -586,6 +700,30 @@ export function PublishReportModal({
                         </div>
                     </div>
                 )
+            ),
+        });
+        // Step Review Solar — selalu tampil (bukan gate). Supervisor edit semua + isi Boiler A+B.
+        steps.push({
+            id: 'solar',
+            label: 'Review Solar',
+            icon: 'local_gas_station',
+            render: () => (
+                <TabSolarReview
+                    canEditBoilerAB
+                    solarUnloadings={solarUnloadings}
+                    solarUsages={solarUsages}
+                    solarLevel={solarLevel}
+                    prevSolarLevel={prevSolarLevel}
+                    boilerAB={boilerAB}
+                    onAddUnloading={handleAddSolarUnloading}
+                    onEditUnloading={handleEditSolarUnloading}
+                    onDeleteUnloading={handleDeleteSolarUnloading}
+                    onAddUsage={handleAddSolarUsage}
+                    onEditUsage={handleEditSolarUsage}
+                    onDeleteUsage={handleDeleteSolarUsage}
+                    onLevelChange={handleSolarLevelChange}
+                    onBoilerABChange={handleBoilerABChange}
+                />
             ),
         });
     }

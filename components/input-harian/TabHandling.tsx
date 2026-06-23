@@ -6,8 +6,8 @@ import type { DailyTabProps } from './types';
 const n = (v: number | string | null | undefined) => Number(v) || 0;
 const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
 
-type EditUn = { id: string; liters: number; supplier: string };
-type EditUs = { id: string; liters: number; tujuan: string; shift: string; tujuanMode: 'Boiler A+B' | 'Bengkel' | 'SA/SU 3B' | 'Lainnya' };
+type EditUn = { id?: string; liters: number; supplier: string };
+type EditUs = { id?: string; liters: number; tujuan: string; shift: string; tujuanMode: 'Bengkel' | 'SA/SU 3B' | 'Lainnya' };
 
 export default function TabHandling({
     stockTank, totalizer,
@@ -19,6 +19,8 @@ export default function TabHandling({
     onDeleteSolarUsage,
     onEditSolarUnloading,
     onEditSolarUsage,
+    onAddSolarUnloading,
+    onAddSolarUsage,
 }: DailyTabProps) {
     const [editUn, setEditUn] = useState<EditUn | null>(null);
     const [editUs, setEditUs] = useState<EditUs | null>(null);
@@ -49,9 +51,9 @@ export default function TabHandling({
     const totalPermintaan = solarUsages.reduce((s, e) => s + e.liters, 0);
     const bengkelTotal = solarUsages.filter(e => e.tujuan === 'Bengkel').reduce((s, e) => s + e.liters, 0);
     const sasuTotal = solarUsages.filter(e => e.tujuan === 'SA/SU 3B').reduce((s, e) => s + e.liters, 0);
-    const boilerTotal = solarUsages.filter(e => e.tujuan === 'Boiler A+B').reduce((s, e) => s + e.liters, 0);
-    // Pemakaian Boiler A+B = turunan dari aktivitas permintaan solar (tujuan "Boiler A+B"), m³.
-    const boilerUsage = boilerTotal / 1000;
+    // Pemakaian Boiler A+B (m³) = nilai reviewed supervisor (daily_report_stock_tank.solar_boiler).
+    // Read-only di form operator — operator tak mengisi konsumsi boiler.
+    const boilerUsage = n(stockTank.solar_boiler);
     const shiftLabel: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
 
     // Review pengurangan level solar: bandingkan level kemarin (LHUBB hari sebelumnya) vs hari ini.
@@ -61,12 +63,18 @@ export default function TabHandling({
 
     const saveEditUn = async () => {
         if (!editUn) return;
-        await onEditSolarUnloading?.(editUn.id, { liters: editUn.liters, supplier: editUn.supplier });
+        const fields = { liters: editUn.liters, supplier: editUn.supplier };
+        if (editUn.id) await onEditSolarUnloading?.(editUn.id, fields);
+        else await onAddSolarUnloading?.(fields);
         setEditUn(null);
     };
     const saveEditUs = async () => {
         if (!editUs) return;
-        await onEditSolarUsage?.(editUs.id, { liters: editUs.liters, tujuan: editUs.tujuan, shift: editUs.shift });
+        const tujuan = editUs.tujuan.trim();
+        if (!tujuan) return; // tujuan wajib
+        const fields = { liters: editUs.liters, tujuan, shift: editUs.shift };
+        if (editUs.id) await onEditSolarUsage?.(editUs.id, fields);
+        else await onAddSolarUsage?.(fields);
         setEditUs(null);
     };
 
@@ -79,9 +87,15 @@ export default function TabHandling({
                     <InputField label="Level RCW" name="rcw_level_00" value={stockTank.rcw_level_00} onChange={onStockTankChange} unit="m³" color="blue" />
                     <InputField label="Level Demin" name="demin_level_00" value={stockTank.demin_level_00} onChange={onStockTankChange} unit="m³" color="blue" />
                 </div>
-                <InputField label="Level Tank Solar" name="solar_tank_a" value={stockTank.solar_tank_a} onChange={onStockTankChange} unit="m³" color="orange" />
-                <CalculatedField label="Pemakaian Solar Boiler A+B" value={fmt(boilerUsage)} unit="m³" variant="small" />
-                <p className="-mt-1 text-[10px] text-slate-500">Otomatis dari aktivitas Permintaan Solar tujuan “Boiler A+B” (Liter → m³ ÷ 1000).</p>
+                <div className="grid grid-cols-2 gap-3 items-end">
+                    <div className="rounded-lg border border-slate-700/40 bg-[#101822]/40 px-3 py-2.5">
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wider">Level Solar Kemarin</p>
+                        <p className="text-lg font-mono font-bold text-slate-300">{levelKemarin != null ? fmt(levelKemarin) : '—'} <span className="text-[10px] text-slate-500">m³</span></p>
+                    </div>
+                    <InputField label="Level Tank Solar (Hari Ini)" name="solar_tank_a" value={stockTank.solar_tank_a} onChange={onStockTankChange} unit="m³" color="orange" />
+                </div>
+                <CalculatedField label="Pemakaian Solar Boiler A+B" value={stockTank.solar_boiler != null ? fmt(boilerUsage) : '—'} unit="m³" variant="small" />
+                <p className="-mt-1 text-[10px] text-slate-500">Diisi saat review oleh supervisor (kolom Sheets CL). Read-only di sini.</p>
 
                 {/* Review pengurangan level solar — cuma konfirmasi (tanpa validasi angka) */}
                 {adaPengurangan && (
@@ -96,7 +110,7 @@ export default function TabHandling({
                         <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
                             <div className="rounded-md bg-[#101822]/60 py-1.5">
                                 <p className="text-[9px] text-slate-400 uppercase">Boiler AB</p>
-                                <p className="text-sm font-mono font-bold text-orange-300">{fmt(boilerTotal / 1000)} <span className="text-[9px]">m³</span></p>
+                                <p className="text-sm font-mono font-bold text-orange-300">{fmt(boilerUsage)} <span className="text-[9px]">m³</span></p>
                             </div>
                             <div className="rounded-md bg-[#101822]/60 py-1.5">
                                 <p className="text-[9px] text-slate-400 uppercase">Bengkel</p>
@@ -203,6 +217,11 @@ export default function TabHandling({
                             ) : (
                                 <p className="text-[11px] text-slate-500 italic">Belum ada data kedatangan solar hari ini</p>
                             )}
+                            <button type="button" onClick={() => setEditUn({ liters: 0, supplier: '' })}
+                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs font-bold transition-colors">
+                                <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                                Tambah Kedatangan
+                            </button>
                         </div>
 
                         {/* ─ Permintaan ─ */}
@@ -221,7 +240,7 @@ export default function TabHandling({
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     <button type="button" onClick={() => setEditUs({
                                                         id: item.id!, liters: item.liters, tujuan: item.tujuan, shift: item.shift,
-                                                        tujuanMode: (['Boiler A+B', 'Bengkel', 'SA/SU 3B'].includes(item.tujuan) ? item.tujuan : 'Lainnya') as EditUs['tujuanMode'],
+                                                        tujuanMode: (['Bengkel', 'SA/SU 3B'].includes(item.tujuan) ? item.tujuan : 'Lainnya') as EditUs['tujuanMode'],
                                                     })}
                                                         className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors">
                                                         <span className="material-symbols-outlined text-[13px]">edit</span>
@@ -238,6 +257,11 @@ export default function TabHandling({
                             ) : (
                                 <p className="text-[11px] text-slate-500 italic">Belum ada data permintaan solar hari ini</p>
                             )}
+                            <button type="button" onClick={() => setEditUs({ liters: 0, tujuan: 'Bengkel', shift: 'pagi', tujuanMode: 'Bengkel' })}
+                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-bold transition-colors">
+                                <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                                Tambah Permintaan
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -255,7 +279,7 @@ export default function TabHandling({
             </Card>
 
             {/* Modal Edit Kedatangan Solar */}
-            <Modal open={!!editUn} onClose={() => setEditUn(null)} title="Edit Kedatangan Solar" color="amber">
+            <Modal open={!!editUn} onClose={() => setEditUn(null)} title={editUn?.id ? 'Edit Kedatangan Solar' : 'Tambah Kedatangan Solar'} color="amber">
                 {editUn && (
                     <>
                         <div className="space-y-1.5">
@@ -277,7 +301,7 @@ export default function TabHandling({
             </Modal>
 
             {/* Modal Edit Permintaan Solar */}
-            <Modal open={!!editUs} onClose={() => setEditUs(null)} title="Edit Permintaan Solar" color="rose">
+            <Modal open={!!editUs} onClose={() => setEditUs(null)} title={editUs?.id ? 'Edit Permintaan Solar' : 'Tambah Permintaan Solar'} color="rose">
                 {editUs && (
                     <>
                         <div className="space-y-1.5">
@@ -301,7 +325,6 @@ export default function TabHandling({
                                     const mode = e.target.value as EditUs['tujuanMode'];
                                     setEditUs({ ...editUs, tujuanMode: mode, tujuan: mode !== 'Lainnya' ? mode : '' });
                                 }}>
-                                <option value="Boiler A+B">Boiler A+B</option>
                                 <option value="Bengkel">Bengkel</option>
                                 <option value="SA/SU 3B">SA/SU 3B</option>
                                 <option value="Lainnya">Lainnya…</option>

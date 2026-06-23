@@ -1,0 +1,73 @@
+---
+title: Workflow Laporan Shift & Harian — Sebelum vs Sesudah PowerOps
+---
+flowchart LR
+
+%% ============== SEBELUM ==============
+subgraph BEFORE["🔴 SEBELUM PowerOps"]
+    direction TB
+    OP1B["Operator 1"]
+    OP2B["Operator 2"]
+    OPNB["Operator N"]
+    HT(["Komunikasi via HT<br/>(satu per satu)"])
+    CCRB["CCR<br/>catat di Logbook"]
+    LOG[("Logbook<br/>(tulis tangan)")]
+    FOREB["Foreman tulis ulang<br/>ke Spreadsheet<br/>⚠️ double input"]
+    SS[("Spreadsheet")]
+    SUPB["Supervisor<br/>review laporan"]
+    TEL(["Telepon ke Washift<br/>(manual)"])
+    WAB["Washift"]
+
+    OP1B --> HT
+    OP2B --> HT
+    OPNB --> HT
+    HT --> CCRB
+    CCRB --> LOG
+    LOG --> FOREB
+    FOREB --> SS
+    SS --> SUPB
+    SUPB --> TEL --> WAB
+end
+
+%% ============== SESUDAH ==============
+subgraph AFTER["🟢 SESUDAH PowerOps"]
+    direction TB
+    OP1A["Operator 1"]
+    OP2A["Operator 2"]
+    OPNA["Operator N"]
+    PO[/"PowerOps<br/>Form Laporan"/]
+    DB[("Database PowerOps<br/>(single source of truth)")]
+    REVIEW{"Foreman / Supervisor<br/>ACC laporan"}
+    AUTO(["Auto-distribute"])
+    WAGA["WhatsApp Group"]
+    WAA["Washift"]
+
+    OP1A --> PO
+    OP2A --> PO
+    OPNA --> PO
+    PO --> DB
+    DB --> REVIEW
+    REVIEW --> AUTO
+    AUTO --> WAGA
+    AUTO --> WAA
+end
+
+BEFORE ==>|"Implementasi PowerOps"| AFTER
+
+%% ============== STYLING ==============
+classDef opNode fill:#E3F2FD,stroke:#1976D2,color:#0D47A1;
+classDef sysNode fill:#FFF3E0,stroke:#EF6C00,color:#E65100;
+classDef storeNode fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C;
+classDef reviewNode fill:#FFFDE7,stroke:#F9A825,color:#F57F17;
+classDef commNode fill:#ECEFF1,stroke:#455A64,color:#263238;
+classDef warnNode fill:#FFEBEE,stroke:#C62828,color:#B71C1C;
+
+class OP1B,OP2B,OPNB,OP1A,OP2A,OPNA opNode;
+class CCRB,SUPB,WAB,WAA,WAGA sysNode;
+class FOREB warnNode;
+class LOG,SS,DB storeNode;
+class REVIEW reviewNode;
+class HT,TEL,AUTO,PO commNode;
+
+style BEFORE fill:#FFF8F8,stroke:#C62828,stroke-width:2px;
+style AFTER fill:#F8FFF8,stroke:#2E7D32,stroke-width:2px;

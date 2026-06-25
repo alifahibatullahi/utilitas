@@ -7,7 +7,7 @@ import SearchableSelect from '@/components/ui/SearchableSelect';
 import { parseSheetNumber } from '@/lib/utils';
 import TabStockBatubara from '@/components/input-harian/TabStockBatubara';
 import TabSolarReview from '@/components/input-harian/TabSolarReview';
-import type { CoalActivity, CoalActivityInput, SolarUnloadingEntry, SolarUsageEntry } from '@/components/input-harian/types';
+import type { SolarUnloadingEntry, SolarUsageEntry } from '@/components/input-harian/types';
 
 /** Satu langkah di panel publish. Daftar step dibangun per-`kind` (lihat buildSteps di
  *  komponen) sehingga menambah step pra-publish ke depan = cukup push entri baru. */
@@ -159,13 +159,10 @@ export function PublishReportModal({
     const [foremanTurbin, setForemanTurbin] = useState(initialForemanTurbin);
     const [foremanBoiler, setForemanBoiler] = useState(initialForemanBoiler);
 
-    // ── State In/Out Batubara (hanya dipakai step 'batubara' di laporan harian) ──
-    // Panel mengelola data ini sendiri (fetch + add/hapus via Supabase) supaya bisa
-    // dipakai dari halaman read-only tanpa state form. Pola meniru InputHarianForm.
-    const [coalActivities, setCoalActivities] = useState<CoalActivity[]>([]);
-    // Jawaban "Apakah hari ini ada kedatangan/pemindahan batubara?" di step batubara.
-    // null = belum dijawab, true = isi form, false = langsung ke publish.
-    const [coalHasActivity, setCoalHasActivity] = useState<boolean | null>(null);
+    // ── State In/Out Batubara (step 'batubara' di laporan harian) ──
+    // Form per kategori (daily_report_coal_transfer). Panel kelola sendiri: fetch + persist
+    // on-change via Supabase langsung (tidak butuh state form penuh).
+    const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
 
     // ── State Review Solar (step 'solar' di laporan harian) ──
@@ -274,7 +271,7 @@ export function PublishReportModal({
     }, [open, loadingText, stepIdx, autoSizeTextarea]);
 
     // Reset ke step pertama tiap kali panel dibuka.
-    useEffect(() => { if (open) { setStepIdx(0); setCoalHasActivity(null); } }, [open]);
+    useEffect(() => { if (open) { setStepIdx(0); } }, [open]);
 
     // Reusable: re-fetch template body dari server. Dipanggil saat modal open AND
     // setiap kali dropdown supervisor/foreman berubah supaya template auto-refresh.
@@ -301,29 +298,26 @@ export function PublishReportModal({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, reportId, kind]);
 
-    // ── In/Out Batubara: fetch coal_activities saat panel harian dibuka ──
+    // ── In/Out Batubara: fetch daily_report_coal_transfer saat panel harian dibuka ──
     useEffect(() => {
-        if (!open || kind !== 'daily' || !reportDate) return;
+        if (!open || kind !== 'daily' || !reportId) return;
         const supabase = createClient();
         supabase
-            .from('coal_activities')
-            .select('id, date, kind, category, rit, ton, keterangan')
-            .eq('date', reportDate)
-            .order('created_at', { ascending: false })
+            .from('daily_report_coal_transfer')
+            .select('darat_24_ton, laut_24_ton, pb2_pf1_rit, pb2_pf1_ton, pb2_pf2_rit, pb2_pf2_ton, pb3_calc_rit, pb3_calc_ton')
+            .eq('daily_report_id', reportId)
+            .maybeSingle()
             .then(({ data }) => {
-                setCoalActivities(
-                    (data ?? []).map(r => ({
-                        id: r.id as string,
-                        date: r.date as string,
-                        kind: r.kind as CoalActivity['kind'],
-                        category: r.category as CoalActivity['category'],
-                        rit: Number(r.rit) || 0,
-                        ton: Number(r.ton) || 0,
-                        keterangan: (r.keterangan as string) ?? undefined,
-                    })),
-                );
+                const d = (data ?? {}) as Record<string, unknown>;
+                const num = (k: string) => (d[k] != null ? Number(d[k]) : null);
+                setCoalTransfer({
+                    darat_24_ton: num('darat_24_ton'), laut_24_ton: num('laut_24_ton'),
+                    pb2_pf1_rit: num('pb2_pf1_rit'), pb2_pf1_ton: num('pb2_pf1_ton'),
+                    pb2_pf2_rit: num('pb2_pf2_rit'), pb2_pf2_ton: num('pb2_pf2_ton'),
+                    pb3_calc_rit: num('pb3_calc_rit'), pb3_calc_ton: num('pb3_calc_ton'),
+                });
             });
-    }, [open, kind, reportDate]);
+    }, [open, kind, reportId]);
 
     // Nilai read-only dari Sheets LHUBB: DW(126)=stock batubara.
     useEffect(() => {
@@ -345,27 +339,15 @@ export function PublishReportModal({
         return () => { stale = true; };
     }, [open, kind, reportDate]);
 
-    const handleAddCoalActivity = async (a: CoalActivityInput) => {
-        if (!reportDate) return;
+    // Persist In/Out batubara ke daily_report_coal_transfer (upsert by daily_report_id).
+    const handleCoalTransferChange = (name: string, value: number | string | null) => {
+        const num = value == null || value === '' ? null : Number(value);
+        setCoalTransfer(prev => ({ ...prev, [name]: num }));
+        if (!reportId) return;
         const supabase = createClient();
-        const row = {
-            date: reportDate, shift: null,
-            kind: a.kind, category: a.category,
-            rit: a.rit, ton: a.ton,
-            keterangan: a.keterangan ?? null,
-            operator_id: reviewerName || null,
-        };
-        const { data, error } = await supabase.from('coal_activities').insert(row).select('id').single();
-        if (error) { alert('Gagal simpan aktivitas: ' + error.message); return; }
-        setCoalActivities(prev => [{ id: data?.id as string, date: reportDate, ...a }, ...prev]);
-    };
-
-    const handleDeleteCoalActivity = async (id: string) => {
-        if (!confirm('Hapus aktivitas batubara ini?')) return;
-        const supabase = createClient();
-        const { error } = await supabase.from('coal_activities').delete().eq('id', id);
-        if (error) { alert('Gagal hapus: ' + error.message); return; }
-        setCoalActivities(prev => prev.filter(e => e.id !== id));
+        void supabase.from('daily_report_coal_transfer')
+            .upsert({ daily_report_id: reportId, [name]: num }, { onConflict: 'daily_report_id' })
+            .then(({ error }) => { if (error) console.warn('[PublishReportModal] persist coal_transfer failed', error.message); });
     };
 
     // ── Review Solar: fetch entri + level saat panel harian dibuka ──
@@ -488,8 +470,9 @@ export function PublishReportModal({
 
     // Stock batubara untuk ringkasan = stock LHUBB + kedatangan (in) − pemindahan (out).
     const coalStockBase = parseSheetNumber(stockBatubaraSheet);
-    const coalIn = coalActivities.filter(a => a.kind === 'in').reduce((s, a) => s + (Number(a.ton) || 0), 0);
-    const coalOut = coalActivities.filter(a => a.kind === 'out').reduce((s, a) => s + (Number(a.ton) || 0), 0);
+    const cn = (k: string) => Number(coalTransfer[k]) || 0;
+    const coalIn = cn('darat_24_ton') + cn('laut_24_ton');
+    const coalOut = cn('pb2_pf1_ton') + cn('pb2_pf2_ton') + cn('pb3_calc_ton');
     const stockComputed = coalStockBase != null
         ? fmt(coalStockBase + coalIn - coalOut)
         : (stockBatubaraSheet ?? null);
@@ -610,52 +593,14 @@ export function PublishReportModal({
     if (kind === 'daily') {
         steps.push({
             id: 'batubara',
-            label: 'Review In/Out Batubara',
+            label: 'In/Out Batubara',
             icon: 'local_shipping',
+            // Form langsung (default 0, editable). Bukan gate Ya/Tidak.
             render: () => (
-                coalHasActivity === true ? (
-                    // Sudah pilih "Ya, ada" → pertanyaan hilang, tampil form In/Out Batubara.
-                    <TabStockBatubara
-                        coalActivities={coalActivities}
-                        onAddCoalActivity={handleAddCoalActivity}
-                        onDeleteCoalActivity={handleDeleteCoalActivity}
-                        stockBatubaraSheet={stockBatubaraSheet}
-                        lhubbDate={reportDate}
-                    />
-                ) : (
-                    // Belum dijawab → pertanyaan tampil penuh & terpusat di dalam tab.
-                    <div className="min-h-[55vh] flex flex-col items-center justify-center">
-                        <div className="w-full max-w-lg bg-amber-500/10 border border-amber-500/30 rounded-3xl p-6 sm:p-8 text-center shadow-[0_8px_32px_rgba(251,191,36,0.08)]">
-                            <div className="flex justify-center mb-4">
-                                <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-[28px] text-amber-400">local_shipping</span>
-                                </div>
-                            </div>
-                            <div className="text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-2">Sebelum publish</div>
-                            <p className="text-base sm:text-lg text-amber-50 font-bold leading-snug mb-6">
-                                Apakah hari ini ada kedatangan / pemindahan batubara?
-                            </p>
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setCoalHasActivity(true)}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all cursor-pointer border bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400 shadow-[0_4px_16px_rgba(251,191,36,0.3)] hover:scale-[1.02] active:scale-[0.98]"
-                                >
-                                    <span className="material-symbols-outlined text-[18px]">check</span>
-                                    Ya, ada
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setCoalHasActivity(false); setStepIdx(steps.length - 1); }}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all cursor-pointer border bg-slate-900/40 text-slate-300 border-slate-700/60 hover:bg-slate-800/60 hover:scale-[1.02] active:scale-[0.98]"
-                                >
-                                    <span className="material-symbols-outlined text-[18px]">block</span>
-                                    Tidak ada
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
+                <TabStockBatubara
+                    coalTransfer={coalTransfer}
+                    onCoalTransferChange={handleCoalTransferChange}
+                />
             ),
         });
         // Step Review Solar — selalu tampil (bukan gate). Supervisor edit semua + isi Boiler A+B.
@@ -680,10 +625,6 @@ export function PublishReportModal({
     steps.push({ id: 'publish', label: 'Review & Publish', icon: 'fact_check', render: renderPublishStep });
     const safeStepIdx = Math.min(stepIdx, steps.length - 1);
     const isLast = safeStepIdx === steps.length - 1;
-    const currentStepId = steps[safeStepIdx]?.id;
-    // Di step batubara, tombol "Lanjut publish" baru muncul setelah user memilih
-    // "Ya, ada" (jika "Tidak ada" sudah otomatis loncat ke step publish).
-    const hideNextButton = currentStepId === 'batubara' && coalHasActivity !== true;
 
     return (
         <div
@@ -808,19 +749,16 @@ export function PublishReportModal({
                     </div>
 
                     {!isLast ? (
-                        // Step pra-publish (Review In/Out Batubara): aktivitas batubara sudah
-                        // tersimpan tiap add/hapus. Tombol baru tampil setelah user memilih
-                        // "Ya, ada"; "Tidak ada" sudah otomatis loncat ke step publish.
-                        hideNextButton ? <span /> : (
-                            <button
-                                onClick={() => setStepIdx(i => Math.min(steps.length - 1, i + 1))}
-                                disabled={sending}
-                                className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
-                            >
-                                <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                Lanjut publish
-                            </button>
-                        )
+                        // Step pra-publish (form In/Out batubara, Review Solar): data tersimpan
+                        // tiap perubahan. Tombol lanjut selalu tampil (bukan gate).
+                        <button
+                            onClick={() => setStepIdx(i => Math.min(steps.length - 1, i + 1))}
+                            disabled={sending}
+                            className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
+                        >
+                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            Lanjut publish
+                        </button>
                     ) : (
                         <button
                             onClick={publish}

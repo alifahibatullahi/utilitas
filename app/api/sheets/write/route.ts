@@ -158,23 +158,18 @@ export async function POST(req: NextRequest) {
                 hydrazine:  hasHydrazine  ? hydrazineTotal  : null,
             };
 
-            // In/Out batubara — agregat coal_activities per category (default 0).
-            const { data: coalAct } = await supabase
-                .from('coal_activities')
-                .select('category, rit, ton')
-                .eq('date', date);
-            const sumCat = (cat: string, field: 'rit' | 'ton') =>
-                (coalAct ?? []).filter((r: { category: string }) => r.category === cat)
-                    .reduce((s, r) => s + (Number((r as Record<string, unknown>)[field]) || 0), 0);
+            // In/Out batubara — dari daily_report_coal_transfer (form per kategori, default 0).
+            const tr = (dbData.transfer ?? {}) as Record<string, unknown>;
+            const trn = (k: string) => Number(tr[k]) || 0;
             const coalSummary: CoalSummary = {
-                daratTon:   sumCat('darat', 'ton'),
-                lautTon:    sumCat('laut', 'ton'),
-                pb2Pf1Rit:  sumCat('pb2_pf1', 'rit'),
-                pb2Pf1Ton:  sumCat('pb2_pf1', 'ton'),
-                pb2Pf2Rit:  sumCat('pb2_pf2', 'rit'),
-                pb2Pf2Ton:  sumCat('pb2_pf2', 'ton'),
-                pb3CalcRit: sumCat('pb3_calc', 'rit'),
-                pb3CalcTon: sumCat('pb3_calc', 'ton'),
+                daratTon:   trn('darat_24_ton'),
+                lautTon:    trn('laut_24_ton'),
+                pb2Pf1Rit:  trn('pb2_pf1_rit'),
+                pb2Pf1Ton:  trn('pb2_pf1_ton'),
+                pb2Pf2Rit:  trn('pb2_pf2_rit'),
+                pb2Pf2Ton:  trn('pb2_pf2_ton'),
+                pb3CalcRit: trn('pb3_calc_rit'),
+                pb3CalcTon: trn('pb3_calc_ton'),
             };
 
             const row = dailyReportToRow(

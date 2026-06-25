@@ -49,34 +49,14 @@ export interface DailyTabProps {
     onDeleteAshUnloading?: (id: string) => void;
     onEditAshUnloading?: (id: string, fields: { silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number }) => void;
 
-    // In/Out batubara — model "tambah aktivitas" (tabel coal_activities)
-    coalActivities?: CoalActivity[];
-    onAddCoalActivity?: (a: CoalActivityInput) => void | Promise<void>;
-    onDeleteCoalActivity?: (id: string) => void | Promise<void>;
 }
 
-/** Kategori aktivitas batubara. In = kedatangan, Out = pemindahan. */
-export type CoalCategory = 'darat' | 'laut' | 'pb2_pf1' | 'pb2_pf2' | 'pb3_calc';
-export interface CoalActivityInput {
-    kind: 'in' | 'out';
-    category: CoalCategory;
-    rit: number;
-    ton: number;
-    keterangan?: string;
-}
-export interface CoalActivity extends CoalActivityInput {
-    id?: string;
-    date: string;
-}
-
-/** Subset prop yang dipakai TabStockBatubara — supaya komponen bisa dipakai ulang di
- *  luar form harian (mis. panel publish) tanpa harus menyediakan seluruh DailyTabProps. */
+/** Subset prop yang dipakai TabStockBatubara (form In/Out batubara per kategori) — supaya
+ *  komponen bisa dipakai ulang di luar form harian (mis. panel publish) tanpa menyediakan
+ *  seluruh DailyTabProps. */
 export type CoalReviewProps = Pick<DailyTabProps,
-    | 'stockBatubaraSheet'
-    | 'lhubbDate'
-    | 'coalActivities'
-    | 'onAddCoalActivity'
-    | 'onDeleteCoalActivity'
+    | 'coalTransfer'
+    | 'onCoalTransferChange'
 >;
 
 export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string }

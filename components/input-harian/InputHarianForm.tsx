@@ -167,7 +167,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // (kolom DW / stock_batubara_rendal).
     const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
 
-    const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string }[]>([]);
+    const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string; shift?: string | null }[]>([]);
     const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
     const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
 
@@ -215,7 +215,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             
             supabase
                 .from('solar_unloadings')
-                .select('id, date, liters, supplier')
+                .select('id, date, liters, supplier, shift')
                 .eq('date', date)
                 .order('created_at', { ascending: false })
                 .then(({ data }) => {
@@ -225,6 +225,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             date: r.date as string,
                             liters: Number(r.liters) || 0,
                             supplier: (r.supplier as string) || '',
+                            shift: (r.shift as string) ?? null,
                         }))
                     );
                 });
@@ -324,7 +325,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             .insert({ date, liters: fields.liters, supplier: fields.supplier, shift: null, operator_id: null })
             .select('id').single();
         if (error) { alert('Gagal simpan kedatangan solar: ' + error.message); return; }
-        setSolarUnloadings(prev => [{ id: data?.id as string, date, liters: fields.liters, supplier: fields.supplier }, ...prev]);
+        setSolarUnloadings(prev => [{ id: data?.id as string, date, liters: fields.liters, supplier: fields.supplier, shift: null }, ...prev]);
     };
 
     const handleAddSolarUsage = async (fields: { liters: number; tujuan: string; shift: string }) => {

@@ -37,7 +37,7 @@ export interface DailyTabProps {
     lhubbDate?: string;
 
     // Solar and Ash unloadings from shift reports (deletable in daily)
-    solarUnloadings?: { id?: string; date: string; liters: number; supplier: string }[];
+    solarUnloadings?: { id?: string; date: string; liters: number; supplier: string; shift?: string | null }[];
     solarUsages?: { id?: string; date: string; shift: string; liters: number; tujuan: string }[];
     ashUnloadings?: { id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[];
     onDeleteSolarUnloading?: (id: string) => void;
@@ -59,7 +59,7 @@ export type CoalReviewProps = Pick<DailyTabProps,
     | 'onCoalTransferChange'
 >;
 
-export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string }
+export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string; shift?: string | null }
 export interface SolarUsageEntry { id?: string; date: string; shift: string; liters: number; tujuan: string }
 
 /** Prop TabSolarReview — ringkasan review solar (m³): level sekarang/kemarin, kedatangan,

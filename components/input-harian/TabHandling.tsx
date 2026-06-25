@@ -6,6 +6,24 @@ import type { DailyTabProps } from './types';
 const n = (v: number | string | null | undefined) => Number(v) || 0;
 const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
 
+// Nilai shift dari laporan shift = pagi/sore/malam. 'siang' = legacy. Lainnya/kosong = harian.
+const SHIFT_LABEL: Record<string, string> = { pagi: 'Pagi', sore: 'Sore', siang: 'Siang', malam: 'Malam' };
+
+/** Badge asal entri solar: "Shift Pagi/Sore/Malam" (dari laporan shift) vs "Harian"
+ *  (ditambah langsung di laporan harian). Membantu operator hindari input dobel. */
+function OriginBadge({ shift }: { shift?: string | null }) {
+    const label = shift ? SHIFT_LABEL[shift] : undefined;
+    return label ? (
+        <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border bg-slate-700/40 text-slate-300 border-slate-600/50">
+            <span className="material-symbols-outlined text-[11px]">schedule</span>Shift {label}
+        </span>
+    ) : (
+        <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border bg-blue-500/15 text-blue-300 border-blue-500/30">
+            <span className="material-symbols-outlined text-[11px]">edit_calendar</span>Harian
+        </span>
+    );
+}
+
 type EditUn = { id?: string; liters: number; supplier: string };
 type EditUs = { id?: string; liters: number; tujuan: string; shift: string; tujuanMode: 'Bengkel' | 'SA/SU 3B' | 'Lainnya' };
 
@@ -54,7 +72,6 @@ export default function TabHandling({
     // Pemakaian Boiler A+B (m³) = nilai reviewed supervisor (daily_report_stock_tank.solar_boiler).
     // Read-only di form operator — operator tak mengisi konsumsi boiler.
     const boilerUsage = n(stockTank.solar_boiler);
-    const shiftLabel: Record<string, string> = { pagi: 'Pagi', siang: 'Siang', malam: 'Malam' };
 
     // Review pengurangan level solar: bandingkan level kemarin (LHUBB hari sebelumnya) vs hari ini.
     const levelKemarin = prevStockTank?.solar_tank_a != null ? n(prevStockTank.solar_tank_a) : null;
@@ -197,6 +214,7 @@ export default function TabHandling({
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <span className="material-symbols-outlined text-amber-400 text-[15px]">local_shipping</span>
                                                 <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-amber-400 text-xs">L</span></span>
+                                                <OriginBadge shift={item.shift} />
                                                 <span className="text-[10px] text-slate-400 truncate">{item.supplier}</span>
                                             </div>
                                             {item.id && (
@@ -234,7 +252,8 @@ export default function TabHandling({
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <span className="material-symbols-outlined text-rose-400 text-[15px]">upload</span>
                                                 <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-rose-400 text-xs">L</span></span>
-                                                <span className="text-[10px] text-slate-400 truncate">{item.tujuan} · {shiftLabel[item.shift] ?? item.shift}</span>
+                                                <OriginBadge shift={item.shift} />
+                                                <span className="text-[10px] text-slate-400 truncate">{item.tujuan}</span>
                                             </div>
                                             {item.id && (
                                                 <div className="flex items-center gap-1 shrink-0">
@@ -257,7 +276,7 @@ export default function TabHandling({
                             ) : (
                                 <p className="text-[11px] text-slate-500 italic">Belum ada data permintaan solar hari ini</p>
                             )}
-                            <button type="button" onClick={() => setEditUs({ liters: 0, tujuan: 'Bengkel', shift: 'pagi', tujuanMode: 'Bengkel' })}
+                            <button type="button" onClick={() => setEditUs({ liters: 0, tujuan: 'Bengkel', shift: 'harian', tujuanMode: 'Bengkel' })}
                                 className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-bold transition-colors">
                                 <span className="material-symbols-outlined text-[16px]">add_circle</span>
                                 Tambah Permintaan
@@ -310,12 +329,13 @@ export default function TabHandling({
                                 value={editUs.liters} onChange={e => setEditUs({ ...editUs, liters: Number(e.target.value) || 0 })} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Shift</label>
+                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Asal / Shift</label>
                             <select className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
                                 value={editUs.shift} onChange={e => setEditUs({ ...editUs, shift: e.target.value })}>
-                                <option value="pagi">Pagi</option>
-                                <option value="siang">Siang</option>
-                                <option value="malam">Malam</option>
+                                <option value="harian">Harian (ditambah di laporan harian)</option>
+                                <option value="pagi">Shift Pagi</option>
+                                <option value="sore">Shift Sore</option>
+                                <option value="malam">Shift Malam</option>
                             </select>
                         </div>
                         <div className="space-y-1.5">

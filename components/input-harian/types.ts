@@ -82,26 +82,22 @@ export type CoalReviewProps = Pick<DailyTabProps,
 export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string }
 export interface SolarUsageEntry { id?: string; date: string; shift: string; liters: number; tujuan: string }
 
-/** Prop TabSolarReview — editor solar penuh (kedatangan + permintaan + level + Boiler A+B
- *  + neraca). Semua via callback supaya bisa dipakai di form harian (operator) & panel
- *  publish (supervisor). Boiler A+B hanya bisa diedit saat `canEditBoilerAB` (review). */
+/** Prop TabSolarReview — ringkasan review solar (m³): level sekarang/kemarin, kedatangan,
+ *  pemakaian (Boiler A+B manual + Bengkel + SA/SU 3B agregat). Boiler A+B & level bisa
+ *  diisi supervisor saat `canEditBoilerAB`; selebihnya display agregat dari entri operator. */
 export interface SolarReviewProps {
+    /** Entri kedatangan operator (Liter) — untuk agregat m³. */
     solarUnloadings?: SolarUnloadingEntry[];
+    /** Entri permintaan operator (Liter) — untuk agregat Bengkel/SA·SU 3B m³. */
     solarUsages?: SolarUsageEntry[];
-    /** Level tank solar hari ini (m³) — daily_report_stock_tank.solar_tank_a. */
+    /** Level tank solar sekarang (m³) — daily_report_stock_tank.solar_tank_a. */
     solarLevel?: number | null;
-    /** Level tank solar hari sebelumnya (m³) — display read-only untuk neraca. */
+    /** Level tank solar kemarin (m³) — display read-only. */
     prevSolarLevel?: number | null;
     /** Pemakaian solar Boiler A+B (m³) — daily_report_stock_tank.solar_boiler, manual supervisor. */
     boilerAB?: number | null;
-    /** True di panel review supervisor → input Boiler A+B aktif. False di form operator → read-only. */
+    /** True di panel review supervisor → input Boiler A+B & level aktif. */
     canEditBoilerAB?: boolean;
-    onAddUnloading?: (f: { liters: number; supplier: string }) => void | Promise<void>;
-    onEditUnloading?: (id: string, f: { liters: number; supplier: string }) => void | Promise<void>;
-    onDeleteUnloading?: (id: string) => void | Promise<void>;
-    onAddUsage?: (f: { liters: number; tujuan: string; shift: string }) => void | Promise<void>;
-    onEditUsage?: (id: string, f: { liters: number; tujuan: string; shift: string }) => void | Promise<void>;
-    onDeleteUsage?: (id: string) => void | Promise<void>;
     onLevelChange?: (value: number | null) => void;
     onBoilerABChange?: (value: number | null) => void;
 }

@@ -419,50 +419,6 @@ export function PublishReportModal({
         if (error) console.warn('[PublishReportModal] persist stock_tank solar failed', error.message);
     };
 
-    const handleAddSolarUnloading = async (f: { liters: number; supplier: string }) => {
-        if (!reportDate) return;
-        const supabase = createClient();
-        const { data, error } = await supabase.from('solar_unloadings')
-            .insert({ date: reportDate, liters: f.liters, supplier: f.supplier, shift: null, operator_id: null })
-            .select('id').single();
-        if (error) { alert('Gagal simpan kedatangan solar: ' + error.message); return; }
-        setSolarUnloadings(prev => [{ id: data?.id as string, date: reportDate, liters: f.liters, supplier: f.supplier }, ...prev]);
-    };
-    const handleEditSolarUnloading = async (id: string, f: { liters: number; supplier: string }) => {
-        const supabase = createClient();
-        const { error } = await supabase.from('solar_unloadings').update(f).eq('id', id);
-        if (error) { alert('Gagal simpan: ' + error.message); return; }
-        setSolarUnloadings(prev => prev.map(e => e.id === id ? { ...e, ...f } : e));
-    };
-    const handleDeleteSolarUnloading = async (id: string) => {
-        if (!confirm('Hapus data kedatangan solar ini?')) return;
-        const supabase = createClient();
-        const { error } = await supabase.from('solar_unloadings').delete().eq('id', id);
-        if (error) { alert('Gagal hapus: ' + error.message); return; }
-        setSolarUnloadings(prev => prev.filter(e => e.id !== id));
-    };
-    const handleAddSolarUsage = async (f: { liters: number; tujuan: string; shift: string }) => {
-        if (!reportDate) return;
-        const supabase = createClient();
-        const { data, error } = await supabase.from('solar_usages')
-            .insert({ date: reportDate, liters: f.liters, tujuan: f.tujuan, shift: f.shift, operator_id: reviewerName || null })
-            .select('id').single();
-        if (error) { alert('Gagal simpan permintaan solar: ' + error.message); return; }
-        setSolarUsages(prev => [{ id: data?.id as string, date: reportDate, liters: f.liters, tujuan: f.tujuan, shift: f.shift }, ...prev]);
-    };
-    const handleEditSolarUsage = async (id: string, f: { liters: number; tujuan: string; shift: string }) => {
-        const supabase = createClient();
-        const { error } = await supabase.from('solar_usages').update(f).eq('id', id);
-        if (error) { alert('Gagal simpan: ' + error.message); return; }
-        setSolarUsages(prev => prev.map(e => e.id === id ? { ...e, ...f } : e));
-    };
-    const handleDeleteSolarUsage = async (id: string) => {
-        if (!confirm('Hapus data permintaan solar ini?')) return;
-        const supabase = createClient();
-        const { error } = await supabase.from('solar_usages').delete().eq('id', id);
-        if (error) { alert('Gagal hapus: ' + error.message); return; }
-        setSolarUsages(prev => prev.filter(e => e.id !== id));
-    };
     const handleSolarLevelChange = (value: number | null) => {
         setSolarLevel(value);
         void persistStockTank({ solar_tank_a: value, solar_tank_b: value, solar_tank_total: value != null ? value * 2 : null });
@@ -715,12 +671,6 @@ export function PublishReportModal({
                     solarLevel={solarLevel}
                     prevSolarLevel={prevSolarLevel}
                     boilerAB={boilerAB}
-                    onAddUnloading={handleAddSolarUnloading}
-                    onEditUnloading={handleEditSolarUnloading}
-                    onDeleteUnloading={handleDeleteSolarUnloading}
-                    onAddUsage={handleAddSolarUsage}
-                    onEditUsage={handleEditSolarUsage}
-                    onDeleteUsage={handleDeleteSolarUsage}
                     onLevelChange={handleSolarLevelChange}
                     onBoilerABChange={handleBoilerABChange}
                 />

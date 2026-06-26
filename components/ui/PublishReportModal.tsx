@@ -170,13 +170,9 @@ export function PublishReportModal({
     // (kedatangan/permintaan/level) DAN mengisi Pemakaian Boiler A+B (manual) yang operator tak bisa.
     const [solarLevel, setSolarLevel] = useState<number | null>(null);     // solar_tank_a (m³) hari ini
     const [prevSolarLevel, setPrevSolarLevel] = useState<number | null>(null); // level kemarin (Sheets CH)
-    const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloadingEntry[]>([]); // detail entri kedatangan
-    const [solarUsages, setSolarUsages] = useState<SolarUsageEntry[]>([]);             // detail entri permintaan
-    // Nilai solar (m³) di review — di-prefill dari kolom daily_report_stock_tank atau, bila
-    // kolom kosong, dari agregat entri operator (solar_unloadings/solar_usages, Liter→m³).
-    const [solarVals, setSolarVals] = useState<{ kedatangan_solar: number | null; solar_boiler: number | null; solar_bengkel: number | null; solar_3b: number | null }>(
-        { kedatangan_solar: null, solar_boiler: null, solar_bengkel: null, solar_3b: null },
-    );
+    const [boilerAB, setBoilerAB] = useState<number | null>(null);         // solar_boiler (m³) manual
+    const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloadingEntry[]>([]); // entri kedatangan (CRUD)
+    const [solarUsages, setSolarUsages] = useState<SolarUsageEntry[]>([]);             // entri permintaan (CRUD)
 
     // Sync state dari props saat modal open atau initial values berubah dari parent.
     // Direksi: parent (input laporan / fetched report) → modal.
@@ -354,39 +350,33 @@ export function PublishReportModal({
             .then(({ error }) => { if (error) console.warn('[PublishReportModal] persist coal_transfer failed', error.message); });
     };
 
-    // ── Review Solar: fetch agregat entri + kolom nilai + level saat panel harian dibuka ──
+    // ── Review Solar: muat entri kedatangan/permintaan (dipakai ulang setelah CRUD) ──
+    const loadSolarEntries = useCallback(async () => {
+        if (!reportDate) return;
+        const supabase = createClient();
+        const [unload, usage] = await Promise.all([
+            supabase.from('solar_unloadings').select('id, date, liters, supplier, shift').eq('date', reportDate).order('created_at', { ascending: false }),
+            supabase.from('solar_usages').select('id, date, liters, tujuan, shift').eq('date', reportDate).order('created_at', { ascending: false }),
+        ]);
+        setSolarUnloadings((unload.data ?? []).map(r => ({
+            id: r.id as string, date: r.date as string, liters: Number(r.liters) || 0, supplier: (r.supplier as string) || '', shift: (r.shift as string) ?? null,
+        })));
+        setSolarUsages((usage.data ?? []).map(r => ({
+            id: r.id as string, date: r.date as string, liters: Number(r.liters) || 0, tujuan: (r.tujuan as string) || '', shift: (r.shift as string) || '',
+        })));
+    }, [reportDate]);
+
+    // Saat panel harian dibuka: muat entri + level & Boiler A+B (kolom manual).
     useEffect(() => {
         if (!open || kind !== 'daily' || !reportDate || !reportId) return;
+        loadSolarEntries();
         const supabase = createClient();
-        (async () => {
-            // Entri operator (laporan shift/harian) — utk detail list & agregat prefill (Liter → m³).
-            const [unload, usage, stock] = await Promise.all([
-                supabase.from('solar_unloadings').select('id, date, liters, supplier, shift').eq('date', reportDate).order('created_at', { ascending: false }),
-                supabase.from('solar_usages').select('id, date, liters, tujuan, shift').eq('date', reportDate).order('created_at', { ascending: false }),
-                supabase.from('daily_report_stock_tank').select('solar_tank_a, kedatangan_solar, solar_boiler, solar_bengkel, solar_3b').eq('daily_report_id', reportId).maybeSingle(),
-            ]);
-            setSolarUnloadings((unload.data ?? []).map(r => ({
-                id: r.id as string, date: r.date as string, liters: Number(r.liters) || 0, supplier: (r.supplier as string) || '', shift: (r.shift as string) ?? null,
-            })));
-            setSolarUsages((usage.data ?? []).map(r => ({
-                id: r.id as string, date: r.date as string, liters: Number(r.liters) || 0, tujuan: (r.tujuan as string) || '', shift: (r.shift as string) || '',
-            })));
-            const sumL = (rows: { liters: number }[] | null) => (rows ?? []).reduce((s, r) => s + (Number(r.liters) || 0), 0);
-            const sumTujuan = (t: string) => (usage.data ?? []).filter((r: { tujuan: string }) => r.tujuan === t).reduce((s, r) => s + (Number(r.liters) || 0), 0);
-            const aggKedM3 = sumL(unload.data as { liters: number }[] | null) / 1000;
-            const aggBengkelM3 = sumTujuan('Bengkel') / 1000;
-            const aggSasuM3 = sumTujuan('SA/SU 3B') / 1000;
-            const col = (stock.data ?? null) as Record<string, unknown> | null;
-            const pick = (k: string, fallback: number) => (col && col[k] != null ? Number(col[k]) : (fallback || null));
-            setSolarLevel(col?.solar_tank_a != null ? Number(col.solar_tank_a) : null);
-            setSolarVals({
-                kedatangan_solar: pick('kedatangan_solar', aggKedM3),
-                solar_boiler:     col?.solar_boiler != null ? Number(col.solar_boiler) : null, // tanpa agregat (manual murni)
-                solar_bengkel:    pick('solar_bengkel', aggBengkelM3),
-                solar_3b:         pick('solar_3b', aggSasuM3),
+        supabase.from('daily_report_stock_tank').select('solar_tank_a, solar_boiler').eq('daily_report_id', reportId).maybeSingle()
+            .then(({ data }) => {
+                setSolarLevel(data?.solar_tank_a != null ? Number(data.solar_tank_a) : null);
+                setBoilerAB(data?.solar_boiler != null ? Number(data.solar_boiler) : null);
             });
-        })();
-    }, [open, kind, reportDate, reportId]);
+    }, [open, kind, reportDate, reportId, loadSolarEntries]);
 
     // Level solar kemarin dari Sheets LHUBB hari sebelumnya: CH(85)=solar_tank_a.
     useEffect(() => {
@@ -420,9 +410,51 @@ export function PublishReportModal({
         setSolarLevel(value);
         void persistStockTank({ solar_tank_a: value, solar_tank_b: value, solar_tank_total: value != null ? value * 2 : null });
     };
-    const handleSolarValueChange = (col: 'kedatangan_solar' | 'solar_boiler' | 'solar_bengkel' | 'solar_3b', value: number | null) => {
-        setSolarVals(prev => ({ ...prev, [col]: value }));
-        void persistStockTank({ [col]: value });
+    const handleBoilerABChange = (value: number | null) => {
+        setBoilerAB(value);
+        void persistStockTank({ solar_boiler: value });
+    };
+
+    // CRUD entri solar — date = tanggal report supaya selalu sinkron. Refresh list tiap aksi.
+    const addSolarUnloading = async (f: { liters: number; supplier: string }) => {
+        if (!reportDate) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').insert({ date: reportDate, liters: f.liters, supplier: f.supplier, shift: null, operator_id: null });
+        if (error) { alert('Gagal simpan kedatangan solar: ' + error.message); return; }
+        await loadSolarEntries();
+    };
+    const editSolarUnloading = async (id: string, f: { liters: number; supplier: string }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').update(f).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        await loadSolarEntries();
+    };
+    const deleteSolarUnloading = async (id: string) => {
+        if (!confirm('Hapus data kedatangan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        await loadSolarEntries();
+    };
+    const addSolarUsage = async (f: { liters: number; tujuan: string; shift: string }) => {
+        if (!reportDate) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').insert({ date: reportDate, liters: f.liters, tujuan: f.tujuan, shift: f.shift, operator_id: reviewerName || null });
+        if (error) { alert('Gagal simpan permintaan solar: ' + error.message); return; }
+        await loadSolarEntries();
+    };
+    const editSolarUsage = async (id: string, f: { liters: number; tujuan: string; shift: string }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').update(f).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        await loadSolarEntries();
+    };
+    const deleteSolarUsage = async (id: string) => {
+        if (!confirm('Hapus data permintaan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        await loadSolarEntries();
     };
 
     if (!open) return null;
@@ -629,12 +661,15 @@ export function PublishReportModal({
                     solarUsages={solarUsages}
                     solarLevel={solarLevel}
                     prevSolarLevel={prevSolarLevel}
-                    kedatangan={solarVals.kedatangan_solar}
-                    boilerAB={solarVals.solar_boiler}
-                    bengkel={solarVals.solar_bengkel}
-                    sasu={solarVals.solar_3b}
+                    boilerAB={boilerAB}
                     onLevelChange={handleSolarLevelChange}
-                    onValueChange={handleSolarValueChange}
+                    onBoilerABChange={handleBoilerABChange}
+                    onAddUnloading={addSolarUnloading}
+                    onEditUnloading={editSolarUnloading}
+                    onDeleteUnloading={deleteSolarUnloading}
+                    onAddUsage={addSolarUsage}
+                    onEditUsage={editSolarUsage}
+                    onDeleteUsage={deleteSolarUsage}
                 />
             ),
         });

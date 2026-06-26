@@ -396,12 +396,15 @@ export function dailyReportToRow(
         // CJ(87) = formula: solar_tank_total — skip
         // CL — Pemakaian Boiler A+B: input manual supervisor (m³) dari solar_boiler. Blank bila belum direview.
         set(row, COL.solar_boiler, stock.solar_boiler); // CL — m³
-        // Solar aktivitas: input Liter → m³ (÷1000). Selalu tulis 0 saat kosong (konsisten dgn batubara).
-        if (solar) {
-            setNum0(row, COL.kedatangan_solar, (solar.kedatangan || 0) / 1000); // CK — m³ kedatangan
-            setNum0(row, COL.solar_bengkel,    (solar.bengkel || 0) / 1000);    // CM — m³ bengkel
-            setNum0(row, COL.solar_3b,         (solar.sasu || 0) / 1000);       // CN — m³ SA/SU 3B
-        }
+        // CK/CM/CN — utamakan nilai manual supervisor (kolom m³ di daily_report_stock_tank);
+        // fallback ke agregat entri (solar_unloadings/solar_usages, Liter→m³) bila kolom kosong,
+        // supaya kedatangan/pemakaian yang diisi operator di laporan shift tetap mengalir.
+        const kedM3     = stock.kedatangan_solar != null ? Number(stock.kedatangan_solar) : (solar ? (solar.kedatangan || 0) / 1000 : 0);
+        const bengkelM3 = stock.solar_bengkel    != null ? Number(stock.solar_bengkel)    : (solar ? (solar.bengkel || 0) / 1000 : 0);
+        const sasuM3    = stock.solar_3b         != null ? Number(stock.solar_3b)         : (solar ? (solar.sasu || 0) / 1000 : 0);
+        setNum0(row, COL.kedatangan_solar, kedM3);     // CK — m³ kedatangan
+        setNum0(row, COL.solar_bengkel,    bengkelM3); // CM — m³ bengkel
+        setNum0(row, COL.solar_3b,         sasuM3);    // CN — m³ SA/SU 3B
         const ps2 = prev?.stock;
         set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO
         set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b)); // CP

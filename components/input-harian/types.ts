@@ -62,22 +62,26 @@ export type CoalReviewProps = Pick<DailyTabProps,
 export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string; shift?: string | null }
 export interface SolarUsageEntry { id?: string; date: string; shift: string; liters: number; tujuan: string }
 
-/** Prop TabSolarReview — ringkasan review solar (m³): level sekarang/kemarin, kedatangan,
- *  pemakaian (Boiler A+B manual + Bengkel + SA/SU 3B agregat). Boiler A+B & level bisa
- *  diisi supervisor saat `canEditBoilerAB`; selebihnya display agregat dari entri operator. */
+/** Kolom nilai solar (m³) di daily_report_stock_tank yang bisa diisi supervisor di review. */
+export type SolarValueCol = 'kedatangan_solar' | 'solar_boiler' | 'solar_bengkel' | 'solar_3b';
+
+/** Prop TabSolarReview — form ringkas review solar (semua m³): level sekarang/kemarin,
+ *  kedatangan, pemakaian (Boiler A+B / Bengkel / SA·SU 3B). Nilai di-prefill dari kolom
+ *  daily_report_stock_tank atau agregat entri operator; supervisor bisa edit & override. */
 export interface SolarReviewProps {
-    /** Entri kedatangan operator (Liter) — untuk agregat m³. */
-    solarUnloadings?: SolarUnloadingEntry[];
-    /** Entri permintaan operator (Liter) — untuk agregat Bengkel/SA·SU 3B m³. */
-    solarUsages?: SolarUsageEntry[];
     /** Level tank solar sekarang (m³) — daily_report_stock_tank.solar_tank_a. */
     solarLevel?: number | null;
     /** Level tank solar kemarin (m³) — display read-only. */
     prevSolarLevel?: number | null;
-    /** Pemakaian solar Boiler A+B (m³) — daily_report_stock_tank.solar_boiler, manual supervisor. */
+    /** Kedatangan solar (m³) — prefilled dari kolom/agregat, editable. */
+    kedatangan?: number | null;
+    /** Pemakaian Boiler A+B (m³). */
     boilerAB?: number | null;
-    /** True di panel review supervisor → input Boiler A+B & level aktif. */
-    canEditBoilerAB?: boolean;
+    /** Pemakaian Bengkel (m³). */
+    bengkel?: number | null;
+    /** Pemakaian SA/SU 3B (m³). */
+    sasu?: number | null;
     onLevelChange?: (value: number | null) => void;
-    onBoilerABChange?: (value: number | null) => void;
+    /** Ubah salah satu nilai solar (m³) → persist ke kolom daily_report_stock_tank terkait. */
+    onValueChange?: (col: SolarValueCol, value: number | null) => void;
 }

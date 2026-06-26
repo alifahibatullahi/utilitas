@@ -7,6 +7,7 @@ import SearchableSelect from '@/components/ui/SearchableSelect';
 import { parseSheetNumber } from '@/lib/utils';
 import TabStockBatubara from '@/components/input-harian/TabStockBatubara';
 import TabSolarReview from '@/components/input-harian/TabSolarReview';
+import type { SolarUnloadingEntry, SolarUsageEntry } from '@/components/input-harian/types';
 
 /** Satu langkah di panel publish. Daftar step dibangun per-`kind` (lihat buildSteps di
  *  komponen) sehingga menambah step pra-publish ke depan = cukup push entri baru. */
@@ -169,6 +170,8 @@ export function PublishReportModal({
     // (kedatangan/permintaan/level) DAN mengisi Pemakaian Boiler A+B (manual) yang operator tak bisa.
     const [solarLevel, setSolarLevel] = useState<number | null>(null);     // solar_tank_a (m³) hari ini
     const [prevSolarLevel, setPrevSolarLevel] = useState<number | null>(null); // level kemarin (Sheets CH)
+    const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloadingEntry[]>([]); // detail entri kedatangan
+    const [solarUsages, setSolarUsages] = useState<SolarUsageEntry[]>([]);             // detail entri permintaan
     // Nilai solar (m³) di review — di-prefill dari kolom daily_report_stock_tank atau, bila
     // kolom kosong, dari agregat entri operator (solar_unloadings/solar_usages, Liter→m³).
     const [solarVals, setSolarVals] = useState<{ kedatangan_solar: number | null; solar_boiler: number | null; solar_bengkel: number | null; solar_3b: number | null }>(
@@ -356,12 +359,18 @@ export function PublishReportModal({
         if (!open || kind !== 'daily' || !reportDate || !reportId) return;
         const supabase = createClient();
         (async () => {
-            // Agregat entri operator (laporan shift/harian) sebagai prefill (Liter → m³).
+            // Entri operator (laporan shift/harian) — utk detail list & agregat prefill (Liter → m³).
             const [unload, usage, stock] = await Promise.all([
-                supabase.from('solar_unloadings').select('liters').eq('date', reportDate),
-                supabase.from('solar_usages').select('liters, tujuan').eq('date', reportDate),
+                supabase.from('solar_unloadings').select('id, date, liters, supplier, shift').eq('date', reportDate).order('created_at', { ascending: false }),
+                supabase.from('solar_usages').select('id, date, liters, tujuan, shift').eq('date', reportDate).order('created_at', { ascending: false }),
                 supabase.from('daily_report_stock_tank').select('solar_tank_a, kedatangan_solar, solar_boiler, solar_bengkel, solar_3b').eq('daily_report_id', reportId).maybeSingle(),
             ]);
+            setSolarUnloadings((unload.data ?? []).map(r => ({
+                id: r.id as string, date: r.date as string, liters: Number(r.liters) || 0, supplier: (r.supplier as string) || '', shift: (r.shift as string) ?? null,
+            })));
+            setSolarUsages((usage.data ?? []).map(r => ({
+                id: r.id as string, date: r.date as string, liters: Number(r.liters) || 0, tujuan: (r.tujuan as string) || '', shift: (r.shift as string) || '',
+            })));
             const sumL = (rows: { liters: number }[] | null) => (rows ?? []).reduce((s, r) => s + (Number(r.liters) || 0), 0);
             const sumTujuan = (t: string) => (usage.data ?? []).filter((r: { tujuan: string }) => r.tujuan === t).reduce((s, r) => s + (Number(r.liters) || 0), 0);
             const aggKedM3 = sumL(unload.data as { liters: number }[] | null) / 1000;
@@ -616,6 +625,8 @@ export function PublishReportModal({
             icon: 'local_gas_station',
             render: () => (
                 <TabSolarReview
+                    solarUnloadings={solarUnloadings}
+                    solarUsages={solarUsages}
                     solarLevel={solarLevel}
                     prevSolarLevel={prevSolarLevel}
                     kedatangan={solarVals.kedatangan_solar}

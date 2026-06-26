@@ -3,26 +3,10 @@ import React, { useState } from 'react';
 import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, Modal } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 
+import { SolarOriginBadge } from './SolarOriginBadge';
+
 const n = (v: number | string | null | undefined) => Number(v) || 0;
 const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
-
-// Nilai shift dari laporan shift = pagi/sore/malam. 'siang' = legacy. Lainnya/kosong = harian.
-const SHIFT_LABEL: Record<string, string> = { pagi: 'Pagi', sore: 'Sore', siang: 'Siang', malam: 'Malam' };
-
-/** Badge asal entri solar: "Shift Pagi/Sore/Malam" (dari laporan shift) vs "Harian"
- *  (ditambah langsung di laporan harian). Membantu operator hindari input dobel. */
-function OriginBadge({ shift }: { shift?: string | null }) {
-    const label = shift ? SHIFT_LABEL[shift] : undefined;
-    return label ? (
-        <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border bg-slate-700/40 text-slate-300 border-slate-600/50">
-            <span className="material-symbols-outlined text-[11px]">schedule</span>Shift {label}
-        </span>
-    ) : (
-        <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border bg-blue-500/15 text-blue-300 border-blue-500/30">
-            <span className="material-symbols-outlined text-[11px]">edit_calendar</span>Harian
-        </span>
-    );
-}
 
 type EditUn = { id?: string; liters: number; supplier: string };
 type EditUs = { id?: string; liters: number; tujuan: string; shift: string; tujuanMode: 'Bengkel' | 'SA/SU 3B' | 'Lainnya' };
@@ -214,7 +198,7 @@ export default function TabHandling({
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <span className="material-symbols-outlined text-amber-400 text-[15px]">local_shipping</span>
                                                 <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-amber-400 text-xs">L</span></span>
-                                                <OriginBadge shift={item.shift} />
+                                                <SolarOriginBadge shift={item.shift} />
                                                 <span className="text-[10px] text-slate-400 truncate">{item.supplier}</span>
                                             </div>
                                             {item.id && (
@@ -252,7 +236,7 @@ export default function TabHandling({
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <span className="material-symbols-outlined text-rose-400 text-[15px]">upload</span>
                                                 <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-rose-400 text-xs">L</span></span>
-                                                <OriginBadge shift={item.shift} />
+                                                <SolarOriginBadge shift={item.shift} />
                                                 <span className="text-[10px] text-slate-400 truncate">{item.tujuan}</span>
                                             </div>
                                             {item.id && (

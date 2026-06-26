@@ -69,6 +69,10 @@ export type SolarValueCol = 'kedatangan_solar' | 'solar_boiler' | 'solar_bengkel
  *  kedatangan, pemakaian (Boiler A+B / Bengkel / SA·SU 3B). Nilai di-prefill dari kolom
  *  daily_report_stock_tank atau agregat entri operator; supervisor bisa edit & override. */
 export interface SolarReviewProps {
+    /** Detail entri kedatangan operator (laporan shift/harian) — ditampilkan read-only. */
+    solarUnloadings?: SolarUnloadingEntry[];
+    /** Detail entri permintaan operator — ditampilkan read-only. */
+    solarUsages?: SolarUsageEntry[];
     /** Level tank solar sekarang (m³) — daily_report_stock_tank.solar_tank_a. */
     solarLevel?: number | null;
     /** Level tank solar kemarin (m³) — display read-only. */

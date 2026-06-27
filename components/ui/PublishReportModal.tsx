@@ -493,6 +493,23 @@ export function PublishReportModal({
                 // Tetap lanjut publish — DB persist optional, jangan blokir kirim WA.
             }
 
+            // 1b. Sync Google Sheets — koreksi supervisor di review (solar form, In/Out batubara,
+            //     level) tersimpan ke DB saat diubah, tapi TIDAK ikut tertulis ke Sheets sampai
+            //     publish. Trigger di sini supaya nilai final benar-benar masuk Sheets (retry 2x).
+            if (kind === 'daily' && reportDate) {
+                for (let attempt = 1; attempt <= 2; attempt++) {
+                    try {
+                        const sres = await fetch('/api/sheets/write', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: 'daily_report', data: { date: reportDate } }),
+                        });
+                        if (sres.ok) { const sj = await sres.json(); if (!sj.warning) break; }
+                    } catch (e) { console.warn('[PublishReportModal] sheets sync failed', e); }
+                    if (attempt < 2) await new Promise(r => setTimeout(r, 600));
+                }
+            }
+
             // 2. Kirim ke endpoint publish (WA washift + PDF management).
             const res = await fetch(`/api/whatsapp/publish-${kind === 'shift' ? 'shift' : 'daily'}`, {
                 method: 'POST',

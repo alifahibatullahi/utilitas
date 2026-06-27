@@ -394,8 +394,9 @@ export function dailyReportToRow(
         set(row, COL.solar_tank_a, stock.solar_tank_a); // CH
         set(row, COL.solar_tank_b, stock.solar_tank_a); // CI (sama dengan CH)
         // CJ(87) = formula: solar_tank_total — skip
-        // CL — Pemakaian Boiler A+B: input manual supervisor (m³) dari solar_boiler. Blank bila belum direview.
-        set(row, COL.solar_boiler, stock.solar_boiler); // CL — m³
+        // CL — Pemakaian Boiler A+B: input manual supervisor (m³) dari solar_boiler. Default 0
+        // (konsisten dgn CK/CM/CN) supaya nilai bisa dikosongkan & tidak menyisakan angka lama.
+        setNum0(row, COL.solar_boiler, stock.solar_boiler); // CL — m³
         // CK/CM/CN — yang tersimpan = NILAI FORM (kolom m³ daily_report_stock_tank). Bila belum
         // diisi supervisor, default = agregat entri (catatan) solar_unloadings/solar_usages (Liter→m³).
         const kedM3     = stock.kedatangan_solar != null ? Number(stock.kedatangan_solar) : (solar ? (solar.kedatangan || 0) / 1000 : 0);

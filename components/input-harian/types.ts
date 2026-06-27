@@ -62,21 +62,29 @@ export type CoalReviewProps = Pick<DailyTabProps,
 export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string; shift?: string | null }
 export interface SolarUsageEntry { id?: string; date: string; shift: string; liters: number; tujuan: string }
 
-/** Prop TabSolarReview — review solar gaya kartu Summary TabHandling: daftar entri
- *  kedatangan & permintaan (CRUD), total m³ turunan, + Boiler A+B & level manual. */
+/** Kolom nilai solar (m³) form di daily_report_stock_tank — inilah yang tersimpan ke Sheets. */
+export type SolarValueCol = 'kedatangan_solar' | 'solar_boiler' | 'solar_bengkel' | 'solar_3b';
+
+/** Prop TabSolarReview. Nilai FORM (kedatangan/boilerAB/bengkel/sasu, m³) = yang tersimpan
+ *  ke Sheets; bila null → default dari agregat entri (catatan). Entri kedatangan/permintaan
+ *  bisa CRUD tapi hanya sebagai catatan & sumber default. */
 export interface SolarReviewProps {
-    /** Detail entri kedatangan (solar_unloadings) — CRUD. */
+    /** Entri kedatangan (solar_unloadings) — catatan + sumber default kedatangan. CRUD. */
     solarUnloadings?: SolarUnloadingEntry[];
-    /** Detail entri permintaan (solar_usages) — CRUD. */
+    /** Entri permintaan (solar_usages) — catatan + sumber default bengkel/SA·SU. CRUD. */
     solarUsages?: SolarUsageEntry[];
     /** Level tank solar sekarang (m³) — daily_report_stock_tank.solar_tank_a. */
     solarLevel?: number | null;
     /** Level tank solar kemarin (m³) — display read-only. */
     prevSolarLevel?: number | null;
-    /** Pemakaian Boiler A+B (m³) — daily_report_stock_tank.solar_boiler, manual supervisor. */
+    /** Nilai form (null = belum dioverride → pakai default agregat entri). */
+    kedatangan?: number | null;
     boilerAB?: number | null;
+    bengkel?: number | null;
+    sasu?: number | null;
     onLevelChange?: (value: number | null) => void;
-    onBoilerABChange?: (value: number | null) => void;
+    /** Ubah nilai form → persist ke kolom daily_report_stock_tank terkait. */
+    onValueChange?: (col: SolarValueCol, value: number | null) => void;
     onAddUnloading?: (f: { liters: number; supplier: string }) => void | Promise<void>;
     onEditUnloading?: (id: string, f: { liters: number; supplier: string }) => void | Promise<void>;
     onDeleteUnloading?: (id: string) => void | Promise<void>;

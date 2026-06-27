@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Card, InputField, Modal, CalculatedField, SectionLabel } from '@/components/input-shift/SharedComponents';
+import { Card, InputField, Modal, SectionLabel } from '@/components/input-shift/SharedComponents';
 import { SolarOriginBadge } from './SolarOriginBadge';
 import type { SolarReviewProps } from './types';
 
@@ -11,14 +11,17 @@ type TujuanMode = 'Bengkel' | 'SA/SU 3B' | 'Lainnya';
 type EditUn = { id?: string; liters: number; supplier: string };
 type EditUs = { id?: string; liters: number; tujuan: string; shift: string; tujuanMode: TujuanMode };
 
-/** Review Solar (supervisor) — gaya kartu Summary TabHandling:
+/** Review Solar (supervisor):
  *  - Level sekarang (input) & kemarin (display)
- *  - Kedatangan: daftar entri (tambah/edit/hapus) + total m³ turunan
- *  - Pemakaian: Boiler A+B (input manual) + Bengkel/SA·SU 3B (turunan) + daftar permintaan (CRUD) */
+ *  - Kedatangan: input form total m³ (default = total entri) + daftar entri (catatan, CRUD)
+ *  - Pemakaian: input form Boiler A+B / Bengkel / SA·SU 3B (default Bengkel/SA·SU = total entri)
+ *    + daftar permintaan (catatan, CRUD)
+ *  Nilai FORM = yang tersimpan ke Sheets; entri hanya catatan & sumber default. */
 export default function TabSolarReview({
     solarUnloadings = [], solarUsages = [],
-    solarLevel = null, prevSolarLevel = null, boilerAB = null,
-    onLevelChange, onBoilerABChange,
+    solarLevel = null, prevSolarLevel = null,
+    kedatangan = null, boilerAB = null, bengkel = null, sasu = null,
+    onLevelChange, onValueChange,
     onAddUnloading, onEditUnloading, onDeleteUnloading,
     onAddUsage, onEditUsage, onDeleteUsage,
 }: SolarReviewProps) {
@@ -26,10 +29,14 @@ export default function TabSolarReview({
     const [editUs, setEditUs] = useState<EditUs | null>(null);
 
     const levelKemarin = prevSolarLevel != null ? n(prevSolarLevel) : null;
-    const totalKedatanganL = solarUnloadings.reduce((s, e) => s + n(e.liters), 0);
-    const totalPermintaanL = solarUsages.reduce((s, e) => s + n(e.liters), 0);
-    const bengkelM3 = solarUsages.filter(e => e.tujuan === 'Bengkel').reduce((s, e) => s + n(e.liters), 0) / 1000;
-    const sasuM3 = solarUsages.filter(e => e.tujuan === 'SA/SU 3B').reduce((s, e) => s + n(e.liters), 0) / 1000;
+    // Default form (m³) dari agregat entri (catatan), Liter → m³.
+    const aggKedatangan = solarUnloadings.reduce((s, e) => s + n(e.liters), 0) / 1000;
+    const aggBengkel = solarUsages.filter(e => e.tujuan === 'Bengkel').reduce((s, e) => s + n(e.liters), 0) / 1000;
+    const aggSasu = solarUsages.filter(e => e.tujuan === 'SA/SU 3B').reduce((s, e) => s + n(e.liters), 0) / 1000;
+    // Nilai input = override form bila ada, else default agregat (kecuali Boiler A+B yg murni manual).
+    const kedatanganVal = kedatangan != null ? kedatangan : aggKedatangan;
+    const bengkelVal = bengkel != null ? bengkel : aggBengkel;
+    const sasuVal = sasu != null ? sasu : aggSasu;
 
     const saveUn = async () => {
         if (!editUn) return;
@@ -63,44 +70,48 @@ export default function TabSolarReview({
 
             {/* ═══ Kedatangan Solar ═══ */}
             <Card title="Kedatangan Solar" icon="local_shipping" color="amber">
-                <SectionLabel label="Detail Entri" badge={`${solarUnloadings.length} entri · ${(totalKedatanganL / 1000).toLocaleString('id-ID')} m³`} />
-                {solarUnloadings.length > 0 ? (
-                    <div className="space-y-2">
-                        {solarUnloadings.map((item, i) => (
-                            <div key={item.id ?? i} className="relative flex items-center gap-2 bg-[#101822]/50 border border-amber-500/30 rounded-lg px-3 py-2 pr-16 min-w-0">
-                                <span className="material-symbols-outlined text-amber-400 text-[15px]">local_shipping</span>
-                                <span className="text-white font-medium text-sm">{n(item.liters).toLocaleString('id-ID')} <span className="text-amber-400 text-xs">L</span></span>
-                                <SolarOriginBadge shift={item.shift} />
-                                <span className="text-[10px] text-slate-400 truncate">{item.supplier}</span>
-                                {item.id && (
-                                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                                        <button type="button" onClick={() => setEditUn({ id: item.id!, liters: item.liters, supplier: item.supplier })}
-                                            className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center"><span className="material-symbols-outlined text-[13px]">edit</span></button>
-                                        <button type="button" onClick={() => onDeleteUnloading?.(item.id!)}
-                                            className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center"><span className="material-symbols-outlined text-[13px]">delete</span></button>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                ) : <p className="text-[11px] text-slate-500 italic">Belum ada entri kedatangan.</p>}
-                <button type="button" onClick={() => setEditUn({ liters: 0, supplier: '' })}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm font-bold transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">add_circle</span>Tambah Kedatangan
-                </button>
+                <InputField label="Total Kedatangan (m³)" name="kedatangan_solar" value={kedatanganVal} unit="m³" color="amber"
+                    onChange={(_, v) => onValueChange?.('kedatangan_solar', numOrNull(v))} />
+                <div className="pt-2 mt-1 border-t border-slate-700/50">
+                    <SectionLabel label="Detail Entri (catatan)" badge={`${solarUnloadings.length} entri`} />
+                    {solarUnloadings.length > 0 ? (
+                        <div className="space-y-2">
+                            {solarUnloadings.map((item, i) => (
+                                <div key={item.id ?? i} className="relative flex items-center gap-2 bg-[#101822]/50 border border-amber-500/30 rounded-lg px-3 py-2 pr-16 min-w-0">
+                                    <span className="material-symbols-outlined text-amber-400 text-[15px]">local_shipping</span>
+                                    <span className="text-white font-medium text-sm">{n(item.liters).toLocaleString('id-ID')} <span className="text-amber-400 text-xs">L</span></span>
+                                    <SolarOriginBadge shift={item.shift} />
+                                    <span className="text-[10px] text-slate-400 truncate">{item.supplier}</span>
+                                    {item.id && (
+                                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                            <button type="button" onClick={() => setEditUn({ id: item.id!, liters: item.liters, supplier: item.supplier })} className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center"><span className="material-symbols-outlined text-[13px]">edit</span></button>
+                                            <button type="button" onClick={() => onDeleteUnloading?.(item.id!)} className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center"><span className="material-symbols-outlined text-[13px]">delete</span></button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : <p className="text-[11px] text-slate-500 italic">Belum ada entri kedatangan.</p>}
+                    <button type="button" onClick={() => setEditUn({ liters: 0, supplier: '' })}
+                        className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm font-bold transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">add_circle</span>Tambah Kedatangan
+                    </button>
+                </div>
             </Card>
 
             {/* ═══ Pemakaian Solar ═══ */}
             <Card title="Pemakaian Solar" icon="local_gas_station" color="rose" className="lg:col-span-2">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <InputField label="Boiler A+B" name="solar_boiler" value={boilerAB} unit="m³" color="rose"
-                        onChange={(_, v) => onBoilerABChange?.(numOrNull(v))} />
-                    <CalculatedField label="Bengkel" value={fmt(bengkelM3)} unit="m³" variant="small" />
-                    <CalculatedField label="SA/SU 3B" value={fmt(sasuM3)} unit="m³" variant="small" />
+                        onChange={(_, v) => onValueChange?.('solar_boiler', numOrNull(v))} />
+                    <InputField label="Bengkel" name="solar_bengkel" value={bengkelVal} unit="m³" color="rose"
+                        onChange={(_, v) => onValueChange?.('solar_bengkel', numOrNull(v))} />
+                    <InputField label="SA/SU 3B" name="solar_3b" value={sasuVal} unit="m³" color="rose"
+                        onChange={(_, v) => onValueChange?.('solar_3b', numOrNull(v))} />
                 </div>
 
                 <div className="pt-3 mt-1 border-t border-slate-700/50">
-                    <SectionLabel label="Detail Entri Permintaan" badge={`${solarUsages.length} entri · ${(totalPermintaanL / 1000).toLocaleString('id-ID')} m³`} />
+                    <SectionLabel label="Detail Entri Permintaan (catatan)" badge={`${solarUsages.length} entri`} />
                     {solarUsages.length > 0 ? (
                         <div className="space-y-2">
                             {solarUsages.map((item, i) => (
@@ -111,10 +122,8 @@ export default function TabSolarReview({
                                     <span className="text-[10px] text-slate-400 truncate">{item.tujuan}</span>
                                     {item.id && (
                                         <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                                            <button type="button" onClick={() => setEditUs({ id: item.id!, liters: item.liters, tujuan: item.tujuan, shift: item.shift, tujuanMode: (['Bengkel', 'SA/SU 3B'].includes(item.tujuan) ? item.tujuan : 'Lainnya') as TujuanMode })}
-                                                className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center"><span className="material-symbols-outlined text-[13px]">edit</span></button>
-                                            <button type="button" onClick={() => onDeleteUsage?.(item.id!)}
-                                                className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center"><span className="material-symbols-outlined text-[13px]">delete</span></button>
+                                            <button type="button" onClick={() => setEditUs({ id: item.id!, liters: item.liters, tujuan: item.tujuan, shift: item.shift, tujuanMode: (['Bengkel', 'SA/SU 3B'].includes(item.tujuan) ? item.tujuan : 'Lainnya') as TujuanMode })} className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center"><span className="material-symbols-outlined text-[13px]">edit</span></button>
+                                            <button type="button" onClick={() => onDeleteUsage?.(item.id!)} className="w-6 h-6 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/30 flex items-center justify-center"><span className="material-symbols-outlined text-[13px]">delete</span></button>
                                         </div>
                                     )}
                                 </div>

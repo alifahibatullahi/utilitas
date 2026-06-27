@@ -170,9 +170,12 @@ export function PublishReportModal({
     // (kedatangan/permintaan/level) DAN mengisi Pemakaian Boiler A+B (manual) yang operator tak bisa.
     const [solarLevel, setSolarLevel] = useState<number | null>(null);     // solar_tank_a (m³) hari ini
     const [prevSolarLevel, setPrevSolarLevel] = useState<number | null>(null); // level kemarin (Sheets CH)
-    const [boilerAB, setBoilerAB] = useState<number | null>(null);         // solar_boiler (m³) manual
-    const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloadingEntry[]>([]); // entri kedatangan (CRUD)
-    const [solarUsages, setSolarUsages] = useState<SolarUsageEntry[]>([]);             // entri permintaan (CRUD)
+    // Nilai FORM (m³) yang tersimpan ke Sheets. null = belum dioverride → review pakai default agregat entri.
+    const [solarVals, setSolarVals] = useState<{ kedatangan_solar: number | null; solar_boiler: number | null; solar_bengkel: number | null; solar_3b: number | null }>(
+        { kedatangan_solar: null, solar_boiler: null, solar_bengkel: null, solar_3b: null },
+    );
+    const [solarUnloadings, setSolarUnloadings] = useState<SolarUnloadingEntry[]>([]); // entri kedatangan (catatan, CRUD)
+    const [solarUsages, setSolarUsages] = useState<SolarUsageEntry[]>([]);             // entri permintaan (catatan, CRUD)
 
     // Sync state dari props saat modal open atau initial values berubah dari parent.
     // Direksi: parent (input laporan / fetched report) → modal.
@@ -371,10 +374,11 @@ export function PublishReportModal({
         if (!open || kind !== 'daily' || !reportDate || !reportId) return;
         loadSolarEntries();
         const supabase = createClient();
-        supabase.from('daily_report_stock_tank').select('solar_tank_a, solar_boiler').eq('daily_report_id', reportId).maybeSingle()
+        supabase.from('daily_report_stock_tank').select('solar_tank_a, kedatangan_solar, solar_boiler, solar_bengkel, solar_3b').eq('daily_report_id', reportId).maybeSingle()
             .then(({ data }) => {
-                setSolarLevel(data?.solar_tank_a != null ? Number(data.solar_tank_a) : null);
-                setBoilerAB(data?.solar_boiler != null ? Number(data.solar_boiler) : null);
+                const num = (k: string) => { const v = (data as Record<string, unknown> | null)?.[k]; return v != null ? Number(v) : null; };
+                setSolarLevel(num('solar_tank_a'));
+                setSolarVals({ kedatangan_solar: num('kedatangan_solar'), solar_boiler: num('solar_boiler'), solar_bengkel: num('solar_bengkel'), solar_3b: num('solar_3b') });
             });
     }, [open, kind, reportDate, reportId, loadSolarEntries]);
 
@@ -410,9 +414,9 @@ export function PublishReportModal({
         setSolarLevel(value);
         void persistStockTank({ solar_tank_a: value, solar_tank_b: value, solar_tank_total: value != null ? value * 2 : null });
     };
-    const handleBoilerABChange = (value: number | null) => {
-        setBoilerAB(value);
-        void persistStockTank({ solar_boiler: value });
+    const handleSolarValueChange = (col: 'kedatangan_solar' | 'solar_boiler' | 'solar_bengkel' | 'solar_3b', value: number | null) => {
+        setSolarVals(prev => ({ ...prev, [col]: value }));
+        void persistStockTank({ [col]: value });
     };
 
     // CRUD entri solar — date = tanggal report supaya selalu sinkron. Refresh list tiap aksi.
@@ -661,9 +665,12 @@ export function PublishReportModal({
                     solarUsages={solarUsages}
                     solarLevel={solarLevel}
                     prevSolarLevel={prevSolarLevel}
-                    boilerAB={boilerAB}
+                    kedatangan={solarVals.kedatangan_solar}
+                    boilerAB={solarVals.solar_boiler}
+                    bengkel={solarVals.solar_bengkel}
+                    sasu={solarVals.solar_3b}
                     onLevelChange={handleSolarLevelChange}
-                    onBoilerABChange={handleBoilerABChange}
+                    onValueChange={handleSolarValueChange}
                     onAddUnloading={addSolarUnloading}
                     onEditUnloading={editSolarUnloading}
                     onDeleteUnloading={deleteSolarUnloading}
@@ -728,19 +735,16 @@ export function PublishReportModal({
                         <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 flex gap-2">
                             {steps.map((s, i) => {
                                 const active = i === safeStepIdx;
-                                const reachable = i <= safeStepIdx;
                                 return (
                                     <button
                                         key={s.id}
                                         type="button"
-                                        onClick={() => { if (reachable) setStepIdx(i); }}
-                                        disabled={!reachable || sending}
+                                        onClick={() => setStepIdx(i)}
+                                        disabled={sending}
                                         className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 relative
                                             ${active
                                                 ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)] cursor-pointer'
-                                                : reachable
-                                                    ? 'text-emerald-300 hover:text-emerald-200 hover:bg-slate-900/40 cursor-pointer'
-                                                    : 'text-slate-500 cursor-not-allowed'}`}
+                                                : 'text-emerald-300 hover:text-emerald-200 hover:bg-slate-900/40 cursor-pointer'}`}
                                     >
                                         <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${active ? 'bg-white/20' : 'bg-slate-800/80'}`}>{i + 1}</span>
                                         <span className="hidden sm:inline">{s.label}</span>

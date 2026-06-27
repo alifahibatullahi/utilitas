@@ -1142,12 +1142,16 @@ function InputShiftPageInner() {
                 if (solarInErr) showToast('Kedatangan solar GAGAL tersimpan: ' + solarInErr.message + '. Mohon simpan ulang.', 'error');
             }
 
-            // Save solar usages if filled
-            const validOutSolarEntries = outSolarEntries.filter(e => e.tanggal && e.jumlah && e.tujuan);
+            // Save solar usages if filled.
+            // Pakai selectedDate (tanggal laporan) — sama seperti kedatangan di atas — supaya
+            // formatnya konsisten YYYY-MM-DD & cocok saat laporan harian filter by date.
+            // (Dulu pakai entry.tanggal yang bisa beda format/kosong → permintaan tak tersimpan/
+            //  tak muncul di laporan harian.)
+            const validOutSolarEntries = outSolarEntries.filter(e => e.jumlah && e.tujuan);
             if (validOutSolarEntries.length > 0) {
                 const supabase = createClient();
                 const outInserts = validOutSolarEntries.map(entry => ({
-                    date: entry.tanggal, // This saves exact time string
+                    date: selectedDate,
                     shift: shiftMap[selectedShift],
                     liters: entry.jumlah,
                     tujuan: entry.tujuan,

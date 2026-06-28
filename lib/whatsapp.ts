@@ -262,6 +262,20 @@ export async function notifySupervisorPersonal(
         console.warn(`[whatsapp] supervisor "${name}" belum punya phone_number — skip notif pribadi`);
         return { sent: false, skipped: 'no_phone_number' };
     }
+    // Dedup PER-PENERIMA: kalau nomor supervisor ini SUDAH sukses dikirimi notif yang sama
+    // (logKind + tanggal [+ shift]), jangan kirim ulang. Tanpa ini, saat cron retry karena
+    // penerima LAIN gagal (mis. device grup terputus), supervisor di-spam tiap 15 menit.
+    let dedupQuery = supabase
+        .from('notification_log')
+        .select('id')
+        .eq('kind', opts.logKind)
+        .eq('target_date', opts.date)
+        .eq('sent_to', phone)
+        .or('status.is.null,status.eq.sent');
+    if (opts.shift) dedupQuery = dedupQuery.eq('target_shift', opts.shift);
+    const { data: already } = await dedupQuery.limit(1);
+    if (already && already.length > 0) return { sent: false, skipped: 'already_sent' };
+
     const send = await sendWaText(phone, opts.message, opts.account ?? 'notif');
     await logNotification(supabase, {
         kind: opts.logKind,

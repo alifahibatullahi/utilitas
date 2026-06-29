@@ -215,9 +215,10 @@ export async function autofillShutdownDaily(supabase: SupabaseClient, date: stri
         if (status !== 'shutdown' || already) continue;
         const prevBoiler = b === 'a' ? st.prevBoilerA : st.prevBoilerB;
         tmPatch[`status_boiler_${b}`] = 'shutdown';
-        // 24h = raw totalizer dibawa (selisih 0); 00:00 = pembacaan langsung, historis 0.
+        // 24h = raw totalizer dibawa (selisih 0); 00:00 = pembacaan sesaat → null
+        // (sel kosong di Sheets), samakan dgn TabBoiler station saat shutdown.
         steamPatch[`prod_boiler_${b}_24`] = numOr(prevSteam[`prod_boiler_${b}_24`], prevBoiler.totalizer_steam ?? 0);
-        steamPatch[`prod_boiler_${b}_00`] = 0;
+        steamPatch[`prod_boiler_${b}_00`] = null;
         stockPatch[`bfw_boiler_${b}`] = numOr(prevStock[`bfw_boiler_${b}`], prevBoiler.totalizer_bfw ?? 0);
         for (const f of (b === 'a' ? ['a', 'b', 'c'] : ['d', 'e', 'f'])) {
             coalPatch[`coal_${f}_24`] = numOr(prevCoal[`coal_${f}_24`], st.prevFeeders[`feeder_${f}`] ?? 0);

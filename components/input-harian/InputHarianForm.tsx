@@ -513,13 +513,14 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
     // ─── CR Calculation (Total Batubara ÷ Total Produksi Steam) ───
     const N0 = (v: number | null | undefined) => Number(v) || 0;
-    const selCoalCR = (key: string) => { const p = prevCoal ? N0(prevCoal[key]) : 0; return p > 0 ? N0(coal[key]) - p : N0(coal[key]); };
+    // Selisih totalizer kumulatif → tak mungkin negatif, di-lantai 0 (samakan dgn sel()/selD).
+    const selCoalCR = (key: string) => { const p = prevCoal ? N0(prevCoal[key]) : 0; return p > 0 ? Math.max(0, N0(coal[key]) - p) : N0(coal[key]); };
     const coalTotalA = selCoalCR('coal_a_24') + selCoalCR('coal_b_24') + selCoalCR('coal_c_24');
     const coalTotalB = selCoalCR('coal_d_24') + selCoalCR('coal_e_24') + selCoalCR('coal_f_24');
     const prevSteamA24 = prevSteam ? N0(prevSteam.prod_boiler_a_24) : 0;
     const prevSteamB24 = prevSteam ? N0(prevSteam.prod_boiler_b_24) : 0;
-    const steamProdA = prevSteamA24 > 0 ? N0(steam.prod_boiler_a_24) - prevSteamA24 : N0(steam.prod_boiler_a_24);
-    const steamProdB = prevSteamB24 > 0 ? N0(steam.prod_boiler_b_24) - prevSteamB24 : N0(steam.prod_boiler_b_24);
+    const steamProdA = prevSteamA24 > 0 ? Math.max(0, N0(steam.prod_boiler_a_24) - prevSteamA24) : N0(steam.prod_boiler_a_24);
+    const steamProdB = prevSteamB24 > 0 ? Math.max(0, N0(steam.prod_boiler_b_24) - prevSteamB24) : N0(steam.prod_boiler_b_24);
     const crA = steamProdA > 0 ? coalTotalA / steamProdA : 0;
     const crB = steamProdB > 0 ? coalTotalB / steamProdB : 0;
 
@@ -595,16 +596,17 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             // Auto-kalkulasi: produksi = selisih totalizer, Internal UBB, LPS = 0
             const prevA24 = prevSteam ? N(prevSteam.prod_boiler_a_24) : 0;
             const prevB24 = prevSteam ? N(prevSteam.prod_boiler_b_24) : 0;
-            const prodA24 = prevA24 > 0 ? N(steam.prod_boiler_a_24) - prevA24 : N(steam.prod_boiler_a_24);
-            const prodB24 = prevB24 > 0 ? N(steam.prod_boiler_b_24) - prevB24 : N(steam.prod_boiler_b_24);
+            const prodA24 = prevA24 > 0 ? Math.max(0, N(steam.prod_boiler_a_24) - prevA24) : N(steam.prod_boiler_a_24);
+            const prodB24 = prevB24 > 0 ? Math.max(0, N(steam.prod_boiler_b_24) - prevB24) : N(steam.prod_boiler_b_24);
 
             // Helper hitung selisih (today_raw − yesterday_raw). Return null kalau salah
-            // satu missing/0 (mirror perilaku daily-sheets-mapper.sel()).
+            // satu missing/0 (mirror perilaku daily-sheets-mapper.sel()). Totalizer
+            // kumulatif → selisih tak mungkin negatif, di-lantai 0 (samakan dgn sel()).
             const selD = (cur: number | string | null | undefined, prev: number | null | undefined): number | null => {
                 const c = cur != null ? Number(cur) : null;
                 const p = prev != null ? Number(prev) : null;
                 if (c === null || p === null || p === 0) return null;
-                return c - p;
+                return Math.max(0, c - p);
             };
 
             const steamWithCalcs = {
@@ -633,7 +635,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 selisih_fully_condens: selD(steam.fully_condens_24, prevSteam?.fully_condens_24),
             };
 
-            const selC = (key: string) => { const p = prevCoal ? N(prevCoal[key]) : 0; return p > 0 ? N(coal[key]) - p : N(coal[key]); };
+            const selC = (key: string) => { const p = prevCoal ? N(prevCoal[key]) : 0; return p > 0 ? Math.max(0, N(coal[key]) - p) : N(coal[key]); };
             const totalA24 = selC('coal_a_24') + selC('coal_b_24') + selC('coal_c_24');
             const totalB24 = selC('coal_d_24') + selC('coal_e_24') + selC('coal_f_24');
             const totalA00 = N(coal.coal_a_00) + N(coal.coal_b_00) + N(coal.coal_c_00);

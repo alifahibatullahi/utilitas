@@ -197,11 +197,18 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
                 <div className="flex items-center gap-2 lg:gap-3">
                     {/* Additional action button */}
                     {tankId === 'SOLAR' ? (
-                        <button onClick={() => setIsHistoryModalOpen(true)}
-                            className="bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white border border-amber-500/30 hover:border-amber-500 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group">
-                            <span className="material-symbols-outlined text-[14px]">history</span>
-                            <span>History</span>
-                        </button>
+                        <>
+                            <button onClick={() => setIsTrendModalOpen(true)}
+                                className="bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:bg-amber-400 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer group">
+                                <span>Trend</span>
+                                <span className="material-symbols-outlined text-[14px] transition-transform group-hover:rotate-12 group-hover:scale-125">timeline</span>
+                            </button>
+                            <button onClick={() => setIsHistoryModalOpen(true)}
+                                className="bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white border border-amber-500/30 hover:border-amber-500 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group">
+                                <span className="material-symbols-outlined text-[14px]">history</span>
+                                <span>History</span>
+                            </button>
+                        </>
                     ) : (
                         <button onClick={() => setIsTrendModalOpen(true)}
                             className={`${tankId === 'DEMIN' ? 'bg-sky-500 text-white shadow-[0_0_15px_rgba(14,165,233,0.4)] hover:bg-sky-400' : 'bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.4)] hover:bg-teal-400'} px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer group`}>
@@ -603,7 +610,7 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
             )}
 
             {/* Modal Trend Level */}
-            {isTrendModalOpen && tankId !== 'SOLAR' && (
+            {isTrendModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8 bg-slate-950/80 backdrop-blur-md"
                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
                     <div className="bg-surface-dark border border-slate-700/60 rounded-[28px] shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden"
@@ -657,8 +664,10 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
                                     'all': null,
                                 };
                                 const cutoff = rangeMs[trendRange];
+                                // SOLAR pakai basis 200 m³ (selaras hero "Total Volume Available"), bukan capacityM3=400
+                                const chartCap = tankId === 'SOLAR' ? 200 : tank.capacityM3;
                                 const filtered = (cutoff == null ? all : all.filter(d => now - new Date(d.timestamp).getTime() <= cutoff))
-                                    .map(d => ({ ts: new Date(d.timestamp).getTime(), m3: Math.round(d.level / 100 * tank.capacityM3) }));
+                                    .map(d => ({ ts: new Date(d.timestamp).getTime(), m3: Math.round(d.level / 100 * chartCap) }));
 
 
 
@@ -709,7 +718,7 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
                                                         tickLine={false}
                                                         axisLine={{ stroke: '#334155' }}
                                                         dx={-10}
-                                                        domain={[0, tank.capacityM3]}
+                                                        domain={[0, chartCap]}
                                                         tickFormatter={(v) => `${v.toLocaleString('id-ID')}`}
                                                     />
                                                     <RechartsTooltip content={<CustomTooltip />} />

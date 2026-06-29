@@ -548,6 +548,16 @@ export function PublishReportModal({
     // ── Konten step terakhir 'publish': dropdown PJ + ringkasan + teks Washift ──
     const renderPublishStep = () => (
         <>
+            {/* Pengingat review pra-publish (harian) — pastikan In/Out Batubara & Solar sudah dicek */}
+            {kind === 'daily' && (
+                <div className="flex items-start gap-2.5 mb-4 sm:mb-5 px-3.5 py-3 rounded-2xl border border-amber-500/30 bg-amber-500/10">
+                    <span className="material-symbols-outlined text-[18px] text-amber-400 shrink-0 mt-0.5">info</span>
+                    <p className="text-[11.5px] sm:text-xs text-amber-200/90 leading-relaxed">
+                        Sebelum publish laporan, harap review kembali <span className="font-bold text-amber-200">In/Out Batubara</span> dan <span className="font-bold text-amber-200">Solar</span> pada langkah sebelumnya.
+                    </p>
+                </div>
+            )}
+
             {/* Penanggung Jawab Laporan */}
             <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-3 sm:p-4 space-y-2.5 mb-4 sm:mb-5">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
@@ -829,8 +839,8 @@ export function PublishReportModal({
                             disabled={sending}
                             className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
                         >
+                            Lanjut
                             <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                            Lanjut publish
                         </button>
                     ) : (
                         <button

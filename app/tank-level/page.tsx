@@ -199,14 +199,14 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
                     {tankId === 'SOLAR' ? (
                         <>
                             <button onClick={() => setIsTrendModalOpen(true)}
-                                className="bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:bg-amber-400 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer group">
-                                <span>Trend</span>
-                                <span className="material-symbols-outlined text-[14px] transition-transform group-hover:rotate-12 group-hover:scale-125">timeline</span>
+                                className="bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:bg-amber-400 p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer group">
+                                <span className="hidden lg:inline">Trend</span>
+                                <span className="material-symbols-outlined text-[16px] lg:text-[14px] transition-transform group-hover:rotate-12 group-hover:scale-125">timeline</span>
                             </button>
                             <button onClick={() => setIsHistoryModalOpen(true)}
-                                className="bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white border border-amber-500/30 hover:border-amber-500 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group">
-                                <span className="material-symbols-outlined text-[14px]">history</span>
-                                <span>History</span>
+                                className="bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white border border-amber-500/30 hover:border-amber-500 p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group">
+                                <span className="material-symbols-outlined text-[16px] lg:text-[14px]">history</span>
+                                <span className="hidden lg:inline">History</span>
                             </button>
                         </>
                     ) : (

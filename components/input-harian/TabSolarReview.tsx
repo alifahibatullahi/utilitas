@@ -83,11 +83,11 @@ export default function TabSolarReview({
                         <div className="px-3 py-2 bg-[#101822]/40 border-b border-slate-700/40 space-y-1 font-mono">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-slate-400">Level kemarin</span>
-                                <span className="text-slate-200"><span className="font-bold">{fmt(levelKemarin)}</span> <span className="text-slate-500">× 2 =</span> <span className="font-bold text-white">{fmt(levelKemarin * 2)} m³</span></span>
+                                <span className="text-slate-200"><span className="font-bold">{fmt(levelKemarin)}</span> <span className="text-white">× 2 =</span> <span className="font-bold text-white">{fmt(levelKemarin * 2)} m³</span></span>
                             </div>
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-slate-400">Level hari ini</span>
-                                <span className="text-slate-200"><span className="font-bold">{fmt(levelSekarang)}</span> <span className="text-slate-500">× 2 =</span> <span className="font-bold text-white">{fmt(levelSekarang * 2)} m³</span></span>
+                                <span className="text-slate-200"><span className="font-bold">{fmt(levelSekarang)}</span> <span className="text-white">× 2 =</span> <span className="font-bold text-white">{fmt(levelSekarang * 2)} m³</span></span>
                             </div>
                         </div>
                         {/* Keterangan kenaikan/penurunan volume */}

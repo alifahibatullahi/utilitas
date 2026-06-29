@@ -214,7 +214,10 @@ function setNum0(
     row[idx] = Number(val) || 0;
 }
 
-/** Selisih: today − yesterday. Returns null if no valid yesterday data. */
+/** Selisih: today − yesterday. Returns null if no valid yesterday data.
+ *  Totalizer bersifat kumulatif (monoton naik), jadi selisih TIDAK MUNGKIN negatif —
+ *  hasil <0 selalu anomali (meter reset, salah ketik, atau unit shutdown yang raw-nya
+ *  belum dibawa). Di-lantai ke 0 supaya Sheets tak pernah menampilkan konsumsi negatif. */
 function sel(
     today:     number | null | undefined,
     yesterday: number | null | undefined,
@@ -222,7 +225,7 @@ function sel(
     const t = today != null ? Number(today) : null;
     const y = yesterday != null ? Number(yesterday) : null;
     if (t === null || y === null || y === 0) return null;
-    return t - y;
+    return Math.max(0, t - y);
 }
 
 export type SolarSummary = {

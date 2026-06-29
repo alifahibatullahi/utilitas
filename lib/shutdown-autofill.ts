@@ -179,6 +179,31 @@ export async function autofillShutdownDaily(supabase: SupabaseClient, date: stri
         .select('id, status_boiler_a, status_boiler_b, status_turbin').eq('daily_report_id', reportId);
     const tm = (tmRows ?? [])[0] as { id: string; status_boiler_a?: string; status_boiler_b?: string; status_turbin?: string } | undefined;
 
+    // Kolom 24h LHUBB (prod_boiler_*_24, coal_*_24, bfw_boiler_*, inlet_turbine_24)
+    // ditulis ke Sheets sebagai SELISIH today−yesterday (daily-sheets-mapper.ts `sel`).
+    // Supaya unit shutdown muncul 0 (raw tak berubah), bawa nilai RAW dari laporan
+    // harian KEMARIN (date−1, = `prev` yang dipakai mapper) — bukan 0 — agar
+    // today == yesterday → selisih tepat 0. Fallback ke totalizer shift terakhir
+    // kalau laporan kemarin belum ada (selisih jadi null/blank, DB tetap berisi raw wajar).
+    const [py, pm, pd] = date.split('-').map(Number);
+    const prevDateStr = new Date(Date.UTC(py, pm - 1, pd - 1)).toISOString().slice(0, 10);
+    const { data: prevDr } = await supabase.from('daily_reports').select('id').eq('date', prevDateStr).limit(1);
+    const prevDrId = (prevDr ?? [])[0] ? ((prevDr as { id: string }[])[0]).id : null;
+    let prevSteam: Record<string, unknown> = {};
+    let prevCoal: Record<string, unknown> = {};
+    let prevStock: Record<string, unknown> = {};
+    if (prevDrId) {
+        const [ps, pc, pstk] = await Promise.all([
+            supabase.from('daily_report_steam').select('prod_boiler_a_24, prod_boiler_b_24, inlet_turbine_24').eq('daily_report_id', prevDrId).maybeSingle(),
+            supabase.from('daily_report_coal').select('coal_a_24, coal_b_24, coal_c_24, coal_d_24, coal_e_24, coal_f_24').eq('daily_report_id', prevDrId).maybeSingle(),
+            supabase.from('daily_report_stock_tank').select('bfw_boiler_a, bfw_boiler_b').eq('daily_report_id', prevDrId).maybeSingle(),
+        ]);
+        prevSteam = (ps.data ?? {}) as Record<string, unknown>;
+        prevCoal = (pc.data ?? {}) as Record<string, unknown>;
+        prevStock = (pstk.data ?? {}) as Record<string, unknown>;
+    }
+    const numOr = (v: unknown, fallback: number): number => (v == null || v === '' || isNaN(Number(v)) ? fallback : Number(v));
+
     const tmPatch: Record<string, unknown> = {};
     const steamPatch: Record<string, unknown> = {};
     const stockPatch: Record<string, unknown> = {};
@@ -188,15 +213,20 @@ export async function autofillShutdownDaily(supabase: SupabaseClient, date: stri
         const status = b === 'a' ? st.statusBoilerA : st.statusBoilerB;
         const already = b === 'a' ? tm?.status_boiler_a : tm?.status_boiler_b;
         if (status !== 'shutdown' || already) continue;
+        const prevBoiler = b === 'a' ? st.prevBoilerA : st.prevBoilerB;
         tmPatch[`status_boiler_${b}`] = 'shutdown';
-        steamPatch[`prod_boiler_${b}_24`] = 0; steamPatch[`prod_boiler_${b}_00`] = 0;
-        stockPatch[`bfw_boiler_${b}`] = 0;
-        for (const f of (b === 'a' ? ['a', 'b', 'c'] : ['d', 'e', 'f'])) coalPatch[`coal_${f}_24`] = 0;
+        // 24h = raw totalizer dibawa (selisih 0); 00:00 = pembacaan langsung, historis 0.
+        steamPatch[`prod_boiler_${b}_24`] = numOr(prevSteam[`prod_boiler_${b}_24`], prevBoiler.totalizer_steam ?? 0);
+        steamPatch[`prod_boiler_${b}_00`] = 0;
+        stockPatch[`bfw_boiler_${b}`] = numOr(prevStock[`bfw_boiler_${b}`], prevBoiler.totalizer_bfw ?? 0);
+        for (const f of (b === 'a' ? ['a', 'b', 'c'] : ['d', 'e', 'f'])) {
+            coalPatch[`coal_${f}_24`] = numOr(prevCoal[`coal_${f}_24`], st.prevFeeders[`feeder_${f}`] ?? 0);
+        }
         result[b === 'a' ? 'boilerA' : 'boilerB'] = true;
     }
     if (st.statusTurbin === 'shutdown' && !tm?.status_turbin) {
         tmPatch.status_turbin = 'shutdown';
-        steamPatch.inlet_turbine_24 = 0;
+        steamPatch.inlet_turbine_24 = numOr(prevSteam.inlet_turbine_24, st.prevTurbin.totalizer_steam_inlet ?? 0);
         result.turbin = true;
     }
 

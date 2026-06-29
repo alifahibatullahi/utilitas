@@ -96,7 +96,7 @@ export async function autofillShutdownShift(supabase: SupabaseClient, date: stri
         const feederKeys = id === 'A' ? ['feeder_a', 'feeder_b', 'feeder_c'] : ['feeder_d', 'feeder_e', 'feeder_f'];
         const boilerRow: Record<string, unknown> = {
             shift_report_id: reportId, boiler: id, status_boiler: 'shutdown',
-            totalizer_steam: prev.totalizer_steam, totalizer_bfw: prev.totalizer_bfw,
+            totalizer_steam: prev.totalizer_steam ?? 0, totalizer_bfw: prev.totalizer_bfw ?? 0,
             batubara_ton: 0, stream_days: 0,
             ...zeros(NON_TOTALIZER_BOILER_FIELDS),
             ...zeros(feederKeys.map(f => `${f}_flow`)),
@@ -106,20 +106,22 @@ export async function autofillShutdownShift(supabase: SupabaseClient, date: stri
 
         // shift_coal_bunker feeders (standby + totalizer dibawa) — merge per kolom.
         const cbPatch: Record<string, unknown> = {};
-        for (const f of feederKeys) { cbPatch[f] = st.prevFeeders[f] ?? null; cbPatch[`status_${f}`] = 'standby'; }
+        for (const f of feederKeys) { cbPatch[f] = st.prevFeeders[f] ?? 0; cbPatch[`status_${f}`] = 'standby'; }
         if (cbId) await supabase.from('shift_coal_bunker').update(cbPatch as never).eq('id', cbId);
         else await supabase.from('shift_coal_bunker').insert({ shift_report_id: reportId, ...cbPatch } as never);
 
-        // Sheets payload boiler + feeders.
+        // Sheets payload boiler + feeders. status_boiler='shutdown' WAJIB disertakan
+        // supaya mapper menulis parameter 0 sebagai 0 (bukan sel kosong via n()).
         sheetsData[id === 'A' ? 'boilerA' : 'boilerB'] = {
-            totalizer_steam: prev.totalizer_steam, batubara_ton: 0, solar_m3: 0, stream_days: 0,
+            status_boiler: 'shutdown',
+            totalizer_steam: prev.totalizer_steam ?? 0, batubara_ton: 0, solar_m3: 0, stream_days: 0,
             press_steam: 0, temp_steam: 0, flow_steam: 0, flow_bfw: 0, temp_bfw: 0, temp_furnace: 0,
             temp_flue_gas: 0, o2: 0, air_heater_ti113: 0, steam_drum_press: 0, bfw_press: 0,
             ...zeros(feederKeys.map(f => `${f}_flow`)),
         };
-        sheetsData[id === 'A' ? 'prevBoilerA' : 'prevBoilerB'] = { totalizer_steam: prev.totalizer_steam };
+        sheetsData[id === 'A' ? 'prevBoilerA' : 'prevBoilerB'] = { totalizer_steam: prev.totalizer_steam ?? 0 };
         const cb = (sheetsData.coalBunker ?? {}) as Record<string, unknown>;
-        for (const f of feederKeys) { cb[f] = st.prevFeeders[f] ?? null; cb[`status_${f}`] = 'standby'; }
+        for (const f of feederKeys) { cb[f] = st.prevFeeders[f] ?? 0; cb[`status_${f}`] = 'standby'; }
         sheetsData.coalBunker = cb;
     }
 
@@ -127,8 +129,8 @@ export async function autofillShutdownShift(supabase: SupabaseClient, date: stri
     if (st.statusTurbin === 'shutdown' && !(turb && turb.length > 0)) {
         const turbinRow: Record<string, unknown> = {
             shift_report_id: reportId, status_turbin: 'shutdown',
-            totalizer_steam_inlet: st.prevTurbin.totalizer_steam_inlet,
-            totalizer_condensate: st.prevTurbin.totalizer_condensate,
+            totalizer_steam_inlet: st.prevTurbin.totalizer_steam_inlet ?? 0,
+            totalizer_condensate: st.prevTurbin.totalizer_condensate ?? 0,
             stream_days: 0,
             ...zeros(TURBIN_NON_TOTALIZER_FIELDS),
         };
@@ -140,7 +142,8 @@ export async function autofillShutdownShift(supabase: SupabaseClient, date: stri
         if ((genRows ?? []).length > 0) await supabase.from('shift_generator_gi').update(genPatch as never).eq('shift_report_id', reportId);
         else await supabase.from('shift_generator_gi').insert({ shift_report_id: reportId, ...genPatch } as never);
 
-        sheetsData.turbin = { ...zeros(TURBIN_NON_TOTALIZER_FIELDS), stream_days: 0 };
+        // status_turbin WAJIB di payload → mapper menulis param turbin & generator 0 sebagai 0.
+        sheetsData.turbin = { status_turbin: 'shutdown', ...zeros(TURBIN_NON_TOTALIZER_FIELDS), stream_days: 0 };
         sheetsData.generatorGi = genPatch;
     }
 

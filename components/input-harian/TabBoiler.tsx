@@ -43,19 +43,22 @@ export default function TabBoiler({
     // Semua feeder ikut di-set ke standby (samakan dgn laporan shift).
     useEffect(() => {
         if (!isShutdown) return;
-        if (prevSteam24 > 0 && steam[`prod_boiler_${x}_24`] == null) onSteamChange(`prod_boiler_${x}_24`, prevSteam24);
+        // Totalizer 24h ikut nilai kemarin; tanpa baseline → 0 (jangan kosong, supaya
+        // tab tetap centang & operator tak perlu buka station).
+        if (steam[`prod_boiler_${x}_24`] == null) onSteamChange(`prod_boiler_${x}_24`, prevSteam24 > 0 ? prevSteam24 : 0);
         feeders.forEach((f) => {
             const p = prevCoal ? n(prevCoal[`coal_${f}_24`]) : 0;
-            if (p > 0 && coal[`coal_${f}_24`] == null) onCoalChange(`coal_${f}_24`, p);
+            if (coal[`coal_${f}_24`] == null) onCoalChange(`coal_${f}_24`, p > 0 ? p : 0);
             const sk = feederStatusKey(f);
             const cur = turbineMisc[sk];
             if (cur === 'running' || cur == null || cur === '') onTurbineMiscChange(sk, 'standby');
         });
-        if (prevBfw > 0 && stockTank[`bfw_boiler_${x}`] == null) onStockTankChange(`bfw_boiler_${x}`, prevBfw);
+        if (stockTank[`bfw_boiler_${x}`] == null) onStockTankChange(`bfw_boiler_${x}`, prevBfw > 0 ? prevBfw : 0);
         if (steam[`prod_boiler_${x}_00`] != null) onSteamChange(`prod_boiler_${x}_00`, null);
         feeders.forEach((f) => { if (coal[`coal_${f}_00`] != null) onCoalChange(`coal_${f}_00`, null); });
         if (stockTank[`flow_bfw_${x}`] != null) onStockTankChange(`flow_bfw_${x}`, null);
-        INSTANT_FIELDS(x).forEach((k) => { if (turbineMisc[k] != null && turbineMisc[k] !== 0) onTurbineMiscChange(k, 0); });
+        // Field sesaat boiler → 0 walau belum pernah diisi (null) → dianggap "terisi 0".
+        INSTANT_FIELDS(x).forEach((k) => { if (turbineMisc[k] !== 0) onTurbineMiscChange(k, 0); });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isShutdown]);
 

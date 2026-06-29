@@ -50,17 +50,19 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
     // Auto-set semua feeder ke standby & flow ke 0 saat shutdown
     useEffect(() => {
         if (!isBoilerShutdown || !onFieldChange) return;
-        if (prevTotalizerSteam != null && values.totalizer_steam == null)
-            onFieldChange('totalizer_steam', prevTotalizerSteam);
-        if (prevTotalizerBfw != null && values.totalizer_bfw == null)
-            onFieldChange('totalizer_bfw', prevTotalizerBfw);
+        // Totalizer ikut nilai sebelumnya; tanpa baseline → 0 (jangan biarkan kosong,
+        // supaya tab tetap centang & operator tak perlu buka station).
+        if (values.totalizer_steam == null) onFieldChange('totalizer_steam', prevTotalizerSteam ?? 0);
+        if (values.totalizer_bfw == null) onFieldChange('totalizer_bfw', prevTotalizerBfw ?? 0);
+        // Parameter operasional → 0 walau belum pernah diisi (null), supaya dianggap
+        // "terisi 0" dan tersimpan/tersync sebagai 0.
         NON_TOTALIZER_BOILER_FIELDS.forEach(k => {
-            if (values[k] != null && values[k] !== 0) onFieldChange(k, 0);
+            if (values[k] !== 0) onFieldChange(k, 0);
         });
         if (onCoalBunkerChange) {
             feederKeys.forEach(fk => {
                 const prev = prevCoalBunkerValues[fk];
-                if (prev != null && coalBunkerValues[fk] == null) onCoalBunkerChange(fk, prev);
+                if (coalBunkerValues[fk] == null) onCoalBunkerChange(fk, prev ?? 0);
                 // Auto-set feeder status ke standby jika belum standby/non-running
                 const sk = feederStatusKey(fk);
                 const curStatus = coalBunkerValues[sk];

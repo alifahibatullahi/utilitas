@@ -35,12 +35,14 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
     // tetap editable) + auto-zero field operasional. Mirror pattern boiler shutdown.
     useEffect(() => {
         if (!isTurbinShutdown || !onFieldChange) return;
-        if (prevTotalizerSteamInlet != null && values.totalizer_steam_inlet == null)
-            onFieldChange('totalizer_steam_inlet', prevTotalizerSteamInlet);
-        if (prevTotalizerCondensate != null && values.totalizer_condensate == null)
-            onFieldChange('totalizer_condensate', prevTotalizerCondensate);
+        // Totalizer ikut nilai sebelumnya; tanpa baseline → 0 (jangan kosong).
+        if (values.totalizer_steam_inlet == null)
+            onFieldChange('totalizer_steam_inlet', prevTotalizerSteamInlet ?? 0);
+        if (values.totalizer_condensate == null)
+            onFieldChange('totalizer_condensate', prevTotalizerCondensate ?? 0);
+        // Parameter operasional → 0 walau belum pernah diisi (null) → dianggap "terisi 0".
         TURBIN_NON_TOTALIZER_FIELDS.forEach(k => {
-            if (values[k] != null && values[k] !== 0) onFieldChange(k, 0);
+            if (values[k] !== 0) onFieldChange(k, 0);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isTurbinShutdown]);

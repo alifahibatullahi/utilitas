@@ -30,15 +30,16 @@ export default function TabTurbin({
         if (!isTurbinShutdown) return;
         if (onSteamChange) {
             if (n(steam.inlet_turbine_00) !== 0) onSteamChange('inlet_turbine_00', 0);
-            const prevInletTot = prevSteam?.inlet_turbine_24;
-            if (prevInletTot != null && steam.inlet_turbine_24 == null) {
-                onSteamChange('inlet_turbine_24', prevInletTot);
+            // Totalizer 24h ikut nilai kemarin; tanpa baseline → 0 (jangan kosong).
+            if (steam.inlet_turbine_24 == null) {
+                const prevInletTot = prevSteam?.inlet_turbine_24;
+                onSteamChange('inlet_turbine_24', prevInletTot != null ? prevInletTot : 0);
             }
         }
         if (onTurbineMiscChange) {
+            // Field sesaat → 0 walau belum pernah diisi (null) → dianggap "terisi 0".
             (['steam_inlet_press', 'steam_inlet_temp', 'thrust_bearing_temp', 'axial_displacement'] as const).forEach(k => {
-                const v = turbineMisc[k];
-                if (v != null && Number(v) !== 0) onTurbineMiscChange(k, 0);
+                if (Number(turbineMisc[k]) !== 0 || turbineMisc[k] == null) onTurbineMiscChange(k, 0);
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

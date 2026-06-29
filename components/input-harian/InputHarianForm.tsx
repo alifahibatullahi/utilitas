@@ -716,17 +716,28 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             const sw = steamWithCalcs as any;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const cw = coalWithCalcs as any;
+            // Field sesaat boiler (jam 24.00) di daily_report_turbine_misc → mirror TabBoiler
+            // INSTANT_FIELDS. Dipaksa 0 saat shutdown supaya DB punya 0 (bukan null) → di Sheets
+            // tertulis 0 & dianggap "terisi 0".
+            const tmw = turbWithCalcs as Record<string, unknown>;
+            const zeroBoilerInstant = (b: 'a' | 'b') => {
+                ['press_steam', 'temp_steam', 'bfw_press', 'temp_bfw', 'temp_flue_gas',
+                 'air_heater_ti113', 'o2', 'steam_drum_press', 'primary_air', 'secondary_air',
+                ].forEach(k => { tmw[`${k}_${b}`] = 0; });
+            };
             if (isShutdownA) {
                 sw.prod_boiler_a_00 = 0;
                 cw.coal_a_00 = 0; cw.coal_b_00 = 0; cw.coal_c_00 = 0;
                 cw.total_boiler_a_00 = 0;
                 (tankWithCalcs as Record<string, unknown>).flow_bfw_a = 0;
+                zeroBoilerInstant('a');
             }
             if (isShutdownB) {
                 sw.prod_boiler_b_00 = 0;
                 cw.coal_d_00 = 0; cw.coal_e_00 = 0; cw.coal_f_00 = 0;
                 cw.total_boiler_b_00 = 0;
                 (tankWithCalcs as Record<string, unknown>).flow_bfw_b = 0;
+                zeroBoilerInstant('b');
             }
             if (isShutdownA || isShutdownB) {
                 sw.prod_total_00 = N(sw.prod_boiler_a_00) + N(sw.prod_boiler_b_00);

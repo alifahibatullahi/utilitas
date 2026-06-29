@@ -161,26 +161,36 @@ export function shiftReportToRow(
     // Col 0: No — set by upsertShiftRow if appending
     row[COL.tanggal] = toIndonesianDate(data.date);
 
+    // Status shutdown per unit (payload membawa status_boiler / status_turbin).
+    // Saat unit shutdown, parameter operasional yang bernilai 0 HARUS ditulis 0 ke
+    // Sheets (bukan dikosongkan oleh n()), supaya kolom tidak blank & nilai lama tak
+    // bertahan. nSd(): saat shutdown → 0 eksplisit; selain itu perilaku n() lama.
+    const isBoilerAShutdown = (data.boilerA as Record<string, unknown> | undefined)?.status_boiler === 'shutdown';
+    const isBoilerBShutdown = (data.boilerB as Record<string, unknown> | undefined)?.status_boiler === 'shutdown';
+    const isTurbinShutdown = (data.turbin as Record<string, unknown> | undefined)?.status_turbin === 'shutdown';
+    const nSd = (v: number | null | undefined, sd: boolean): CellValue => (sd ? (Number(v) || 0) : n(v));
+
     // Turbin
     const t = data.turbin ?? {};
-    row[COL.turbin_flow_steam] = n(t.flow_steam);
-    row[COL.turbin_flow_cond] = n(t.flow_cond);
-    row[COL.turbin_press_steam] = n(t.press_steam);
-    row[COL.turbin_temp_steam] = n(t.temp_steam);
-    row[COL.turbin_exh_steam] = n(t.exh_steam);
-    row[COL.turbin_vacuum] = n(t.vacuum);
-    row[COL.turbin_hpo_durasi] = n(t.hpo_durasi);
-    row[COL.turbin_thrust_bearing] = n(t.thrust_bearing);
-    row[COL.turbin_metal_bearing] = n(t.metal_bearing);
-    row[COL.turbin_vibrasi] = n(t.vibrasi);
-    row[COL.turbin_winding] = n(t.winding);
-    row[COL.turbin_axial_displacement] = n(t.axial_displacement);
-    row[COL.turbin_level_condenser] = n(t.level_condenser);
-    row[COL.turbin_temp_cw_in] = n(t.temp_cw_in);
-    row[COL.turbin_temp_cw_out] = n(t.temp_cw_out);
+    row[COL.turbin_flow_steam] = nSd(t.flow_steam, isTurbinShutdown);
+    row[COL.turbin_flow_cond] = nSd(t.flow_cond, isTurbinShutdown);
+    row[COL.turbin_press_steam] = nSd(t.press_steam, isTurbinShutdown);
+    row[COL.turbin_temp_steam] = nSd(t.temp_steam, isTurbinShutdown);
+    row[COL.turbin_exh_steam] = nSd(t.exh_steam, isTurbinShutdown);
+    row[COL.turbin_vacuum] = nSd(t.vacuum, isTurbinShutdown);
+    row[COL.turbin_hpo_durasi] = nSd(t.hpo_durasi, isTurbinShutdown);
+    row[COL.turbin_thrust_bearing] = nSd(t.thrust_bearing, isTurbinShutdown);
+    row[COL.turbin_metal_bearing] = nSd(t.metal_bearing, isTurbinShutdown);
+    row[COL.turbin_vibrasi] = nSd(t.vibrasi, isTurbinShutdown);
+    row[COL.turbin_winding] = nSd(t.winding, isTurbinShutdown);
+    row[COL.turbin_axial_displacement] = nSd(t.axial_displacement, isTurbinShutdown);
+    row[COL.turbin_level_condenser] = nSd(t.level_condenser, isTurbinShutdown);
+    row[COL.turbin_temp_cw_in] = nSd(t.temp_cw_in, isTurbinShutdown);
+    row[COL.turbin_temp_cw_out] = nSd(t.temp_cw_out, isTurbinShutdown);
+    // Deaerator TIDAK ikut di-nol (di-keep saat shutdown di form) → tetap n().
     row[COL.turbin_press_deaerator] = n(t.press_deaerator);
     row[COL.turbin_temp_deaerator] = n(t.temp_deaerator);
-    row[COL.turbin_stream_days] = n(t.stream_days);
+    row[COL.turbin_stream_days] = nSd(t.stream_days, isTurbinShutdown);
 
     // Steam Distribution
     const sd = data.steamDist ?? {};
@@ -195,12 +205,13 @@ export function shiftReportToRow(
 
     // Generator + GI
     const g = data.generatorGi ?? {};
-    row[COL.gen_load] = n(g.gen_load);
-    row[COL.gen_ampere] = n(g.gen_ampere);
-    row[COL.gen_amp_react] = n(g.gen_amp_react);
-    row[COL.gen_cos_phi] = n(g.gen_cos_phi);
-    row[COL.gen_tegangan] = n(g.gen_tegangan);
-    row[COL.gen_frequensi] = n(g.gen_frequensi);
+    // Generator output di-cascade 0 saat turbin shutdown (STG off) → tulis 0 eksplisit.
+    row[COL.gen_load] = nSd(g.gen_load, isTurbinShutdown);
+    row[COL.gen_ampere] = nSd(g.gen_ampere, isTurbinShutdown);
+    row[COL.gen_amp_react] = nSd(g.gen_amp_react, isTurbinShutdown);
+    row[COL.gen_cos_phi] = nSd(g.gen_cos_phi, isTurbinShutdown);
+    row[COL.gen_tegangan] = nSd(g.gen_tegangan, isTurbinShutdown);
+    row[COL.gen_frequensi] = nSd(g.gen_frequensi, isTurbinShutdown);
     row[COL.gi_sum_p] = n(g.gi_sum_p);
     row[COL.gi_sum_q] = n(g.gi_sum_q);
     row[COL.gi_cos_phi] = n(g.gi_cos_phi);
@@ -277,33 +288,36 @@ export function shiftReportToRow(
 
     // Boiler A
     const bA = data.boilerA ?? {};
-    row[COL.boiler_press_steam_a] = n(bA.press_steam);
-    row[COL.boiler_temp_steam_a] = n(bA.temp_steam);
-    row[COL.boiler_flow_steam_a] = n(bA.flow_steam);
-    row[COL.boiler_totalizer_steam_a] = n(diffTotalizer(bA.totalizer_steam, prev?.boilerA?.totalizer_steam));
-    row[COL.boiler_flow_bfw_a] = n(bA.flow_bfw);
-    row[COL.boiler_temp_furnace_a] = n(bA.temp_furnace);
-    row[COL.boiler_temp_flue_gas_a] = n(bA.temp_flue_gas);
-    row[COL.boiler_excess_air_a] = n(bA.o2);
-    row[COL.boiler_air_heater_a] = n(bA.air_heater_ti113);
-    row[COL.boiler_batubara_a] = hasFeedersA ? nz(bA.batubara_ton) : n(bA.batubara_ton);
+    row[COL.boiler_press_steam_a] = nSd(bA.press_steam, isBoilerAShutdown);
+    row[COL.boiler_temp_steam_a] = nSd(bA.temp_steam, isBoilerAShutdown);
+    row[COL.boiler_flow_steam_a] = nSd(bA.flow_steam, isBoilerAShutdown);
+    // Produksi (selisih totalizer) saat shutdown = 0 (meter tak bergerak) → tulis 0.
+    row[COL.boiler_totalizer_steam_a] = isBoilerAShutdown ? 0 : n(diffTotalizer(bA.totalizer_steam, prev?.boilerA?.totalizer_steam));
+    row[COL.boiler_flow_bfw_a] = nSd(bA.flow_bfw, isBoilerAShutdown);
+    row[COL.boiler_temp_furnace_a] = nSd(bA.temp_furnace, isBoilerAShutdown);
+    row[COL.boiler_temp_flue_gas_a] = nSd(bA.temp_flue_gas, isBoilerAShutdown);
+    row[COL.boiler_excess_air_a] = nSd(bA.o2, isBoilerAShutdown);
+    row[COL.boiler_air_heater_a] = nSd(bA.air_heater_ti113, isBoilerAShutdown);
+    row[COL.boiler_batubara_a] = isBoilerAShutdown ? 0 : (hasFeedersA ? nz(bA.batubara_ton) : n(bA.batubara_ton));
     row[COL.boiler_solar_a] = nz(bA.solar_m3);         // CG — Solar Usage boiler A (0 tetap ditulis)
-    row[COL.boiler_stream_days_a] = n(bA.stream_days);
+    row[COL.boiler_stream_days_a] = nSd(bA.stream_days, isBoilerAShutdown);
     // Boiler B
     const bB = data.boilerB ?? {};
-    row[COL.boiler_press_steam_b] = n(bB.press_steam);
-    row[COL.boiler_temp_steam_b] = n(bB.temp_steam);
-    row[COL.boiler_flow_steam_b] = n(bB.flow_steam);
-    row[COL.boiler_totalizer_steam_b] = n(diffTotalizer(bB.totalizer_steam, prev?.boilerB?.totalizer_steam));
-    row[COL.boiler_flow_bfw_b] = n(bB.flow_bfw);
-    row[COL.boiler_temp_bfw] = n(bB.temp_bfw || bA.temp_bfw); // shared col BV — prefer B, fallback A, skip 0
-    row[COL.boiler_temp_furnace_b] = n(bB.temp_furnace);
-    row[COL.boiler_temp_flue_gas_b] = n(bB.temp_flue_gas);
-    row[COL.boiler_excess_air_b] = n(bB.o2);           // CB — O2 boiler B
-    row[COL.boiler_air_heater_b] = n(bB.air_heater_ti113);
-    row[COL.boiler_batubara_b] = hasFeedersB ? nz(bB.batubara_ton) : n(bB.batubara_ton);
+    row[COL.boiler_press_steam_b] = nSd(bB.press_steam, isBoilerBShutdown);
+    row[COL.boiler_temp_steam_b] = nSd(bB.temp_steam, isBoilerBShutdown);
+    row[COL.boiler_flow_steam_b] = nSd(bB.flow_steam, isBoilerBShutdown);
+    row[COL.boiler_totalizer_steam_b] = isBoilerBShutdown ? 0 : n(diffTotalizer(bB.totalizer_steam, prev?.boilerB?.totalizer_steam));
+    row[COL.boiler_flow_bfw_b] = nSd(bB.flow_bfw, isBoilerBShutdown);
+    // Temp BFW kolom bersama (BV): saat B shutdown nilai B = 0, jangan paksa 0 kalau
+    // A masih running (fallback ke A). Hanya tulis 0 kalau KEDUA boiler shutdown.
+    row[COL.boiler_temp_bfw] = (isBoilerAShutdown && isBoilerBShutdown) ? 0 : n(bB.temp_bfw || bA.temp_bfw);
+    row[COL.boiler_temp_furnace_b] = nSd(bB.temp_furnace, isBoilerBShutdown);
+    row[COL.boiler_temp_flue_gas_b] = nSd(bB.temp_flue_gas, isBoilerBShutdown);
+    row[COL.boiler_excess_air_b] = nSd(bB.o2, isBoilerBShutdown);           // CB — O2 boiler B
+    row[COL.boiler_air_heater_b] = nSd(bB.air_heater_ti113, isBoilerBShutdown);
+    row[COL.boiler_batubara_b] = isBoilerBShutdown ? 0 : (hasFeedersB ? nz(bB.batubara_ton) : n(bB.batubara_ton));
     row[COL.boiler_solar_b] = nz(bB.solar_m3);         // CH — Solar Usage boiler B (0 tetap ditulis)
-    row[COL.boiler_stream_days_b] = n(bB.stream_days);
+    row[COL.boiler_stream_days_b] = nSd(bB.stream_days, isBoilerBShutdown);
     // Coal Feeders — flow dari boiler tab (CK-CP).
     // Saat feeder TIDAK running (status di-set & bukan 'running' — mis. standby / emergency
     // standby / not standby), flow yang ditulis ke Sheets dipaksa 0. Mirror perilaku form
@@ -369,15 +383,15 @@ export function shiftReportToRow(
     // Pagi: EJ=139, EK=140, EL=141, EM=142
     // Malam/Sore: EA=130, EB=131, EC=132, ED=133
     if (isPagi) {
-        row[COL.steam_drum_press_a_pagi] = n(bA.steam_drum_press);
-        row[COL.steam_drum_press_b_pagi] = n(bB.steam_drum_press);
-        row[COL.bfw_press_a_pagi] = n(bA.bfw_press);
-        row[COL.bfw_press_b_pagi] = n(bB.bfw_press);
+        row[COL.steam_drum_press_a_pagi] = nSd(bA.steam_drum_press, isBoilerAShutdown);
+        row[COL.steam_drum_press_b_pagi] = nSd(bB.steam_drum_press, isBoilerBShutdown);
+        row[COL.bfw_press_a_pagi] = nSd(bA.bfw_press, isBoilerAShutdown);
+        row[COL.bfw_press_b_pagi] = nSd(bB.bfw_press, isBoilerBShutdown);
     } else {
-        row[COL.steam_drum_press_a_ms] = n(bA.steam_drum_press);
-        row[COL.steam_drum_press_b_ms] = n(bB.steam_drum_press);
-        row[COL.bfw_press_a_ms] = n(bA.bfw_press);
-        row[COL.bfw_press_b_ms] = n(bB.bfw_press);
+        row[COL.steam_drum_press_a_ms] = nSd(bA.steam_drum_press, isBoilerAShutdown);
+        row[COL.steam_drum_press_b_ms] = nSd(bB.steam_drum_press, isBoilerBShutdown);
+        row[COL.bfw_press_a_ms] = nSd(bA.bfw_press, isBoilerAShutdown);
+        row[COL.bfw_press_b_ms] = nSd(bB.bfw_press, isBoilerBShutdown);
     }
 
     return row;

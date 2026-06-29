@@ -187,6 +187,27 @@ export function PublishReportModal({
         }
     }, [open, initialSupervisor, initialForemanTurbin, initialForemanBoiler]);
 
+    // Harian: supervisor OTORITATIF dari DB (daily_report_totalizer.kasi_name).
+    // `initialSupervisor` datang dari query param `sup` yang bisa "tercemar" supervisor
+    // SHIFT saat publish dibuka via input-shift mode harian (goPublishDaily fallback ke
+    // supervisorName shift). Insiden 29 Jun 2026: header tampil "Zulkarnain Bayu" (spv
+    // shift) padahal kasi harian = "Ardhian Wisnu Perdana". Ambil dari DB supaya benar
+    // & mencegah republish menimpa kasi_name dgn nama yang salah.
+    useEffect(() => {
+        if (!open || kind !== 'daily' || !reportId) return;
+        let cancelled = false;
+        (async () => {
+            const { data } = await createClient()
+                .from('daily_report_totalizer')
+                .select('kasi_name')
+                .eq('daily_report_id', reportId)
+                .maybeSingle();
+            const kasi = (data as { kasi_name?: string | null } | null)?.kasi_name;
+            if (!cancelled && kasi) setSupervisor(kasi);
+        })();
+        return () => { cancelled = true; };
+    }, [open, kind, reportId]);
+
     // Persist dropdown changes ke DB (direksi: modal → input laporan via DB).
     // Untuk shift: shift_reports.supervisor + shift_personnel.turbin_karu/boiler_karu/turbin_kasi/boiler_kasi.
     // Untuk daily: daily_report_totalizer.kasi_name (foreman tidak applicable).
@@ -558,14 +579,14 @@ export function PublishReportModal({
                     {/* Supervisor Dropdown */}
                     <div className="relative flex flex-col bg-slate-950/40 hover:bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/60 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/30 rounded-xl px-3 py-1.5 transition-all duration-200">
                         <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                            {kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
+                            Supervisor
                         </label>
                         <div className="relative flex items-center">
                             <SearchableSelect
                                 value={supervisor}
                                 onChange={v => { setSupervisor(v); onSupervisorChange?.(v); persistChange('supervisor', v); }}
                                 options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
-                                ariaLabel={kind === 'daily' ? 'Kasi / Supervisor' : 'Supervisor'}
+                                ariaLabel="Supervisor"
                                 triggerClassName="text-xs font-black text-slate-200 pr-6"
                             />
                             <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>

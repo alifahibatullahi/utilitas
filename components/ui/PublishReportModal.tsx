@@ -548,16 +548,6 @@ export function PublishReportModal({
     // ── Konten step terakhir 'publish': dropdown PJ + ringkasan + teks Washift ──
     const renderPublishStep = () => (
         <>
-            {/* Pengingat review pra-publish (harian) — pastikan In/Out Batubara & Solar sudah dicek */}
-            {kind === 'daily' && (
-                <div className="flex items-start gap-2.5 mb-4 sm:mb-5 px-3.5 py-3 rounded-2xl border border-amber-500/30 bg-amber-500/10">
-                    <span className="material-symbols-outlined text-[18px] text-amber-400 shrink-0 mt-0.5">info</span>
-                    <p className="text-[11.5px] sm:text-xs text-amber-200/90 leading-relaxed">
-                        Sebelum publish laporan, harap review kembali <span className="font-bold text-amber-200">In/Out Batubara</span> dan <span className="font-bold text-amber-200">Solar</span> pada langkah sebelumnya.
-                    </p>
-                </div>
-            )}
-
             {/* Penanggung Jawab Laporan */}
             <div className="bg-slate-900/35 border border-slate-800/80 rounded-2xl p-3 sm:p-4 space-y-2.5 mb-4 sm:mb-5">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
@@ -791,7 +781,18 @@ export function PublishReportModal({
                     >
                         {steps.map(s => (
                             <div key={s.id} className="h-full overflow-y-auto" style={{ width: `${100 / steps.length}%` }}>
-                                <div className="p-4 sm:p-6">{s.render()}</div>
+                                <div className="p-4 sm:p-6">
+                                    {/* Pengingat review — tampil di tab pra-publish (In/Out Batubara & Solar) */}
+                                    {s.id !== 'publish' && (
+                                        <div className="flex items-start gap-2.5 mb-4 px-3.5 py-3 rounded-2xl border border-amber-500/30 bg-amber-500/10">
+                                            <span className="material-symbols-outlined text-[18px] text-amber-400 shrink-0 mt-0.5">info</span>
+                                            <p className="text-[11.5px] sm:text-xs text-amber-200/90 leading-relaxed">
+                                                Harap review <span className="font-bold text-amber-200">In/Out Batubara</span> dan <span className="font-bold text-amber-200">Solar</span> dengan teliti sebelum lanjut publish laporan.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {s.render()}
+                                </div>
                             </div>
                         ))}
                     </div>

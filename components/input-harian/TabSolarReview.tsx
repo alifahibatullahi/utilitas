@@ -29,6 +29,11 @@ export default function TabSolarReview({
     const [editUs, setEditUs] = useState<EditUs | null>(null);
 
     const levelKemarin = prevSolarLevel != null ? n(prevSolarLevel) : null;
+    const levelSekarang = solarLevel != null ? n(solarLevel) : null;
+    // Level tercantum = isi 1 tanki; total volume = selisih level × 2 tanki.
+    const deltaVolume = (levelSekarang != null && levelKemarin != null)
+        ? (levelSekarang - levelKemarin) * 2
+        : null;
     // Default form (m³) dari agregat entri (catatan), Liter → m³.
     const aggKedatangan = solarUnloadings.reduce((s, e) => s + n(e.liters), 0) / 1000;
     const aggBengkel = solarUsages.filter(e => e.tujuan === 'Bengkel').reduce((s, e) => s + n(e.liters), 0) / 1000;
@@ -66,6 +71,25 @@ export default function TabSolarReview({
                     <InputField label="Level Sekarang" name="solar_tank_a" value={solarLevel} unit="m³" color="orange"
                         onChange={(_, v) => onLevelChange?.(numOrNull(v))} />
                 </div>
+                {deltaVolume != null && (
+                    <div className={`mt-3 flex items-start gap-2 px-3 py-2 rounded-lg border text-xs ${
+                        deltaVolume > 0
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                            : deltaVolume < 0
+                                ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                                : 'bg-slate-500/10 border-slate-500/30 text-slate-300'
+                    }`}>
+                        <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">
+                            {deltaVolume > 0 ? 'trending_up' : deltaVolume < 0 ? 'trending_down' : 'trending_flat'}
+                        </span>
+                        <span>
+                            {deltaVolume === 0
+                                ? 'Tidak ada perubahan level solar.'
+                                : <>Ada <span className="font-bold">{deltaVolume > 0 ? 'kenaikan' : 'penurunan'}</span> level solar sebesar <span className="font-bold">{fmt(Math.abs(deltaVolume))} m³</span>.</>}
+                            <span className="block text-[10px] text-slate-400 mt-0.5">Level tercantum = isi 1 tanki, total = selisih level × 2 tanki.</span>
+                        </span>
+                    </div>
+                )}
             </Card>
 
             {/* ═══ Kedatangan Solar ═══ */}

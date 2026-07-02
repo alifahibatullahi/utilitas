@@ -415,20 +415,12 @@ export interface HomeMenuItem extends NavItem {
     featured: boolean;
 }
 
-// Menu grid di halaman /home. Featured = kotak besar (fitur yang sering dipakai).
+// Menu grid di halaman /home. Hanya fitur yang sudah aktif yang ditampilkan;
+// menu lain menyusul saat sudah siap dipakai.
 export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     { id: 'tank-level', label: 'Tank Level', description: 'Monitoring level tangki DEMIN, RCW & Solar', icon: 'tank', path: '/tank-level', roles: 'all', featured: true },
     { id: 'input-shift', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-shift', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'], featured: true },
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
-    { id: 'admin-wa-hub', label: 'WhatsApp Hub', description: 'Log & pengaturan notifikasi WhatsApp', icon: 'forum', path: '/admin/notification-log', roles: ['admin'], featured: true },
-    { id: 'admin-sync-sheets', label: 'Sync Sheets', description: 'Sinkronisasi data ke Google Sheets', icon: 'sync', path: '/admin/sync-sheets', roles: ['admin'], featured: true },
-    { id: 'admin-users', label: 'Kelola User', description: 'Data operator & nomor WhatsApp', icon: 'users', path: '/admin/users', roles: ['admin'], featured: true },
-    { id: 'dashboard', label: 'Dashboard', description: 'Ringkasan operasi Boiler & STG', icon: 'dashboard', path: '/dashboard', roles: 'all', featured: false },
-    { id: 'critical', label: 'Critical & Maint', description: 'Pantauan critical & maintenance', icon: 'warning', path: '/critical', roles: 'all', featured: false },
-    { id: 'laporan-shift', label: 'Laporan Shift', description: 'Review & publish laporan shift', icon: 'report', path: '/laporan-shift', roles: 'all', featured: false },
-    { id: 'laporan-harian', label: 'Laporan Harian', description: 'Review & publish laporan harian', icon: 'daily', path: '/laporan-harian', roles: 'all', featured: false },
-    { id: 'history', label: 'History Data', description: 'Data historis & tren parameter', icon: 'trend', path: '/history', roles: 'all', featured: false },
-    { id: 'maintenance-broadcast', label: 'Broadcast Maintenance', description: 'Kirim info maintenance ke grup WA', icon: 'campaign', path: '/critical/broadcast', roles: ['admin', 'supervisor', 'foreman_boiler', 'foreman_turbin'], featured: false },
 ];
 
 // ─── Critical & Maintenance Constants ───

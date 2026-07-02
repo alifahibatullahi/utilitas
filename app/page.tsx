@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && operator) {
-      router.replace('/dashboard');
+      router.replace('/home');
     }
   }, [loading, operator, router]);
 
@@ -53,7 +53,7 @@ export default function LoginPage() {
   const handleLogin = () => {
     if (!selectedOp) return;
     login(selectedOp);
-    router.push('/dashboard');
+    router.push('/home');
   };
 
   const handleBack = () => {

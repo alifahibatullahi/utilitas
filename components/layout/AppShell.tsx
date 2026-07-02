@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import Sidebar from './Sidebar';
-import BottomTabBar from './BottomTabBar';
 
 interface AppShellProps {
     children: React.ReactNode;
@@ -11,7 +10,6 @@ interface AppShellProps {
 
 export default function AppShell({ children }: AppShellProps) {
     const pathname = usePathname();
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(pathname === '/tank-level');
     const [isLargeScreen, setIsLargeScreen] = useState(false);
 
     useEffect(() => {
@@ -25,43 +23,38 @@ export default function AppShell({ children }: AppShellProps) {
     // Zoom 125% pada monitor 1920px+ untuk semua halaman kecuali dashboard dan tank-level
     const shouldZoom = isLargeScreen && !pathname.startsWith('/dashboard');
 
-    // Don't show shell on login page, fullscreen preview, or history data page
-    if (pathname === '/' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level' || pathname === '/history' || pathname.startsWith('/history/')) {
+    // Don't show shell on login page, home menu, fullscreen preview, or history data page
+    if (pathname === '/' || pathname === '/home' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level' || pathname === '/history' || pathname.startsWith('/history/')) {
         return <>{children}</>;
     }
 
     return (
         <div className="min-h-screen bg-bg-dark">
-            {/* Sidebar - hidden on mobile */}
-            <div className="hidden md:block">
-                <Sidebar
-                    collapsed={sidebarCollapsed}
-                    onToggle={() => setSidebarCollapsed(prev => !prev)}
-                />
-            </div>
-
-            {/* Mobile header */}
-            <div className="md:hidden h-14 bg-surface-dark border-b border-slate-800 flex items-center justify-between px-4 sticky top-0 z-20">
+            {/* Top header — logo + tombol kembali ke menu utama */}
+            <div className="h-14 bg-surface-dark border-b border-slate-800 flex items-center justify-between px-4 sticky top-0 z-20">
                 <div className="flex items-center gap-2">
                     <div className="bg-primary/20 p-1.5 rounded-lg">
                         <span className="material-symbols-outlined text-primary text-lg">electric_bolt</span>
                     </div>
                     <h1 className="text-white font-bold text-sm">PowerOps</h1>
                 </div>
+                <Link
+                    href="/home"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+                        text-text-secondary hover:text-white hover:bg-surface-highlight transition-all"
+                >
+                    <span className="material-symbols-outlined text-lg">home</span>
+                    <span>Menu</span>
+                </Link>
             </div>
 
             {/* Main content area */}
             <main
-                className={`min-h-screen transition-all duration-300 ease-in-out
-                    pb-20 md:pb-0
-                    ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-[260px]'}`}
+                className="min-h-screen pb-8"
                 style={shouldZoom ? { zoom: 1.25 } : undefined}
             >
                 {children}
             </main>
-
-            {/* Bottom tab bar - mobile only */}
-            <BottomTabBar />
         </div>
     );
 }

@@ -67,6 +67,6 @@ export async function deleteRecipient(id: string) {
 /** Test kirim ke 1 nomor pribadi (via Wablas, akun notif). */
 export async function testSendRecipient(phone: string) {
     if (!phone) return { ok: false, error: 'nomor kosong' };
-    const send = await sendWaText(normalizePhone(phone), '✅ Test PowerOps — reminder pribadi OK.');
+    const send = await sendWaText(normalizePhone(phone), '✅ Test Web UBB — reminder pribadi OK.');
     return { ok: send.ok, status: send.status, error: send.error };
 }

@@ -318,7 +318,7 @@ function buildDailyReportHtml(report: any, maintenance: any[], catatanText: stri
 
   ${catatanText.trim() ? `<h2>Catatan Operasional</h2><div class="catatan">${escapeHtml(catatanText)}</div>` : ''}
 
-  <div class="footer">PowerOps — Laporan Harian (LHUBB) ${report.date}</div>
+  <div class="footer">Web UBB — Laporan Harian (LHUBB) ${report.date}</div>
 </body></html>`;
 }
 

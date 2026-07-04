@@ -454,7 +454,7 @@ function buildShiftReportHtml(report: any, maintenance: any[], catatanText: stri
 
   ${catatanText.trim() ? `<h2>Catatan Operasional</h2><div class="catatan">${escapeHtml(catatanText)}</div>` : ''}
 
-  <div class="footer">PowerOps — Laporan Shift ${shiftLabel} ${report.date} · Grup ${report.group_name}</div>
+  <div class="footer">Web UBB — Laporan Shift ${shiftLabel} ${report.date} · Grup ${report.group_name}</div>
 </body>
 </html>`;
 }

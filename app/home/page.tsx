@@ -170,7 +170,7 @@ export default function HomePage() {
                         <div className="bg-primary/10 p-2 rounded-xl">
                             <span aria-hidden="true" className="material-symbols-outlined text-primary text-xl">electric_bolt</span>
                         </div>
-                        <h1 className="text-slate-800 text-base font-bold tracking-tight">PowerOps</h1>
+                        <h1 className="text-slate-800 text-base font-bold tracking-tight">Web UBB</h1>
                     </div>
 
                     <button

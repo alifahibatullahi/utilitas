@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PowerOps | Sistem Monitoring Boiler & STG",
+  title: "Web UBB | Sistem Monitoring Boiler & STG",
   description: "Sistem monitoring real-time untuk Boiler A/B, STG, Tank Level, dan Laporan Shift",
 };
 

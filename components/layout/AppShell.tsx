@@ -36,7 +36,7 @@ export default function AppShell({ children }: AppShellProps) {
                     <div className="bg-primary/20 p-1.5 rounded-lg">
                         <span className="material-symbols-outlined text-primary text-lg">electric_bolt</span>
                     </div>
-                    <h1 className="text-white font-bold text-sm">PowerOps</h1>
+                    <h1 className="text-white font-bold text-sm">Web UBB</h1>
                 </div>
                 <Link
                     href="/home"

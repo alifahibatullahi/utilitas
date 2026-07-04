@@ -758,7 +758,7 @@ export default function LaporanShiftPage() {
             {report && (<>
             {/* Footer */}
             <footer className="flex justify-center items-center py-3 border-t border-slate-800 flex-shrink-0 pb-20">
-                <p className="text-slate-500 text-[10px]">&copy; 2026 PowerOps Control Systems. Generated from Shift {report.group} Terminal.</p>
+                <p className="text-slate-500 text-[10px]">&copy; 2026 Web UBB. Generated from Shift {report.group} Terminal.</p>
             </footer>
 
             {/* Floating Action Buttons */}

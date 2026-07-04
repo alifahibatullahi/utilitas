@@ -57,7 +57,7 @@ export async function deleteGroup(id: string) {
 
 export async function testSend(target: string, account: FonnteAccount = 'notif') {
     if (!target) return { ok: false, error: 'target kosong' };
-    const send = await sendFonnteGroup(target, '✅ Test Web UBB WhatsApp — koneksi OK.', account);
+    const send = await sendFonnteGroup(target, '✅ Test Web Utilitas Batubara WhatsApp — koneksi OK.', account);
     return { ok: send.ok, status: send.status, body: send.body, error: send.error };
 }
 

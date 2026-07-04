@@ -19,7 +19,7 @@ export default function TestSendPanel() {
     const [account, setAccount] = useState<'notif' | 'publish'>('notif');
     const [target, setTarget] = useState('');
     const [manualTarget, setManualTarget] = useState('');
-    const [message, setMessage] = useState('🧪 Test Web UBB WA — pesan dari hub admin.');
+    const [message, setMessage] = useState('🧪 Test Web Utilitas Batubara WA — pesan dari hub admin.');
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
 

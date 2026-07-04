@@ -91,7 +91,7 @@ export default function SyncSheetsPage() {
                 <div>
                     <h2 className="text-2xl font-black tracking-tight text-white">Sync dari Google Sheets</h2>
                     <p className="text-text-secondary text-sm mt-1">
-                        Backfill raw totalizer ke Web UBB dari selisih yang diisi grup lain di Sheets.
+                        Backfill raw totalizer ke Web Utilitas Batubara dari selisih yang diisi grup lain di Sheets.
                     </p>
                 </div>
             </header>
@@ -101,13 +101,13 @@ export default function SyncSheetsPage() {
                     <span className="material-symbols-outlined text-amber-400 mt-0.5">info</span>
                     <div className="text-sm text-slate-300 space-y-2">
                         <p>
-                            Sistem akan mencari row terakhir di Web UBB yang punya raw totalizer lengkap,
+                            Sistem akan mencari row terakhir di Web Utilitas Batubara yang punya raw totalizer lengkap,
                             lalu untuk tiap shift/hari setelah itu sampai hari ini, akan:
                         </p>
                         <ol className="list-decimal list-inside space-y-1 ml-2">
                             <li>Baca selisih totalizer dari Sheets (tab Pagi/Sore/Malam untuk shift, LHUBB untuk harian)</li>
                             <li>Tambahkan ke raw totalizer terakhir → raw totalizer baru</li>
-                            <li>Insert/update row di Web UBB dengan raw totalizer hasil hitungan</li>
+                            <li>Insert/update row di Web Utilitas Batubara dengan raw totalizer hasil hitungan</li>
                         </ol>
                         <p className="pt-2 text-xs text-slate-400">
                             <strong>Cakupan terbatas:</strong> Shift hanya steam totalizer per boiler. Harian

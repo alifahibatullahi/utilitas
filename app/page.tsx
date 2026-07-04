@@ -88,7 +88,7 @@ export default function LoginPage() {
             <div className="bg-primary/20 p-3 rounded-2xl mb-3 shadow-lg shadow-primary/20">
               <span className="material-symbols-outlined text-primary text-3xl">electric_bolt</span>
             </div>
-            <h1 className="text-xl font-bold text-white">Web UBB</h1>
+            <h1 className="text-xl font-bold text-white">Web Utilitas Batubara</h1>
             <p className="text-xs text-text-secondary mt-1">Operator Panel Login</p>
           </div>
 
@@ -250,7 +250,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-text-secondary/40 mt-6">
-          &copy; 2025 Web UBB
+          &copy; 2025 Web Utilitas Batubara
         </p>
       </div>
     </div>

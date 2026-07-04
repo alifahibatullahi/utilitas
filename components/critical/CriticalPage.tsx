@@ -222,10 +222,10 @@ export default function CriticalPage() {
                             <button
                                 onClick={() => router.push('/dashboard')}
                                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 text-xs font-bold cursor-pointer transition-colors whitespace-nowrap"
-                                title="Kembali ke Web UBB"
+                                title="Kembali ke Web Utilitas Batubara"
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>logout</span>
-                                <span className="hidden sm:inline">Web UBB</span>
+                                <span className="hidden sm:inline">Web Utilitas Batubara</span>
                             </button>
                         </div>
                     </div>

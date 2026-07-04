@@ -41,7 +41,7 @@ async function processMessage(body: FonnteWebhookBody, supabaseAdmin: any) {
     // Kalau pesan teks biasa, balas dengan petunjuk format
     if (type === 'text' && message) {
       await sendFonnteText(sender,
-        '📷 *Web UBB Photo Bot*\n\nKirim foto dengan caption:\n  `critical-{id}`\n  `maintenance-{id}`\n\nContoh:\n  `critical-550e8400-e29b-41d4-a716-446655440000`'
+        '📷 *Web Utilitas Batubara Photo Bot*\n\nKirim foto dengan caption:\n  `critical-{id}`\n  `maintenance-{id}`\n\nContoh:\n  `critical-550e8400-e29b-41d4-a716-446655440000`'
       );
     }
     return;

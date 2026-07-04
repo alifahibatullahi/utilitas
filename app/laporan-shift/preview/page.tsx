@@ -467,7 +467,7 @@ export default function PreviewPdfPage() {
 
                     {/* Footer */}
                     <footer className="mt-8 pt-4 border-t-2 border-blue-100 flex justify-between items-center">
-                        <p className="text-[8px] text-blue-400 font-bold uppercase tracking-wider">&copy; 2026 Web UBB &bull; Shift {r.group} Terminal</p>
+                        <p className="text-[8px] text-blue-400 font-bold uppercase tracking-wider">&copy; 2026 Web Utilitas Batubara &bull; Shift {r.group} Terminal</p>
                         <div className="flex items-center gap-4">
                             <p className="text-[8px] text-slate-400 font-medium">Digital Signature ID: PO-{r.group}-140326-X99</p>
                             <p className="text-[8px] text-slate-400 font-medium tracking-tight">Generated: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date().toLocaleTimeString('id-ID')}</p>

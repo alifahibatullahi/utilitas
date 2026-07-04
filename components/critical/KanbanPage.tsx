@@ -222,10 +222,10 @@ export default function KanbanPage() {
                             <button
                                 onClick={() => router.push('/critical')}
                                 className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 text-xs transition-colors cursor-pointer"
-                                title="Kembali ke Web UBB"
+                                title="Kembali ke Web Utilitas Batubara"
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: 14 }}>arrow_back</span>
-                                <span className="hidden md:inline text-[10px]">Web UBB</span>
+                                <span className="hidden md:inline text-[10px]">Web Utilitas Batubara</span>
                             </button>
                         </div>
                     </div>

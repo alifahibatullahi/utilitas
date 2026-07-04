@@ -421,7 +421,7 @@ export default function DashboardPage() {
             </div>
 
             <footer className="text-center py-4 border-t border-slate-800 mt-8">
-                <p className="text-slate-500 text-xs">© 2023 Web UBB. All systems operational.</p>
+                <p className="text-slate-500 text-xs">© 2023 Web Utilitas Batubara. All systems operational.</p>
             </footer>
         </div>
     );

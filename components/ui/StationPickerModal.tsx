@@ -26,33 +26,27 @@ interface StationPickerModalProps {
     onCancel: () => void;
 }
 
-const SHIFTS: { n: 1 | 2 | 3; label: string }[] = [
-    { n: 1, label: 'Malam' },
-    { n: 2, label: 'Pagi' },
-    { n: 3, label: 'Sore' },
-];
-
-// Custom icons and styling themes for each shift
-const SHIFT_THEMES = {
-    1: {
-        label: 'Malam',
-        icon: 'bedtime',
+// Pilihan jenis laporan datar: 3 shift + harian dalam satu baris.
+// malam/pagi/sore → mode 'shift' + nomor shift; harian → mode 'harian'.
+const REPORT_CHOICE_INACTIVE = 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50';
+const REPORT_CHOICES: { id: 'malam' | 'pagi' | 'sore' | 'harian'; shift?: 1 | 2 | 3; label: string; icon: string; activeClass: string }[] = [
+    {
+        id: 'malam', shift: 1, label: 'Malam', icon: 'bedtime',
         activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 border-indigo-500/40',
-        inactiveClass: 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50'
     },
-    2: {
-        label: 'Pagi',
-        icon: 'light_mode',
+    {
+        id: 'pagi', shift: 2, label: 'Pagi', icon: 'light_mode',
         activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-md shadow-amber-500/20 border-amber-400/40',
-        inactiveClass: 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50'
     },
-    3: {
-        label: 'Sore',
-        icon: 'wb_twilight',
+    {
+        id: 'sore', shift: 3, label: 'Sore', icon: 'wb_twilight',
         activeClass: 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-md shadow-orange-500/20 border-orange-500/40',
-        inactiveClass: 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50'
-    }
-};
+    },
+    {
+        id: 'harian', label: 'Harian', icon: 'today',
+        activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/20 border-emerald-500/40',
+    },
+];
 
 // Custom icons and color themes for each operator station
 const STATION_THEMES: Record<
@@ -186,32 +180,29 @@ export default function StationPickerModal({
                 {/* Content Body */}
                 <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
                     
-                    {/* Step 1: Jenis Laporan */}
+                    {/* Step 1: Jenis Laporan — 4 pilihan datar (malam/pagi/sore/harian) */}
                     <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">1. Jenis Laporan</label>
                         <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-850 gap-1.5 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                            <button
-                                type="button"
-                                onClick={() => setMode('shift')}
-                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                    ${mode === 'shift'
-                                        ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/20'
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-sm">schedule</span>
-                                <span>Shift</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMode('harian')}
-                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                    ${mode === 'harian'
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/20'
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-sm">today</span>
-                                <span>Harian</span>
-                            </button>
+                            {REPORT_CHOICES.map((c) => {
+                                const active = mode === 'harian' ? c.id === 'harian' : c.shift === shift;
+                                return (
+                                    <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => {
+                                            if (c.id === 'harian') { setMode('harian'); return; }
+                                            setMode('shift');
+                                            setShift(c.shift!);
+                                        }}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] border border-transparent
+                                            ${active ? c.activeClass : REPORT_CHOICE_INACTIVE}`}
+                                    >
+                                        <span className="material-symbols-outlined text-sm">{c.icon}</span>
+                                        <span>{c.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -239,35 +230,10 @@ export default function StationPickerModal({
                         </div>
                     </div>
 
-                    {/* Step 3: Shift (Hanya jika mode shift) */}
-                    {mode === 'shift' && (
-                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">3. Shift</label>
-                            <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-850 gap-1.5 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                                {SHIFTS.map((s) => {
-                                    const theme = SHIFT_THEMES[s.n];
-                                    const active = shift === s.n;
-                                    return (
-                                        <button
-                                            key={s.n}
-                                            type="button"
-                                            onClick={() => setShift(s.n)}
-                                            className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] border border-transparent
-                                                ${active ? theme.activeClass : theme.inactiveClass}`}
-                                        >
-                                            <span className="material-symbols-outlined text-sm">{theme.icon}</span>
-                                            <span>{theme.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 4: Station Grid */}
+                    {/* Step 3: Station Grid */}
                     <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            {mode === 'shift' ? '4. Pilih Station' : '3. Pilih Station'}
+                            3. Pilih Station
                         </label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                             {stations.map((s) => {

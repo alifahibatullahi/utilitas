@@ -7,6 +7,7 @@ import { NAV_ITEMS } from '@/lib/constants';
 
 // Material icon mapping
 const ICON_MAP: Record<string, string> = {
+    home: 'home',
     dashboard: 'dashboard',
     tank: 'propane_tank',
     edit: 'edit_square',

@@ -10,6 +10,9 @@ interface TabGeneratorProps {
     powerValues?: Record<string, number | string | null>;
     onGeneratorChange?: (name: string, value: number | string | null) => void;
     onPowerChange?: (name: string, value: number | string | null) => void;
+    /** Dipakai efek autofill/cascade — tidak menandai form modified (navigation guard). */
+    onAutoGeneratorChange?: (name: string, value: number | string | null) => void;
+    onAutoPowerChange?: (name: string, value: number | string | null) => void;
     prevPowerDist?: Record<string, number | null>;
     genLoad?: number | null;
     /** Cascade dari status turbin — kalau shutdown, kunci kartu "Generator Output" (gen_load, gen_ampere, dst).
@@ -26,22 +29,25 @@ const DIST_ITEMS = [
     { key: 'pie', label: 'PIU' },
 ] as const;
 
-export default function TabGenerator({ generatorValues = {}, powerValues = {}, onGeneratorChange, onPowerChange, prevPowerDist = {}, genLoad, isTurbinShutdown = false }: TabGeneratorProps) {
+export default function TabGenerator({ generatorValues = {}, powerValues = {}, onGeneratorChange, onPowerChange, onAutoGeneratorChange, onAutoPowerChange, prevPowerDist = {}, genLoad, isTurbinShutdown = false }: TabGeneratorProps) {
     const pv = powerValues;
     const gv = generatorValues;
     const fmt = (v: number | string | null | undefined) => (Number(v) || 0).toFixed(2);
 
     // Saat turbin shutdown: auto-fill power_stg_ubb_totalizer dari prev (kalau kosong) +
     // auto-zero kartu Generator Output. Mirror pattern boiler shutdown.
+    // Pakai handler auto supaya autofill tidak menandai form modified (navigation guard).
+    const autoPowerChange = onAutoPowerChange ?? onPowerChange;
+    const autoGeneratorChange = onAutoGeneratorChange ?? onGeneratorChange;
     useEffect(() => {
         if (!isTurbinShutdown) return;
         const prevStgTot = prevPowerDist?.power_stg_ubb_totalizer;
-        if (onPowerChange && prevStgTot != null && pv.power_stg_ubb_totalizer == null) {
-            onPowerChange('power_stg_ubb_totalizer', prevStgTot);
+        if (autoPowerChange && prevStgTot != null && pv.power_stg_ubb_totalizer == null) {
+            autoPowerChange('power_stg_ubb_totalizer', prevStgTot);
         }
-        if (onGeneratorChange) {
+        if (autoGeneratorChange) {
             GEN_OUTPUT_FIELDS.forEach(k => {
-                if (gv[k] != null && gv[k] !== 0) onGeneratorChange(k, 0);
+                if (gv[k] != null && gv[k] !== 0) autoGeneratorChange(k, 0);
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

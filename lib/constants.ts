@@ -396,8 +396,9 @@ export const STATION_ORDER: OperatorStation[] = [
     'lapangan_turbin',
 ];
 
+// Konsumen tersisa: BottomTabBar (mobile tank-level). Navigasi utama = grid /home.
 export const NAV_ITEMS: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/dashboard', roles: 'all' },
+    { id: 'home', label: 'Home', icon: 'home', path: '/home', roles: 'all' },
     { id: 'tank-level', label: 'Tank Level', icon: 'tank', path: '/tank-level', roles: 'all' },
     { id: 'input-shift', label: 'Input Laporan', icon: 'edit', path: '/input-shift', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'] },
     { id: 'critical', label: 'Critical & Maint', icon: 'warning', path: '/critical', roles: 'all' },

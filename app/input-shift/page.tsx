@@ -58,6 +58,28 @@ const TAB_STYLES: Record<string, { active: string; inactive: string; icon: strin
     'teal': { active: 'font-bold bg-teal-500/20 text-teal-400 border-teal-500/30 shadow-inner shadow-teal-500/10', inactive: 'font-medium text-slate-400 hover:text-teal-300 hover:bg-teal-500/10 border-transparent', icon: 'text-teal-400' },
 };
 
+// Pilihan jenis laporan datar di header: 3 shift + harian dalam satu segmented control.
+// malam/pagi/sore → inputMode 'shift' + selectedShift; harian → inputMode 'harian'.
+type ReportChoice = 'malam' | 'pagi' | 'sore' | 'harian';
+const REPORT_CHOICES: { id: ReportChoice; label: string; hint: string; icon: string; activeClass: string }[] = [
+    {
+        id: 'malam', label: 'Malam', hint: '(06)', icon: 'bedtime',
+        activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.35)] hover:from-indigo-500 hover:to-violet-500',
+    },
+    {
+        id: 'pagi', label: 'Pagi', hint: '(14)', icon: 'light_mode',
+        activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_14px_rgba(245,158,11,0.35)] hover:from-amber-400 hover:to-yellow-400',
+    },
+    {
+        id: 'sore', label: 'Sore', hint: '(22)', icon: 'wb_twilight',
+        activeClass: 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-[0_4px_14px_rgba(234,88,12,0.35)] hover:from-orange-500 hover:to-red-400',
+    },
+    {
+        id: 'harian', label: 'Harian', hint: '', icon: 'today',
+        activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]',
+    },
+];
+
 export default function InputShiftPage() {
     return (
         <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 text-sm font-bold">Memuat...</div>}>
@@ -73,6 +95,15 @@ function InputShiftPageInner() {
         const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
         return map[detectCurrentShift().shift];
     });
+    // Selector datar 4 pilihan (malam/pagi/sore/harian) — kontrol komposit di atas
+    // inputMode + selectedShift; state internal & format URL lama tidak berubah.
+    const reportChoice: ReportChoice =
+        inputMode === 'harian' ? 'harian' : (['malam', 'pagi', 'sore'] as const)[selectedShift - 1];
+    const selectReportChoice = (c: ReportChoice) => {
+        if (c === 'harian') { setInputMode('harian'); return; }
+        setInputMode('shift');
+        setSelectedShift(c === 'malam' ? 1 : c === 'pagi' ? 2 : 3);
+    };
     const [submitting, setSubmitting] = useState(false);
     const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -859,10 +890,11 @@ function InputShiftPageInner() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [_latestTurbinStatus, _turbinStatus, report]);
 
-    // Generic change handlers
-    const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>
+    // Generic change handlers. Versi "auto" TIDAK menandai userModified — dipakai efek
+    // autofill/cascade programatik di tab (shutdown auto-zero, inherit totalizer) supaya
+    // navigation guard tidak aktif padahal user belum menyentuh apa pun.
+    const makeAutoNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) =>
         (name: string, value: number | string | null) => {
-            setUserModified(true);
             setter(prev => ({
                 ...prev,
                 [name]: typeof value === 'string'
@@ -871,11 +903,26 @@ function InputShiftPageInner() {
             }));
         };
 
-    const makeMixedHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | string | null>>>) =>
+    const makeAutoMixedHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | string | null>>>) =>
         (name: string, value: number | string | null) => {
-            setUserModified(true);
             setter(prev => ({ ...prev, [name]: value }));
         };
+
+    const makeNumberHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | null>>>) => {
+        const apply = makeAutoNumberHandler(setter);
+        return (name: string, value: number | string | null) => {
+            setUserModified(true);
+            apply(name, value);
+        };
+    };
+
+    const makeMixedHandler = (setter: React.Dispatch<React.SetStateAction<Record<string, number | string | null>>>) => {
+        const apply = makeAutoMixedHandler(setter);
+        return (name: string, value: number | string | null) => {
+            setUserModified(true);
+            apply(name, value);
+        };
+    };
 
     const showToast = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
@@ -1680,28 +1727,23 @@ function InputShiftPageInner() {
 
                 {/* Mode & Shift Controls */}
                 <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-[340px]">
-                    {!station && (
+                    {/* Selector jenis laporan 4 pilihan (malam/pagi/sore/harian).
+                        Station shift-link: harian disembunyikan; station harian-link: kontrol hilang total. */}
+                    {!(station && inputMode === 'harian') && (
                         <div className="flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 gap-2 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                            <button
-                                onClick={() => setInputMode('shift')}
-                                className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                    ${inputMode === 'shift' 
-                                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.3)]' 
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-sm">schedule</span>
-                                <span>Shift</span>
-                            </button>
-                            <button
-                                onClick={() => setInputMode('harian')}
-                                className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                    ${inputMode === 'harian' 
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]' 
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                            >
-                                <span className="material-symbols-outlined text-sm">today</span>
-                                <span>Harian</span>
-                            </button>
+                            {REPORT_CHOICES.filter(c => !station || c.id !== 'harian').map(c => (
+                                <button
+                                    key={c.id}
+                                    onClick={() => selectReportChoice(c.id)}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[10px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
+                                        ${reportChoice === c.id
+                                            ? c.activeClass
+                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
+                                >
+                                    <span className="material-symbols-outlined text-sm">{c.icon}</span>
+                                    <span>{c.label}{c.hint && <span className="hidden xl:inline"> {c.hint}</span>}</span>
+                                </button>
+                            ))}
                         </div>
                     )}
                     {/* Station badge — label statis sudah dipindah ke row 1 header */}
@@ -1714,42 +1756,6 @@ function InputShiftPageInner() {
                         </div>
                     )}
 
-                    {inputMode === 'shift' && (
-                        <div className="flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 gap-2 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                            {[
-                                { 
-                                    id: 1, 
-                                    label: 'Malam (06)', 
-                                    icon: 'bedtime', 
-                                    activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_4px_14px_rgba(99,102,241,0.35)] hover:from-indigo-500 hover:to-violet-500' 
-                                },
-                                { 
-                                    id: 2, 
-                                    label: 'Pagi (14)', 
-                                    icon: 'light_mode', 
-                                    activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_14px_rgba(245,158,11,0.35)] hover:from-amber-400 hover:to-yellow-400' 
-                                },
-                                { 
-                                    id: 3, 
-                                    label: 'Sore (22)', 
-                                    icon: 'wb_twilight', 
-                                    activeClass: 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-[0_4px_14px_rgba(234,88,12,0.35)] hover:from-orange-500 hover:to-red-400' 
-                                }
-                            ].map(shift => (
-                                <button
-                                    key={shift.id}
-                                    onClick={() => setSelectedShift(shift.id as 1 | 2 | 3)}
-                                    className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg text-[10px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]
-                                        ${selectedShift === shift.id 
-                                            ? shift.activeClass 
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
-                                >
-                                    <span className="material-symbols-outlined text-sm">{shift.icon}</span>
-                                    <span>{shift.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
             </header>
 
@@ -2049,10 +2055,10 @@ function InputShiftPageInner() {
                                     Pada xl+, switch ke flex-row supaya form & sidebar summary sejajar. */}
                                 {visibleTabs.length > 0 && (
                                 <div className="flex flex-col xl:flex-row gap-6 xl:flex-1 xl:min-h-0 pb-6 w-full max-w-full">
-                                    {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
-                                    {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
-                                    {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet as number | null} prevTotalizerCondensate={prevTurbin.totalizer_condensate as number | null} />}
-                                    {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} isTurbinShutdown={turbin.status_turbin === 'shutdown'} />}
+                                    {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} onAutoFieldChange={makeAutoMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} onAutoCoalBunkerChange={makeAutoMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
+                                    {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} onAutoFieldChange={makeAutoMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} onAutoCoalBunkerChange={makeAutoMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
+                                    {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} onAutoFieldChange={makeAutoNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet as number | null} prevTotalizerCondensate={prevTurbin.totalizer_condensate as number | null} />}
+                                    {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} onAutoGeneratorChange={makeAutoNumberHandler(setGeneratorGi)} onAutoPowerChange={makeAutoNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} isTurbinShutdown={turbin.status_turbin === 'shutdown'} />}
                                     {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
                                     {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} onDeleteSavedSolar={handleDeleteSavedSolar} onDeleteSavedOutSolar={handleDeleteSavedOutSolar} />}
                                     {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} onDeleteSavedAsh={handleDeleteSavedAsh} />}
@@ -2076,7 +2082,13 @@ function InputShiftPageInner() {
                     initialShift={selectedShift}
                     allowAllTabs={true}
                     onConfirm={handleConfirmSetup}
-                    onCancel={() => { if (pickerManual || station) setStationPickerOpen(false); else router.push('/dashboard'); }}
+                    onCancel={() => {
+                        if (pickerManual || station) { setStationPickerOpen(false); return; }
+                        // Batal dari entry awal (belum isi apa-apa) → langsung ke home,
+                        // bypass nav-guard supaya URL ikut berpindah.
+                        bypassNavRef.current = true;
+                        router.push('/home');
+                    }}
                 />
             )}
         </div>

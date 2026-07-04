@@ -7,7 +7,6 @@ import { TANK_IDS, TANKS, TankId, TANK_THRESHOLDS, DEFAULT_THRESHOLDS } from '@/
 import { getAlertStatus } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import Sidebar from '@/components/layout/Sidebar';
 import BottomTabBar from '@/components/layout/BottomTabBar';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -901,9 +900,6 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
     );
 }
 
-const SIDEBAR_COLLAPSED_W = 68;
-const SIDEBAR_EXPANDED_W = 260;
-
 export default function TankLevelPage() {
     return (
         <Suspense fallback={null}>
@@ -919,7 +915,6 @@ function TankLevelPageInner() {
     const searchParams = useSearchParams();
     const isGuest = searchParams.get('guest') === '1';
     const [now, setNow] = useState('');
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
     // Live clock
     useEffect(() => {
@@ -998,7 +993,7 @@ function TankLevelPageInner() {
                                         className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-primary/20 cursor-pointer">
                                         <span className="material-symbols-outlined text-sm">refresh</span>
                                     </button>
-                                    <button onClick={() => router.push('/dashboard')}
+                                    <button onClick={() => router.push('/home')}
                                         className="flex items-center gap-1 text-slate-400 hover:text-white hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer">
                                         <span className="material-symbols-outlined text-sm">arrow_back</span>
                                     </button>
@@ -1033,15 +1028,8 @@ function TankLevelPageInner() {
             )}
 
             {/* ─────────────────── DESKTOP: Fluid Native (full display) ─────────────────── */}
-            {/* Sidebar — desktop only (sembunyikan untuk guest agar full kiosk) */}
-            {!isGuest && (
-                <div className="hidden lg:block fixed top-0 left-0 bottom-0 z-30">
-                    <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(p => !p)} />
-                </div>
-            )}
-            {/* Outer: fills viewport minus sidebar */}
-            <div className="hidden lg:flex fixed top-0 bottom-0 overflow-hidden transition-all duration-300"
-                style={{ left: `${isGuest ? 0 : (sidebarCollapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W)}px`, right: 0, background: bg }}>
+            <div className="hidden lg:flex fixed top-0 bottom-0 overflow-hidden"
+                style={{ left: 0, right: 0, background: bg }}>
                 <div style={{
                     width: '100%',
                     height: '100%',
@@ -1100,9 +1088,9 @@ function TankLevelPageInner() {
                                             <span className="material-symbols-outlined text-xl">refresh</span>
                                             Refresh
                                         </button>
-                                        <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold border border-white/10 transition-all cursor-pointer">
+                                        <button onClick={() => router.push('/home')} className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-5 py-3 2xl:px-[22px] 2xl:py-[14px] rounded-xl 2xl:rounded-[16px] text-sm 2xl:text-[14px] font-bold border border-white/10 transition-all cursor-pointer">
                                             <span className="material-symbols-outlined text-xl">home</span>
-                                            Dashboard
+                                            Menu
                                         </button>
                                     </>
                                 )}

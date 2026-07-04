@@ -6,8 +6,11 @@ interface TabBoilerProps {
     boilerId: 'A' | 'B';
     values?: Record<string, number | string | null>;
     onFieldChange?: (name: string, value: number | string | null) => void;
+    /** Dipakai efek autofill/cascade — tidak menandai form modified (navigation guard). */
+    onAutoFieldChange?: (name: string, value: number | string | null) => void;
     coalBunkerValues?: Record<string, number | string | null>;
     onCoalBunkerChange?: (name: string, value: number | string | null) => void;
+    onAutoCoalBunkerChange?: (name: string, value: number | string | null) => void;
     prevTotalizerSteam?: number | null;
     prevTotalizerBfw?: number | null;
     prevCoalBunkerValues?: Record<string, number | null>;
@@ -35,7 +38,7 @@ const NON_TOTALIZER_BOILER_FIELDS = [
     'feeder_d_flow', 'feeder_e_flow', 'feeder_f_flow',
 ];
 
-export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBunkerValues = {}, onCoalBunkerChange, prevTotalizerSteam, prevTotalizerBfw, prevCoalBunkerValues = {}, shutdownSince, currentDate = '' }: TabBoilerProps) {
+export default function TabBoiler({ boilerId, values = {}, onFieldChange, onAutoFieldChange, coalBunkerValues = {}, onCoalBunkerChange, onAutoCoalBunkerChange, prevTotalizerSteam, prevTotalizerBfw, prevCoalBunkerValues = {}, shutdownSince, currentDate = '' }: TabBoilerProps) {
     const feeders = boilerId === 'A' ? ['A', 'B', 'C'] : ['D', 'E', 'F'];
     const feederKeys = boilerId === 'A' ? ['feeder_a', 'feeder_b', 'feeder_c'] : ['feeder_d', 'feeder_e', 'feeder_f'];
 
@@ -48,26 +51,30 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
 
     // Auto-fill totalizer saat boiler shutdown (hanya jika masih kosong, tetap bisa diedit)
     // Auto-set semua feeder ke standby & flow ke 0 saat shutdown
+    // Pakai handler auto (fallback ke handler user) supaya autofill programatik
+    // tidak menandai form sebagai modified → navigation guard tidak salah aktif.
+    const autoFieldChange = onAutoFieldChange ?? onFieldChange;
+    const autoCoalBunkerChange = onAutoCoalBunkerChange ?? onCoalBunkerChange;
     useEffect(() => {
-        if (!isBoilerShutdown || !onFieldChange) return;
+        if (!isBoilerShutdown || !autoFieldChange) return;
         // Totalizer ikut nilai sebelumnya; tanpa baseline → 0 (jangan biarkan kosong,
         // supaya tab tetap centang & operator tak perlu buka station).
-        if (values.totalizer_steam == null) onFieldChange('totalizer_steam', prevTotalizerSteam ?? 0);
-        if (values.totalizer_bfw == null) onFieldChange('totalizer_bfw', prevTotalizerBfw ?? 0);
+        if (values.totalizer_steam == null) autoFieldChange('totalizer_steam', prevTotalizerSteam ?? 0);
+        if (values.totalizer_bfw == null) autoFieldChange('totalizer_bfw', prevTotalizerBfw ?? 0);
         // Parameter operasional → 0 walau belum pernah diisi (null), supaya dianggap
         // "terisi 0" dan tersimpan/tersync sebagai 0.
         NON_TOTALIZER_BOILER_FIELDS.forEach(k => {
-            if (values[k] !== 0) onFieldChange(k, 0);
+            if (values[k] !== 0) autoFieldChange(k, 0);
         });
-        if (onCoalBunkerChange) {
+        if (autoCoalBunkerChange) {
             feederKeys.forEach(fk => {
                 const prev = prevCoalBunkerValues[fk];
-                if (coalBunkerValues[fk] == null) onCoalBunkerChange(fk, prev ?? 0);
+                if (coalBunkerValues[fk] == null) autoCoalBunkerChange(fk, prev ?? 0);
                 // Auto-set feeder status ke standby jika belum standby/non-running
                 const sk = feederStatusKey(fk);
                 const curStatus = coalBunkerValues[sk];
                 if (curStatus === 'running' || curStatus == null || curStatus === '') {
-                    onCoalBunkerChange(sk, 'standby');
+                    autoCoalBunkerChange(sk, 'standby');
                 }
             });
         }
@@ -78,12 +85,12 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, coalBu
     // Auto-set flow feeder ke 0 saat non-running
     const feederStatusSig = feederKeys.map(fk => coalBunkerValues[feederStatusKey(fk)] ?? '').join('|');
     useEffect(() => {
-        if (!onCoalBunkerChange || !onFieldChange) return;
+        if (!autoCoalBunkerChange || !autoFieldChange) return;
         feederKeys.forEach(fk => {
             if (!isFeederLocked(fk)) return;
             const prev = prevCoalBunkerValues[fk];
-            if (prev != null && coalBunkerValues[fk] == null) onCoalBunkerChange(fk, prev);
-            if (values[`${fk}_flow`] !== 0) onFieldChange(`${fk}_flow`, 0);
+            if (prev != null && coalBunkerValues[fk] == null) autoCoalBunkerChange(fk, prev);
+            if (values[`${fk}_flow`] !== 0) autoFieldChange(`${fk}_flow`, 0);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [feederStatusSig]);

@@ -5,6 +5,8 @@ import { Card, InputField, CalculatedField, SelisihInfo } from './SharedComponen
 interface TabTurbinProps {
     values?: Record<string, number | string | null>;
     onFieldChange?: (name: string, value: number | string | null) => void;
+    /** Dipakai efek autofill/cascade — tidak menandai form modified (navigation guard). */
+    onAutoFieldChange?: (name: string, value: number | string | null) => void;
     prevTotalizerSteamInlet?: number | null;
     prevTotalizerCondensate?: number | null;
 }
@@ -18,7 +20,7 @@ const TURBIN_NON_TOTALIZER_FIELDS = [
     'level_condenser', 'temp_cw_in', 'temp_cw_out',
 ];
 
-export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSteamInlet, prevTotalizerCondensate }: TabTurbinProps) {
+export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChange, prevTotalizerSteamInlet, prevTotalizerCondensate }: TabTurbinProps) {
     const currentSteamInlet = Number(values.totalizer_steam_inlet) || 0;
     const prevSteamInlet = Number(prevTotalizerSteamInlet) || 0;
     const produksiSteamInlet = prevSteamInlet > 0 ? currentSteamInlet - prevSteamInlet : 0;
@@ -33,16 +35,18 @@ export default function TabTurbin({ values = {}, onFieldChange, prevTotalizerSte
 
     // Auto-fill totalizer dengan nilai shift sebelumnya saat shutdown (hanya kalau masih kosong,
     // tetap editable) + auto-zero field operasional. Mirror pattern boiler shutdown.
+    // Pakai handler auto supaya autofill tidak menandai form modified (navigation guard).
+    const autoFieldChange = onAutoFieldChange ?? onFieldChange;
     useEffect(() => {
-        if (!isTurbinShutdown || !onFieldChange) return;
+        if (!isTurbinShutdown || !autoFieldChange) return;
         // Totalizer ikut nilai sebelumnya; tanpa baseline → 0 (jangan kosong).
         if (values.totalizer_steam_inlet == null)
-            onFieldChange('totalizer_steam_inlet', prevTotalizerSteamInlet ?? 0);
+            autoFieldChange('totalizer_steam_inlet', prevTotalizerSteamInlet ?? 0);
         if (values.totalizer_condensate == null)
-            onFieldChange('totalizer_condensate', prevTotalizerCondensate ?? 0);
+            autoFieldChange('totalizer_condensate', prevTotalizerCondensate ?? 0);
         // Parameter operasional → 0 walau belum pernah diisi (null) → dianggap "terisi 0".
         TURBIN_NON_TOTALIZER_FIELDS.forEach(k => {
-            if (values[k] !== 0) onFieldChange(k, 0);
+            if (values[k] !== 0) autoFieldChange(k, 0);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isTurbinShutdown]);

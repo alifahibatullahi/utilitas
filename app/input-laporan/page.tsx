@@ -2100,7 +2100,7 @@ function InputShiftPageInner() {
                 Navigasi Menu pakai router.push supaya guard "belum disimpan"
                 (patch history.pushState) tetap memperingatkan sebelum keluar. */}
             {mounted && createPortal(
-            <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2">
+            <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center justify-center gap-2 w-max max-w-[calc(100vw-16px)]">
                 <button
                     type="button"
                     onClick={() => router.push('/home')}

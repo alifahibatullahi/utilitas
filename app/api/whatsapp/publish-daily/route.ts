@@ -148,6 +148,21 @@ export async function POST(req: NextRequest) {
 
     const [pdf, text] = await Promise.allSettled([pdfResult, textResult]);
 
+    // Tandai laporan harian TERPUBLISH begitu salah satu kiriman (PDF/teks) sukses —
+    // menyamakan dengan alur publish shift (PublishReportModal set status='approved').
+    // Tanpa ini status daily_reports selamanya 'draft' walau sudah dibagikan ke WA,
+    // sehingga penanda "Terpublish" di dialog Pilih Laporan tidak pernah muncul.
+    const pdfOk = pdf.status === 'fulfilled' && (pdf.value as { ok?: boolean }).ok === true;
+    const textOk = text.status === 'fulfilled' && (text.value as { ok?: boolean }).ok === true;
+    if (pdfOk || textOk) {
+        const { error: apprErr } = await supabase
+            .from('daily_reports')
+            .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+            .eq('id', reportId)
+            .neq('status', 'approved');
+        if (apprErr) console.warn('[publish-daily] gagal set status approved:', apprErr.message);
+    }
+
     return NextResponse.json({
         pdf: pdf.status === 'fulfilled' ? pdf.value : { ok: false, error: String(pdf.reason) },
         text: text.status === 'fulfilled' ? text.value : { ok: false, error: String(text.reason) },

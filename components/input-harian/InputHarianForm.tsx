@@ -79,9 +79,13 @@ interface InputHarianFormProps {
     isAdmin?: boolean;
     /** Buka kembali dialog "Pilih Laporan" (tombol Ganti Laporan di header station). */
     onChangeReport?: () => void;
+    /** Daftarkan aksi simpan ke parent — dipakai tombol SIMPAN floating di halaman
+     *  input-laporan. Bila di-set, tombol simpan internal sidebar DISEMBUNYIKAN.
+     *  Dipanggil null saat unmount. */
+    registerSave?: (s: { submit: () => void; submitting: boolean; locked: boolean; beforeStart: boolean; pastEnd: boolean } | null) => void;
 }
 
-export default function InputHarianForm({ date, operator, groupName, supervisorName, onSupervisorChange, submitWindowStart, submitWindowEnd, isAdmin = false, onChangeReport }: InputHarianFormProps) {
+export default function InputHarianForm({ date, operator, groupName, supervisorName, onSupervisorChange, submitWindowStart, submitWindowEnd, isAdmin = false, onChangeReport, registerSave }: InputHarianFormProps) {
     // Lock state — disable tombol SAVE & banner kalau di luar window.
     const [nowTickH, setNowTickH] = useState(() => Date.now());
     useEffect(() => {
@@ -872,6 +876,23 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         }
     };
 
+    // Latest-ref: handleSubmit dibuat ulang tiap render (menutup state form terbaru).
+    // registerSave mendaftarkan wrapper yang selalu memanggil versi terbaru, supaya
+    // tombol SIMPAN floating di parent tidak menyimpan data basi.
+    const submitRef = useRef<() => void>(() => {});
+    submitRef.current = handleSubmit;
+    useEffect(() => {
+        if (!registerSave) return;
+        registerSave({
+            submit: () => submitRef.current(),
+            submitting,
+            locked: isHarianLocked,
+            beforeStart: isHarianBeforeStart,
+            pastEnd: isHarianPastEnd,
+        });
+        return () => registerSave(null);
+    }, [registerSave, submitting, isHarianLocked, isHarianBeforeStart, isHarianPastEnd]);
+
     // ─── Tab Completeness Checker ───
     const isTabLengkap = useCallback((tabId: HarianTabId) => {
         // Sumber kebenaran kelengkapan field ada di lib/daily-completeness.ts supaya
@@ -1069,6 +1090,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             <h3 className="text-white font-bold text-sm mb-1">Menu Laporan</h3>
                             <p className="text-[11px] text-slate-400 leading-tight">Pilih kategori area untuk mulai input data harian.</p>
                         </div>
+                        {/* Tombol simpan internal disembunyikan bila parent mendaftar via
+                            registerSave — SIMPAN pindah ke grup floating halaman. */}
+                        {!registerSave && (
                         <button
                             onClick={handleSubmit}
                             disabled={submitting || isHarianLocked}
@@ -1080,6 +1104,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             <span className="material-symbols-outlined text-[18px]">{isHarianLocked ? 'lock' : 'save'}</span>
                             {submitting ? 'Menyimpan...' : isHarianLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                         </button>
+                        )}
                         {/* Publish — disembunyikan di mode station (operator station hanya isi tab-nya).
                             Admin bypass: bisa klik tanpa nunggu centang lengkap. */}
                         {!station && (() => {

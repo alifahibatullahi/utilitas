@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TabBoiler from '@/components/input-shift/TabBoiler';
 import TabTurbin from '@/components/input-shift/TabTurbin';
@@ -504,6 +505,12 @@ function InputShiftPageInner() {
 
     // Buka dialog "Ganti Laporan" (manual).
     const openChangeReport = useCallback(() => { setPickerManual(true); setStationPickerOpen(true); }, []);
+
+    // Aksi simpan form HARIAN yang didaftarkan InputHarianForm (registerSave) —
+    // dipakai tombol SIMPAN di grup floating supaya harian ikut floating juga.
+    const [harianSave, setHarianSave] = useState<{
+        submit: () => void; submitting: boolean; locked: boolean; beforeStart: boolean; pastEnd: boolean;
+    } | null>(null);
 
     // Tombol "Ganti Laporan" hanya untuk yang masuk lewat dialog (URL bawa ?date),
     // BUKAN operator yang dibuka dari link WA permanen (station tanpa date).
@@ -2081,14 +2088,18 @@ function InputShiftPageInner() {
                     </div>
                 </div>
             ) : (
-                // onChangeReport tidak dipass lagi — tombol GANTI LAPORAN kini selalu tampil
-                // di header (untuk yang masuk lewat dialog), jadi tombol internal form redundan.
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} />
+                // Ganti Laporan & Simpan harian ada di grup floating halaman:
+                // registerSave mengangkat aksi simpan form ke tombol floating.
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} registerSave={setHarianSave} />
             )}
             {/* ─── Grup aksi FLOATING kanan-bawah: Menu + Ganti + Simpan ───
                 Semua aksi utama terkumpul satu tempat, selalu terlihat saat scroll.
+                Di-PORTAL ke document.body: AppShell memakai zoom:1.25 di monitor
+                1920+, dan position:fixed di dalam subtree ber-zoom meleset dari
+                pojok viewport (Chrome) — portal mengeluarkannya dari subtree itu.
                 Navigasi Menu pakai router.push supaya guard "belum disimpan"
                 (patch history.pushState) tetap memperingatkan sebelum keluar. */}
+            {mounted && createPortal(
             <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2">
                 <button
                     type="button"
@@ -2110,23 +2121,34 @@ function InputShiftPageInner() {
                         <span className="sm:hidden">GANTI</span>
                     </button>
                 )}
-                {inputMode === 'shift' && (
-                    <button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={submitting || isLocked}
-                        title={isBeforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}` : isPastDeadline ? 'Window submit sudah berakhir' : undefined}
-                        className={`flex items-center gap-2 px-6 h-12 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider transition-all
-                            ${submitting || isLocked
-                                ? 'bg-slate-700/95 border border-slate-600 text-slate-300 opacity-80 cursor-not-allowed shadow-lg'
-                                : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white border border-emerald-400/60 shadow-[0_4px_25px_rgba(16,185,129,0.5)] hover:scale-[1.03] active:scale-[0.97] cursor-pointer'}`}
-                    >
-                        <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
-                        <span className="hidden sm:inline">{submitting ? 'MENYIMPAN...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}</span>
-                        <span className="sm:hidden">{submitting ? '...' : isLocked ? 'TERKUNCI' : 'SIMPAN'}</span>
-                    </button>
-                )}
-            </div>
+                {/* SIMPAN — mode shift pakai handleSubmit halaman; mode harian pakai aksi
+                    yang didaftarkan InputHarianForm (registerSave). Gaya & aturan sama:
+                    aktif hanya saat window submit terbuka. */}
+                {(() => {
+                    const save = inputMode === 'shift'
+                        ? { submit: handleSubmit, submitting, locked: isLocked, beforeStart: isBeforeStart, pastEnd: isPastDeadline }
+                        : harianSave;
+                    if (!save) return null;
+                    const saveDisabled = save.submitting || save.locked;
+                    return (
+                        <button
+                            type="button"
+                            onClick={save.submit}
+                            disabled={saveDisabled}
+                            title={save.beforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}` : save.pastEnd ? 'Window submit sudah berakhir' : undefined}
+                            className={`flex items-center gap-2 px-6 h-12 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider transition-all
+                                ${saveDisabled
+                                    ? 'bg-slate-700/95 border border-slate-600 text-slate-300 opacity-80 cursor-not-allowed shadow-lg'
+                                    : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white border border-emerald-400/60 shadow-[0_4px_25px_rgba(16,185,129,0.5)] hover:scale-[1.03] active:scale-[0.97] cursor-pointer'}`}
+                        >
+                            <span className="material-symbols-outlined text-[20px]">{save.locked ? 'lock' : 'save'}</span>
+                            <span className="hidden sm:inline">{save.submitting ? 'MENYIMPAN...' : save.locked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}</span>
+                            <span className="sm:hidden">{save.submitting ? '...' : save.locked ? 'TERKUNCI' : 'SIMPAN'}</span>
+                        </button>
+                    );
+                })()}
+            </div>,
+            document.body)}
 
             {/* Dialog "Pilih Laporan" — operator yang buka tanpa station (dari app) */}
             {stationPickerOpen && (

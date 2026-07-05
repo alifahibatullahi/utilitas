@@ -23,10 +23,10 @@ export default function AppShell({ children }: AppShellProps) {
     // Zoom 125% pada monitor 1920px+ untuk semua halaman kecuali dashboard dan tank-level
     const shouldZoom = isLargeScreen && !pathname.startsWith('/dashboard');
 
-    // input-laporan: bar atas disembunyikan (header halaman sudah informatif; navigasi
-    // ke /home lewat tombol Menu di grup floating kanan-bawah). Shell tetap dipakai
-    // supaya wrapper zoom monitor 1920+ tidak hilang.
-    const hideTopBar = pathname.startsWith('/input-laporan');
+    // Bar atas (logo + Menu) DIHAPUS di semua halaman (permintaan user). Navigasi ke
+    // /home diganti tombol Menu floating kiri-bawah — kecuali input-laporan yang sudah
+    // punya tombol Menu di grup floating kanan-bawah miliknya sendiri.
+    const hasOwnMenuButton = pathname.startsWith('/input-laporan');
 
     // Don't show shell on login page, home menu, fullscreen preview, or history data page
     if (pathname === '/' || pathname === '/home' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level' || pathname === '/history' || pathname.startsWith('/history/')) {
@@ -35,24 +35,17 @@ export default function AppShell({ children }: AppShellProps) {
 
     return (
         <div className="min-h-screen bg-bg-dark">
-            {/* Top header — logo + tombol kembali ke menu utama */}
-            {!hideTopBar && (
-            <div className="h-14 bg-surface-dark border-b border-slate-800 flex items-center justify-between px-4 sticky top-0 z-20">
-                <div className="flex items-center gap-2">
-                    <div className="bg-primary/20 p-1.5 rounded-lg">
-                        <span className="material-symbols-outlined text-primary text-lg">electric_bolt</span>
-                    </div>
-                    <h1 className="text-white font-bold text-sm">Web Utilitas Batubara</h1>
-                </div>
+            {/* Tombol Menu floating — di luar <main> supaya tidak terpengaruh zoom
+                (position:fixed di dalam subtree ber-zoom meleset di Chrome). */}
+            {!hasOwnMenuButton && (
                 <Link
                     href="/home"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
-                        text-text-secondary hover:text-white hover:bg-surface-highlight transition-all"
+                    aria-label="Kembali ke Menu"
+                    title="Kembali ke Menu"
+                    className="fixed bottom-5 left-5 z-40 flex items-center justify-center w-12 h-12 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-600/60 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.05] active:scale-[0.95]"
                 >
-                    <span className="material-symbols-outlined text-lg">home</span>
-                    <span>Menu</span>
+                    <span className="material-symbols-outlined text-[22px]">home</span>
                 </Link>
-            </div>
             )}
 
             {/* Main content area */}

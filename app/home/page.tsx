@@ -198,7 +198,7 @@ export default function HomePage() {
 
                 {/* Status strip: jam + shift + grup */}
                 <div className="mt-6 p-4 rounded-2xl border border-slate-100 bg-slate-50/60 home-fade-up" style={{ animationDelay: '80ms' }}>
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
                         {/* Jam */}
                         <p className="text-xl font-bold text-slate-800 tabular-nums" title="Waktu Indonesia Barat">
                             {pad(now.getHours())}<span className="clock-colon">:</span>{pad(now.getMinutes())}
@@ -221,7 +221,7 @@ export default function HomePage() {
                         {/* Grup piket */}
                         <div className="flex items-center gap-2">
                             <span className={`w-2 h-2 rounded-full ${groupDot} animate-pulse`} />
-                            <p className="text-sm font-semibold text-slate-600">Grup {activeGroup} dinas</p>
+                            <p className="text-sm font-semibold text-slate-600">Grup {activeGroup}</p>
                         </div>
                     </div>
                 </div>

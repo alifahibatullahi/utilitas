@@ -1577,7 +1577,11 @@ function InputShiftPageInner() {
                             {inputMode === 'shift' ? 'LAPORAN SHIFT' : 'LAPORAN HARIAN'}
                         </h2>
                         {inputMode === 'shift' ? (
-                            <span className="px-3 py-1 rounded-lg text-sm font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest">
+                            <span className={`px-3 py-1 rounded-lg text-sm font-bold border uppercase tracking-widest ${
+                                selectedShift === 1 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
+                                selectedShift === 2 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                                'bg-orange-500/20 text-orange-300 border-orange-500/30'
+                            }`}>
                                 {SHIFT_LABELS[selectedShift].toUpperCase()}
                             </span>
                         ) : (
@@ -1743,7 +1747,55 @@ function InputShiftPageInner() {
                 </div>
 
                 {/* Mode & Shift Controls */}
-                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-[340px]">
+                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-[360px]">
+                    {/* Aksi utama — SIMPAN & GANTI LAPORAN ditaruh di header supaya selalu
+                        terlihat dan menonjol (dipindah dari sidebar; Review/Publish tetap di sidebar).
+                        SIMPAN hanya mode shift (form harian punya tombol simpan sendiri);
+                        GANTI tampil untuk semua yang masuk lewat dialog Pilih Laporan. */}
+                    {(inputMode === 'shift' || cameFromPicker) && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            {inputMode === 'shift' && (
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={submitting || isLocked}
+                                    title={isBeforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : isPastDeadline ? 'Window submit sudah berakhir' : undefined}
+                                    className={`flex-[1.5] flex justify-center items-center gap-2 px-4 py-3.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all
+                                        ${submitting || isLocked
+                                            ? 'bg-slate-700 border border-slate-600 text-slate-300 opacity-60 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white border border-emerald-400/60 shadow-[0_0_25px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer'}`}
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
+                                    {submitting ? 'Menyimpan...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
+                                </button>
+                            )}
+                            {cameFromPicker && (
+                                <button
+                                    onClick={openChangeReport}
+                                    className="flex-1 flex justify-center items-center gap-2 px-4 py-3.5 rounded-xl text-sm font-black uppercase tracking-wider bg-blue-600/20 hover:bg-blue-600/35 text-blue-200 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
+                                    GANTI LAPORAN
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Info jendela submit — selalu tampil di mode shift (sebelumnya hanya
+                        muncul sebagai banner saat terkunci). */}
+                    {inputMode === 'shift' && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-800 text-[11px] font-semibold text-slate-300">
+                            <span className="material-symbols-outlined text-[15px] text-blue-400">schedule</span>
+                            <span>
+                                Window submit:{' '}
+                                <span className="text-blue-200 font-black">
+                                    {submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    {' – '}
+                                    {submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </span>
+                        </div>
+                    )}
+
                     {/* Selector jenis laporan 4 pilihan (malam/pagi/sore/harian).
                         Station shift-link: harian disembunyikan; station harian-link: kontrol hilang total. */}
                     {!(station && inputMode === 'harian') && (
@@ -1787,15 +1839,7 @@ function InputShiftPageInner() {
                                 <p className="text-[11px] text-slate-400 leading-tight">Pilih kategori area untuk mulai input data shift.</p>
                             </div>
                             <div className="flex flex-col gap-2 mt-1">
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={submitting || isLocked}
-                                    title={isBeforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : isPastDeadline ? 'Window submit sudah berakhir' : undefined}
-                                    className={`flex justify-center items-center gap-2 ${isLocked ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting || isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
-                                    {submitting ? 'Menyimpan...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
-                                </button>
+                                {/* SIMPAN & GANTI LAPORAN pindah ke header (selalu terlihat & lebih menonjol). */}
                                 {/* Publish — aktif kalau semua tab visible centang lengkap DAN report sudah submit.
                                     Admin bypass: bisa klik tanpa nunggu centang lengkap (untuk testing).
                                     Disembunyikan di mode station: operator station hanya isi tab-nya,
@@ -1814,16 +1858,6 @@ function InputShiftPageInner() {
                                         </button>
                                     );
                                 })()}
-                                {/* Ganti Laporan — hanya untuk yang masuk lewat dialog (bukan link WA) */}
-                                {cameFromPicker && (
-                                    <button
-                                        onClick={openChangeReport}
-                                        className="flex justify-center items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-lg text-sm font-bold transition-all border border-slate-700/50 w-full"
-                                    >
-                                        <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
-                                        GANTI LAPORAN
-                                    </button>
-                                )}
                             </div>
                         </div>
 
@@ -2089,7 +2123,9 @@ function InputShiftPageInner() {
                     </div>
                 </div>
             ) : (
-                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} onChangeReport={cameFromPicker ? openChangeReport : undefined} />
+                // onChangeReport tidak dipass lagi — tombol GANTI LAPORAN kini selalu tampil
+                // di header (untuk yang masuk lewat dialog), jadi tombol internal form redundan.
+                <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} />
             )}
             {/* Dialog "Pilih Laporan" — operator yang buka tanpa station (dari app) */}
             {stationPickerOpen && (

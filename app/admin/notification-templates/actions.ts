@@ -39,9 +39,13 @@ export async function renderTemplatePreview(key: string, overrides: PreviewVars 
     const shiftLabel = shift ? shift.charAt(0).toUpperCase() + shift.slice(1) : 'Pagi';
 
     const isShift = key === 'shift_reminder' || key === 'shift_share';
-    const linkPath = isShift ? '/input-laporan' : '/laporan-harian';
+    // SEMUA link reminder diarahkan ke /input-laporan — samakan PERSIS dengan cron
+    // notify-shift: shift → /input-laporan, harian → /input-laporan?mode=harian.
+    // (Template share tidak memakai {{link}}, jadi var ini tak berdampak di sana.)
     // LINK TETAP/PERMANEN — tanpa tanggal/shift (auto-resolve ke shift/hari berjalan).
-    const link = buildDeepLink(linkPath, {});
+    const link = isShift
+        ? buildDeepLink('/input-laporan', {})
+        : buildDeepLink('/input-laporan', { mode: 'harian' });
 
     // Station links block — hanya relevan untuk reminder, tapi safe untuk semua.
     const links = buildStationLinksBlock(isShift ? 'shift' : 'harian');

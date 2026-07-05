@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     // 4. Pesan ringkas (tanpa isian parameter) + link review/publish harian.
     // LINK TETAP/PERMANEN — tanpa tanggal: auto-resolve ke laporan harian berjalan, supaya
     // Foreman/Supervisor pengganti bisa pakai link review LAMA dari grup WA aslinya.
-    const link = buildDeepLink('/input-shift', { mode: 'harian', review: '1' });
+    const link = buildDeepLink('/input-laporan', { mode: 'harian', review: '1' });
     // LINK TETAP/PERMANEN — tanpa tanggal: /logbook default ke hari ini (todayWIB), supaya
     // link review LAMA dari grup WA tetap mendarat di logbook hari berjalan saat dibuka ulang.
     const logbookLink = buildDeepLink('/logbook', {});

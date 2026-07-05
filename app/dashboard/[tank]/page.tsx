@@ -1,6 +1,8 @@
 'use client';
 
 import { use, useEffect } from 'react';
+import FeatureDisabled from '@/components/ui/FeatureDisabled';
+import { DISABLED_FEATURES } from '@/lib/feature-flags';
 import { useRouter } from 'next/navigation';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import AppHeader from '@/components/ui/AppHeader';
@@ -10,7 +12,13 @@ import { useTankData } from '@/hooks/useTankData';
 import { TANKS, TankId, TANK_IDS } from '@/lib/constants';
 import { getAlertStatus } from '@/lib/utils';
 
-export default function TankDetailPage({ params }: { params: Promise<{ tank: string }> }) {
+export default function TankDetailPage(props: { params: Promise<{ tank: string }> }) {
+    // Fitur nonaktif sementara — komponen asli tidak di-mount (0 query DB).
+    if (DISABLED_FEATURES.dashboard) return <FeatureDisabled name="Dashboard" />;
+    return <TankDetailPageInner {...props} />;
+}
+
+function TankDetailPageInner({ params }: { params: Promise<{ tank: string }> }) {
     const { tank: tankSlug } = use(params);
     const { operator } = useOperator();
     const { currentLevels, history, loadHistory } = useTankData();

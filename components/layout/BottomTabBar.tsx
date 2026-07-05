@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { NAV_ITEMS } from '@/lib/constants';
+import { isPathDisabled } from '@/lib/feature-flags';
 
 // Material icon mapping
 const ICON_MAP: Record<string, string> = {
@@ -26,6 +27,7 @@ export default function BottomTabBar() {
 
     // Show max 5 items in mobile tab bar
     const mobileItems = NAV_ITEMS
+        .filter(item => !isPathDisabled(item.path))
         .filter(item => item.roles === 'all' || item.roles.includes(operator.role))
         .slice(0, 5);
 

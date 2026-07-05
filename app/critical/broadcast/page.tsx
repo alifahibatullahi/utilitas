@@ -1,11 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import FeatureDisabled from '@/components/ui/FeatureDisabled';
+import { DISABLED_FEATURES } from '@/lib/feature-flags';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { listOpenMaintenance, listGroupKeys, OpenMaintenanceRow } from './actions';
 
 export default function MaintenanceBroadcastPage() {
+    // Fitur nonaktif sementara — komponen asli tidak di-mount (0 query DB).
+    if (DISABLED_FEATURES.critical) return <FeatureDisabled name="Broadcast Maintenance" />;
+    return <MaintenanceBroadcastPageInner />;
+}
+
+function MaintenanceBroadcastPageInner() {
     const { operator } = useOperator();
     const router = useRouter();
     const [rows, setRows] = useState<OpenMaintenanceRow[]>([]);

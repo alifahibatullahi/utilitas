@@ -22,7 +22,7 @@ import SearchableSelect from '@/components/ui/SearchableSelect';
 import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
-import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, type OperatorStation } from '@/lib/constants';
+import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, detectDefaultReport, type OperatorStation } from '@/lib/constants';
 
 function getGroupMalamOnDate(dateStr: string): string {
     for (const g of ['A', 'B', 'C', 'D'] as const) {
@@ -90,10 +90,14 @@ export default function InputShiftPage() {
 
 function InputShiftPageInner() {
     const [activeTab, setActiveTab] = useState<TabId>('Boiler A');
-    const [inputMode, setInputMode] = useState<'shift' | 'harian'>('shift');
+    // Default mode/shift/tanggal mengikuti JENDELA PENGISIAN (detectDefaultReport):
+    // 22:30–04:15 → Harian; 04:15–07:00 → Malam; sisanya pagi/sore berjalan.
+    // Bisa di-override oleh URL params di effect resolusi di bawah.
+    const [defaultReport] = useState(() => detectDefaultReport());
+    const [inputMode, setInputMode] = useState<'shift' | 'harian'>(defaultReport.mode);
     const [selectedShift, setSelectedShift] = useState<1 | 2 | 3>(() => {
         const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
-        return map[detectCurrentShift().shift];
+        return map[defaultReport.shift];
     });
     // Selector datar 4 pilihan (malam/pagi/sore/harian) — kontrol komposit di atas
     // inputMode + selectedShift; state internal & format URL lama tidak berubah.
@@ -114,12 +118,9 @@ function InputShiftPageInner() {
         sending: boolean;
     } | null>(null);
 
-    // ENDING convention untuk malam (malam D = submit di hari D). detectCurrentShift handle ini:
-    // - h<7 : malam D=today (shift sedang berjalan, akan submit hari ini)
-    // - h≥7&<15 : pagi D=today
-    // - h≥15&<23 : sore D=today
-    // - h≥23 : malam D=tomorrow (shift baru mulai, submit besok)
-    const [selectedDate, setSelectedDate] = useState<string>(() => detectCurrentShift().date);
+    // Tanggal default ikut defaultReport (ENDING convention malam & rollover 21:00
+    // harian sudah di-handle di detectDefaultReport).
+    const [selectedDate, setSelectedDate] = useState<string>(defaultReport.date);
     const [mounted, setMounted] = useState(false);
     const today = mounted ? todayWIB() : '';
     const isToday = selectedDate === today;
@@ -181,9 +182,11 @@ function InputShiftPageInner() {
         const qDate = searchParams?.get('date');
         const qMode = searchParams?.get('mode');
         const harianMode = qMode === 'harian';
-        // Mode toggle dari URL (always honored kalau di-set)
+        // Mode toggle dari URL (always honored kalau di-set). qShift eksplisit juga
+        // memaksa mode shift — state awal kini bisa 'harian' (detectDefaultReport),
+        // jadi deep-link ?shift=... tanpa ?mode= tetap harus masuk mode shift.
         if (harianMode) setInputMode('harian');
-        else if (qMode === 'shift') setInputMode('shift');
+        else if (qMode === 'shift' || qShift) setInputMode('shift');
 
         // Notif "siap dipublish" mengirim ?review=1 → tandai untuk auto-buka modal
         // Review/Publish setelah report shift/tanggal target ke-load.
@@ -213,9 +216,21 @@ function InputShiftPageInner() {
                 const ROLLOVER_MIN = 21 * 60; // 21:00 WIB (jam lokal browser operator)
                 if (nowH.getHours() * 60 + nowH.getMinutes() < ROLLOVER_MIN) target.setDate(target.getDate() - 1);
                 setSelectedDate(fmtY(target));
+            } else if (!qMode && !station) {
+                // Buka langsung tanpa param apa pun (modal "Pilih Laporan" auto-open)
+                // → default mengikuti jendela pengisian, termasuk mode harian di
+                // rentang 22:30–04:15.
+                const def = detectDefaultReport();
+                const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
+                setInputMode(def.mode);
+                setSelectedShift(map[def.shift]);
+                setSelectedDate(def.date);
             } else {
+                // Link permanen station (WA reminder shift) → tetap shift yang sedang
+                // berjalan; paksa mode shift karena state awal bisa 'harian'.
                 const { shift: nowShift, date: nowDate } = detectCurrentShift();
                 const map: Record<string, 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
+                setInputMode('shift');
                 setSelectedShift(map[nowShift]);
                 setSelectedDate(nowDate);
             }
@@ -335,7 +350,9 @@ function InputShiftPageInner() {
     // jam sibuk pergantian shift — follow-up outage 12 Jun 2026). Hook history yang
     // tidak dipakai station ini di-disable total (enabled=false → tidak ada query).
     const isBoilerStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b'].includes(station);
-    const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift], station);
+    // skipMaintenance: form input tidak menampilkan maintenance/critical — hemat 2 query
+    // per load; halaman /laporan-shift (view) tetap fetch sendiri.
+    const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift], station, { skipMaintenance: true });
     // Deep-link ?review=1 (dari notif "siap dipublish") → navigasi ke halaman
     // Review/Publish begitu report target selesai di-load. Sekali pakai.
     const autoReviewRef = useRef(false);
@@ -506,7 +523,7 @@ function InputShiftPageInner() {
         } else {
             params.set('shift', sel.shift === 1 ? 'malam' : sel.shift === 2 ? 'pagi' : 'sore');
         }
-        router.replace(`/input-shift?${params.toString()}`);
+        router.replace(`/input-laporan?${params.toString()}`);
         setStationPickerOpen(false);
         setPickerManual(false);
     }, [router]);
@@ -598,7 +615,7 @@ function InputShiftPageInner() {
         const originalPushState = history.pushState.bind(history);
         history.pushState = function(state: unknown, title: string, url?: string | URL | null) {
             const targetUrl = url ? String(url) : '';
-            if (!userModifiedRef.current || bypassNavRef.current || !targetUrl || targetUrl.includes('/input-shift')) {
+            if (!userModifiedRef.current || bypassNavRef.current || !targetUrl || targetUrl.includes('/input-laporan')) {
                 originalPushState(state, title, url);
                 return;
             }

@@ -22,7 +22,7 @@ const ICON_MAP: Record<string, string> = {
 
 const CARD_THEMES: Record<string, { iconBg: string; iconText: string; hoverBorder: string }> = {
     'tank-level': { iconBg: 'bg-sky-50', iconText: 'text-sky-500', hoverBorder: 'hover:border-sky-200' },
-    'input-shift': { iconBg: 'bg-emerald-50', iconText: 'text-emerald-500', hoverBorder: 'hover:border-emerald-200' },
+    'input-laporan': { iconBg: 'bg-emerald-50', iconText: 'text-emerald-500', hoverBorder: 'hover:border-emerald-200' },
     'logbook': { iconBg: 'bg-violet-50', iconText: 'text-violet-500', hoverBorder: 'hover:border-violet-200' },
 };
 

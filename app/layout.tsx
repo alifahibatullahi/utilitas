@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { OperatorProvider } from "@/hooks/useOperator";
-import { TankDataProvider } from "@/hooks/useTankData";
 import AppShell from "@/components/layout/AppShell";
 
 const inter = Inter({
@@ -26,12 +25,14 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body className={`${inter.variable} ${inter.className} antialiased bg-bg-dark text-slate-50 min-h-screen`}>
+        {/* TankDataProvider TIDAK lagi di root — dulu SEMUA halaman ikut fetch
+            ~9 query tank + 4 channel realtime + poll 5 menit walau tak memakainya
+            (sumber ±30rb call tank_flow_readings/bulan). Kini provider hanya
+            di layout route yang butuh: /tank-level, /input, /dashboard/[tank]. */}
         <OperatorProvider>
-          <TankDataProvider>
-            <AppShell>
-              {children}
-            </AppShell>
-          </TankDataProvider>
+          <AppShell>
+            {children}
+          </AppShell>
         </OperatorProvider>
       </body>
     </html>

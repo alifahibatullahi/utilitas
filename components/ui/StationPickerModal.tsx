@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     STATION_ORDER,
     STATION_LABELS,
     STATION_SHIFT_TABS,
     STATION_HARIAN_TABS,
+    detectCurrentShift,
+    detectDefaultReport,
     type OperatorStation,
 } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
 
 export interface StationSetupSelection {
     mode: 'shift' | 'harian';
@@ -29,24 +32,45 @@ interface StationPickerModalProps {
 // Pilihan jenis laporan datar: 3 shift + harian dalam satu baris.
 // malam/pagi/sore → mode 'shift' + nomor shift; harian → mode 'harian'.
 const REPORT_CHOICE_INACTIVE = 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50';
-const REPORT_CHOICES: { id: 'malam' | 'pagi' | 'sore' | 'harian'; shift?: 1 | 2 | 3; label: string; icon: string; activeClass: string }[] = [
+const REPORT_CHOICES: { id: 'malam' | 'pagi' | 'sore' | 'harian'; shift?: 1 | 2 | 3; label: string; time: string; icon: string; activeClass: string }[] = [
     {
-        id: 'malam', shift: 1, label: 'Malam', icon: 'bedtime',
+        id: 'malam', shift: 1, label: 'Malam', time: '23.00–07.00', icon: 'bedtime',
         activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 border-indigo-500/40',
     },
     {
-        id: 'pagi', shift: 2, label: 'Pagi', icon: 'light_mode',
+        id: 'pagi', shift: 2, label: 'Pagi', time: '07.00–15.00', icon: 'light_mode',
         activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-md shadow-amber-500/20 border-amber-400/40',
     },
     {
-        id: 'sore', shift: 3, label: 'Sore', icon: 'wb_twilight',
+        id: 'sore', shift: 3, label: 'Sore', time: '15.00–23.00', icon: 'wb_twilight',
         activeClass: 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-md shadow-orange-500/20 border-orange-500/40',
     },
     {
-        id: 'harian', label: 'Harian', icon: 'today',
+        id: 'harian', label: 'Harian', time: 'Rekap 24 jam', icon: 'today',
         activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/20 border-emerald-500/40',
     },
 ];
+
+const SHIFT_NUM: Record<'malam' | 'pagi' | 'sore', 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
+const SHIFT_LABEL: Record<1 | 2 | 3, string> = { 1: 'Malam', 2: 'Pagi', 3: 'Sore' };
+
+// Format YYYY-MM-DD → "Sabtu, 5 Juli 2026" (kosong bila format tidak valid).
+function fmtDateID(d: string): string {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return '';
+    return new Date(d + 'T00:00:00').toLocaleDateString('id-ID', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+}
+
+// Tanggal laporan harian yang seharusnya diisi sekarang — rollover 21:00,
+// mengikuti logika default harian di app/input-shift/page.tsx.
+function harianExpectedToday(): string {
+    const now = new Date();
+    const target = new Date(now);
+    if (now.getHours() * 60 + now.getMinutes() < 21 * 60) target.setDate(target.getDate() - 1);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
+}
 
 // Custom icons and color themes for each operator station
 const STATION_THEMES: Record<
@@ -139,15 +163,56 @@ export default function StationPickerModal({
     const [date, setDate] = useState(initialDate);
     const [shift, setShift] = useState<1 | 2 | 3>(initialShift);
 
+    // Shift & tanggal yang sedang berlangsung — dihitung sekali saat modal dibuka.
+    // Aman dari hydration mismatch: modal hanya dirender client-side setelah mounted.
+    const [current] = useState(() => detectCurrentShift());
+    const [harianExpected] = useState(() => harianExpectedToday());
+    const currentShiftNum = SHIFT_NUM[current.shift];
+    // Laporan yang WAKTUNYA DIISI sekarang (jendela pengisian): badge "Sekarang"
+    // menempel di sini — pada 22:30–04:15 jatuh ke Harian, bukan shift malam
+    // (laporan malam baru bisa diisi mulai 04:15).
+    const [defaultRep] = useState(() => detectDefaultReport());
+
+    // Penanda pasif bila pilihan menyimpang dari waktu sekarang (shift ATAU tanggal).
+    const mismatch = mode === 'shift'
+        ? shift !== currentShiftNum || date !== current.date
+        : date !== harianExpected;
+    const resetToNow = () => {
+        setMode(defaultRep.mode);
+        setShift(SHIFT_NUM[defaultRep.shift]);
+        setDate(defaultRep.date);
+    };
+
     const tabsMap = mode === 'shift' ? STATION_SHIFT_TABS : STATION_HARIAN_TABS;
     const stations = STATION_ORDER.filter((s) => tabsMap[s].length > 0);
 
+    // Station yang sudah mengisi laporan (mode/tanggal/shift terpilih) — dibaca dari
+    // station_fillers JSONB (di-merge atomik via RPC tiap kali operator menyimpan
+    // dari station view). Dipakai untuk penanda hijau + centang di grid station.
+    const [filledStations, setFilledStations] = useState<Set<string>>(new Set());
+    useEffect(() => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setFilledStations(new Set()); return; }
+        let stale = false;
+        const supabase = createClient();
+        const query = mode === 'harian'
+            ? supabase.from('daily_reports').select('station_fillers').eq('date', date)
+                .order('created_at', { ascending: false }).limit(1).maybeSingle()
+            : supabase.from('shift_reports').select('station_fillers').eq('date', date)
+                .eq('shift', (['malam', 'pagi', 'sore'] as const)[shift - 1]) // kolom shift = enum shift_type
+                .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        query.then(({ data }) => {
+            if (stale) return;
+            const sf = ((data as { station_fillers?: Record<string, string> | null } | null)?.station_fillers) ?? {};
+            const keys = new Set(Object.keys(sf));
+            // Key legacy panel penuh menandai kedua panel boiler.
+            if (keys.has('panel_boiler')) { keys.add('panel_boiler_a'); keys.add('panel_boiler_b'); }
+            setFilledStations(keys);
+        });
+        return () => { stale = true; };
+    }, [mode, date, shift]);
+
     // Tampilan tanggal format Indonesia
-    const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(date)
-        ? new Date(date + 'T00:00:00').toLocaleDateString('id-ID', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-        })
-        : '';
+    const dateLabel = fmtDateID(date);
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
@@ -186,6 +251,11 @@ export default function StationPickerModal({
                         <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-850 gap-1.5 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
                             {REPORT_CHOICES.map((c) => {
                                 const active = mode === 'harian' ? c.id === 'harian' : c.shift === shift;
+                                // Badge "Sekarang" = laporan yang waktunya diisi saat ini
+                                // (22:30–04:15 jatuh ke Harian, bukan shift malam).
+                                const isNow = defaultRep.mode === 'harian'
+                                    ? c.id === 'harian'
+                                    : c.shift === SHIFT_NUM[defaultRep.shift];
                                 return (
                                     <button
                                         key={c.id}
@@ -195,11 +265,22 @@ export default function StationPickerModal({
                                             setMode('shift');
                                             setShift(c.shift!);
                                         }}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] border border-transparent
+                                        className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 sm:px-2 py-2 rounded-xl text-[11px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] border border-transparent
                                             ${active ? c.activeClass : REPORT_CHOICE_INACTIVE}`}
                                     >
-                                        <span className="material-symbols-outlined text-sm">{c.icon}</span>
-                                        <span>{c.label}</span>
+                                        {isNow && (
+                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-500 px-1.5 py-[1px] text-[8px] font-black text-white normal-case tracking-normal whitespace-nowrap shadow-md shadow-emerald-500/30 pointer-events-none">
+                                                <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+                                                Sekarang
+                                            </span>
+                                        )}
+                                        <span className="flex items-center justify-center gap-1.5">
+                                            <span className="material-symbols-outlined text-sm">{c.icon}</span>
+                                            <span>{c.label}</span>
+                                        </span>
+                                        <span className="text-[8px] sm:text-[9px] font-semibold normal-case tracking-normal opacity-70 whitespace-nowrap">
+                                            {c.time}
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -228,6 +309,27 @@ export default function StationPickerModal({
                                 <span className="material-symbols-outlined text-slate-400 text-[18px]">calendar_today</span>
                             </div>
                         </div>
+
+                        {/* Hint pasif: pilihan menyimpang dari shift/tanggal yang sedang berlangsung */}
+                        {mismatch && (
+                            <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 animate-in fade-in duration-200">
+                                <span className="material-symbols-outlined text-amber-400 text-[16px] mt-[1px]">warning</span>
+                                <p className="text-[11px] text-amber-200/90 font-medium leading-relaxed">
+                                    {mode === 'shift' ? (
+                                        <>Saat ini sedang berlangsung <b>Shift {SHIFT_LABEL[currentShiftNum]}</b> — laporan {fmtDateID(current.date)}. Pastikan pilihanmu sudah benar.</>
+                                    ) : (
+                                        <>Laporan harian yang seharusnya diisi sekarang adalah laporan <b>{fmtDateID(harianExpected)}</b>. Pastikan pilihanmu sudah benar.</>
+                                    )}{' '}
+                                    <button
+                                        type="button"
+                                        onClick={resetToNow}
+                                        className="text-amber-300 font-bold underline underline-offset-2 hover:text-amber-100 transition-colors cursor-pointer"
+                                    >
+                                        Gunakan waktu sekarang
+                                    </button>
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Step 3: Station Grid */}
@@ -245,35 +347,33 @@ export default function StationPickerModal({
                                     textActive: 'text-blue-400',
                                     iconBg: 'bg-blue-500/10'
                                 };
-                                const activeTabs = tabsMap[s];
+                                const isFilled = filledStations.has(s);
 
                                 return (
                                     <button
                                         key={s}
                                         type="button"
                                         onClick={() => onConfirm({ mode, date, shift, station: s })}
-                                        className={`group flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 hover:bg-slate-850/60 p-3 text-left text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${theme.borderHover} ${theme.glow}`}
+                                        className={`group flex items-center gap-3 rounded-2xl border p-3 text-left text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer
+                                            ${isFilled
+                                                ? 'border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/15 hover:border-emerald-400/60'
+                                                : `border-slate-800 bg-slate-900/40 hover:bg-slate-850/60 ${theme.borderHover} ${theme.glow}`}`}
                                     >
                                         <div className={`flex items-center justify-center p-2 rounded-xl ${theme.iconBg} ${theme.color} transition-all duration-300 group-hover:scale-110 shrink-0`}>
                                             <span className="material-symbols-outlined text-lg">{theme.icon}</span>
                                         </div>
-                                        <div className="min-w-0 flex-1 self-center">
-                                            <h4 className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors tracking-wide leading-tight">
-                                                {STATION_LABELS[s]}
-                                            </h4>
-                                            {activeTabs.length > 0 ? (
-                                                <p className="text-[10px] text-slate-500 group-hover:text-slate-400/80 font-medium tracking-wide mt-0.5 truncate transition-colors">
-                                                    {activeTabs.join(' • ')}
-                                                </p>
-                                            ) : (
-                                                <p className="text-[9px] text-slate-600 font-medium italic mt-0.5">
-                                                    Tidak ada input
-                                                </p>
-                                            )}
-                                        </div>
-                                        <span className="material-symbols-outlined text-slate-600 group-hover:text-slate-400 text-xs self-center transition-colors shrink-0">
-                                            arrow_forward_ios
-                                        </span>
+                                        <h4 className={`min-w-0 flex-1 text-xs font-bold tracking-wide leading-tight transition-colors ${isFilled ? 'text-emerald-300 group-hover:text-emerald-200' : 'text-slate-200 group-hover:text-white'}`}>
+                                            {STATION_LABELS[s]}
+                                        </h4>
+                                        {isFilled ? (
+                                            <span className="material-symbols-outlined text-emerald-400 text-lg shrink-0" aria-label="Sudah diisi">
+                                                check_circle
+                                            </span>
+                                        ) : (
+                                            <span className="material-symbols-outlined text-slate-600 group-hover:text-slate-400 text-xs transition-colors shrink-0">
+                                                arrow_forward_ios
+                                            </span>
+                                        )}
                                     </button>
                                 );
                             })}

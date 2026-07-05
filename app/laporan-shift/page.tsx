@@ -458,7 +458,7 @@ export default function LaporanShiftPage() {
                         Belum ada laporan shift {SHIFT_LABELS[activeShift]} untuk tanggal {dateFormatted}.
                         <br />Silakan input laporan terlebih dahulu di menu <strong>Input Laporan</strong>.
                     </p>
-                    <button onClick={() => router.push('/input-shift')}
+                    <button onClick={() => router.push('/input-laporan')}
                         className="mt-2 px-5 py-2.5 bg-primary hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(43,124,238,0.3)]">
                         <span className="material-symbols-outlined text-lg">edit_note</span>
                         Input Laporan

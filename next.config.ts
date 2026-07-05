@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // URL lama /input-shift TETAP TERPAKAI selamanya — link permanen reminder WA
+  // yang sudah terkirim ke HP operator memuat /input-shift?station=... Redirect
+  // permanen meneruskan query param otomatis ke route baru /input-laporan.
+  async redirects() {
+    return [
+      { source: '/input-shift', destination: '/input-laporan', permanent: true },
+    ];
+  },
   images: {
     remotePatterns: [
       // Cloudflare R2 default public URLs (pub-*.r2.dev)

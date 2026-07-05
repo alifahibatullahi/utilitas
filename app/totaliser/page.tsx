@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import FeatureDisabled from '@/components/ui/FeatureDisabled';
+import { DISABLED_FEATURES } from '@/lib/feature-flags';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/ui/AppHeader';
 import Toast from '@/components/ui/Toast';
@@ -32,6 +34,12 @@ const dummyRecords: TotaliserRecord[] = [
 ];
 
 export default function TotaliserPage() {
+    // Fitur nonaktif sementara — komponen asli tidak di-mount (0 query DB).
+    if (DISABLED_FEATURES.totaliser) return <FeatureDisabled name="Totaliser" />;
+    return <TotaliserPageInner />;
+}
+
+function TotaliserPageInner() {
     const { operator, isHandling } = useOperator();
     const router = useRouter();
 

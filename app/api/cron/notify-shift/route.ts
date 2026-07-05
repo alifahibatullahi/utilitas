@@ -190,11 +190,11 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
     // shift/hari yang sedang berjalan. Supaya operator pengganti (tukar shift) bisa pakai
     // link reminder LAMA dari grup WA aslinya & tetap mendarat di laporan yang aktif.
     // Single general link (back-compat untuk template lama yang masih pakai {{link}})
-    // Harian: form input harian dimount di /input-shift via ?mode=harian (page auto-resolve
+    // Harian: form input harian dimount di /input-laporan via ?mode=harian (page auto-resolve
     // tanggal LHUBB berjalan dgn rollover 21:00). JANGAN ke /laporan-harian (halaman view).
     const link = isShift
-        ? buildDeepLink('/input-shift', {})
-        : buildDeepLink('/input-shift', { mode: 'harian' });
+        ? buildDeepLink('/input-laporan', {})
+        : buildDeepLink('/input-laporan', { mode: 'harian' });
     // Multi-station links block — template baru pakai {{links}} untuk menampilkan
     // 1 link per operator station.
     const links = buildStationLinksBlock(isShift ? 'shift' : 'harian');

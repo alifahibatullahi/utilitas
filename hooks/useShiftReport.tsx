@@ -674,7 +674,16 @@ function buildShiftReportSelect(station: OperatorStation | null): string {
     return ['*', ...children.map(t => `${t}(*)`)].join(', ');
 }
 
-export function useShiftReport(date: string, shift: ShiftType, station: OperatorStation | null = null) {
+export function useShiftReport(
+    date: string,
+    shift: ShiftType,
+    station: OperatorStation | null = null,
+    // skipMaintenance: lewati query maintenance_logs & critical_equipment (2 query/load).
+    // Dipakai halaman INPUT laporan — form tidak menampilkan keduanya; halaman
+    // /laporan-shift (view/publish) tetap fetch karena menampilkan aktivitas maintenance.
+    opts: { skipMaintenance?: boolean } = {},
+) {
+    const skipMaintenance = opts.skipMaintenance ?? false;
     const [report, setReport] = useState<ShiftReportData | null>(null);
     const [activeMaintenance, setActiveMaintenance] = useState<import('@/lib/supabase/types').MaintenanceWithCritical[]>([]);
     const [openCriticals, setOpenCriticals] = useState<import('@/lib/supabase/types').CriticalEquipmentRow[]>([]);
@@ -713,6 +722,7 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
             // Mode station: hanya join tabel milik station + skip query maintenance/critical
             // (tidak ada tab station yang menampilkannya) — hemat beban DB saat jam sibuk.
             const stationScoped = !!station && station in STATION_OWNS_TABLES;
+            const skipMaint = stationScoped || skipMaintenance;
             const emptyRes = Promise.resolve({ data: null, error: null });
 
             // Filter timestamp-based: maintenance status IP/OK dengan updated_at di dalam window shift
@@ -725,14 +735,14 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
                     .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle(),
-                stationScoped ? emptyRes : supabase
+                skipMaint ? emptyRes : supabase
                     .from('maintenance_logs')
                     .select('*, critical_equipment(item, deskripsi)')
                     .in('status', ['IP', 'OK'])
                     .gte('updated_at', winStart)
                     .lte('updated_at', winEnd)
                     .order('created_at', { ascending: true }),
-                stationScoped ? emptyRes : supabase
+                skipMaint ? emptyRes : supabase
                     .from('critical_equipment')
                     .select('*')
                     .eq('status', 'OPEN')
@@ -793,7 +803,7 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
         fetchReport();
 
         return () => { stale = true; };
-    }, [date, shift, fetchKey, station]);
+    }, [date, shift, fetchKey, station, skipMaintenance]);
 
     // Valid DB columns per table (prevents unknown column errors)
     const VALID_COLS: Record<string, string[]> = {
@@ -1187,98 +1197,110 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
             }
         }
 
-        // Save boiler A & B (delete by boiler id, then insert)
+        // ─── Simpan semua child table PARALEL ───
+        // Tiap tabel independen (baris/kolom berbeda per shift_report_id) sehingga aman
+        // berjalan bersamaan. Logika MERGE/partial/race-retry per tabel TIDAK berubah —
+        // tetap UPDATE-merge, bukan DELETE+INSERT. Paralel memangkas ~10 roundtrip
+        // berurutan menjadi selebar tabel terlama; penting saat banyak operator submit
+        // bersamaan di pergantian shift.
+        const childOps: Promise<void>[] = [];
+
+        // Save boiler A & B (satu op: A lalu B berurutan karena satu tabel yang sama)
         if (canWriteTable('shift_boiler')) {
-            // Filter row level — panel_boiler_a hanya tulis row A, panel_boiler_b hanya row B.
-            const allowedBoilers: ('A' | 'B')[] = isStationScoped
-                ? (STATION_OWNS_BOILER_ROW[stationKey!] ?? ['A', 'B'])
-                : ['A', 'B'];
-            for (const [boilerId, boilerData] of [['A', reportData.boilerA], ['B', reportData.boilerB]] as [('A' | 'B'), Record<string, number | string | null> | undefined][]) {
-                if (!allowedBoilers.includes(boilerId)) continue;
-                if (boilerData && Object.keys(boilerData).length > 0) {
-                    const filtered = pickValidCols('shift_boiler', boilerData as Record<string, unknown>);
-                    if (Object.keys(filtered).length > 0) {
-                        // MERGE seperti saveChild — jangan DELETE+INSERT supaya simpan
-                        // sparse (form belum termuat penuh) tidak menghapus field lain.
-                        const { data: exRows } = await supabase.from('shift_boiler').select('id')
-                            .eq('shift_report_id', reportId).eq('boiler', boilerId);
-                        if (exRows && exRows.length > 0) {
-                            const keepId = (exRows[0] as { id: string }).id;
-                            if (exRows.length > 1) {
-                                await supabase.from('shift_boiler').delete()
-                                    .eq('shift_report_id', reportId).eq('boiler', boilerId).neq('id', keepId);
-                            }
-                            const { error: bErr } = await supabase.from('shift_boiler')
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                .update(filtered as any).eq('id', keepId);
-                            if (bErr) {
-                                console.error(`[submitReport] UPDATE shift_boiler ${boilerId} error:`, bErr.message);
-                                errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
+            childOps.push((async () => {
+                // Filter row level — panel_boiler_a hanya tulis row A, panel_boiler_b hanya row B.
+                const allowedBoilers: ('A' | 'B')[] = isStationScoped
+                    ? (STATION_OWNS_BOILER_ROW[stationKey!] ?? ['A', 'B'])
+                    : ['A', 'B'];
+                for (const [boilerId, boilerData] of [['A', reportData.boilerA], ['B', reportData.boilerB]] as [('A' | 'B'), Record<string, number | string | null> | undefined][]) {
+                    if (!allowedBoilers.includes(boilerId)) continue;
+                    if (boilerData && Object.keys(boilerData).length > 0) {
+                        const filtered = pickValidCols('shift_boiler', boilerData as Record<string, unknown>);
+                        if (Object.keys(filtered).length > 0) {
+                            // MERGE seperti saveChild — jangan DELETE+INSERT supaya simpan
+                            // sparse (form belum termuat penuh) tidak menghapus field lain.
+                            const { data: exRows } = await supabase.from('shift_boiler').select('id')
+                                .eq('shift_report_id', reportId).eq('boiler', boilerId);
+                            if (exRows && exRows.length > 0) {
+                                const keepId = (exRows[0] as { id: string }).id;
+                                if (exRows.length > 1) {
+                                    await supabase.from('shift_boiler').delete()
+                                        .eq('shift_report_id', reportId).eq('boiler', boilerId).neq('id', keepId);
+                                }
+                                const { error: bErr } = await supabase.from('shift_boiler')
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    .update(filtered as any).eq('id', keepId);
+                                if (bErr) {
+                                    console.error(`[submitReport] UPDATE shift_boiler ${boilerId} error:`, bErr.message);
+                                    errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
+                                } else {
+                                    console.log(`[submitReport] shift_boiler ${boilerId} updated OK, id=${keepId}`);
+                                }
                             } else {
-                                console.log(`[submitReport] shift_boiler ${boilerId} updated OK, id=${keepId}`);
-                            }
-                        } else {
-                            const { data: ins, error: bErr } = await supabase.from('shift_boiler')
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                .insert({ shift_report_id: reportId, boiler: boilerId, ...filtered } as any)
-                                .select();
-                            if (bErr) {
-                                console.error(`[submitReport] INSERT shift_boiler ${boilerId} error:`, bErr.message);
-                                errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
-                            } else {
-                                console.log(`[submitReport] shift_boiler ${boilerId} saved OK, id=${(ins as Record<string, unknown>[])?.[0]?.id}`);
+                                const { data: ins, error: bErr } = await supabase.from('shift_boiler')
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    .insert({ shift_report_id: reportId, boiler: boilerId, ...filtered } as any)
+                                    .select();
+                                if (bErr) {
+                                    console.error(`[submitReport] INSERT shift_boiler ${boilerId} error:`, bErr.message);
+                                    errors.push(`shift_boiler_${boilerId}: ${bErr.message}`);
+                                } else {
+                                    console.log(`[submitReport] shift_boiler ${boilerId} saved OK, id=${(ins as Record<string, unknown>[])?.[0]?.id}`);
+                                }
                             }
                         }
                     }
                 }
-            }
+            })());
         }
 
-        // Save all other child tables (gated by station scope)
+        // Child tables lain (tetap di-gate station scope)
         if (canWriteTable('shift_turbin') && reportData.turbin && Object.keys(reportData.turbin).length > 0) {
-            await saveChild('shift_turbin', reportData.turbin);
+            childOps.push(saveChild('shift_turbin', reportData.turbin));
         }
         if (canWriteTable('shift_steam_dist') && reportData.steamDist && Object.keys(reportData.steamDist).length > 0) {
-            await saveChild('shift_steam_dist', reportData.steamDist);
+            childOps.push(saveChild('shift_steam_dist', reportData.steamDist));
         }
         if (canWriteTable('shift_generator_gi') && reportData.generatorGi && Object.keys(reportData.generatorGi).length > 0) {
-            await saveChild('shift_generator_gi', reportData.generatorGi);
+            childOps.push(saveChild('shift_generator_gi', reportData.generatorGi));
         }
         if (canWriteTable('shift_power_dist') && reportData.powerDist && Object.keys(reportData.powerDist).length > 0) {
-            await saveChild('shift_power_dist', reportData.powerDist);
+            childOps.push(saveChild('shift_power_dist', reportData.powerDist));
         }
         if (canWriteTable('shift_esp_handling') && reportData.espHandling && Object.keys(reportData.espHandling).length > 0) {
             const partial = getPartialCols('shift_esp_handling');
             if (partial) {
                 // handling/esp station → partial column update (jangan overwrite kolom milik station lain).
-                await savePartialChild('shift_esp_handling', reportData.espHandling as Record<string, unknown>, partial);
+                childOps.push(savePartialChild('shift_esp_handling', reportData.espHandling as Record<string, unknown>, partial));
             } else {
-                await saveChild('shift_esp_handling', reportData.espHandling as Record<string, unknown>);
+                childOps.push(saveChild('shift_esp_handling', reportData.espHandling as Record<string, unknown>));
             }
         }
         if (canWriteTable('shift_tankyard') && reportData.tankyard && Object.keys(reportData.tankyard).length > 0) {
-            await saveChild('shift_tankyard', reportData.tankyard);
+            childOps.push((async () => {
+                await saveChild('shift_tankyard', reportData.tankyard!);
 
-            // Sync tankyard data to tank_levels for real-time monitoring
-            const ty = reportData.tankyard;
-            const tankMappings: { tank_id: string; value: number | null; capacity_m3: number }[] = [
-                { tank_id: 'DEMIN', value: ty.tk_demin ?? null, capacity_m3: 1250 },
-                { tank_id: 'RCW', value: ty.tk_rcw ?? null, capacity_m3: 5000 },
-                { tank_id: 'SOLAR', value: ty.tk_solar_ab ?? null, capacity_m3: 200 },
-            ];
-            for (const { tank_id, value, capacity_m3 } of tankMappings) {
-                if (value != null) {
-                    const level_m3 = Number(value);
-                    const level_pct = Math.min(100, Math.max(0, (level_m3 / capacity_m3) * 100));
-                    await supabase.from('tank_levels').insert({
-                        tank_id,
-                        level_pct,
-                        level_m3,
-                        operator_name: 'Laporan Shift',
-                        note: null,
-                    } as Record<string, unknown>);
+                // Sync tankyard data to tank_levels for real-time monitoring
+                const ty = reportData.tankyard!;
+                const tankMappings: { tank_id: string; value: number | null; capacity_m3: number }[] = [
+                    { tank_id: 'DEMIN', value: ty.tk_demin ?? null, capacity_m3: 1250 },
+                    { tank_id: 'RCW', value: ty.tk_rcw ?? null, capacity_m3: 5000 },
+                    { tank_id: 'SOLAR', value: ty.tk_solar_ab ?? null, capacity_m3: 200 },
+                ];
+                for (const { tank_id, value, capacity_m3 } of tankMappings) {
+                    if (value != null) {
+                        const level_m3 = Number(value);
+                        const level_pct = Math.min(100, Math.max(0, (level_m3 / capacity_m3) * 100));
+                        await supabase.from('tank_levels').insert({
+                            tank_id,
+                            level_pct,
+                            level_m3,
+                            operator_name: 'Laporan Shift',
+                            note: null,
+                        } as Record<string, unknown>);
+                    }
                 }
-            }
+            })());
         }
         // shift_personnel = data grup/foreman/supervisor. Form penuh menulis semua kolom;
         // station panel menulis subset miliknya saja (turbin_* utk panel_turbin,
@@ -1286,9 +1308,9 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
         if (canWriteTable('shift_personnel') && reportData.personnel && Object.keys(reportData.personnel).length > 0) {
             const partial = getPartialCols('shift_personnel');
             if (partial) {
-                await savePartialChild('shift_personnel', reportData.personnel as Record<string, unknown>, partial);
+                childOps.push(savePartialChild('shift_personnel', reportData.personnel as Record<string, unknown>, partial));
             } else {
-                await saveChild('shift_personnel', reportData.personnel as Record<string, unknown>);
+                childOps.push(saveChild('shift_personnel', reportData.personnel as Record<string, unknown>));
             }
         }
         if (canWriteTable('shift_coal_bunker') && reportData.coalBunker && Object.keys(reportData.coalBunker).length > 0) {
@@ -1296,14 +1318,16 @@ export function useShiftReport(date: string, shift: ShiftType, station: Operator
             if (partial) {
                 // panel_boiler_a/b + bunker share shift_coal_bunker → partial column update
                 // (mereka tulis kolom berbeda: feeder A/B/C, feeder D/E/F, level + status).
-                await savePartialChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>, partial);
+                childOps.push(savePartialChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>, partial));
             } else {
-                await saveChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>);
+                childOps.push(saveChild('shift_coal_bunker', reportData.coalBunker as Record<string, unknown>));
             }
         }
         if (canWriteTable('shift_water_quality') && reportData.waterQuality && Object.keys(reportData.waterQuality).length > 0) {
-            await saveChild('shift_water_quality', reportData.waterQuality);
+            childOps.push(saveChild('shift_water_quality', reportData.waterQuality));
         }
+
+        await Promise.all(childOps);
 
         // Verification: query back to confirm all child data was written
         const { data: verify } = await supabase

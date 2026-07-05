@@ -400,7 +400,7 @@ export const STATION_ORDER: OperatorStation[] = [
 export const NAV_ITEMS: NavItem[] = [
     { id: 'home', label: 'Home', icon: 'home', path: '/home', roles: 'all' },
     { id: 'tank-level', label: 'Tank Level', icon: 'tank', path: '/tank-level', roles: 'all' },
-    { id: 'input-shift', label: 'Input Laporan', icon: 'edit', path: '/input-shift', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'] },
+    { id: 'input-laporan', label: 'Input Laporan', icon: 'edit', path: '/input-laporan', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'] },
     { id: 'critical', label: 'Critical & Maint', icon: 'warning', path: '/critical', roles: 'all' },
     { id: 'laporan-shift', label: 'Laporan Shift', icon: 'report', path: '/laporan-shift', roles: 'all' },
     { id: 'laporan-harian', label: 'Laporan Harian', icon: 'daily', path: '/laporan-harian', roles: 'all' },
@@ -420,7 +420,7 @@ export interface HomeMenuItem extends NavItem {
 // menu lain menyusul saat sudah siap dipakai.
 export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     { id: 'tank-level', label: 'Tank Level', description: 'Monitoring level tangki DEMIN, RCW & Solar', icon: 'tank', path: '/tank-level', roles: 'all', featured: true },
-    { id: 'input-shift', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-shift', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'], featured: true },
+    { id: 'input-laporan', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-laporan', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'], featured: true },
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
 ];
 
@@ -506,6 +506,28 @@ export function detectCurrentShift(): { shift: ShiftKey; date: string } {
     if (h < 7) return { shift: 'malam', date: fmt(now) };
     const next = new Date(now); next.setDate(next.getDate() + 1);
     return { shift: 'malam', date: fmt(next) };
+}
+
+// Laporan yang WAKTUNYA DIISI sekarang — mengikuti jendela pengisian, bukan
+// sekadar shift yang sedang berjalan. Beda tipis dengan detectCurrentShift pada
+// malam hari: laporan harian bisa diisi 22:30–07:00, sedangkan laporan shift
+// malam baru bisa diisi mulai 04:15. Partisi waktu:
+//   22:30–04:15 → Harian (tanggal rollover 21:00: sebelum 21:00 = kemarin)
+//   04:15–07:00 → Shift Malam (ENDING: tanggal hari ini)
+//   07:00–15:00 → Shift Pagi   |   15:00–22:30 → Shift Sore
+// Dipakai untuk default pilihan di dialog "Pilih Laporan" & state awal input-shift.
+export function detectDefaultReport(): { mode: 'shift' | 'harian'; shift: ShiftKey; date: string } {
+    const now = new Date();
+    const min = now.getHours() * 60 + now.getMinutes();
+    if (min >= 22 * 60 + 30 || min < 4 * 60 + 15) {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const target = new Date(now);
+        if (min < 21 * 60) target.setDate(target.getDate() - 1);
+        const date = `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
+        return { mode: 'harian', shift: detectCurrentShift().shift, date };
+    }
+    const cur = detectCurrentShift();
+    return { mode: 'shift', shift: cur.shift, date: cur.date };
 }
 
 export const KANBAN_COLUMNS = [

@@ -1,6 +1,8 @@
 'use client';
 
 import { useOperator } from '@/hooks/useOperator';
+import FeatureDisabled from '@/components/ui/FeatureDisabled';
+import { DISABLED_FEATURES } from '@/lib/feature-flags';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getCurrentShift, SHIFTS } from '@/lib/constants';
@@ -310,6 +312,12 @@ function SteamDistribution() {
 
 // ─── Dashboard Page ───
 export default function DashboardPage() {
+    // Fitur nonaktif sementara — komponen asli tidak di-mount (0 query DB).
+    if (DISABLED_FEATURES.dashboard) return <FeatureDisabled name="Dashboard" />;
+    return <DashboardPageInner />;
+}
+
+function DashboardPageInner() {
     const { operator } = useOperator();
     const router = useRouter();
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -404,7 +412,7 @@ export default function DashboardPage() {
                 <div className="lg:col-span-2 bg-surface-dark border border-slate-800 hover:border-slate-600 rounded-xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
                     <p className="text-sm font-medium text-text-secondary mb-3">Quick Actions</p>
                     <div className="flex flex-wrap gap-3">
-                        <button onClick={() => router.push('/input-shift')} className="flex-1 min-w-[140px] bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/40 hover:border-primary px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5">
+                        <button onClick={() => router.push('/input-laporan')} className="flex-1 min-w-[140px] bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/40 hover:border-primary px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5">
                             <span className="material-symbols-outlined">edit_square</span>
                             Input Laporan
                         </button>

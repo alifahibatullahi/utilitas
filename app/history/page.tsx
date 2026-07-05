@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import FeatureDisabled from '@/components/ui/FeatureDisabled';
+import { DISABLED_FEATURES } from '@/lib/feature-flags';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useOperator } from '@/hooks/useOperator';
@@ -139,6 +141,12 @@ function CustomDropdown({ value, onChange }: CustomDropdownProps) {
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function HistoryPage() {
+    // Fitur nonaktif sementara — komponen asli tidak di-mount (0 query DB).
+    if (DISABLED_FEATURES.history) return <FeatureDisabled name="History Data" />;
+    return <HistoryPageInner />;
+}
+
+function HistoryPageInner() {
     const { operator, loading: operatorLoading } = useOperator();
     const router = useRouter();
 

@@ -97,10 +97,10 @@ export async function POST(req: NextRequest) {
     const groupKey = `shift_${groupLetter.toLowerCase()}`;
 
     // 4. Susun pesan ringkas parameter washift + link review/publish.
-    // review=1 → halaman input-shift auto-buka modal Review/Publish untuk Foreman/Supervisor.
+    // review=1 → halaman input-laporan auto-buka modal Review/Publish untuk Foreman/Supervisor.
     // LINK TETAP/PERMANEN — tanpa tanggal/shift: auto-resolve ke shift berjalan, supaya
     // Foreman/Supervisor pengganti bisa pakai link review LAMA dari grup WA aslinya.
-    const link = buildDeepLink('/input-shift', { review: '1' });
+    const link = buildDeepLink('/input-laporan', { review: '1' });
     // LINK TETAP/PERMANEN — tanpa tanggal: /logbook default ke hari ini (todayWIB), supaya
     // link review LAMA dari grup WA tetap mendarat di logbook hari berjalan saat dibuka ulang.
     const logbookLink = buildDeepLink('/logbook', {});

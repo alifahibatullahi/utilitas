@@ -39,7 +39,7 @@ export async function renderTemplatePreview(key: string, overrides: PreviewVars 
     const shiftLabel = shift ? shift.charAt(0).toUpperCase() + shift.slice(1) : 'Pagi';
 
     const isShift = key === 'shift_reminder' || key === 'shift_share';
-    const linkPath = isShift ? '/input-shift' : '/laporan-harian';
+    const linkPath = isShift ? '/input-laporan' : '/laporan-harian';
     // LINK TETAP/PERMANEN — tanpa tanggal/shift (auto-resolve ke shift/hari berjalan).
     const link = buildDeepLink(linkPath, {});
 

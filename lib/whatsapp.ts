@@ -380,7 +380,7 @@ export function buildOperasiParams(report: any, tankLevels?: { rcw: number | nul
 
 // Fallback domain produksi — dipakai HANYA kalau NEXT_PUBLIC_APP_URL kosong/hilang
 // di server (mis. env Vercel belum di-set). Tujuannya: link di pesan WA SELALU absolut
-// (https://...) supaya tetap jadi tombol clickable; URL relatif (/input-shift?...) TIDAK
+// (https://...) supaya tetap jadi tombol clickable; URL relatif (/input-laporan?...) TIDAK
 // di-linkify oleh WhatsApp.
 const APP_URL_FALLBACK = 'https://utilitas.vercel.app';
 
@@ -402,13 +402,14 @@ export function buildStationLinksBlock(
     mode: 'shift' | 'harian',
 ): string {
     const tabsMap = mode === 'shift' ? STATION_SHIFT_TABS : STATION_HARIAN_TABS;
-    // Form harian dimount di halaman /input-shift via mode toggle, jadi link harian
-    // tetap pakai path /input-shift dengan param ?mode=harian.
-    const path = '/input-shift';
+    // Form harian dimount di halaman /input-laporan via mode toggle, jadi link harian
+    // tetap pakai path /input-laporan dengan param ?mode=harian. (Link lama /input-shift
+    // yang sudah tersebar tetap hidup via redirect permanen di next.config.)
+    const path = '/input-laporan';
     const modeLabel = mode === 'shift' ? 'Laporan shift' : 'Laporan harian';
 
     // LINK TETAP/PERMANEN: tidak menyertakan tanggal/shift. Saat dibuka, halaman
-    // /input-shift auto-resolve ke shift/hari "saat ini" (lihat detectCurrentShift +
+    // /input-laporan auto-resolve ke shift/hari "saat ini" (lihat detectCurrentShift +
     // logika resolusi di page). Tujuannya: operator pengganti (tukar shift) yang tidak
     // dapat notif di grup WA bisa pakai link reminder LAMA dari grup aslinya, dan tetap
     // mendarat di laporan shift/hari yang sedang berjalan.

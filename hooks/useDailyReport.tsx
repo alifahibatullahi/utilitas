@@ -492,6 +492,10 @@ export function useDailyReport(date: string) {
             }
         }
 
+        // Simpan child tables PARALEL — 7 tabel berbeda, independen satu sama lain;
+        // logika partial/upsert per tabel TIDAK berubah, hanya eksekusinya bersamaan
+        // (memangkas roundtrip berurutan saat banyak operator submit di jam yang sama).
+        const childOps: Promise<void>[] = [];
         for (const { key, table } of childTables) {
             const childData = reportData[key];
             if (!childData) continue;
@@ -507,17 +511,20 @@ export function useDailyReport(date: string) {
                 }
                 if (Object.keys(subset).length === 0) continue;
                 if (table === 'daily_report_stock_tank') writtenStockTank = subset;
-                await savePartialDaily(table, subset);
+                childOps.push(savePartialDaily(table, subset));
             } else {
                 // Foreman/admin full submit → tulis penuh (upsert) seperti semula.
                 if (table === 'daily_report_stock_tank') writtenStockTank = filtered;
-                const { error: childErr } = await tbl(table).upsert(
-                    { daily_report_id: reportId, ...filtered },
-                    { onConflict: 'daily_report_id' },
-                );
-                if (childErr) childErrors.push(`${table}: ${childErr.message}`);
+                childOps.push((async () => {
+                    const { error: childErr } = await tbl(table).upsert(
+                        { daily_report_id: reportId, ...filtered },
+                        { onConflict: 'daily_report_id' },
+                    );
+                    if (childErr) childErrors.push(`${table}: ${childErr.message}`);
+                })());
             }
         }
+        await Promise.all(childOps);
 
         // ─── Sync level tank ke tank_levels (real-time monitoring di /tank-level) ───
         // Hanya jalan kalau level tank benar-benar ikut tersimpan (station Handling atau

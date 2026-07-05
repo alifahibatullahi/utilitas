@@ -186,6 +186,34 @@ export default function StationPickerModal({
     const tabsMap = mode === 'shift' ? STATION_SHIFT_TABS : STATION_HARIAN_TABS;
     const stations = STATION_ORDER.filter((s) => tabsMap[s].length > 0);
 
+    // Status publish per jenis laporan pada TANGGAL terpilih — tanda "Terpublish" di
+    // tombol jenis laporan. status='approved' di-set saat publish (mensyaratkan lengkap),
+    // jadi satu tanda ini berarti "terisi penuh & sudah publish".
+    const [publishedByChoice, setPublishedByChoice] = useState<Record<'malam' | 'pagi' | 'sore' | 'harian', boolean>>(
+        { malam: false, pagi: false, sore: false, harian: false });
+    useEffect(() => {
+        const empty = { malam: false, pagi: false, sore: false, harian: false };
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setPublishedByChoice(empty); return; }
+        let stale = false;
+        const supabase = createClient();
+        Promise.all([
+            supabase.from('shift_reports').select('shift, status').eq('date', date),
+            supabase.from('daily_reports').select('status').eq('date', date)
+                .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        ]).then(([shiftRes, dailyRes]) => {
+            if (stale) return;
+            const next = { ...empty };
+            for (const row of ((shiftRes.data ?? []) as { shift?: string | null; status?: string | null }[])) {
+                if (row.status === 'approved' && (row.shift === 'malam' || row.shift === 'pagi' || row.shift === 'sore')) {
+                    next[row.shift] = true;
+                }
+            }
+            if ((dailyRes.data as { status?: string | null } | null)?.status === 'approved') next.harian = true;
+            setPublishedByChoice(next);
+        });
+        return () => { stale = true; };
+    }, [date]);
+
     // Station yang sudah mengisi laporan (mode/tanggal/shift terpilih) — dibaca dari
     // station_fillers JSONB (di-merge atomik via RPC tiap kali operator menyimpan
     // dari station view). Dipakai untuk penanda hijau + centang di grid station.
@@ -251,11 +279,18 @@ export default function StationPickerModal({
                         <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-850 gap-1.5 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
                             {REPORT_CHOICES.map((c) => {
                                 const active = mode === 'harian' ? c.id === 'harian' : c.shift === shift;
+                                // Tanda "Terpublish" per tanggal terpilih — prioritas di atas
+                                // badge "Sekarang" (laporan sudah selesai).
+                                const isPublished = publishedByChoice[c.id];
                                 // Badge "Sekarang" = laporan yang waktunya diisi saat ini
-                                // (22:30–04:15 jatuh ke Harian, bukan shift malam).
-                                const isNow = defaultRep.mode === 'harian'
-                                    ? c.id === 'harian'
-                                    : c.shift === SHIFT_NUM[defaultRep.shift];
+                                // (22:30–04:15 jatuh ke Harian, bukan shift malam) — SADAR
+                                // TANGGAL: hanya tampil bila tanggal terpilih = tanggal laporan
+                                // berjalan (tanggal masa depan/lampau → tanpa badge).
+                                const isNow = !isPublished
+                                    && date === defaultRep.date
+                                    && (defaultRep.mode === 'harian'
+                                        ? c.id === 'harian'
+                                        : c.shift === SHIFT_NUM[defaultRep.shift]);
                                 return (
                                     <button
                                         key={c.id}
@@ -268,7 +303,12 @@ export default function StationPickerModal({
                                         className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 sm:px-2 py-2 rounded-xl text-[11px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] border border-transparent
                                             ${active ? c.activeClass : REPORT_CHOICE_INACTIVE}`}
                                     >
-                                        {isNow && (
+                                        {isPublished ? (
+                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-violet-500 px-1.5 py-[1px] text-[8px] font-black text-white normal-case tracking-normal whitespace-nowrap shadow-md shadow-violet-500/30 pointer-events-none">
+                                                <span className="leading-none">✓</span>
+                                                Terpublish
+                                            </span>
+                                        ) : isNow && (
                                             <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-500 px-1.5 py-[1px] text-[8px] font-black text-white normal-case tracking-normal whitespace-nowrap shadow-md shadow-emerald-500/30 pointer-events-none">
                                                 <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
                                                 Sekarang

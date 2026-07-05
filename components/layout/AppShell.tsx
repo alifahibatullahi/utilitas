@@ -23,6 +23,11 @@ export default function AppShell({ children }: AppShellProps) {
     // Zoom 125% pada monitor 1920px+ untuk semua halaman kecuali dashboard dan tank-level
     const shouldZoom = isLargeScreen && !pathname.startsWith('/dashboard');
 
+    // input-laporan: bar atas disembunyikan (header halaman sudah informatif; navigasi
+    // ke /home lewat tombol Menu di grup floating kanan-bawah). Shell tetap dipakai
+    // supaya wrapper zoom monitor 1920+ tidak hilang.
+    const hideTopBar = pathname.startsWith('/input-laporan');
+
     // Don't show shell on login page, home menu, fullscreen preview, or history data page
     if (pathname === '/' || pathname === '/home' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level' || pathname === '/history' || pathname.startsWith('/history/')) {
         return <>{children}</>;
@@ -31,6 +36,7 @@ export default function AppShell({ children }: AppShellProps) {
     return (
         <div className="min-h-screen bg-bg-dark">
             {/* Top header — logo + tombol kembali ke menu utama */}
+            {!hideTopBar && (
             <div className="h-14 bg-surface-dark border-b border-slate-800 flex items-center justify-between px-4 sticky top-0 z-20">
                 <div className="flex items-center gap-2">
                     <div className="bg-primary/20 p-1.5 rounded-lg">
@@ -47,6 +53,7 @@ export default function AppShell({ children }: AppShellProps) {
                     <span>Menu</span>
                 </Link>
             </div>
+            )}
 
             {/* Main content area */}
             <main

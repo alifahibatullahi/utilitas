@@ -1400,7 +1400,8 @@ function InputShiftPageInner() {
     };
 
     return (
-        <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 flex flex-col gap-4 xl:h-full xl:overflow-hidden">
+        // pb ekstra: ruang untuk grup floating kanan-bawah supaya tidak menutupi field terakhir
+        <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 pb-28 lg:pb-24 flex flex-col gap-4 xl:h-full xl:overflow-hidden">
             {/* Pop-up peringatan nilai tidak wajar */}
             {warningModal}
             {/* Loading Overlay */}
@@ -1746,61 +1747,17 @@ function InputShiftPageInner() {
                     )}
                 </div>
 
-                {/* Mode & Shift Controls */}
-                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-[360px]">
-                    {/* Aksi utama — SIMPAN & GANTI LAPORAN ditaruh di header supaya selalu
-                        terlihat dan menonjol (dipindah dari sidebar; Review/Publish tetap di sidebar).
-                        SIMPAN hanya mode shift (form harian punya tombol simpan sendiri);
-                        GANTI tampil untuk semua yang masuk lewat dialog Pilih Laporan. */}
-                    {(inputMode === 'shift' || cameFromPicker) && (
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            {inputMode === 'shift' && (
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={submitting || isLocked}
-                                    title={isBeforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : isPastDeadline ? 'Window submit sudah berakhir' : undefined}
-                                    className={`flex-[1.5] flex justify-center items-center gap-2 px-4 py-3.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all
-                                        ${submitting || isLocked
-                                            ? 'bg-slate-700 border border-slate-600 text-slate-300 opacity-60 cursor-not-allowed'
-                                            : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white border border-emerald-400/60 shadow-[0_0_25px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer'}`}
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
-                                    {submitting ? 'Menyimpan...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
-                                </button>
-                            )}
-                            {cameFromPicker && (
-                                <button
-                                    onClick={openChangeReport}
-                                    className="flex-1 flex justify-center items-center gap-2 px-4 py-3.5 rounded-xl text-sm font-black uppercase tracking-wider bg-blue-600/20 hover:bg-blue-600/35 text-blue-200 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
-                                    GANTI LAPORAN
-                                </button>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Info jendela submit — selalu tampil di mode shift (sebelumnya hanya
-                        muncul sebagai banner saat terkunci). */}
-                    {inputMode === 'shift' && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-800 text-[11px] font-semibold text-slate-300">
-                            <span className="material-symbols-outlined text-[15px] text-blue-400">schedule</span>
-                            <span>
-                                Window submit:{' '}
-                                <span className="text-blue-200 font-black">
-                                    {submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                    {' – '}
-                                    {submitWindow.end.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                            </span>
-                        </div>
-                    )}
-
+                {/* Mode & Shift Controls — hanya dirender bila ada isinya (selector full-form
+                    dan/atau badge admin) supaya header tidak menyisakan kolom kosong.
+                    Tombol aksi (Simpan/Ganti/Menu) ada di grup floating kanan-bawah. */}
+                {(!station || isAdmin) && (
+                <div className="flex flex-col gap-3 z-10 shrink-0 w-full lg:w-[340px]">
                     {/* Selector jenis laporan 4 pilihan (malam/pagi/sore/harian).
-                        Station shift-link: harian disembunyikan; station harian-link: kontrol hilang total. */}
-                    {!(station && inputMode === 'harian') && (
+                        Mode station: selector DISEMBUNYIKAN total — operator station tidak
+                        pindah shift dari dalam station (link WA/dialog yang menentukan). */}
+                    {!station && (
                         <div className="flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 gap-2 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
-                            {REPORT_CHOICES.filter(c => !station || c.id !== 'harian').map(c => (
+                            {REPORT_CHOICES.map(c => (
                                 <button
                                     key={c.id}
                                     onClick={() => selectReportChoice(c.id)}
@@ -1826,6 +1783,7 @@ function InputShiftPageInner() {
                     )}
 
                 </div>
+                )}
             </header>
 
             {inputMode === 'shift' ? (
@@ -2127,6 +2085,49 @@ function InputShiftPageInner() {
                 // di header (untuk yang masuk lewat dialog), jadi tombol internal form redundan.
                 <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} />
             )}
+            {/* ─── Grup aksi FLOATING kanan-bawah: Menu + Ganti + Simpan ───
+                Semua aksi utama terkumpul satu tempat, selalu terlihat saat scroll.
+                Navigasi Menu pakai router.push supaya guard "belum disimpan"
+                (patch history.pushState) tetap memperingatkan sebelum keluar. */}
+            <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2">
+                <button
+                    type="button"
+                    onClick={() => router.push('/home')}
+                    aria-label="Kembali ke Menu"
+                    title="Kembali ke Menu"
+                    className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-600/60 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.05] active:scale-[0.95] cursor-pointer"
+                >
+                    <span className="material-symbols-outlined text-[22px]">home</span>
+                </button>
+                {cameFromPicker && (
+                    <button
+                        type="button"
+                        onClick={openChangeReport}
+                        className="flex items-center gap-2 px-5 h-12 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider bg-blue-600/90 hover:bg-blue-500 text-white border border-blue-400/60 shadow-[0_4px_20px_rgba(59,130,246,0.4)] backdrop-blur-sm transition-all hover:scale-[1.03] active:scale-[0.97] cursor-pointer"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
+                        <span className="hidden sm:inline">GANTI LAPORAN</span>
+                        <span className="sm:hidden">GANTI</span>
+                    </button>
+                )}
+                {inputMode === 'shift' && (
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={submitting || isLocked}
+                        title={isBeforeStart ? `Window submit mulai ${submitWindow.start.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}` : isPastDeadline ? 'Window submit sudah berakhir' : undefined}
+                        className={`flex items-center gap-2 px-6 h-12 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider transition-all
+                            ${submitting || isLocked
+                                ? 'bg-slate-700/95 border border-slate-600 text-slate-300 opacity-80 cursor-not-allowed shadow-lg'
+                                : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white border border-emerald-400/60 shadow-[0_4px_25px_rgba(16,185,129,0.5)] hover:scale-[1.03] active:scale-[0.97] cursor-pointer'}`}
+                    >
+                        <span className="material-symbols-outlined text-[20px]">{isLocked ? 'lock' : 'save'}</span>
+                        <span className="hidden sm:inline">{submitting ? 'MENYIMPAN...' : isLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}</span>
+                        <span className="sm:hidden">{submitting ? '...' : isLocked ? 'TERKUNCI' : 'SIMPAN'}</span>
+                    </button>
+                )}
+            </div>
+
             {/* Dialog "Pilih Laporan" — operator yang buka tanpa station (dari app) */}
             {stationPickerOpen && (
                 <StationPickerModal

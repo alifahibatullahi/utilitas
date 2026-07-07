@@ -386,6 +386,17 @@ function InputShiftPageInner() {
     // Auto-kalkulasi grup dari pola jadwal shift
     const currentGroup = getGroupForShift(selectedDate, shiftMap[selectedShift]);
 
+    // Grup yang bertugas untuk laporan ini: mode shift → grup shift terpilih;
+    // mode harian (LHUBB) → grup shift malam tanggal itu (sama dgn badge grup harian).
+    const dutyGroup = inputMode === 'harian' ? getGroupMalamOnDate(selectedDate) : currentGroup;
+    // Supervisor grup yang bertugas — diturunkan dari daftar operator (data-driven,
+    // bukan hardcode nama). Dipakai sebagai DEFAULT field Supervisor; tetap bisa
+    // diganti manual lewat dropdown. Grup A=Ardhian Wisnu Perdana, B=Putra Aris
+    // Hidayat, C=Zulkarnain Bayu, D=Sandhy Yudha P.
+    const groupSupervisor = operators.find(
+        op => op.group === dutyGroup && op.jabatan === 'Supervisor',
+    )?.name ?? '';
+
     // Auto-inject Catatan Operasional: tiap auto-line baru di-append ke textarea sekali
     // per session. Setelah di-track di autoInjectedRef, user bebas edit/hapus tanpa kita
     // re-add. Dipasang setelah `bunkerBerasapSince` dideklarasi (TDZ-safe).
@@ -751,6 +762,17 @@ function InputShiftPageInner() {
         setCatatan('');
         autoInjectedRef.current = new Set();
     }, [selectedShift, selectedDate]);
+
+    // Default supervisor = supervisor grup yang bertugas. DIDEKLARASI SETELAH clear-effect
+    // supaya urutan efek benar: clear kosongkan supervisor dulu, baru fill isi default.
+    // Diisi hanya kalau field masih KOSONG & report belum menyimpan supervisor sendiri
+    // (report.supervisor menang, di-restore effect lain). `prev || ...` menjaga pilihan
+    // manual user tidak ketimpa dalam konteks tanggal/shift yang sama.
+    useEffect(() => {
+        if (!groupSupervisor) return;
+        if (report?.supervisor) return;
+        setSupervisor(prev => prev || groupSupervisor);
+    }, [groupSupervisor, report]);
 
     // Populate form when report data arrives from Supabase
     useEffect(() => {

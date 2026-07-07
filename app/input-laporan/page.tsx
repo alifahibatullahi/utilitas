@@ -178,6 +178,20 @@ function InputShiftPageInner() {
     // Station panel (boiler A/B + turbin) wajib mengisi supervisor (dipakai notif siap-publish).
     const isPanelStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin'].includes(station);
 
+    // GATE modal Pilih Laporan: saat masuk TANPA parameter apa pun (mis. dari link
+    // reminder yang di-redirect proxy → /input-laporan polos), modal auto-terbuka dan
+    // user HARUS pilih station dulu. Selama gate ini aktif, JANGAN fetch laporan/history
+    // apa pun — hemat beban DB & tidak "memuat station" sebelum dipilih.
+    // Kondisi = sama dgn needsPicker: tidak ada station/review/date/shift di URL.
+    const noReportParams = !station
+        && !searchParams?.get('review')
+        && !searchParams?.get('date')
+        && !searchParams?.get('shift');
+    // Gate juga aktif SEBELUM mounted: pada render pertama params belum final &
+    // fetch effect langsung jalan — kalau tidak digating, laporan sempat ke-load
+    // satu kali sebelum modal ambil alih. `!mounted` menahannya sampai kondisi pasti.
+    const pickerGate = !mounted || noReportParams;
+
     useEffect(() => {
         const qShift = searchParams?.get('shift');
         const qDate = searchParams?.get('date');
@@ -353,18 +367,19 @@ function InputShiftPageInner() {
     const isBoilerStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b'].includes(station);
     // skipMaintenance: form input tidak menampilkan maintenance/critical — hemat 2 query
     // per load; halaman /laporan-shift (view) tetap fetch sendiri.
-    const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift], station, { skipMaintenance: true });
+    const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift], station, { skipMaintenance: true, enabled: !pickerGate });
     // Deep-link ?review=1 (dari notif "siap dipublish") → navigasi ke halaman
     // Review/Publish begitu report target selesai di-load. Sekali pakai.
     const autoReviewRef = useRef(false);
+    // Semua hook history di-disable saat pickerGate aktif (modal belum pilih station).
     // prev data: dipakai tab Boiler/Turbin/Generator/Distribusi Steam (selisih totalizer).
-    const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift], !station || isPanelStation);
+    const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift], !pickerGate && (!station || isPanelStation));
     // berasap history: tab Coal Bunker (station bunker) + auto-line catatan (form penuh).
-    const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift], !station || station === 'bunker');
+    const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift], !pickerGate && (!station || station === 'bunker'));
     // shutdown history: badge "shutdown sejak" di tab Boiler A/B.
-    const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift], !station || isBoilerStation);
+    const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift], !pickerGate && (!station || isBoilerStation));
     // inherit status boiler/turbin/feeder: hanya relevan untuk station panel & form penuh.
-    const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift], !station || isPanelStation);
+    const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift], !pickerGate && (!station || isPanelStation));
     const { operator, operators } = useOperator();
     const isAdmin = operator?.role === 'admin';
 
@@ -537,8 +552,9 @@ function InputShiftPageInner() {
 
     // Fetch saved ash unloadings and solar for current date+shift
     useEffect(() => {
+        if (pickerGate) return; // modal Pilih Laporan terbuka → belum fetch apa pun
         const supabase = createClient();
-        
+
         supabase
             .from('ash_unloadings')
             .select('id, silo, perusahaan, tujuan, ritase')
@@ -563,10 +579,11 @@ function InputShiftPageInner() {
             .order('created_at', { ascending: true })
             .then(({ data }) => setSavedOutSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, tujuan: r.tujuan }))));
 
-    }, [selectedDate, selectedShift]);
+    }, [selectedDate, selectedShift, pickerGate]);
 
     // Fetch last known chemical stock (latest shift report with non-null stock)
     useEffect(() => {
+        if (pickerGate) return; // modal Pilih Laporan terbuka → belum fetch apa pun
         const supabase = createClient();
         supabase
             .from('shift_water_quality')
@@ -583,7 +600,7 @@ function InputShiftPageInner() {
                     });
                 }
             });
-    }, []);
+    }, [pickerGate]);
 
     // ─── Delete handlers untuk entri yang sudah tersimpan di DB ───
     const handleDeleteSavedAsh = async (id: string) => {
@@ -1793,7 +1810,9 @@ function InputShiftPageInner() {
                 )}
             </header>
 
-            {inputMode === 'shift' ? (
+            {/* Badan form disembunyikan selama modal Pilih Laporan terbuka (pickerGate) —
+                jangan render/mount form (mode harian akan memicu useDailyReport). */}
+            {!pickerGate && (inputMode === 'shift' ? (
                 <div className="flex flex-col lg:flex-row gap-6 w-full max-w-full">
                     {/* Left Sidebar */}
                     <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
@@ -2091,7 +2110,7 @@ function InputShiftPageInner() {
                 // Ganti Laporan & Simpan harian ada di grup floating halaman:
                 // registerSave mengangkat aksi simpan form ke tombol floating.
                 <InputHarianForm date={selectedDate} operator={operator} groupName={getGroupMalamOnDate(selectedDate)} supervisorName={supervisor} onSupervisorChange={setSupervisor} submitWindowStart={submitWindow.start} submitWindowEnd={submitWindow.end} isAdmin={isAdmin} registerSave={setHarianSave} />
-            )}
+            ))}
             {/* ─── Grup aksi FLOATING kanan-bawah: Menu + Ganti + Simpan ───
                 Semua aksi utama terkumpul satu tempat, selalu terlihat saat scroll.
                 Di-PORTAL ke document.body: AppShell memakai zoom:1.25 di monitor
@@ -2099,7 +2118,7 @@ function InputShiftPageInner() {
                 pojok viewport (Chrome) — portal mengeluarkannya dari subtree itu.
                 Navigasi Menu pakai router.push supaya guard "belum disimpan"
                 (patch history.pushState) tetap memperingatkan sebelum keluar. */}
-            {mounted && createPortal(
+            {mounted && !pickerGate && createPortal(
             <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center justify-center gap-2 w-max max-w-[calc(100vw-16px)]">
                 <button
                     type="button"

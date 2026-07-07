@@ -1,14 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // URL lama /input-shift TETAP TERPAKAI selamanya — link permanen reminder WA
-  // yang sudah terkirim ke HP operator memuat /input-shift?station=... Redirect
-  // permanen meneruskan query param otomatis ke route baru /input-laporan.
-  async redirects() {
-    return [
-      { source: '/input-shift', destination: '/input-laporan', permanent: true },
-    ];
-  },
+  // Root workspace EKSPLISIT — ada package-lock.json nyasar di folder induk
+  // (D:\INOVASI 2025) yang membuat Next salah memilih root; sejak middleware.ts
+  // ditambahkan, salah root ini membuat dev server macet di "Starting...".
+  turbopack: { root: __dirname },
+  // Redirect URL lama /input-shift → /input-laporan kini ditangani middleware.ts
+  // (butuh manipulasi query: link reminder lama diarahkan ke modal Pilih Laporan
+  // dengan membuang param station/mode, sedangkan link review dipertahankan utuh —
+  // redirects() di sini tidak bisa membuang query param). JANGAN tambahkan redirect
+  // /input-shift di sini: redirects() config berjalan SEBELUM middleware dan akan
+  // membajaknya.
   images: {
     remotePatterns: [
       // Cloudflare R2 default public URLs (pub-*.r2.dev)

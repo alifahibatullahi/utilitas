@@ -681,9 +681,12 @@ export function useShiftReport(
     // skipMaintenance: lewati query maintenance_logs & critical_equipment (2 query/load).
     // Dipakai halaman INPUT laporan — form tidak menampilkan keduanya; halaman
     // /laporan-shift (view/publish) tetap fetch karena menampilkan aktivitas maintenance.
-    opts: { skipMaintenance?: boolean } = {},
+    // enabled: kalau false, TIDAK ada fetch sama sekali (dipakai saat modal Pilih
+    // Laporan masih terbuka — jangan load laporan sebelum user pilih station).
+    opts: { skipMaintenance?: boolean; enabled?: boolean } = {},
 ) {
     const skipMaintenance = opts.skipMaintenance ?? false;
+    const enabled = opts.enabled ?? true;
     const [report, setReport] = useState<ShiftReportData | null>(null);
     const [activeMaintenance, setActiveMaintenance] = useState<import('@/lib/supabase/types').MaintenanceWithCritical[]>([]);
     const [openCriticals, setOpenCriticals] = useState<import('@/lib/supabase/types').CriticalEquipmentRow[]>([]);
@@ -695,6 +698,14 @@ export function useShiftReport(
 
     useEffect(() => {
         if (!isSupabaseConfigured()) {
+            setLoading(false);
+            return;
+        }
+
+        // Gate: modal Pilih Laporan masih terbuka (belum pilih station) → jangan
+        // fetch laporan apa pun. loading=false supaya UI tidak tampak "memuat".
+        if (!enabled) {
+            setReport(null);
             setLoading(false);
             return;
         }
@@ -803,7 +814,7 @@ export function useShiftReport(
         fetchReport();
 
         return () => { stale = true; };
-    }, [date, shift, fetchKey, station, skipMaintenance]);
+    }, [date, shift, fetchKey, station, skipMaintenance, enabled]);
 
     // Valid DB columns per table (prevents unknown column errors)
     const VALID_COLS: Record<string, string[]> = {

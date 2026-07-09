@@ -1032,6 +1032,25 @@ function InputShiftPageInner() {
             return;
         }
 
+        // ─── Foreman wajib diisi — scoping sama dgn supervisor: form penuh wajib
+        // keduanya, station panel wajib foreman sisi-nya (turbin/boiler) saja. ───
+        const missingForeman: string[] = [];
+        if (!station) {
+            if (!foremanBoiler.trim()) missingForeman.push('Foreman Boiler');
+            if (!foremanTurbin.trim()) missingForeman.push('Foreman Turbin');
+        } else if (isPanelStation) {
+            if (station === 'panel_turbin') {
+                if (!foremanTurbin.trim()) missingForeman.push('Foreman Turbin');
+            } else if (!foremanBoiler.trim()) {
+                missingForeman.push('Foreman Boiler');
+            }
+        }
+        if (missingForeman.length > 0) {
+            setToast({ type: 'error', message: `Kolom ${missingForeman.join(' & ')} wajib diisi sebelum simpan.` });
+            setTimeout(() => setToast(null), 4000);
+            return;
+        }
+
         // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
         // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
         // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
-import { HOME_MENU_ITEMS, ROLE_LABELS, ROLE_DOT_COLORS, HomeMenuItem, detectCurrentShift, getGroupForShift } from '@/lib/constants';
+import { HOME_MENU_ITEMS, HOME_ADMIN_MENU_ITEMS, ROLE_LABELS, ROLE_DOT_COLORS, HomeMenuItem, detectCurrentShift, getGroupForShift } from '@/lib/constants';
 
 const ICON_MAP: Record<string, string> = {
     dashboard: 'dashboard',
@@ -24,6 +24,9 @@ const CARD_THEMES: Record<string, { iconBg: string; iconText: string; hoverBorde
     'tank-level': { iconBg: 'bg-sky-50', iconText: 'text-sky-500', hoverBorder: 'hover:border-sky-200' },
     'input-laporan': { iconBg: 'bg-emerald-50', iconText: 'text-emerald-500', hoverBorder: 'hover:border-emerald-200' },
     'logbook': { iconBg: 'bg-violet-50', iconText: 'text-violet-500', hoverBorder: 'hover:border-violet-200' },
+    'admin-wa-hub': { iconBg: 'bg-teal-50', iconText: 'text-teal-500', hoverBorder: 'hover:border-teal-200' },
+    'admin-sync-sheets': { iconBg: 'bg-blue-50', iconText: 'text-blue-500', hoverBorder: 'hover:border-blue-200' },
+    'admin-users': { iconBg: 'bg-amber-50', iconText: 'text-amber-500', hoverBorder: 'hover:border-amber-200' },
 };
 
 const DEFAULT_THEME = { iconBg: 'bg-slate-50', iconText: 'text-slate-500', hoverBorder: 'hover:border-slate-300' };
@@ -94,6 +97,9 @@ export default function HomePage() {
     if (!operator) return null;
 
     const menus = HOME_MENU_ITEMS.filter(item =>
+        item.roles === 'all' || item.roles.includes(operator.role)
+    );
+    const adminMenus = HOME_ADMIN_MENU_ITEMS.filter(item =>
         item.roles === 'all' || item.roles.includes(operator.role)
     );
 
@@ -232,6 +238,22 @@ export default function HomePage() {
                         <MenuCard key={item.id} item={item} delayMs={160 + idx * 70} />
                     ))}
                 </div>
+
+                {/* Admin section — hanya role admin */}
+                {adminMenus.length > 0 && (
+                    <>
+                        <div className="mt-10 flex items-center gap-3 home-fade-up" style={{ animationDelay: `${160 + menus.length * 70}ms` }}>
+                            <span aria-hidden="true" className="material-symbols-outlined text-lg text-slate-400">admin_panel_settings</span>
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Admin</p>
+                            <span className="flex-1 h-px bg-slate-100" />
+                        </div>
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {adminMenus.map((item, idx) => (
+                                <MenuCard key={item.id} item={item} delayMs={230 + (menus.length + idx) * 70} />
+                            ))}
+                        </div>
+                    </>
+                )}
 
                 {/* Operator footer */}
                 <div className="mt-10 flex items-center justify-center gap-2 text-xs text-slate-400 home-fade-up" style={{ animationDelay: '400ms' }}>

@@ -424,6 +424,15 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
 ];
 
+// Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah
+// mencakup log, jadwal, template, grup, penerima pribadi & test kirim (tab di
+// dalamnya), jadi tidak perlu kartu terpisah per halaman legacy.
+export const HOME_ADMIN_MENU_ITEMS: HomeMenuItem[] = [
+    { id: 'admin-wa-hub', label: 'WhatsApp Hub', description: 'Log notifikasi, jadwal reminder, template & penerima WA', icon: 'forum', path: '/admin/notification-log', roles: ['admin'], featured: false },
+    { id: 'admin-sync-sheets', label: 'Sync Sheets', description: 'Sinkronisasi data laporan dengan Google Sheets', icon: 'sync', path: '/admin/sync-sheets', roles: ['admin'], featured: false },
+    { id: 'admin-users', label: 'Manajemen User', description: 'Kelola akun operator, role & grup', icon: 'users', path: '/admin/users', roles: ['admin'], featured: false },
+];
+
 // ─── Critical & Maintenance Constants ───
 
 export const HAR_SCOPES = [

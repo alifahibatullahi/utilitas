@@ -26,6 +26,13 @@ function formatTanggalBulan(isoDate: string): string {
     return `${d} ${BULAN_ID[m - 1] ?? ''}`.trim();
 }
 
+/** Format "2026-05-23" → "23 Mei 2026" untuk baris Tanggal di pesan WA. */
+function formatTanggalIndo(isoDate: string): string {
+    const [y, m, d] = (isoDate || '').split('-').map(Number);
+    if (!y || !m || !d) return isoDate ?? '';
+    return `${d} ${BULAN_ID[m - 1] ?? ''} ${y}`.replace(/\s+/g, ' ').trim();
+}
+
 interface NotifyBody {
     type: 'shift' | 'harian';
     date: string;
@@ -115,7 +122,7 @@ async function buildShiftMessages(supabase: any, reportId: string, date: string,
             logShift: shift,
             message: [
                 `⚡ *Laporan Power Shift ${shiftLabel(shift)}*`,
-                `Tanggal: ${date}`,
+                `Tanggal: ${formatTanggalIndo(date)}`,
                 '',
                 `Internal UBB : ${fmtNum(pd?.power_ubb)} MW`,
                 `Pabrik 2     : ${fmtNum(pd?.power_pabrik2)} MW`,
@@ -137,11 +144,11 @@ async function buildShiftMessages(supabase: any, reportId: string, date: string,
             logKind: 'turbin_save_shift',
             logShift: shift,
             message: [
-                `🔥 *Distribusi Steam Pabrik 3 — Shift ${shiftLabel(shift)}*`,
-                `Tanggal: ${date}`,
+                `🔥 *Distribusi Steam SU 3A — Shift ${shiftLabel(shift)}*`,
+                `Tanggal: ${formatTanggalIndo(date)}`,
                 '',
-                `Flow      : ${fmtNum(sd?.pabrik3a_flow)} t/h`,
-                `Temperatur: ${fmtNum(sd?.pabrik3a_temp)} °C`,
+                `Flow       : ${fmtNum(sd?.pabrik3a_flow)} t/h`,
+                `Temperature: ${fmtNum(sd?.pabrik3a_temp)} °C`,
                 `Total Steam shift ${shiftLabel(shift)} : ${fmtNum(sd?.selisih_pabrik3a)} ton`,
             ].join('\n'),
         });
@@ -195,7 +202,7 @@ async function buildHarianMessages(supabase: any, reportId: string, date: string
             logKind: 'turbin_save_harian',
             message: [
                 `⚡ *Laporan Power Harian*`,
-                `Tanggal: ${date}`,
+                `Tanggal: ${formatTanggalIndo(date)}`,
                 `Total Pabrik 2: ${fmtNum(pwr?.selisih_pabrik2)} MWh`,
             ].join('\n'),
         });
@@ -213,11 +220,11 @@ async function buildHarianMessages(supabase: any, reportId: string, date: string
             fonnteTarget: su3aGroup.fonnte_target,
             logKind: 'turbin_save_harian',
             message: [
-                `🔥 *Distribusi Steam Pabrik 3 — Harian*`,
-                `Tanggal: ${date}`,
+                `🔥 *Distribusi Steam SU 3A — Harian*`,
+                `Tanggal: ${formatTanggalIndo(date)}`,
                 '',
                 `Flow : ${fmtNum(stm?.mps_3a_00)} t/h`,
-                `Temperatur : ${fmtNum(lastTemp)} °C`,
+                `Temperature : ${fmtNum(lastTemp)} °C`,
                 `Total Steam ${formatTanggalBulan(date)} : ${fmtNum(stm?.selisih_mps_3a)} ton`,
             ].join('\n'),
         });

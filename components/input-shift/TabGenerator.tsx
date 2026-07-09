@@ -1,14 +1,23 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, InputField, SelisihInfo, CalculatedField } from './SharedComponents';
+
+const GEN_OUTPUT_FIELDS = ['gen_load', 'gen_ampere', 'gen_tegangan',
+    'gen_amp_react', 'gen_frequensi', 'gen_cos_phi'];
 
 interface TabGeneratorProps {
     generatorValues?: Record<string, number | string | null>;
     powerValues?: Record<string, number | string | null>;
     onGeneratorChange?: (name: string, value: number | string | null) => void;
     onPowerChange?: (name: string, value: number | string | null) => void;
+    /** Dipakai efek autofill/cascade — tidak menandai form modified (navigation guard). */
+    onAutoGeneratorChange?: (name: string, value: number | string | null) => void;
+    onAutoPowerChange?: (name: string, value: number | string | null) => void;
     prevPowerDist?: Record<string, number | null>;
     genLoad?: number | null;
+    /** Cascade dari status turbin — kalau shutdown, kunci kartu "Generator Output" (gen_load, gen_ampere, dst).
+     *  Kartu GI & Distribusi Power tetap editable karena PLN bisa import lewat GI. */
+    isTurbinShutdown?: boolean;
 }
 
 // Distribution items config
@@ -16,28 +25,47 @@ const DIST_ITEMS = [
     { key: 'ubb', label: 'Internal UBB' },
     { key: 'pabrik2', label: 'Pabrik 2' },
     { key: 'pabrik3a', label: 'Pabrik 3A' },
-    { key: 'revamping', label: 'Revamping' },
+    { key: 'revamping', label: 'Pabrik 3B' },
     { key: 'pie', label: 'PIU' },
 ] as const;
 
-export default function TabGenerator({ generatorValues = {}, powerValues = {}, onGeneratorChange, onPowerChange, prevPowerDist = {}, genLoad }: TabGeneratorProps) {
+export default function TabGenerator({ generatorValues = {}, powerValues = {}, onGeneratorChange, onPowerChange, onAutoGeneratorChange, onAutoPowerChange, prevPowerDist = {}, genLoad, isTurbinShutdown = false }: TabGeneratorProps) {
     const pv = powerValues;
     const gv = generatorValues;
     const fmt = (v: number | string | null | undefined) => (Number(v) || 0).toFixed(2);
 
+    // Saat turbin shutdown: auto-fill power_stg_ubb_totalizer dari prev (kalau kosong) +
+    // auto-zero kartu Generator Output. Mirror pattern boiler shutdown.
+    // Pakai handler auto supaya autofill tidak menandai form modified (navigation guard).
+    const autoPowerChange = onAutoPowerChange ?? onPowerChange;
+    const autoGeneratorChange = onAutoGeneratorChange ?? onGeneratorChange;
+    useEffect(() => {
+        if (!isTurbinShutdown) return;
+        const prevStgTot = prevPowerDist?.power_stg_ubb_totalizer;
+        if (autoPowerChange && prevStgTot != null && pv.power_stg_ubb_totalizer == null) {
+            autoPowerChange('power_stg_ubb_totalizer', prevStgTot);
+        }
+        if (autoGeneratorChange) {
+            GEN_OUTPUT_FIELDS.forEach(k => {
+                if (gv[k] != null && gv[k] !== 0) autoGeneratorChange(k, 0);
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isTurbinShutdown]);
+
     return (
         <>
-            <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+            <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <Card title="Generator Output" icon="flash_on" color="blue">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <InputField label="Load STG" unit="MW" color="blue" name="gen_load" value={gv.gen_load} onChange={onGeneratorChange} />
-                            <InputField label="Ampere" unit="A" color="blue" name="gen_ampere" value={gv.gen_ampere} onChange={onGeneratorChange} />
-                            <InputField label="Voltage" unit="kV" color="blue" name="gen_tegangan" value={gv.gen_tegangan} onChange={onGeneratorChange} />
-                            <InputField label="Reactive Power" unit="Mvar" color="blue" name="gen_amp_react" value={gv.gen_amp_react} onChange={onGeneratorChange} />
-                            <InputField label="Frekuensi" unit="Hz" color="blue" name="gen_frequensi" value={gv.gen_frequensi} onChange={onGeneratorChange} />
-                            <InputField label="Cos θ" color="blue" name="gen_cos_phi" value={gv.gen_cos_phi} onChange={onGeneratorChange} />
+                            <InputField label="Load STG" unit="MW" color="blue" name="gen_load" value={gv.gen_load} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Ampere" unit="A" color="blue" name="gen_ampere" value={gv.gen_ampere} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Voltage" unit="kV" color="blue" name="gen_tegangan" value={gv.gen_tegangan} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Reactive Power" unit="Mvar" color="blue" name="gen_amp_react" value={gv.gen_amp_react} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Frekuensi" unit="Hz" color="blue" name="gen_frequensi" value={gv.gen_frequensi} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Cos θ" color="blue" name="gen_cos_phi" value={gv.gen_cos_phi} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
                         </div>
                     </Card>
 
@@ -49,19 +77,21 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
 
                     <div className="md:col-span-2">
                         <Card title="Distribusi Power" icon="account_tree" color="emerald">
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {DIST_ITEMS.map(({ key, label }) => {
                                     const mwName = `power_${key}`;
                                     const totName = `power_${key}_totalizer`;
                                     const prevTot = Number(prevPowerDist[totName]) || 0;
-                                    const curTot = Number(pv[totName]) || 0;
+                                    const defaultZero = key === 'revamping' || key === 'pie';
+                                    const totValue = defaultZero ? (pv[totName] ?? '') : pv[totName];
+                                    const curTot = Number(totValue) || 0;
 
                                     return (
                                         <div key={key} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <div>
-                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={pv[totName]} onChange={onPowerChange} />
+                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} placeholder={prevTot > 0 ? String(prevTot) : '0'} />
                                                     <SelisihInfo prev={prevTot} current={curTot} />
                                                 </div>
                                                 <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />
@@ -75,7 +105,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <div>
-                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} />
+                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} placeholder={Number(prevPowerDist.power_stg_ubb_totalizer) > 0 ? String(Number(prevPowerDist.power_stg_ubb_totalizer)) : '0.0'} />
                                             <SelisihInfo prev={Number(prevPowerDist.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} />
                                         </div>
                                         <div>
@@ -91,7 +121,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                 </div>
             </div>
 
-            <div className="w-full xl:w-[350px] shrink-0 h-full flex flex-col">
+            <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
                 <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
                     <CalculatedField label="LOAD STG" value={fmt(gv.gen_load)} unit="MW" variant="primary" />
 

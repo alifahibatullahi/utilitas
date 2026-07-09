@@ -1,26 +1,54 @@
 'use client';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useDailyReport } from '@/hooks/useDailyReport';
+import { useLatestBoilerStatus } from '@/hooks/useShiftReport';
+import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import type { Operator } from '@/lib/constants';
+import { isValidStation, STATION_HARIAN_TABS, STATION_LABELS, type OperatorStation } from '@/lib/constants';
 import TabBoiler from './TabBoiler';
+import TabCoalBunker from './TabCoalBunker';
 import TabTurbin from './TabTurbin';
 import TabPower from './TabPower';
+import TabPIU from './TabPIU';
 import TabHandling from './TabHandling';
 import TabChemical from './TabChemical';
 import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
+import SearchableSelect from '@/components/ui/SearchableSelect';
+import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
+import {
+    type DailyState,
+    isBoilerComplete, isTurbinComplete, isPowerComplete,
+    isPiuComplete, isHandlingComplete, isSiloComplete, isCoalBunkerComplete,
+} from '@/lib/daily-completeness';
+import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import type { DailyTabProps } from './types';
 
-type HarianTabId = 'Boiler' | 'Turbin' | 'Power' | 'Handling' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
+type HarianTabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Coal Bunker' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
+
+/** Parse nilai numerik ter-format Indonesia dari Google Sheets (FORMATTED_VALUE):
+ *  '.' = pemisah ribuan, ',' = desimal. Return null bila kosong/'-'/non-angka. */
+const parseSheetNum = (s: string | number | null | undefined): number | null => {
+    if (s == null) return null;
+    if (typeof s === 'number') return isNaN(s) ? null : s;
+    const t = s.trim();
+    if (t === '' || t === '-') return null;
+    const n = Number(t.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, ''));
+    return isNaN(n) ? null : n;
+};
 
 const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; colorClass: string }[] = [
-    { id: 'Boiler', label: 'Boiler', icon: 'factory', colorClass: 'rose' },
-    { id: 'Turbin', label: 'Turbin', icon: 'mode_fan', colorClass: 'cyan' },
-    { id: 'Power', label: 'Power', icon: 'bolt', colorClass: 'amber' },
+    { id: 'Boiler A', label: 'Boiler A', icon: 'factory', colorClass: 'rose' },
+    { id: 'Boiler B', label: 'Boiler B', icon: 'factory', colorClass: 'purple' },
+    { id: 'Turbin', label: 'Turbin & Distribusi Steam', icon: 'mode_fan', colorClass: 'cyan' },
+    { id: 'Power', label: 'Generator', icon: 'bolt', colorClass: 'amber' },
+    { id: 'PIU', label: 'PIU', icon: 'electric_meter', colorClass: 'blue' },
     { id: 'Handling', label: 'Handling', icon: 'local_shipping', colorClass: 'orange' },
+    { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2', colorClass: 'indigo' },
     { id: 'Chemical', label: 'Chemical', icon: 'science', colorClass: 'purple' },
-    { id: 'Stock BB', label: 'Stock BB', icon: 'inventory_2', colorClass: 'indigo' },
+    { id: 'Stock BB', label: 'In/Out Batubara', icon: 'local_shipping', colorClass: 'indigo' },
     { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt', colorClass: 'teal' },
 ];
 
@@ -28,6 +56,7 @@ const TAB_STYLES: Record<string, { active: string; inactive: string; icon: strin
     'rose': { active: 'font-bold bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-inner shadow-rose-500/10', inactive: 'font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border-transparent', icon: 'text-rose-400' },
     'cyan': { active: 'font-bold bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-inner shadow-cyan-500/10', inactive: 'font-medium text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border-transparent', icon: 'text-cyan-400' },
     'amber': { active: 'font-bold bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-inner shadow-amber-500/10', inactive: 'font-medium text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 border-transparent', icon: 'text-amber-400' },
+    'blue': { active: 'font-bold bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-inner shadow-blue-500/10', inactive: 'font-medium text-slate-400 hover:text-blue-300 hover:bg-blue-500/10 border-transparent', icon: 'text-blue-400' },
     'orange': { active: 'font-bold bg-orange-500/20 text-orange-400 border-orange-500/30 shadow-inner shadow-orange-500/10', inactive: 'font-medium text-slate-400 hover:text-orange-300 hover:bg-orange-500/10 border-transparent', icon: 'text-orange-400' },
     'purple': { active: 'font-bold bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-inner shadow-purple-500/10', inactive: 'font-medium text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 border-transparent', icon: 'text-purple-400' },
     'indigo': { active: 'font-bold bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-inner shadow-indigo-500/10', inactive: 'font-medium text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 border-transparent', icon: 'text-indigo-400' },
@@ -37,12 +66,95 @@ const TAB_STYLES: Record<string, { active: string; inactive: string; icon: strin
 interface InputHarianFormProps {
     date: string;
     operator: Operator | null;
+    groupName?: string | null;
+    supervisorName?: string;
+    /** Sinkron balik supervisor dari modal Review/Publish ke header input (page state),
+     *  supaya kalau terisi di modal, dropdown supervisor di header ikut terisi. */
+    onSupervisorChange?: (value: string) => void;
+    /** Submit window dari parent (input-shift page) — block tombol SAVE & guard handleSubmit
+     *  saat ini di luar window submit (sebelum 23:00 D atau setelah 09:00 D+1). */
+    submitWindowStart?: Date;
+    submitWindowEnd?: Date;
+    /** Admin bypass — kalau true, tombol SAVE selalu enabled (admin bisa isi kapan saja). */
+    isAdmin?: boolean;
+    /** Buka kembali dialog "Pilih Laporan" (tombol Ganti Laporan di header station). */
+    onChangeReport?: () => void;
+    /** Daftarkan aksi simpan ke parent — dipakai tombol SIMPAN floating di halaman
+     *  input-laporan. Bila di-set, tombol simpan internal sidebar DISEMBUNYIKAN.
+     *  Dipanggil null saat unmount. */
+    registerSave?: (s: { submit: () => void; submitting: boolean; locked: boolean; beforeStart: boolean; pastEnd: boolean } | null) => void;
 }
 
-export default function InputHarianForm({ date, operator }: InputHarianFormProps) {
-    const [activeTab, setActiveTab] = useState<HarianTabId>('Boiler');
+export default function InputHarianForm({ date, operator, groupName, supervisorName, onSupervisorChange, submitWindowStart, submitWindowEnd, isAdmin = false, onChangeReport, registerSave }: InputHarianFormProps) {
+    // Lock state — disable tombol SAVE & banner kalau di luar window.
+    const [nowTickH, setNowTickH] = useState(() => Date.now());
+    useEffect(() => {
+        const id = setInterval(() => setNowTickH(Date.now()), 60_000);
+        return () => clearInterval(id);
+    }, []);
+    const _isHarianBeforeStartRaw = !!submitWindowStart && nowTickH < submitWindowStart.getTime();
+    const _isHarianPastEndRaw     = !!submitWindowEnd   && nowTickH > submitWindowEnd.getTime();
+    // Admin bypass: lock window tidak berlaku untuk admin.
+    const isHarianBeforeStart = !isAdmin && _isHarianBeforeStartRaw;
+    const isHarianPastEnd     = !isAdmin && _isHarianPastEndRaw;
+    const isHarianLocked      = isHarianBeforeStart || isHarianPastEnd;
+    // Station-based view filter via ?station=<id>
+    const searchParams = useSearchParams();
+    const stationParam = searchParams?.get('station') ?? null;
+    const station: OperatorStation | null = isValidStation(stationParam) ? stationParam : null;
+
+    // Daftar operator lengkap untuk picker "Diisi oleh" (lintas grup)
+    const { operators } = useOperator();
+    // Station panel (boiler A/B + turbin) wajib mengisi supervisor (KASI).
+    const isPanelStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin'].includes(station);
+    const supervisorOptions = operators.filter(op => op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman'));
+
+    // Per-station filler — default ke operator login, bisa di-override saat swap shift.
+    const [fillerName, setFillerName] = useState(() => {
+        if (typeof window === 'undefined') return '';
+        try { return localStorage.getItem('harian_station_filler') || ''; } catch { return ''; }
+    });
+    useEffect(() => {
+        try { localStorage.setItem('harian_station_filler', fillerName); } catch { /* ignore */ }
+    }, [fillerName]);
+
+    const visibleTabs = useMemo(() => {
+        if (!station) return HARIAN_TABS;
+        const allowed = STATION_HARIAN_TABS[station];
+        return HARIAN_TABS.filter(t => allowed.includes(t.id));
+    }, [station]);
+
+    const [activeTab, setActiveTab] = useState<HarianTabId>(() => {
+        if (station) {
+            const allowed = STATION_HARIAN_TABS[station];
+            const firstAllowed = HARIAN_TABS.find(t => allowed.includes(t.id));
+            if (firstAllowed) return firstAllowed.id;
+        }
+        return 'Boiler A';
+    });
+
+    // Ganti station via dialog "Pilih Laporan" TIDAK me-remount form (cuma URL param
+    // berubah), jadi initializer useState di atas tidak jalan lagi. Kalau activeTab
+    // lama tidak ada di visibleTabs station baru, konten tampak kosong sampai user
+    // klik tab manual → auto-pindah ke tab pertama yang visible (pola sama dengan
+    // input-shift page).
+    useEffect(() => {
+        if (visibleTabs.length === 0) return;
+        if (!visibleTabs.some(t => t.id === activeTab)) {
+            setActiveTab(visibleTabs[0].id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [station]);
+    const [visitedTabs, setVisitedTabs] = useState<Set<HarianTabId>>(new Set());
     const [submitting, setSubmitting] = useState(false);
+    const [saveProgress, setSaveProgress] = useState<number | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const { confirmWarnings, warningModal } = useWarningConfirm();
+    const [waPreview, setWaPreview] = useState<{
+        reportId: string;
+        items: { target: string; label: string; message: string; status: 'pending' | 'sent' | 'failed' }[];
+        sending: boolean;
+    } | null>(null);
     const lastSubmittedReportId = useRef<string | null>(null);
     const skipNextClear = useRef(false);
 
@@ -50,15 +162,56 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
     const [steam, setSteam] = useState<Record<string, number | null>>({});
     const [power, setPower] = useState<Record<string, number | null>>({});
     const [coal, setCoal] = useState<Record<string, number | null>>({});
-    const [turbineMisc, setTurbineMisc] = useState<Record<string, number | null>>({});
+    const [turbineMisc, setTurbineMisc] = useState<Record<string, number | string | null>>({});
     const [stockTank, setStockTank] = useState<Record<string, number | null>>({});
     const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
 
-    const [solarUnloadings, setSolarUnloadings] = useState<{ date: string; liters: number; supplier: string }[]>([]);
-    const [ashUnloadings, setAshUnloadings] = useState<{ date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
+    // Nilai read-only dari Google Sheets untuk tanggal ini: Stock Batubara
+    // (kolom DW / stock_batubara_rendal).
+    const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
+
+    const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string; shift?: string | null }[]>([]);
+    const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
+    const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
 
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
+    const router = useRouter();
+
+    // Navigasi ke halaman Review/Publish harian (full-screen, URL sendiri).
+    const goPublishDaily = useCallback(() => {
+        const id = (report?.id as string) ?? '';
+        if (!id) return;
+        const q = new URLSearchParams({
+            id,
+            date,
+            group: groupName ?? '',
+            sup: (totalizer.kasi_name as string) || supervisorName || '',
+        });
+        router.push(`/laporan-harian/publish?${q.toString()}`);
+    }, [report, date, groupName, totalizer, supervisorName, router]);
+
+    // Deep-link ?review=1 (dari notif "siap dipublish" harian) → langsung ke halaman
+    // Review/Publish begitu report harian selesai di-load. Sekali pakai. Hanya
+    // non-station mode (link notif tidak membawa station).
+    const autoReviewRef = useRef(searchParams?.get('review') === '1' && !stationParam);
+    useEffect(() => {
+        if (!autoReviewRef.current || !report?.id) return;
+        autoReviewRef.current = false;
+        goPublishDaily();
+    }, [report?.id, goPublishDaily]);
+
+    // Restore filler dari report.station_fillers[station] kalau ada — kalau belum, default
+    // ke operator login (saat user pertama buka station view).
+    useEffect(() => {
+        if (!report || !station) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sf = (report as any).station_fillers as Record<string, string> | null | undefined;
+        const existing = sf?.[station];
+        if (existing) setFillerName(existing);
+        else if (!fillerName && operator?.name) setFillerName(operator.name);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [report, station]);
 
         // Fetch solar & ash unloadings for the selected date
         useEffect(() => {
@@ -66,27 +219,47 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
             
             supabase
                 .from('solar_unloadings')
-                .select('date, liters, supplier')
+                .select('id, date, liters, supplier, shift')
                 .eq('date', date)
                 .order('created_at', { ascending: false })
                 .then(({ data }) => {
                     setSolarUnloadings(
                         (data ?? []).map(r => ({
+                            id: r.id as string,
                             date: r.date as string,
                             liters: Number(r.liters) || 0,
                             supplier: (r.supplier as string) || '',
+                            shift: (r.shift as string) ?? null,
+                        }))
+                    );
+                });
+
+            supabase
+                .from('solar_usages')
+                .select('id, date, shift, liters, tujuan')
+                .eq('date', date)
+                .order('created_at', { ascending: false })
+                .then(({ data }) => {
+                    setSolarUsages(
+                        (data ?? []).map(r => ({
+                            id: r.id as string,
+                            date: r.date as string,
+                            shift: (r.shift as string) || '',
+                            liters: Number(r.liters) || 0,
+                            tujuan: (r.tujuan as string) || '',
                         }))
                     );
                 });
 
             supabase
                 .from('ash_unloadings')
-                .select('date, shift, silo, perusahaan, tujuan, ritase')
+                .select('id, date, shift, silo, perusahaan, tujuan, ritase')
                 .eq('date', date)
                 .order('created_at', { ascending: false })
                 .then(({ data }) => {
                     setAshUnloadings(
                         (data ?? []).map(r => ({
+                            id: r.id as string,
                             date: r.date as string,
                             shift: r.shift as string,
                             silo: r.silo as string,
@@ -98,6 +271,92 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 });
         }, [date]);
 
+    // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DW = stock batubara
+    // (stock_batubara_rendal).
+    useEffect(() => {
+        let stale = false;
+        setStockBatubaraSheet(null);
+        fetch(`/api/sheets/read?type=daily_report&date=${date}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(j => {
+                if (stale || !j?.found || !Array.isArray(j?.data?.raw)) return;
+                const pick = (idx: number) => {
+                    const raw = j.data.raw[idx];
+                    const v = raw == null ? '' : String(raw).trim();
+                    return v && v !== '-' ? v : null;
+                };
+                setStockBatubaraSheet(pick(126));  // DW = stock_batubara_rendal
+            })
+            .catch(() => { /* non-blocking — biarkan tampil default */ });
+        return () => { stale = true; };
+    }, [date]);
+
+    // ─── Solar delete handlers ───
+    const handleEditSolarUnloading = async (id: string, fields: { liters: number; supplier: string }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').update(fields).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        setSolarUnloadings(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    };
+
+    const handleEditSolarUsage = async (id: string, fields: { liters: number; tujuan: string; shift: string }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').update(fields).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        setSolarUsages(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    };
+
+    const handleDeleteSolarUnloading = async (id: string) => {
+        if (!confirm('Hapus data kedatangan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_unloadings').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setSolarUnloadings(prev => prev.filter(e => e.id !== id));
+    };
+
+    const handleDeleteSolarUsage = async (id: string) => {
+        if (!confirm('Hapus data permintaan solar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('solar_usages').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setSolarUsages(prev => prev.filter(e => e.id !== id));
+    };
+
+    // ─── Solar add handlers ─── (operator_id solar_unloadings = UUID → null)
+    const handleAddSolarUnloading = async (fields: { liters: number; supplier: string }) => {
+        const supabase = createClient();
+        const { data, error } = await supabase.from('solar_unloadings')
+            .insert({ date, liters: fields.liters, supplier: fields.supplier, shift: null, operator_id: null })
+            .select('id').single();
+        if (error) { alert('Gagal simpan kedatangan solar: ' + error.message); return; }
+        setSolarUnloadings(prev => [{ id: data?.id as string, date, liters: fields.liters, supplier: fields.supplier, shift: null }, ...prev]);
+    };
+
+    const handleAddSolarUsage = async (fields: { liters: number; tujuan: string; shift: string }) => {
+        const supabase = createClient();
+        const { data, error } = await supabase.from('solar_usages')
+            .insert({ date, liters: fields.liters, tujuan: fields.tujuan, shift: fields.shift, operator_id: operator?.name ?? null })
+            .select('id').single();
+        if (error) { alert('Gagal simpan permintaan solar: ' + error.message); return; }
+        setSolarUsages(prev => [{ id: data?.id as string, date, shift: fields.shift, liters: fields.liters, tujuan: fields.tujuan }, ...prev]);
+    };
+
+    const handleDeleteAshUnloading = async (id: string) => {
+        if (!confirm('Hapus data unloading fly ash ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('ash_unloadings').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        setAshUnloadings(prev => prev.filter(e => e.id !== id));
+    };
+
+    const handleEditAshUnloading = async (id: string, fields: { silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number }) => {
+        const supabase = createClient();
+        const { error } = await supabase.from('ash_unloadings').update(fields).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        setAshUnloadings(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    };
+
+
     // ─── Helpers ───
     const extractFields = (obj: Record<string, unknown> | undefined, skipKeys: string[] = []) => {
         if (!obj) return {};
@@ -105,7 +364,18 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         const result: Record<string, number | string | null> = {};
         for (const [k, v] of Object.entries(obj)) {
             if (skip.has(k)) continue;
-            if (v !== null && v !== undefined) result[k] = v as number | string | null;
+            if (v === null || v === undefined) continue;
+            // PostgreSQL numeric returns as STRING via Supabase REST (precision preservation).
+            // Normalize numeric-looking strings to number supaya downstream code yang assume
+            // number (mis. arithmetic, hasVal checks) tidak gagal.
+            if (typeof v === 'string' && v !== '' && /^-?\d+(\.\d+)?$/.test(v)) {
+                const n = Number(v);
+                if (!isNaN(n)) {
+                    result[k] = n;
+                    continue;
+                }
+            }
+            result[k] = v as number | string | null;
         }
         return result;
     };
@@ -151,7 +421,37 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         setCoalTransfer({});
         setTotalizer({});
 
-        if (!report) return;
+        if (!report) {
+            // Pre-fill totalizer fields dari data kemarin (default = totalizer kemarin)
+            if (prevReport) {
+                const STEAM_TOT = ['prod_boiler_a_24','prod_boiler_b_24','inlet_turbine_24','mps_i_24','mps_3a_24','fully_condens_24'];
+                const COAL_TOT  = ['coal_a_24','coal_b_24','coal_c_24','coal_d_24','coal_e_24','coal_f_24'];
+                const POWER_TOT = ['power_ubb_totalizer','power_pabrik2_totalizer','power_pabrik3a_totalizer','power_revamping_totalizer','power_pie_totalizer','power_stg_ubb_totalizer'];
+                // status_turbin diikutsertakan supaya inheritance shutdown bekerja: kalau
+                // turbin shutdown kemarin, default hari ini juga shutdown (operator tinggal toggle ke running).
+                const TURB_TOT  = ['totalizer_gi','totalizer_export','totalizer_import','status_turbin'];
+                const TANK_TOT  = ['bfw_boiler_a','bfw_boiler_b'];
+
+                const pickKeys = (obj: Record<string, number | string | null>, keys: string[]): Record<string, number | null> => {
+                    const result: Record<string, number | null> = {};
+                    for (const k of keys) if (obj[k] != null) result[k] = obj[k] as number;
+                    return result;
+                };
+
+                const ps = prevReport.daily_report_steam?.[0];
+                const pp = prevReport.daily_report_power?.[0];
+                const pc = prevReport.daily_report_coal?.[0];
+                const pt = prevReport.daily_report_turbine_misc?.[0];
+                const pk = prevReport.daily_report_stock_tank?.[0];
+
+                if (ps) setSteam(pickKeys(extractFields(ps as unknown as Record<string, unknown>), STEAM_TOT));
+                if (pp) setPower(pickKeys(extractFields(pp as unknown as Record<string, unknown>), POWER_TOT));
+                if (pc) setCoal(pickKeys(extractFields(pc as unknown as Record<string, unknown>), COAL_TOT));
+                if (pt) setTurbineMisc(pickKeys(extractFields(pt as unknown as Record<string, unknown>), TURB_TOT));
+                if (pk) setStockTank(pickKeys(extractFields(pk as unknown as Record<string, unknown>), TANK_TOT));
+            }
+            return;
+        }
 
         const steamData = report.daily_report_steam?.[0];
         const powerData = report.daily_report_power?.[0];
@@ -164,11 +464,33 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         if (steamData) setSteam(extractFields(steamData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (powerData) setPower(extractFields(powerData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (coalData) setCoal(extractFields(coalData as unknown as Record<string, unknown>) as Record<string, number | null>);
-        if (turbData) setTurbineMisc(extractFields(turbData as unknown as Record<string, unknown>) as Record<string, number | null>);
+        if (turbData) setTurbineMisc(extractFields(turbData as unknown as Record<string, unknown>) as Record<string, number | string | null>);
         if (tankData) setStockTank(extractFields(tankData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (transferData) setCoalTransfer(extractFields(transferData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
-    }, [report]);
+    }, [report, prevReport]);
+
+    // Inherit status boiler A/B & turbin dari laporan terakhir sebelum harian ini, pakai
+    // hook walkback bersama dgn laporan shift. Cycle: malam(0)→pagi(1)→sore(2)→harian(3)→
+    // malam-besok — jadi harian(D) mewarisi dari sore(D) (atau pagi/malam(D), lalu mundur
+    // ke hari sebelumnya lintas shift_reports & daily_reports). Konsisten dgn input-shift,
+    // sehingga status boiler & turbin berlanjut pagi → sore → harian → malam.
+    const latestStatus = useLatestBoilerStatus(date, 'harian');
+    const _inhBoilerA = latestStatus.statusBoilerA;
+    const _inhBoilerB = latestStatus.statusBoilerB;
+    const _inhTurbin = latestStatus.statusTurbin;
+    useEffect(() => {
+        if (report) return;
+        if (!_inhBoilerA && !_inhBoilerB && !_inhTurbin) return;
+        setTurbineMisc(prev => {
+            const next = { ...prev };
+            let changed = false;
+            if (_inhBoilerA && !prev.status_boiler_a) { next.status_boiler_a = _inhBoilerA; changed = true; }
+            if (_inhBoilerB && !prev.status_boiler_b) { next.status_boiler_b = _inhBoilerB; changed = true; }
+            if (_inhTurbin && !prev.status_turbin) { next.status_turbin = _inhTurbin; changed = true; }
+            return changed ? next : prev;
+        });
+    }, [report, _inhBoilerA, _inhBoilerB, _inhTurbin]);
 
     // ─── Previous report data for selisih calculations ───
     const prevSteam = prevReport?.daily_report_steam?.[0]
@@ -179,6 +501,9 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
         : undefined;
     const prevCoal = prevReport?.daily_report_coal?.[0]
         ? extractFields(prevReport.daily_report_coal[0] as unknown as Record<string, unknown>) as Record<string, number | null>
+        : undefined;
+    const prevTurbineMisc = prevReport?.daily_report_turbine_misc?.[0]
+        ? extractFields(prevReport.daily_report_turbine_misc[0] as unknown as Record<string, unknown>) as Record<string, number | null>
         : undefined;
     const prevTotalizerData = prevReport?.daily_report_totalizer?.[0]
         ? extractFields(prevReport.daily_report_totalizer[0] as unknown as Record<string, unknown>) as Record<string, number | string | null>
@@ -192,27 +517,101 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
 
     // ─── CR Calculation (Total Batubara ÷ Total Produksi Steam) ───
     const N0 = (v: number | null | undefined) => Number(v) || 0;
-    const coalTotalA = N0(coal.coal_a_24) + N0(coal.coal_b_24) + N0(coal.coal_c_24);
-    const coalTotalB = N0(coal.coal_d_24) + N0(coal.coal_e_24) + N0(coal.coal_f_24);
+    // Selisih totalizer kumulatif → tak mungkin negatif, di-lantai 0 (samakan dgn sel()/selD).
+    const selCoalCR = (key: string) => { const p = prevCoal ? N0(prevCoal[key]) : 0; return p > 0 ? Math.max(0, N0(coal[key]) - p) : N0(coal[key]); };
+    const coalTotalA = selCoalCR('coal_a_24') + selCoalCR('coal_b_24') + selCoalCR('coal_c_24');
+    const coalTotalB = selCoalCR('coal_d_24') + selCoalCR('coal_e_24') + selCoalCR('coal_f_24');
     const prevSteamA24 = prevSteam ? N0(prevSteam.prod_boiler_a_24) : 0;
     const prevSteamB24 = prevSteam ? N0(prevSteam.prod_boiler_b_24) : 0;
-    const steamProdA = prevSteamA24 > 0 ? N0(steam.prod_boiler_a_24) - prevSteamA24 : N0(steam.prod_boiler_a_24);
-    const steamProdB = prevSteamB24 > 0 ? N0(steam.prod_boiler_b_24) - prevSteamB24 : N0(steam.prod_boiler_b_24);
+    const steamProdA = prevSteamA24 > 0 ? Math.max(0, N0(steam.prod_boiler_a_24) - prevSteamA24) : N0(steam.prod_boiler_a_24);
+    const steamProdB = prevSteamB24 > 0 ? Math.max(0, N0(steam.prod_boiler_b_24) - prevSteamB24) : N0(steam.prod_boiler_b_24);
     const crA = steamProdA > 0 ? coalTotalA / steamProdA : 0;
     const crB = steamProdB > 0 ? coalTotalB / steamProdB : 0;
 
     // ─── Submit handler ───
     const handleSubmit = async () => {
         if (submitting) return;
+        // Guard submit window — operator pengganti yang akses link lama tidak boleh
+        // nge-edit harian di luar window (sebelum 23:00 D atau setelah 09:00 D+1).
+        if (isHarianLocked) {
+            const reason = isHarianBeforeStart && submitWindowStart
+                ? `Window submit harian belum dibuka (mulai ${submitWindowStart.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
+                : submitWindowEnd
+                  ? `Window submit harian sudah berakhir (deadline ${submitWindowEnd.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor.`
+                  : 'Window submit harian sudah ditutup.';
+            setToast({ message: reason, type: 'error' });
+            setTimeout(() => setToast(null), 4000);
+            return;
+        }
+
+        // ─── Pastikan semua tab (sesuai scope station/penuh) terisi sebelum simpan ───
+        // Admin bypass; operator/foreman/supervisor wajib lengkap.
+        if (!isAdmin && visibleTabs.length > 0) {
+            const incomplete = visibleTabs.filter(t => !isTabLengkap(t.id));
+            if (incomplete.length > 0) {
+                setActiveTab(incomplete[0].id);
+                setToast({ message: `Lengkapi dulu tab: ${incomplete.map(t => t.id).join(', ')}`, type: 'error' });
+                setTimeout(() => setToast(null), 5000);
+                return;
+            }
+        }
+
+        // ─── Supervisor (KASI) wajib: form penuh & station panel (boiler A/B + turbin) ───
+        if ((!station || isPanelStation) && !(supervisorName || '').trim() && !((totalizer.kasi_name as string) || '').trim()) {
+            setToast({ message: 'Kolom Supervisor wajib diisi sebelum simpan.', type: 'error' });
+            setTimeout(() => setToast(null), 4000);
+            return;
+        }
+
+        // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
+        // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
+        // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.
+        {
+            const isSdA = turbineMisc.status_boiler_a === 'shutdown';
+            const isSdB = turbineMisc.status_boiler_b === 'shutdown';
+            const isTurbinSd = turbineMisc.status_turbin === 'shutdown';
+            const warnings: string[] = [];
+            const wA = checkConsumptionRate('Boiler A', coalTotalA, steamProdA, isSdA); if (wA) warnings.push(wA);
+            const wB = checkConsumptionRate('Boiler B', coalTotalB, steamProdB, isSdB); if (wB) warnings.push(wB);
+            const mwFields: [string, number | string | null | undefined][] = [
+                ['Load STG', isTurbinSd ? 0 : power.gen_00],
+                ['Σ P PLN (GI)', turbineMisc.gi_sum_p],
+                ['Internal UBB', power.power_ubb],
+                ['Pabrik 2', power.power_pabrik2],
+                ['Pabrik 3A', power.power_pabrik3a],
+                ['Pabrik 3B', power.power_revamping],
+                ['PIU', power.power_pie],
+            ];
+            for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
+            if (warnings.length > 0) {
+                const ok = await confirmWarnings(warnings);
+                if (!ok) return;
+            }
+        }
+
         setSubmitting(true);
+        setSaveProgress(5);
+        const progressInterval = setInterval(() => {
+            setSaveProgress(p => (p !== null && p < 85) ? p + 8 : p);
+        }, 400);
         try {
             const N = (v: number | null | undefined) => Number(v) || 0;
 
             // Auto-kalkulasi: produksi = selisih totalizer, Internal UBB, LPS = 0
             const prevA24 = prevSteam ? N(prevSteam.prod_boiler_a_24) : 0;
             const prevB24 = prevSteam ? N(prevSteam.prod_boiler_b_24) : 0;
-            const prodA24 = prevA24 > 0 ? N(steam.prod_boiler_a_24) - prevA24 : N(steam.prod_boiler_a_24);
-            const prodB24 = prevB24 > 0 ? N(steam.prod_boiler_b_24) - prevB24 : N(steam.prod_boiler_b_24);
+            const prodA24 = prevA24 > 0 ? Math.max(0, N(steam.prod_boiler_a_24) - prevA24) : N(steam.prod_boiler_a_24);
+            const prodB24 = prevB24 > 0 ? Math.max(0, N(steam.prod_boiler_b_24) - prevB24) : N(steam.prod_boiler_b_24);
+
+            // Helper hitung selisih (today_raw − yesterday_raw). Return null kalau salah
+            // satu missing/0 (mirror perilaku daily-sheets-mapper.sel()). Totalizer
+            // kumulatif → selisih tak mungkin negatif, di-lantai 0 (samakan dgn sel()).
+            const selD = (cur: number | string | null | undefined, prev: number | null | undefined): number | null => {
+                const c = cur != null ? Number(cur) : null;
+                const p = prev != null ? Number(prev) : null;
+                if (c === null || p === null || p === 0) return null;
+                return Math.max(0, c - p);
+            };
 
             const steamWithCalcs = {
                 ...steam,
@@ -220,14 +619,29 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 prod_total_00: N(steam.prod_boiler_a_00) + N(steam.prod_boiler_b_00),
                 internal_ubb_24: N(steam.inlet_turbine_24) - N(steam.fully_condens_24),
                 internal_ubb_00: N(steam.inlet_turbine_00) - N(steam.co_gen_00),
+                // Flow & totalizer steam Pabrik 3 (MPS 3A) — dipakai juga di pesan WA SU 3A.
+                // Field aslinya datang dari spread `...steam` tapi TS widening hilang
+                // index signature, jadi di-shadow eksplisit di sini.
+                mps_3a_00: steam.mps_3a_00 ?? null,
+                mps_3a_24: steam.mps_3a_24 ?? null,
                 lps_ii_24: 0,
                 lps_3a_24: 0,
                 lps_ii_00: 0,
                 lps_3a_00: 0,
+                // Selisih raw totalizer
+                selisih_prod_boiler_a: selD(steam.prod_boiler_a_24, prevSteam?.prod_boiler_a_24),
+                selisih_prod_boiler_b: selD(steam.prod_boiler_b_24, prevSteam?.prod_boiler_b_24),
+                selisih_inlet_turbine: selD(steam.inlet_turbine_24, prevSteam?.inlet_turbine_24),
+                selisih_mps_i:         selD(steam.mps_i_24,         prevSteam?.mps_i_24),
+                selisih_mps_3a:        selD(steam.mps_3a_24,        prevSteam?.mps_3a_24),
+                selisih_lps_ii:        selD(steam.lps_ii_24,        prevSteam?.lps_ii_24),
+                selisih_lps_3a:        selD(steam.lps_3a_24,        prevSteam?.lps_3a_24),
+                selisih_fully_condens: selD(steam.fully_condens_24, prevSteam?.fully_condens_24),
             };
 
-            const totalA24 = N(coal.coal_a_24) + N(coal.coal_b_24) + N(coal.coal_c_24);
-            const totalB24 = N(coal.coal_d_24) + N(coal.coal_e_24) + N(coal.coal_f_24);
+            const selC = (key: string) => { const p = prevCoal ? N(prevCoal[key]) : 0; return p > 0 ? Math.max(0, N(coal[key]) - p) : N(coal[key]); };
+            const totalA24 = selC('coal_a_24') + selC('coal_b_24') + selC('coal_c_24');
+            const totalB24 = selC('coal_d_24') + selC('coal_e_24') + selC('coal_f_24');
             const totalA00 = N(coal.coal_a_00) + N(coal.coal_b_00) + N(coal.coal_c_00);
             const totalB00 = N(coal.coal_d_00) + N(coal.coal_e_00) + N(coal.coal_f_00);
             const coalWithCalcs = {
@@ -238,6 +652,13 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                 total_boiler_a_00: totalA00,
                 total_boiler_b_00: totalB00,
                 grand_total_00: totalA00 + totalB00,
+                // Selisih totalizer feeder (today − yesterday)
+                selisih_coal_a: selD(coal.coal_a_24, prevCoal?.coal_a_24),
+                selisih_coal_b: selD(coal.coal_b_24, prevCoal?.coal_b_24),
+                selisih_coal_c: selD(coal.coal_c_24, prevCoal?.coal_c_24),
+                selisih_coal_d: selD(coal.coal_d_24, prevCoal?.coal_d_24),
+                selisih_coal_e: selD(coal.coal_e_24, prevCoal?.coal_e_24),
+                selisih_coal_f: selD(coal.coal_f_24, prevCoal?.coal_f_24),
             };
 
             const calcCrA = steamProdA > 0 ? coalTotalA / steamProdA : 0;
@@ -254,95 +675,411 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
             const bfwConsA = prevBfwA > 0 ? N(stockTank.bfw_boiler_a) - prevBfwA : N(stockTank.bfw_boiler_a);
             const bfwConsB = prevBfwB > 0 ? N(stockTank.bfw_boiler_b) - prevBfwB : N(stockTank.bfw_boiler_b);
 
+            const isSiloA = (s: string) => s === 'A' || s === 'Silo A';
+            const isSiloB = (s: string) => s === 'B' || s === 'Silo B';
+            const unloadingA = ashUnloadings.filter(e => isSiloA(e.silo)).reduce((s, e) => s + (e.ritase || 0), 0);
+            const unloadingB = ashUnloadings.filter(e => isSiloB(e.silo)).reduce((s, e) => s + (e.ritase || 0), 0);
+
             const tankWithCalcs = {
                 ...stockTank,
                 solar_tank_total: N(stockTank.solar_tank_a) + N(stockTank.solar_tank_b),
                 bfw_total: bfwConsA + bfwConsB,
+                unloading_fly_ash_a: unloadingA || null,
+                unloading_fly_ash_b: unloadingB || null,
             };
 
-            const prevCT = prevCoalTransfer || {};
+            // Total tidak lagi dihitung app. Kolom total PB2/PB3/Darat (DC–DF, DI–DJ, DL)
+            // ditulis 0 ke sheet; total via laut (DN) adalah formula di sheet (mapper skip,
+            // ditampilkan di form via read sheet). Form hanya mengumpulkan input harian.
             const calcTransfer = {
                 ...coalTransfer,
-                pb2_total_pf1_rit: N(prevCT.pb2_total_pf1_rit) + N(coalTransfer.pb2_pf1_rit),
-                pb2_total_pf1_ton: N(prevCT.pb2_total_pf1_ton) + N(coalTransfer.pb2_pf1_ton),
-                pb2_total_pf2_rit: N(prevCT.pb2_total_pf2_rit) + N(coalTransfer.pb2_pf2_rit),
-                pb2_total_pf2_ton: N(prevCT.pb2_total_pf2_ton) + N(coalTransfer.pb2_pf2_ton),
-                pb3_total_calc_rit: N(prevCT.pb3_total_calc_rit) + N(coalTransfer.pb3_calc_rit),
-                pb3_total_calc_ton: N(prevCT.pb3_total_calc_ton) + N(coalTransfer.pb3_calc_ton),
-                darat_total_ton: N(prevCT.darat_total_ton) + N(coalTransfer.darat_24_ton),
-                laut_total_ton: N(prevCT.laut_total_ton) + N(coalTransfer.laut_24_ton),
+                // Input harian: default 0 (kalau belum diisi → 0, bukan kosong) supaya tersimpan
+                // & ditulis 0 ke sheet.
+                pb2_pf1_rit: N(coalTransfer.pb2_pf1_rit),
+                pb2_pf1_ton: N(coalTransfer.pb2_pf1_ton),
+                pb2_pf2_rit: N(coalTransfer.pb2_pf2_rit),
+                pb2_pf2_ton: N(coalTransfer.pb2_pf2_ton),
+                pb3_calc_rit: N(coalTransfer.pb3_calc_rit),
+                pb3_calc_ton: N(coalTransfer.pb3_calc_ton),
+                darat_24_ton: N(coalTransfer.darat_24_ton),
+                laut_24_ton: N(coalTransfer.laut_24_ton),
+                // Total: app tidak hitung lagi. PB2/PB3/Darat (DC–DF, DI–DJ, DL) ditulis 0.
+                // Total via laut (DN) = formula di sheet (mapper skip), tampil di form via read.
+                pb2_total_pf1_rit: 0,
+                pb2_total_pf1_ton: 0,
+                pb2_total_pf2_rit: 0,
+                pb2_total_pf2_ton: 0,
+                pb3_total_calc_rit: 0,
+                pb3_total_calc_ton: 0,
+                darat_total_ton: 0,
+                laut_total_ton: 0,
             };
 
+            // Boiler shutdown → semua flow/furnace = 0 sebelum disimpan
+            const isShutdownA = turbineMisc.status_boiler_a === 'shutdown';
+            const isShutdownB = turbineMisc.status_boiler_b === 'shutdown';
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sw = steamWithCalcs as any;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cw = coalWithCalcs as any;
+            // Field sesaat boiler (jam 24.00) di daily_report_turbine_misc → mirror TabBoiler
+            // INSTANT_FIELDS. Dipaksa 0 saat shutdown supaya DB punya 0 (bukan null) → di Sheets
+            // tertulis 0 & dianggap "terisi 0".
+            const tmw = turbWithCalcs as Record<string, unknown>;
+            const zeroBoilerInstant = (b: 'a' | 'b') => {
+                ['press_steam', 'temp_steam', 'bfw_press', 'temp_bfw', 'temp_flue_gas',
+                 'air_heater_ti113', 'o2', 'steam_drum_press', 'primary_air', 'secondary_air',
+                ].forEach(k => { tmw[`${k}_${b}`] = 0; });
+            };
+            if (isShutdownA) {
+                sw.prod_boiler_a_00 = 0;
+                cw.coal_a_00 = 0; cw.coal_b_00 = 0; cw.coal_c_00 = 0;
+                cw.total_boiler_a_00 = 0;
+                (tankWithCalcs as Record<string, unknown>).flow_bfw_a = 0;
+                zeroBoilerInstant('a');
+            }
+            if (isShutdownB) {
+                sw.prod_boiler_b_00 = 0;
+                cw.coal_d_00 = 0; cw.coal_e_00 = 0; cw.coal_f_00 = 0;
+                cw.total_boiler_b_00 = 0;
+                (tankWithCalcs as Record<string, unknown>).flow_bfw_b = 0;
+                zeroBoilerInstant('b');
+            }
+            if (isShutdownA || isShutdownB) {
+                sw.prod_total_00 = N(sw.prod_boiler_a_00) + N(sw.prod_boiler_b_00);
+                cw.grand_total_00 = N(cw.total_boiler_a_00) + N(cw.total_boiler_b_00);
+            }
+
+            // Turbin shutdown → zero field instantaneous (jam 00:00) + parameter operasional.
+            // 24h totals dan raw totalizer (totalizer_gi/export/import) TETAP editable
+            // karena harian = akumulasi (turbin bisa running di shift lain hari itu).
+            const isTurbinShutdown = turbineMisc.status_turbin === 'shutdown';
+            // Precompute selisih totalizer MWh untuk power.
+            const powerWithSelisih: Record<string, number | null> = {
+                ...power,
+                selisih_ubb:       selD(power.power_ubb_totalizer,       prevPower?.power_ubb_totalizer),
+                selisih_pabrik2:   selD(power.power_pabrik2_totalizer,   prevPower?.power_pabrik2_totalizer),
+                selisih_pabrik3a:  selD(power.power_pabrik3a_totalizer,  prevPower?.power_pabrik3a_totalizer),
+                selisih_revamping: selD(power.power_revamping_totalizer, prevPower?.power_revamping_totalizer),
+                selisih_pie:       selD(power.power_pie_totalizer,       prevPower?.power_pie_totalizer),
+                selisih_stg_ubb:   selD(power.power_stg_ubb_totalizer,   prevPower?.power_stg_ubb_totalizer),
+            };
+            const powerForSubmit: Record<string, number | null> = isTurbinShutdown
+                ? { ...powerWithSelisih, gen_00: 0 }
+                : powerWithSelisih;
+            if (isTurbinShutdown) {
+                sw.inlet_turbine_00 = 0;
+                sw.co_gen_00 = 0;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const tw = turbWithCalcs as any;
+                tw.axial_displacement = 0;
+                tw.thrust_bearing_temp = 0;
+                tw.steam_inlet_press = 0;
+                tw.steam_inlet_temp = 0;
+            }
+
             const result = await submitReport({
-                created_by: operator?.id != null ? String(operator.id) : undefined,
+                created_by: operator?.supabaseId ?? undefined,
                 notes: undefined,
                 produksi_steam_a: prodA24 || null,
                 produksi_steam_b: prodB24 || null,
                 konsumsi_batubara: coalWithCalcs.grand_total_24 ?? null,
-                load_mw: power.gen_00 ?? null,
+                load_mw: powerForSubmit.gen_00 ?? null,
                 steam: steamWithCalcs,
-                power,
+                power: powerForSubmit,
                 coal: coalWithCalcs,
                 turbineMisc: turbWithCalcs,
                 stockTank: tankWithCalcs,
                 coalTransfer: calcTransfer,
-                totalizer,
+                totalizer: {
+                    ...totalizer,
+                    group_name: groupName || totalizer.group_name || null,
+                    kasi_name: supervisorName || totalizer.kasi_name || null,
+                    // Stock Batubara (kolom DW) — diambil dari Sheets LHUBB, disimpan ke
+                    // Supabase supaya muncul di review In/Out & ditulis balik ke DW.
+                    stock_batubara_rendal:
+                        parseSheetNum(stockBatubaraSheet)
+                        ?? (totalizer.stock_batubara_rendal as number | null | undefined)
+                        ?? null,
+                },
+                // Station-scoped fill audit: hanya di-kirim kalau submit dari station view.
+                ...(station && fillerName ? { station_filler: { station, name: fillerName } } : {}),
             });
 
             if (result?.error) {
                 showToast('Error: ' + result.error, 'error');
             } else {
-                showToast('Laporan harian berhasil disimpan!', 'success');
+                if (result?.sheetsWarning) {
+                    showToast('Tersimpan, tapi Sheets gagal: ' + result.sheetsWarning, 'error');
+                } else {
+                    showToast('Laporan harian berhasil disimpan!', 'success');
+                }
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
+
+                // Notif "siap dipublish" harian (LHUBB): fire-and-forget. Endpoint cek
+                // kelengkapan + dedup (1x per hari), lalu kirim ke grup pengisi LHUBB.
+                if (result?.reportId) {
+                    fetch('/api/whatsapp/notify-ready-daily', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ date, reportId: result.reportId }),
+                    }).catch(() => { /* non-blocking */ });
+                }
+
+                // Build WA preview for Utilitas 2 & SU 3A when panel_turbin saves harian
+                if (station === 'panel_turbin' && result?.reportId) {
+                    const fmt = (v: number | string | null | undefined) => {
+                        if (v == null) return '-';
+                        const n = Number(v);
+                        if (isNaN(n)) return '-';
+                        return Number.isInteger(n) ? String(n) : n.toFixed(1);
+                    };
+                    setWaPreview({
+                        reportId: result.reportId,
+                        sending: false,
+                        items: [
+                            {
+                                target: 'utilitas_2', label: 'Utilitas 2', status: 'pending',
+                                message: [
+                                    `⚡ *Laporan Power Harian*`,
+                                    `Tanggal: ${date}`,
+                                    '',
+                                    `Totalizer Pabrik 2 : ${fmt(powerForSubmit.power_pabrik2_totalizer)} MWh`,
+                                    `Selisih (hari ini − kemarin): ${fmt(powerForSubmit.selisih_pabrik2)} MWh`,
+                                ].join('\n'),
+                            },
+                            {
+                                target: 'su_3a', label: 'SU 3A', status: 'pending',
+                                message: [
+                                    `🔥 *Distribusi Steam Pabrik 3 — Harian*`,
+                                    `Tanggal: ${date}`,
+                                    '',
+                                    `Flow jam 00:00   : ${fmt(steamWithCalcs.mps_3a_00)} t/h`,
+                                    `Totalizer 24 jam : ${fmt(steamWithCalcs.mps_3a_24)} ton`,
+                                    `Selisih (hari ini − kemarin): ${fmt(steamWithCalcs.selisih_mps_3a)} ton`,
+                                ].join('\n'),
+                            },
+                        ],
+                    });
+                }
             }
+            clearInterval(progressInterval);
+            setSaveProgress(100);
+            setTimeout(() => setSaveProgress(null), 800);
         } catch {
+            clearInterval(progressInterval);
+            setSaveProgress(null);
             showToast('Terjadi kesalahan saat menyimpan laporan.', 'error');
         } finally {
             setSubmitting(false);
         }
     };
 
+    // Latest-ref: handleSubmit dibuat ulang tiap render (menutup state form terbaru).
+    // registerSave mendaftarkan wrapper yang selalu memanggil versi terbaru, supaya
+    // tombol SIMPAN floating di parent tidak menyimpan data basi.
+    const submitRef = useRef<() => void>(() => {});
+    submitRef.current = handleSubmit;
+    useEffect(() => {
+        if (!registerSave) return;
+        registerSave({
+            submit: () => submitRef.current(),
+            submitting,
+            locked: isHarianLocked,
+            beforeStart: isHarianBeforeStart,
+            pastEnd: isHarianPastEnd,
+        });
+        return () => registerSave(null);
+    }, [registerSave, submitting, isHarianLocked, isHarianBeforeStart, isHarianPastEnd]);
+
     // ─── Tab Completeness Checker ───
     const isTabLengkap = useCallback((tabId: HarianTabId) => {
-        const hasVal = (obj: Record<string, any>, keys: string[]) => keys.every(k => obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
-        
+        // Sumber kebenaran kelengkapan field ada di lib/daily-completeness.ts supaya
+        // SELALU sinkron dgn syarat notif "siap publish" (notify-ready-daily).
+        const state: DailyState = { steam, power, coal, turbineMisc, stockTank, totalizer };
         switch (tabId) {
-            case 'Boiler': 
-                return hasVal(steam, ['prod_boiler_a_24', 'prod_boiler_b_24']) && hasVal(stockTank, ['bfw_boiler_a', 'bfw_boiler_b']);
-            case 'Turbin': 
-                return hasVal(steam, ['inlet_turbine_24', 'fully_condens_24']);
-            case 'Power': 
-                return hasVal(power, ['gen_24', 'exsport_24', 'internal_bus1_24']);
-            case 'Handling': 
-                return hasVal(coalTransfer, ['darat_24_ton', 'laut_24_ton']);
-            case 'Chemical': 
-                return hasVal(stockTank, ['chemical_phosphat', 'chemical_amin', 'chemical_hydrasin']);
-            case 'Stock BB': 
-                return hasVal(stockTank, ['stock_batubara']);
-            case 'Silo & Fly Ash': 
-                return hasVal(stockTank, ['silo_a_pct', 'silo_b_pct']);
+            case 'Boiler A': return isBoilerComplete(state, 'a');
+            case 'Boiler B': return isBoilerComplete(state, 'b');
+            case 'Turbin': return isTurbinComplete(state);
+            case 'Power': return isPowerComplete(state);
+            case 'PIU': return isPiuComplete(state);
+            case 'Handling': return isHandlingComplete(state);
+            case 'Silo & Fly Ash': return isSiloComplete(state);
+            case 'Coal Bunker': return isCoalBunkerComplete(state);
+            // Tab opsional/event-based → cukup dikunjungi (field tidak selalu ada datanya).
+            case 'Chemical': return visitedTabs.has('Chemical');
+            case 'Stock BB': return visitedTabs.has('Stock BB');
             default: return false;
         }
-    }, [steam, power, coal, stockTank, coalTransfer]);
+    }, [steam, power, coal, turbineMisc, stockTank, totalizer, visitedTabs]);
+
+    // Semua tab visible (sesuai station kalau ada) sudah lengkap → tombol Publish aktif.
+    const allTabsComplete = useMemo(
+        () => visibleTabs.length > 0 && visibleTabs.every(t => isTabLengkap(t.id)),
+        [visibleTabs, isTabLengkap],
+    );
 
     return (
         <>
+            {/* Pop-up peringatan nilai tidak wajar */}
+            {warningModal}
             {/* Toast */}
             {toast && (
-                <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all ${
-                    toast.type === 'success'
-                        ? 'bg-emerald-600 border border-emerald-400/50 shadow-emerald-500/20'
-                        : 'bg-red-600 border border-red-400/50 shadow-red-500/20'
-                }`}>
-                    <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">
-                            {toast.type === 'success' ? 'check_circle' : 'error'}
-                        </span>
-                        {toast.message}
+                <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                    <div className={`px-8 py-5 rounded-2xl shadow-2xl text-white text-base font-semibold transition-all scale-100 pointer-events-auto ${
+                        toast.type === 'success'
+                            ? 'bg-emerald-600 border border-emerald-400/50 shadow-emerald-500/30'
+                            : 'bg-red-600 border border-red-400/50 shadow-red-500/30'
+                    }`}>
+                        <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-[28px]">
+                                {toast.type === 'success' ? 'check_circle' : 'error'}
+                            </span>
+                            {toast.message}
+                        </div>
                     </div>
                 </div>
             )}
+
+            {/* WA Preview Dialog */}
+            {waPreview && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !waPreview.sending && setWaPreview(null)}>
+                    <div className="bg-[#0d1520] border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-[90vw] max-h-[80vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                                <span className="material-symbols-outlined text-emerald-400">chat</span>
+                                {waPreview.items.some(i => i.status !== 'pending') ? 'Hasil Kirim WhatsApp' : 'Preview Notifikasi WhatsApp'}
+                            </h3>
+                            <button onClick={() => !waPreview.sending && setWaPreview(null)} className="text-slate-400 hover:text-white transition-colors">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            {waPreview.items.map((item, i) => (
+                                <div key={i} className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className={`inline-block w-2 h-2 rounded-full ${
+                                            item.status === 'sent' ? 'bg-emerald-400' :
+                                            item.status === 'failed' ? 'bg-red-400' : 'bg-slate-400'
+                                        }`}></span>
+                                        <span className="text-sm font-semibold text-white">{item.label}</span>
+                                        {item.status !== 'pending' && (
+                                            <span className={`text-xs px-2 py-0.5 rounded ${item.status === 'sent' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+                                                {item.status === 'sent' ? 'Terkirim' : 'Gagal'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <pre className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.message}</pre>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex gap-3 mt-4">
+                            {waPreview.items.every(i => i.status === 'pending') ? (
+                                <>
+                                    <button onClick={() => setWaPreview(null)} className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors">
+                                        Batal
+                                    </button>
+                                    <button
+                                        disabled={waPreview.sending}
+                                        onClick={async () => {
+                                            setWaPreview(prev => prev ? { ...prev, sending: true } : null);
+                                            try {
+                                                const res = await fetch('/api/whatsapp/notify-turbin-save', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ type: 'harian', date, reportId: waPreview.reportId }),
+                                                });
+                                                const data = await res.json();
+                                                const sent = (data.results ?? []) as { target: string; ok: boolean }[];
+                                                setWaPreview(prev => prev ? {
+                                                    ...prev, sending: false,
+                                                    items: prev.items.map(it => {
+                                                        const r = sent.find(s => s.target === it.target);
+                                                        return { ...it, status: r ? (r.ok ? 'sent' : 'failed') : 'failed' };
+                                                    }),
+                                                } : null);
+                                            } catch {
+                                                setWaPreview(prev => prev ? {
+                                                    ...prev, sending: false,
+                                                    items: prev.items.map(it => ({ ...it, status: 'failed' as const })),
+                                                } : null);
+                                            }
+                                        }}
+                                        className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        {waPreview.sending ? (
+                                            <><span className="material-symbols-outlined animate-spin text-lg">progress_activity</span> Mengirim...</>
+                                        ) : (
+                                            <><span className="material-symbols-outlined text-lg">send</span> Kirim ke WhatsApp</>
+                                        )}
+                                    </button>
+                                </>
+                            ) : (
+                                <button onClick={() => setWaPreview(null)} className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors">
+                                    Tutup
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Loading Overlay */}
+            {submitting && (
+                <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
+                    <div className="relative flex flex-col items-center justify-center bg-[#16202e] border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95 w-72">
+                        <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-2xl pointer-events-none"></div>
+                        <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mb-6 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
+                        <h3 className="text-white font-black text-xl tracking-wide mb-1 relative z-10">Menyimpan data</h3>
+                        <p className="text-slate-400 text-sm font-medium mb-5 relative z-10">Mohon tunggu sebentar...</p>
+                        {saveProgress !== null && (
+                            <div className="w-full relative z-10">
+                                <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                                    <span>Progress</span>
+                                    <span className="font-bold text-emerald-400">{saveProgress}%</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                                        style={{ width: `${saveProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Status banner — penting untuk operator pengganti yang akses link lama.
+                Status dibaca dari daily_reports (bukan shift_reports) supaya tidak salah
+                tampil. "sudah disubmit" hanya muncul kalau laporan harian benar-benar
+                sudah submitted/approved untuk tanggal ini. */}
+            {(() => {
+                const dailyStatus = (report?.status as 'draft' | 'submitted' | 'approved' | undefined) ?? null;
+                const isDailySubmitted = dailyStatus === 'submitted' || dailyStatus === 'approved';
+                if (!isDailySubmitted && !isHarianLocked) return null;
+                return (
+                    <div className={`mb-4 px-4 py-2.5 rounded-lg border flex items-center gap-2.5 text-sm font-bold ${
+                        isHarianLocked
+                            ? 'bg-red-500/15 border-red-500/40 text-red-300'
+                            : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                    }`}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                            {isHarianLocked ? 'lock' : 'warning'}
+                        </span>
+                        <span>
+                            {isHarianBeforeStart && submitWindowStart
+                                ? `Window submit laporan harian belum dibuka (mulai ${submitWindowStart.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}).`
+                            : isHarianPastEnd && submitWindowEnd
+                                ? `Window submit laporan harian sudah berakhir (deadline ${submitWindowEnd.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}). Hubungi supervisor untuk koreksi.`
+                            : submitWindowEnd
+                                ? `Laporan ini sudah disubmit. Submit ulang akan mengganti data. Deadline koreksi: ${submitWindowEnd.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                                : 'Laporan ini sudah disubmit. Submit ulang akan mengganti data.'}
+                        </span>
+                    </div>
+                );
+            })()}
 
             <div className="flex flex-col lg:flex-row gap-6 w-full max-w-full">
                 {/* Left Sidebar */}
@@ -353,26 +1090,99 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                             <h3 className="text-white font-bold text-sm mb-1">Menu Laporan</h3>
                             <p className="text-[11px] text-slate-400 leading-tight">Pilih kategori area untuk mulai input data harian.</p>
                         </div>
+                        {/* Tombol simpan internal disembunyikan bila parent mendaftar via
+                            registerSave — SIMPAN pindah ke grup floating halaman. */}
+                        {!registerSave && (
                         <button
                             onClick={handleSubmit}
-                            disabled={submitting}
-                            className={`flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={submitting || isHarianLocked}
+                            title={isHarianBeforeStart && submitWindowStart
+                                ? `Window submit mulai ${submitWindowStart.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+                                : isHarianPastEnd ? 'Window submit sudah berakhir' : undefined}
+                            className={`flex items-center justify-center gap-2 ${isHarianLocked ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting || isHarianLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            <span className="material-symbols-outlined text-[18px]">save</span>
-                            {submitting ? 'Menyimpan...' : 'Simpan Laporan'}
+                            <span className="material-symbols-outlined text-[18px]">{isHarianLocked ? 'lock' : 'save'}</span>
+                            {submitting ? 'Menyimpan...' : isHarianLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
                         </button>
+                        )}
+                        {/* Publish — disembunyikan di mode station (operator station hanya isi tab-nya).
+                            Admin bypass: bisa klik tanpa nunggu centang lengkap. */}
+                        {!station && (() => {
+                            const publishDisabled = !report?.id || (!isAdmin && !allTabsComplete);
+                            return (
+                                <button
+                                    onClick={goPublishDaily}
+                                    disabled={publishDisabled}
+                                    title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
+                                    className={`flex items-center justify-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">fact_check</span>
+                                    REVIEW / PUBLISH{isAdmin && !allTabsComplete ? ' (Admin)' : ''}
+                                </button>
+                            );
+                        })()}
+                        {/* Ganti Laporan — buka kembali dialog Pilih Laporan (selalu tersedia) */}
+                        {onChangeReport && (
+                            <button
+                                onClick={onChangeReport}
+                                className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-lg text-sm font-bold transition-all border border-slate-700/50 w-full"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                                GANTI LAPORAN
+                            </button>
+                        )}
                     </div>
+
+                    {station && (
+                        <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-[#0f1721]/80 border border-slate-700/50 shadow-lg">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 18 }}>badge</span>
+                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Station</span>
+                                <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
+                                <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                    <SearchableSelect
+                                        value={fillerName}
+                                        onChange={setFillerName}
+                                        options={operators.map(op => ({ value: op.name, label: `${op.name}${op.group ? ` (Group ${op.group})` : ''}` }))}
+                                        ariaLabel="Diisi oleh"
+                                        triggerClassName="text-sm font-bold text-white"
+                                    />
+                                    <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                </div>
+                            </div>
+                            {/* Supervisor (KASI) — WAJIB di station panel (boiler A/B + turbin).
+                                Selalu bisa dipilih/diganti; default mengikuti nilai yang sudah ada. */}
+                            {isPanelStation && (
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Supervisor <span className="text-red-400">*</span></span>
+                                    <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                        <SearchableSelect
+                                            value={(totalizer.kasi_name as string) || supervisorName || ''}
+                                            onChange={(v) => { setTotalizer(prev => ({ ...prev, kasi_name: v })); onSupervisorChange?.(v); }}
+                                            options={supervisorOptions.map(op => ({ value: op.name, label: op.name }))}
+                                            ariaLabel="Supervisor"
+                                            triggerClassName="text-sm font-bold text-white"
+                                        />
+                                        <span className="material-symbols-outlined text-[16px] text-slate-500 absolute right-1 pointer-events-none">arrow_drop_down</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Desktop Tab List */}
                     <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg hidden lg:flex flex-col gap-1">
-                        {HARIAN_TABS.map((tab) => {
+                        {visibleTabs.map((tab) => {
                             const isActive = activeTab === tab.id;
                             const isComplete = isTabLengkap(tab.id);
                             const styles = TAB_STYLES[tab.colorClass];
                             return (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
                                     className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? styles.active : styles.inactive}`}
                                 >
                                     <span className={`material-symbols-outlined text-[20px] ${isActive ? styles.icon : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
@@ -393,14 +1203,14 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
                     {/* Mobile Tab List */}
                     <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg lg:hidden overflow-x-auto">
                         <div className="flex gap-2 w-max pb-1">
-                            {HARIAN_TABS.map((tab) => {
+                            {visibleTabs.map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 const isComplete = isTabLengkap(tab.id);
                                 const styles = TAB_STYLES[tab.colorClass];
                                 return (
                                     <button
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
+                                        onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
                                         className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? styles.active : styles.inactive}`}
                                     >
                                         <span className={`material-symbols-outlined text-[18px] ${isActive ? styles.icon : 'opacity-70'}`}>
@@ -421,63 +1231,127 @@ export default function InputHarianForm({ date, operator }: InputHarianFormProps
 
                 {/* Tab Content Area */}
                 <div className="flex-1 min-w-0 flex flex-col gap-4">
-                    {/* Active Tab Header */}
-                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-5 py-4 flex items-center gap-4 shadow-lg">
+                    {/* Active Tab Header — disamakan dengan laporan shift (judul + status chip di kanan judul). */}
+                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                         {(() => {
-                            const tab = HARIAN_TABS.find(t => t.id === activeTab);
+                            const tab = visibleTabs.find(t => t.id === activeTab);
                             const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
+                            const turbinStatus = (turbineMisc.status_turbin as string) ?? '';
+                            const tBorder = turbinStatus === 'running' ? 'border-emerald-500/50' : turbinStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
+                            const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                             return (
                                 <>
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner`}>
-                                        <span className={`material-symbols-outlined text-[26px] ${styles.icon}`}>{tab?.icon}</span>
+                                    <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
+                                        <span className={`material-symbols-outlined text-[22px] sm:text-[30px] ${styles.icon}`}>{tab?.icon}</span>
                                     </div>
-                                    <div>
-                                        <h2 className="text-white font-bold text-xl leading-tight">{tab?.label}</h2>
-                                        <p className="text-slate-400 text-xs mt-0.5">Input data operasional harian {tab?.label}</p>
-                                    </div>
+                                    <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide min-w-0 truncate">{tab?.label}</h2>
+                                    {/* Status chip boiler — di kanan judul untuk tab Boiler A/B (sama spt shift). */}
+                                    {(activeTab === 'Boiler A' || activeTab === 'Boiler B') && (() => {
+                                        const bx = activeTab === 'Boiler A' ? 'a' : 'b';
+                                        const bStatus = (turbineMisc[`status_boiler_${bx}`] as string) ?? '';
+                                        const bBorder = bStatus === 'running' ? 'border-emerald-500/50' : bStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
+                                        const bDot = bStatus === 'running' ? 'bg-emerald-500' : bStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
+                                        return (
+                                            <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${bBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${bDot} shrink-0`} />
+                                                <select
+                                                    className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                    value={bStatus}
+                                                    onChange={e => {
+                                                        const v = e.target.value === '' ? null : e.target.value;
+                                                        setTurbineMisc(prev => ({ ...prev, [`status_boiler_${bx}`]: v }));
+                                                    }}
+                                                >
+                                                    <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                                                    <option value="running" className="bg-[#101822] text-white">Running</option>
+                                                    <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                </select>
+                                            </div>
+                                        );
+                                    })()}
+                                    {/* Status chip turbin — di kanan judul, size sama seperti chip shift */}
+                                    {activeTab === 'Turbin' && (
+                                        <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                            <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
+                                            <select
+                                                className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
+                                                value={turbinStatus}
+                                                onChange={e => {
+                                                    const v = e.target.value === '' ? null : e.target.value;
+                                                    setTurbineMisc(prev => ({ ...prev, status_turbin: v }));
+                                                }}
+                                            >
+                                                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                                                <option value="running" className="bg-[#101822] text-white">Running</option>
+                                                <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                            </select>
+                                        </div>
+                                    )}
                                 </>
                             );
                         })()}
                     </div>
 
-                    {/* Loading */}
-                    {loading && (
-                        <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-4 bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl">
-                            <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                            Memuat data harian...
+                    {/* Loading Overlay — tampil saat data sedang di-fetch dari Supabase */}
+                    {loading ? (
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl">
+                            <div className="w-12 h-12 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin shadow-[0_0_12px_rgba(16,185,129,0.3)]"></div>
+                            <div className="text-center">
+                                <h3 className="text-white font-bold text-base mb-1">Memuat data dari Supabase</h3>
+                                <p className="text-slate-400 text-sm">Mengambil data laporan harian...</p>
+                            </div>
+                        </div>
+                    ) : visibleTabs.length === 0 && station ? (
+                        <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl text-center px-6">
+                            <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 56 }}>info</span>
+                            <h3 className="text-white font-bold text-base">Station <span className="text-emerald-400">{STATION_LABELS[station]}</span> tidak punya tab di laporan harian.</h3>
+                            <p className="text-slate-400 text-sm max-w-md">Station ini hanya mengisi data di laporan shift. Buka link yang sesuai dari grup WA.</p>
+                        </div>
+                    ) : (
+                        <div className={`pb-6${activeTab === 'Power' ? ' flex flex-row gap-4 items-start' : (activeTab === 'Boiler A' || activeTab === 'Boiler B') ? ' flex flex-col xl:flex-row gap-6' : ''}`}>
+                            {(() => {
+                                const tabProps: DailyTabProps = {
+                                    steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,
+                                    prevSteam, prevPower, prevCoal, prevTurbineMisc, prevTotalizer: prevTotalizerData, prevStockTank, prevCoalTransfer,
+                                    onSteamChange: makeNumberHandler(setSteam),
+                                    onPowerChange: makeNumberHandler(setPower),
+                                    onCoalChange: makeNumberHandler(setCoal),
+                                    onTurbineMiscChange: makeMixedHandler(setTurbineMisc),
+                                    onStockTankChange: makeNumberHandler(setStockTank),
+                                    onCoalTransferChange: makeNumberHandler(setCoalTransfer),
+                                    onTotalizerChange: makeMixedHandler(setTotalizer),
+                                    crA, crB,
+                                    stockBatubaraSheet,
+                                    lhubbDate: date,
+                                    solarUnloadings,
+                                    solarUsages,
+                                    onDeleteSolarUnloading: handleDeleteSolarUnloading,
+                                    onDeleteSolarUsage: handleDeleteSolarUsage,
+                                    onEditSolarUnloading: handleEditSolarUnloading,
+                                    onEditSolarUsage: handleEditSolarUsage,
+                                    onAddSolarUnloading: handleAddSolarUnloading,
+                                    onAddSolarUsage: handleAddSolarUsage,
+                                    ashUnloadings,
+                                    onDeleteAshUnloading: handleDeleteAshUnloading,
+                                    onEditAshUnloading: handleEditAshUnloading,
+                                };
+                                return (
+                                    <>
+                                        {activeTab === 'Boiler A' && <TabBoiler {...tabProps} boilerId="A" />}
+                                        {activeTab === 'Boiler B' && <TabBoiler {...tabProps} boilerId="B" />}
+                                        {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
+                                        {activeTab === 'Power' && <TabPower {...tabProps} />}
+                                        {activeTab === 'PIU' && <TabPIU {...tabProps} />}
+                                        {activeTab === 'Handling' && <TabHandling {...tabProps} />}
+                                        {activeTab === 'Coal Bunker' && <TabCoalBunker {...tabProps} />}
+                                        {activeTab === 'Chemical' && <TabChemical date={date} />}
+                                        {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}
+                                        {activeTab === 'Silo & Fly Ash' && <TabSiloFlyAsh {...tabProps} />}
+                                    </>
+                                );
+                            })()}
                         </div>
                     )}
-
-                    {/* Tab Content */}
-                    <div className="pb-6">
-                        {(() => {
-                            const tabProps: DailyTabProps = {
-                                steam, power, coal, turbineMisc, stockTank, coalTransfer, totalizer,
-                                prevSteam, prevPower, prevCoal, prevTotalizer: prevTotalizerData, prevStockTank, prevCoalTransfer,
-                                onSteamChange: makeNumberHandler(setSteam),
-                                onPowerChange: makeNumberHandler(setPower),
-                                onCoalChange: makeNumberHandler(setCoal),
-                                onTurbineMiscChange: makeNumberHandler(setTurbineMisc),
-                                onStockTankChange: makeNumberHandler(setStockTank),
-                                onCoalTransferChange: makeNumberHandler(setCoalTransfer),
-                                onTotalizerChange: makeMixedHandler(setTotalizer),
-                                crA, crB,
-                                solarUnloadings,
-                                ashUnloadings,
-                            };
-                            return (
-                                <>
-                                    {activeTab === 'Boiler' && <TabBoiler {...tabProps} />}
-                                    {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
-                                    {activeTab === 'Power' && <TabPower {...tabProps} />}
-                                    {activeTab === 'Handling' && <TabHandling {...tabProps} />}
-                                    {activeTab === 'Chemical' && <TabChemical {...tabProps} />}
-                                    {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}
-                                    {activeTab === 'Silo & Fly Ash' && <TabSiloFlyAsh {...tabProps} />}
-                                </>
-                            );
-                        })()}
-                    </div>
                 </div>
             </div>
         </>

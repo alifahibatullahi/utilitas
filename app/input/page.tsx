@@ -1,361 +1,744 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import TankSelector from '@/components/input/TankSelector';
 import Toast from '@/components/ui/Toast';
 import { useOperator } from '@/hooks/useOperator';
 import { useTankData, FlowRate, OutputFlowRate } from '@/hooks/useTankData';
 import { TankId, TANKS } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
+
+interface TankDraft {
+    levelM3: string;
+    note: string;
+    flowInputs: Record<string, string>;
+    outputFlowInputs: Record<string, string>;
+    selectedPump: string;
+    trend: string;
+}
+
+interface SolarPendingItem {
+    id: string;
+    date: string;
+    liters: number;
+    supplier?: string;
+    tujuan?: string;
+}
+
+function emptyDraft(): TankDraft {
+    return { levelM3: '', note: '', flowInputs: {}, outputFlowInputs: {}, selectedPump: '', trend: '' };
+}
 
 export default function InputPage() {
     const { operator, isHandling } = useOperator();
-    const { submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading, currentLevels, flowRates, outputFlowRates: currentOutputFlowRates } = useTankData();
+    const { submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading, submitSolarUsage, currentLevels, flowRates, outputFlowRates: currentOutputFlowRates } = useTankData();
     const router = useRouter();
 
-    const [selectedTank, setSelectedTank] = useState<TankId | null>(null);
-    const [levelM3, setLevelM3] = useState('');
-    const [note, setNote] = useState('');
-    const [flowInputs, setFlowInputs] = useState<Record<string, string>>({});
-    const [outputFlowInputs, setOutputFlowInputs] = useState<Record<string, string>>({});
-    const [selectedPump, setSelectedPump] = useState<string>('');
-    const [showToast, setShowToast] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    // Solar unloading fields
-    const [solarDate, setSolarDate] = useState(() => {
+    const today = (() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    });
-    const [solarLiters, setSolarLiters] = useState('');
-    const [solarSupplier, setSolarSupplier] = useState('');
+    })();
 
-    const handleTankSelect = (tankId: TankId) => {
-        setSelectedTank(tankId);
-        const tankData = currentLevels[tankId];
-        const capM3 = tankId === 'SOLAR' ? 200 : TANKS[tankId].capacityM3;
-        if (tankData && tankData.operator !== '-' && tankData.level != null) {
-            setLevelM3(Math.round(tankData.level / 100 * capM3).toString());
-        } else {
-            setLevelM3('');
-        }
-        const lastFlows = flowRates[tankId] || [];
-        const newFlowInputs: Record<string, string> = {};
-        lastFlows.forEach((f) => { newFlowInputs[f.sourceLabel] = f.rate.toFixed(1); });
-        setFlowInputs(newFlowInputs);
-        const lastOutputFlows = currentOutputFlowRates[tankId] || [];
-        const newOutputInputs: Record<string, string> = {};
-        lastOutputFlows.forEach((f) => {
-            newOutputInputs[f.destinationLabel] = f.rate.toFixed(1);
-            if (f.pump) setSelectedPump(f.pump);
-        });
-        setOutputFlowInputs(newOutputInputs);
-    };
+    const [selectedTank, setSelectedTank] = useState<TankId | null>(null);
+    const [drafts, setDrafts] = useState<Partial<Record<TankId, TankDraft>>>({});
+    const [current, setCurrent] = useState<TankDraft>(emptyDraft());
+    const [showToast, setShowToast] = useState(false);
+    const [toastMsg, setToastMsg] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Track which tanks have been saved in this session
+    const [savedTanks, setSavedTanks] = useState<Set<TankId>>(new Set());
+
+    // Solar pending lists (draft sebelum SIMPAN utama)
+    const [pendingKedatangan, setPendingKedatangan] = useState<SolarPendingItem[]>([]);
+    const [pendingPermintaan, setPendingPermintaan] = useState<SolarPendingItem[]>([]);
+    const [solarPopup, setSolarPopup] = useState<{ type: 'kedatangan' | 'permintaan'; editId?: string } | null>(null);
+    const [solarForm, setSolarForm] = useState({ date: today, liters: '', supplier: '', tujuan: '' });
+
+    // Logsheet note: nilai RCW dari Google Sheets untuk jam sekarang
+    const [rcwSheetNote, setRcwSheetNote] = useState<string | null>(null);
+
+    /** Hitung jam WIB ganjil (1,3,5,...,23) dari waktu sekarang.
+     *  Slot: 00:30–02:30→1, 02:30–04:30→3, ..., 22:30–00:30→23 */
+    const getCurrentJamWIB = useCallback((): { jam: number; isoDate: string } => {
+        const now = new Date();
+        const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+        const hour = wib.getUTCHours();
+        const minute = wib.getUTCMinutes();
+        const totalMin = hour * 60 + minute;
+        const minutesFrom0030 = (totalMin - 30 + 24 * 60) % (24 * 60);
+        const slot = Math.floor(minutesFrom0030 / 120);
+        const jam = slot * 2 + 1;
+        const isoDate = wib.toISOString().slice(0, 10);
+        return { jam, isoDate };
+    }, []);
+
+    // Ref to read current draft without stale closure issues
+    const currentRef = useRef(current);
+    useEffect(() => { currentRef.current = current; }, [current]);
+    const selectedTankRef = useRef(selectedTank);
+    useEffect(() => { selectedTankRef.current = selectedTank; }, [selectedTank]);
 
     useEffect(() => {
-        if (!operator) {
-            router.push('/');
-        } else if (!isHandling) {
-            router.push('/dashboard');
-        }
+        if (!operator) router.push('/');
+        else if (!isHandling) router.push('/dashboard');
     }, [operator, isHandling, router]);
 
-    const handleSubmit = () => {
-        if (!selectedTank || !levelM3 || !operator) return;
-        const capM3 = selectedTank === 'SOLAR' ? 200 : TANKS[selectedTank].capacityM3;
-        const numM3 = parseFloat(levelM3);
+    // Fetch nilai logsheet dari Supabase saat tank RCW, DEMIN, atau SOLAR dipilih
+    useEffect(() => {
+        if (selectedTank !== 'RCW' && selectedTank !== 'DEMIN' && selectedTank !== 'SOLAR') {
+            setRcwSheetNote(null);
+            return;
+        }
+        const { jam, isoDate } = getCurrentJamWIB();
+        const jamLabel = `${String(jam).padStart(2, '0')}:00`;
+        const tankLabel = selectedTank === 'RCW' ? 'RCW' : selectedTank === 'DEMIN' ? 'Demin' : 'Solar';
+        setRcwSheetNote(null);
+
+        const supabase = createClient();
+        supabase
+            .from('tank_logsheet')
+            .select('level_m3')
+            .eq('tank_id', selectedTank)
+            .eq('date', isoDate)
+            .eq('jam', jam)
+            .maybeSingle()
+            .then(({ data }: { data: { level_m3: number | null } | null }) => {
+                if (data?.level_m3 != null) {
+                    setRcwSheetNote(`Logsheet ${tankLabel} jam ${jamLabel} adalah ${data.level_m3} m³`);
+                } else {
+                    setRcwSheetNote(`Logsheet ${tankLabel} jam ${jamLabel} belum terisi`);
+                }
+            });
+    }, [selectedTank, getCurrentJamWIB]);
+
+    const handleTankSelect = (tankId: TankId) => {
+        // Save current draft before switching
+        if (selectedTankRef.current) {
+            setDrafts(prev => ({ ...prev, [selectedTankRef.current!]: currentRef.current }));
+        }
+
+        const existingDraft = drafts[tankId];
+        if (existingDraft) {
+            // Restore saved draft
+            setCurrent(existingDraft);
+        } else {
+            // Initialize from Supabase data
+            const capM3 = tankId === 'SOLAR' ? 200 : TANKS[tankId].capacityM3;
+            const tankData = currentLevels[tankId];
+            const levelM3 = (tankData && tankData.operator !== '-' && tankData.level != null)
+                ? Math.round(tankData.level / 100 * capM3).toString()
+                : '';
+            const trend = tankData?.trend || '';
+
+            const flowInputs: Record<string, string> = {};
+            (flowRates[tankId] || []).forEach(f => { flowInputs[f.sourceLabel] = f.rate.toFixed(1); });
+
+            const outputFlowInputs: Record<string, string> = {};
+            let selectedPump = '';
+            (currentOutputFlowRates[tankId] || []).forEach(f => {
+                outputFlowInputs[f.destinationLabel] = f.rate.toFixed(1);
+                if (f.pump) selectedPump = f.pump;
+            });
+
+            setCurrent({ levelM3, note: '', flowInputs, outputFlowInputs, selectedPump, trend });
+        }
+
+        setSelectedTank(tankId);
+    };
+
+    const setField = <K extends keyof TankDraft>(key: K, value: TankDraft[K]) => {
+        setCurrent(prev => ({ ...prev, [key]: value }));
+    };
+
+    const saveTank = (tankId: TankId, draft: TankDraft) => {
+        if (!operator || !draft.levelM3) return;
+        const capM3 = tankId === 'SOLAR' ? 200 : TANKS[tankId].capacityM3;
+        const numM3 = parseFloat(draft.levelM3);
         if (isNaN(numM3) || numM3 < 0 || numM3 > capM3) return;
         const numLevel = (numM3 / capM3) * 100;
 
+        submitLevel(tankId, numLevel, numM3, operator.name, draft.note || undefined, draft.trend || undefined);
+
+        const sources = TANKS[tankId].inputSources;
+        if (sources.length > 0) {
+            const rates: FlowRate[] = sources.map(src => ({ sourceLabel: src, rate: parseFloat(draft.flowInputs[src] || '0') || 0 }));
+            submitFlowRates(tankId, rates, operator.name);
+        }
+
+        const outputs = TANKS[tankId].outputDestinations;
+        if (outputs.length > 0) {
+            const allOutRates: OutputFlowRate[] = [];
+            outputs.filter(d => d.hasFlow).forEach(dest => {
+                allOutRates.push({ destinationLabel: dest.name, rate: parseFloat(draft.outputFlowInputs[dest.name] || '0') || 0 });
+            });
+            outputs.filter(d => !d.hasFlow && d.pumps?.length).forEach(dest => {
+                allOutRates.push({ destinationLabel: dest.name, rate: 0, pump: draft.selectedPump || undefined });
+            });
+            if (allOutRates.length > 0) submitOutputFlowRates(tankId, allOutRates, operator.name);
+        }
+
+        // Upsert ke tank_logsheet (jam ganjil WIB)
+        const { jam, isoDate } = getCurrentJamWIB();
+        const supabase = createClient();
+        supabase.from('tank_logsheet').upsert(
+            { tank_id: tankId, date: isoDate, jam, level_m3: numM3, updated_at: new Date().toISOString() },
+            { onConflict: 'tank_id,date,jam' }
+        ).then(({ error }: { error: unknown }) => {
+            if (error) console.error('[tank_logsheet] upsert error:', error);
+        });
+    };
+
+    const handleSubmit = () => {
+        if (!operator) return;
+
+        // Merge current draft into drafts map
+        const allDrafts: Partial<Record<TankId, TankDraft>> = { ...drafts };
+        if (selectedTank) allDrafts[selectedTank] = current;
+
+        // Save all tanks that have levelM3 filled
+        const saved: TankId[] = [];
+        (['DEMIN', 'RCW', 'SOLAR'] as TankId[]).forEach(tankId => {
+            const draft = allDrafts[tankId];
+            if (draft?.levelM3) {
+                saveTank(tankId, draft);
+                saved.push(tankId);
+            }
+        });
+
+        if (saved.length === 0) return;
+
+        // Submit pending solar items
+        if (saved.includes('SOLAR')) {
+            pendingKedatangan.forEach(item => submitSolarUnloading({ date: item.date, liters: item.liters, supplier: item.supplier! }));
+            pendingPermintaan.forEach(item => submitSolarUsage({ date: item.date, liters: item.liters, tujuan: item.tujuan! }));
+            setPendingKedatangan([]);
+            setPendingPermintaan([]);
+        }
+
+        // Fire-and-forget: sync Level Solar/RCW/Demin ke spreadsheet handling (per-shift tab)
+        {
+            const payload: { solar?: number; rcw?: number; demin?: number } = {};
+            if (saved.includes('SOLAR')) {
+                const v = parseFloat(allDrafts['SOLAR']?.levelM3 ?? '');
+                if (!isNaN(v)) payload.solar = v;
+            }
+            if (saved.includes('RCW')) {
+                const v = parseFloat(allDrafts['RCW']?.levelM3 ?? '');
+                if (!isNaN(v)) payload.rcw = v;
+            }
+            if (saved.includes('DEMIN')) {
+                const v = parseFloat(allDrafts['DEMIN']?.levelM3 ?? '');
+                if (!isNaN(v)) payload.demin = v;
+            }
+            if (Object.keys(payload).length > 0) {
+                console.log('[input] Mengirim tank_levels_shift ke Sheets handling →', payload);
+                void fetch('/api/sheets/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'tank_levels_shift', data: payload }),
+                }).then(r => r.json()).then(result => {
+                    if (result.warning) {
+                        console.warn('[input/tank_levels_shift] Sheets gagal:', result.warning);
+                    } else {
+                        console.log(`[input/tank_levels_shift] OK window=${result.window} date=${result.isoDate} tab="${result.tab}" row=${result.row} updates=${result.updates?.length ?? 0}`);
+                    }
+                }).catch(err => console.warn('[input/tank_levels_shift] Sheets sync failed (non-fatal):', err));
+            }
+        }
+
+        // Fire-and-forget: sync Level RCW ke Google Sheets
+        if (saved.includes('RCW')) {
+            const rcwDraft = allDrafts['RCW'];
+            const rcwM3 = rcwDraft ? parseFloat(rcwDraft.levelM3) : NaN;
+            if (!isNaN(rcwM3)) {
+                const submittedAt = new Date().toISOString();
+                console.log(`[input/RCW] Mengirim ke Sheets → level ${rcwM3} m³ | submitted_at ${submittedAt}`);
+                void fetch('/api/sheets/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'rcw_level',
+                        data: { level: rcwM3, submitted_at: submittedAt },
+                    }),
+                }).then(r => r.json()).then(result => {
+                    if (result.warning) {
+                        console.warn('[input/RCW] Sheets gagal:', result.warning);
+                    } else if (!result.details || result.details.length === 0) {
+                        console.warn('[input/RCW] Sheets: row tidak ditemukan di template, data tidak tersimpan');
+                    } else {
+                        for (const d of result.details) {
+                            console.log(
+                                `[input/RCW] Sheets UPDATE → row ${d.rowIndex} | jam ${String(d.jam).padStart(2,'0')}:00 | ${d.date} | level ${d.level} m³`
+                            );
+                        }
+                    }
+                }).catch(err => console.warn('[input/RCW] Sheets sync failed (non-fatal):', err));
+            }
+        }
+
         setIsSubmitting(true);
         setTimeout(() => {
-            submitLevel(selectedTank, numLevel, numM3, operator.name, note || undefined);
-
-            // Submit input flow rates
-            const sources = TANKS[selectedTank].inputSources;
-            if (sources.length > 0) {
-                const rates: FlowRate[] = sources
-                    .map((src) => ({ sourceLabel: src, rate: parseFloat(flowInputs[src] || '0') || 0 }))
-                    .filter((r) => r.rate > 0);
-                if (rates.length > 0) submitFlowRates(selectedTank, rates);
-            }
-
-            // Submit output flow rates (DEMIN)
-            const outputs = TANKS[selectedTank].outputDestinations;
-            if (outputs.length > 0 && outputs.some(d => d.hasFlow)) {
-                const outRates: OutputFlowRate[] = outputs
-                    .filter(d => d.hasFlow)
-                    .map((dest) => ({
-                        destinationLabel: dest.name,
-                        rate: parseFloat(outputFlowInputs[dest.name] || '0') || 0,
-                        ...(dest.pumps && selectedPump ? { pump: selectedPump } : {}),
-                    }))
-                    .filter((r) => r.rate > 0);
-                if (outRates.length > 0) submitOutputFlowRates(selectedTank, outRates);
-            }
-
-            // Submit solar unloading if SOLAR
-            if (selectedTank === 'SOLAR' && solarLiters && solarSupplier) {
-                submitSolarUnloading({
-                    date: solarDate,
-                    liters: parseFloat(solarLiters) || 0,
-                    supplier: solarSupplier,
-                });
-            }
-
+            setSavedTanks(new Set(saved));
+            setDrafts({});
+            setToastMsg(`${saved.join(', ')} berhasil disimpan!`);
             setShowToast(true);
             setIsSubmitting(false);
-            setTimeout(() => { router.push('/tank-level'); }, 1500);
         }, 500);
+    };
+
+    const saveSolarPopup = () => {
+        const liters = parseFloat(solarForm.liters.replace(/\./g, ''));
+        if (!liters || liters <= 0) return;
+        if (solarPopup!.type === 'kedatangan') {
+            if (!solarForm.supplier.trim()) return;
+            if (solarPopup!.editId) {
+                setPendingKedatangan(prev => prev.map(x => x.id === solarPopup!.editId
+                    ? { ...x, date: solarForm.date, liters, supplier: solarForm.supplier }
+                    : x));
+            } else {
+                setPendingKedatangan(prev => [...prev, { id: Date.now().toString(), date: solarForm.date, liters, supplier: solarForm.supplier }]);
+            }
+        } else {
+            if (!solarForm.tujuan.trim()) return;
+            if (solarPopup!.editId) {
+                setPendingPermintaan(prev => prev.map(x => x.id === solarPopup!.editId
+                    ? { ...x, date: solarForm.date, liters, tujuan: solarForm.tujuan }
+                    : x));
+            } else {
+                setPendingPermintaan(prev => [...prev, { id: Date.now().toString(), date: solarForm.date, liters, tujuan: solarForm.tujuan }]);
+            }
+        }
+        setSolarPopup(null);
     };
 
     if (!operator || !isHandling) return null;
 
     const capM3 = selectedTank ? (selectedTank === 'SOLAR' ? 200 : TANKS[selectedTank].capacityM3) : 0;
-    const numM3 = parseFloat(levelM3);
-    const isValid = selectedTank && levelM3 && !isNaN(numM3) && numM3 >= 0 && numM3 <= capM3;
+    const numM3 = parseFloat(current.levelM3);
+    // Valid jika minimal ada 1 tank terisi (current atau salah satu draft)
+    const allDraftsNow = { ...drafts, ...(selectedTank ? { [selectedTank]: current } : {}) };
+    const isValid = Object.entries(allDraftsNow).some(([, d]) => d?.levelM3);
 
     return (
-        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-lg mx-auto">
-            {/* Back button */}
-            <button
-                onClick={() => router.push('/tank-level')}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-200 mb-6 transition-colors cursor-pointer"
-            >
-                <span className="material-symbols-outlined text-base">arrow_back</span>
-                <span className="text-sm">Kembali ke Tank Level</span>
-            </button>
+        <div className="relative min-h-screen bg-slate-900 pb-[160px] md:pb-32">
+            {/* Background decorative elements */}
+            <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-cyan-900/20 to-transparent pointer-events-none" />
+            <div className="absolute top-[-10%] right-[-5%] w-64 h-64 rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
 
-            {/* Title */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-black text-white">Update Level Tank</h1>
-                <p className="text-sm text-slate-400 mt-1">Operator Handling — Pilih tank dan masukkan level terkini</p>
-            </div>
+            <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-xl mx-auto relative z-10">
+                {/* Back button */}
+                <button
+                    onClick={() => router.push('/tank-level')}
+                    className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-all cursor-pointer group bg-slate-800/40 hover:bg-slate-700/60 px-3 py-1.5 rounded-full w-max border border-slate-700/50"
+                >
+                    <span className="material-symbols-outlined text-base group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                    <span className="text-sm font-medium">Kembali ke Tank Level</span>
+                </button>
 
-            {/* Tank selector */}
-            <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-300 mb-3">Pilih Tank</label>
-                <TankSelector selected={selectedTank} onSelect={handleTankSelect} />
-            </div>
-
-            {/* Level input (M³) */}
-            <div className="mb-5">
-                <label className="block text-sm font-medium text-slate-300 mb-2">Level (m³){selectedTank === 'SOLAR' ? ' — per tanki' : ''}</label>
-                {selectedTank && currentLevels[selectedTank] && currentLevels[selectedTank].operator !== '-' && (
-                    <p className="text-xs text-slate-500 mb-2">
-                        Input terakhir: <span className="text-slate-300 font-medium">{Math.round(currentLevels[selectedTank].level / 100 * capM3).toLocaleString('id-ID')} m³</span>
-                        <span className="text-slate-600"> ({currentLevels[selectedTank].level.toFixed(1)}%)</span>
-                        <span className="text-slate-600"> — oleh {currentLevels[selectedTank].operator}</span>
-                    </p>
-                )}
-                <div className="relative">
-                    <input
-                        type="number"
-                        value={levelM3}
-                        onChange={(e) => setLevelM3(e.target.value)}
-                        placeholder={selectedTank && currentLevels[selectedTank].operator !== '-' ? Math.round(currentLevels[selectedTank].level / 100 * capM3).toString() : '0'}
-                        min="0"
-                        max={capM3}
-                        step="1"
-                        className="w-full px-5 py-4 bg-slate-800/80 border border-slate-600/50 rounded-xl text-3xl font-bold text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 placeholder:text-slate-600 appearance-none"
-                        style={selectedTank ? { borderColor: `${TANKS[selectedTank].liquidColor}50` } : {}}
-                    />
-                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-500">m³</span>
+                {/* Title */}
+                <div className="mb-8 text-center sm:text-left">
+                    <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white block to-slate-400 tracking-tight">Update Level Tank</h1>
+                    <p className="text-sm text-slate-400 mt-2 font-medium bg-slate-800/40 px-3 py-1 rounded-full inline-block sm:block sm:bg-transparent sm:px-0 sm:py-0 border border-slate-700/50 sm:border-none">Operator Handling — Pilih tank dan masukkan level</p>
                 </div>
-                {levelM3 && (parseFloat(levelM3) < 0 || parseFloat(levelM3) > capM3) && (
-                    <p className="text-red-400 text-xs mt-1.5">Level harus antara 0 – {capM3.toLocaleString('id-ID')} m³</p>
-                )}
-                {selectedTank && levelM3 && !isNaN(parseFloat(levelM3)) && parseFloat(levelM3) >= 0 && parseFloat(levelM3) <= capM3 && (
-                    <p className="text-xs mt-2 text-slate-400">
-                        = <span className="text-white font-bold text-sm">{(parseFloat(levelM3) / capM3 * 100).toFixed(1)}%</span>
-                        <span className="text-slate-600"> dari {selectedTank === 'SOLAR' ? '200 m³ per tanki' : TANKS[selectedTank].capacity}</span>
-                    </p>
-                )}
-            </div>
 
-            {/* Flow rate inputs (tanks with input sources) */}
-            {selectedTank && TANKS[selectedTank].inputSources.length > 0 && (
-                <div className="mb-5">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Input Flow Rate (ton/h)</label>
-                    <div className="space-y-3">
-                        {TANKS[selectedTank].inputSources.map((source) => {
-                            const lastRate = flowRates[selectedTank]?.find(f => f.sourceLabel === source);
-                            return (
-                                <div key={source}>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TANKS[selectedTank].liquidColor }} />
-                                        <span className="text-xs text-slate-400">{source}</span>
-                                        {lastRate && (
-                                            <span className="text-[10px] text-slate-600 ml-auto">terakhir: {lastRate.rate.toFixed(1)} ton/h</span>
-                                        )}
-                                    </div>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            value={flowInputs[source] || ''}
-                                            onChange={(e) => setFlowInputs(prev => ({ ...prev, [source]: e.target.value }))}
-                                            placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
-                                            min="0" step="0.1"
-                                            className="w-full px-4 py-3 bg-slate-800/80 border border-slate-600/50 rounded-xl text-xl font-bold text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500/50 placeholder:text-slate-600 appearance-none"
-                                            style={{ borderColor: `${TANKS[selectedTank].liquidColor}30` }}
-                                        />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">ton/h</span>
+                {/* Tank selector */}
+                <div className="mb-8">
+                    <label className="block text-sm font-bold text-slate-300 mb-3 ml-1">1. Pilih Tank</label>
+                    <TankSelector selected={selectedTank} onSelect={handleTankSelect} savedTanks={savedTanks} />
+                </div>
+
+                {!selectedTank && (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 bg-slate-800/30 border border-slate-700/50 rounded-2xl border-dashed">
+                        <span className="material-symbols-outlined text-4xl text-slate-500 mb-3">touch_app</span>
+                        <p className="text-slate-400 text-sm font-medium text-center">Pilih salah satu tank di atas untuk mulai mengisi data</p>
+                    </div>
+                )}
+
+                {selectedTank && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Level input */}
+                        <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/5 to-transparent opacity-50 rounded-bl-full pointer-events-none" />
+                            
+                            <label className="block text-base font-bold text-white mb-1">
+                                2. Level (m³) {selectedTank === 'SOLAR' ? <span className="text-slate-400 font-normal text-sm">— per tangki</span> : ''}
+                            </label>
+                            
+                            {currentLevels[selectedTank]?.operator !== '-' && (
+                                <div className="flex items-center gap-2 mb-4 bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-700/30 w-max">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                    <p className="text-[11px] sm:text-xs text-slate-400 font-medium">
+                                        Tersimpan:{' '}
+                                        <span className="text-white font-bold">{Math.round(currentLevels[selectedTank].level / 100 * capM3).toLocaleString('id-ID')} m³</span>
+                                        <span className="text-slate-500"> ({currentLevels[selectedTank].level.toFixed(1)}%)</span>
+                                        <span className="text-slate-500 ml-1 block sm:inline">— {currentLevels[selectedTank].operator}</span>
+                                    </p>
+                                </div>
+                            )}
+                            
+                            <div className="relative mt-2">
+                                <input
+                                    type="number" inputMode="decimal"
+                                    value={current.levelM3}
+                                    onChange={e => setField('levelM3', e.target.value)}
+                                    placeholder="0"
+                                    min="0" max={capM3} step="1"
+                                    className="w-full px-5 py-5 sm:py-6 bg-slate-900/80 border-2 rounded-xl text-4xl sm:text-5xl font-black text-white text-center focus:outline-none focus:ring-4 placeholder:text-slate-700 appearance-none transition-all duration-300 shadow-inner"
+                                    style={{ 
+                                        borderColor: current.levelM3 ? TANKS[selectedTank].liquidColor : `${TANKS[selectedTank].liquidColor}40`,
+                                        boxShadow: current.levelM3 ? `inset 0 2px 10px rgba(0,0,0,0.5), 0 0 20px ${TANKS[selectedTank].liquidColor}20` : 'inset 0 2px 10px rgba(0,0,0,0.5)',
+                                        textShadow: current.levelM3 ? `0 0 20px ${TANKS[selectedTank].liquidColor}40` : 'none'
+                                    }}
+                                />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+                                    <span className="text-xl sm:text-2xl font-bold text-slate-500">m³</span>
+                                </div>
+                            </div>
+                            
+                            {current.levelM3 && (parseFloat(current.levelM3) < 0 || parseFloat(current.levelM3) > capM3) && (
+                                <div className="mt-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-sm">error</span>
+                                    Level harus antara 0 – {capM3.toLocaleString('id-ID')} m³
+                                </div>
+                            )}
+                            
+                            {selectedTank && current.levelM3 && !isNaN(parseFloat(current.levelM3)) && parseFloat(current.levelM3) >= 0 && parseFloat(current.levelM3) <= capM3 && (
+                                <div className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-slate-900/50 rounded-lg border border-slate-700/50 w-full shadow-sm">
+                                    <span className="material-symbols-outlined text-sm text-slate-400 shrink-0">percent</span>
+                                    <p className="text-sm text-slate-300 truncate">
+                                        Persentase: <span className="font-black text-base" style={{ color: TANKS[selectedTank].liquidColor }}>{(parseFloat(current.levelM3) / capM3 * 100).toFixed(1)}%</span>
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Logsheet note untuk RCW, DEMIN, dan SOLAR */}
+                            {(selectedTank === 'RCW' || selectedTank === 'DEMIN' || selectedTank === 'SOLAR') && (
+                                <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-teal-500/5 border border-teal-500/20 rounded-lg">
+                                    <span className="material-symbols-outlined text-teal-400 text-[16px] shrink-0">info</span>
+                                    <p className="text-xs text-teal-300/80 font-medium">
+                                        {rcwSheetNote ?? 'Memuat data logsheet...'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Trend (Hanya untuk Demin & RCW) */}
+                            {(selectedTank === 'DEMIN' || selectedTank === 'RCW') && (
+                                <div className="mt-4 pt-4 border-t border-slate-700/50">
+                                    <label className="block text-sm font-bold text-slate-300 mb-2">Trend Level Saat Ini</label>
+                                    <div className="flex gap-2">
+                                        <button type="button"
+                                            onClick={() => setField('trend', 'naik')}
+                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${current.trend === 'naik' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300 hover:border-slate-600'}`}>
+                                            <span className="material-symbols-outlined text-[18px]">trending_up</span> Naik
+                                        </button>
+                                        <button type="button"
+                                            onClick={() => setField('trend', 'turun')}
+                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${current.trend === 'turun' ? 'bg-rose-500/20 text-rose-400 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300 hover:border-slate-600'}`}>
+                                            <span className="material-symbols-outlined text-[18px]">trending_down</span> Turun
+                                        </button>
+                                        <button type="button"
+                                            onClick={() => setField('trend', 'tetap')}
+                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${current.trend === 'tetap' ? 'bg-slate-500/20 text-slate-300 border-slate-400 shadow-[0_0_15px_rgba(148,163,184,0.2)]' : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300 hover:border-slate-600'}`}>
+                                            <span className="material-symbols-outlined text-[18px]">trending_flat</span> Stabil
+                                        </button>
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+                            )}
+                        </div>
 
-            {/* Output Flow Rate inputs (DEMIN only) */}
-            {selectedTank && TANKS[selectedTank].outputDestinations.some(d => d.hasFlow) && (
-                <div className="mb-5">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Output Flow Rate (ton/h)</label>
-                    <div className="space-y-3">
-                        {TANKS[selectedTank].outputDestinations.filter(d => d.hasFlow).map((dest) => {
-                            const lastRate = currentOutputFlowRates[selectedTank]?.find(f => f.destinationLabel === dest.name);
-                            return (
-                                <div key={dest.name}>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="w-2 h-2 rounded-full bg-rose-400" />
-                                        <span className="text-xs text-slate-400">{dest.name}</span>
-                                        {lastRate && (
-                                            <span className="text-[10px] text-slate-600 ml-auto">terakhir: {lastRate.rate.toFixed(1)} ton/h</span>
-                                        )}
-                                    </div>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            value={outputFlowInputs[dest.name] || ''}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setOutputFlowInputs(prev => ({ ...prev, [dest.name]: val }));
-                                                if (dest.pumps && (!val || parseFloat(val) === 0)) setSelectedPump('');
-                                            }}
-                                            placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
-                                            min="0" step="0.1"
-                                            className="w-full px-4 py-3 bg-slate-800/80 border border-rose-500/20 rounded-xl text-xl font-bold text-white text-center focus:outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 appearance-none"
-                                        />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">ton/h</span>
-                                    </div>
-                                    {dest.pumps && (() => {
-                                        const destFlowVal = parseFloat(outputFlowInputs[dest.name] || '0');
-                                        const pumpDisabled = !destFlowVal || destFlowVal === 0;
+                        {/* Input flow rates */}
+                        {TANKS[selectedTank].inputSources.length > 0 && (
+                            <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                                <label className="block text-base font-bold text-white mb-4">Input Flow Rate (ton/h)</label>
+                                <div className="space-y-4">
+                                    {TANKS[selectedTank].inputSources.map(source => {
+                                        const lastRate = flowRates[selectedTank]?.find(f => f.sourceLabel === source);
                                         return (
-                                            <div className="mt-2">
-                                                <span className="text-[10px] text-slate-500 block mb-1.5">Pompa yang digunakan:{pumpDisabled && <span className="text-rose-400 ml-1">(Flow 0 — pompa mati)</span>}</span>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {dest.pumps.map(pump => (
-                                                        <button
-                                                            key={pump}
-                                                            type="button"
-                                                            disabled={pumpDisabled}
-                                                            onClick={() => setSelectedPump(pump)}
-                                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${pumpDisabled
-                                                                ? 'bg-slate-800/50 text-slate-600 border border-slate-700/30 cursor-not-allowed'
-                                                                : selectedPump === pump
-                                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.3)] cursor-pointer'
-                                                                    : 'bg-slate-700/50 text-slate-400 border border-slate-600/50 hover:border-slate-500 cursor-pointer'
-                                                                }`}
-                                                        >
+                                            <div key={source} className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/50 relative overflow-hidden group focus-within:border-cyan-500/50 transition-colors">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ color: TANKS[selectedTank].liquidColor, backgroundColor: TANKS[selectedTank].liquidColor }} />
+                                                    <span className="text-sm font-bold text-slate-300">{source}</span>
+                                                    {lastRate && <span className="text-[10px] sm:text-xs text-slate-500 ml-auto bg-slate-800 px-2 py-0.5 rounded-full">terakhir: {lastRate.rate.toFixed(1)} ton/h</span>}
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number" inputMode="decimal"
+                                                        value={current.flowInputs[source] || ''}
+                                                        onChange={e => setField('flowInputs', { ...current.flowInputs, [source]: e.target.value })}
+                                                        placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
+                                                        min="0" step="0.1"
+                                                        className="w-full px-4 py-3 bg-slate-800 border-none rounded-lg text-xl sm:text-2xl font-black text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 placeholder:text-slate-600 appearance-none"
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 select-none">ton/h</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Output flow rates */}
+                        {TANKS[selectedTank].outputDestinations.some(d => d.hasFlow) && (
+                            <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                                <label className="block text-base font-bold text-white mb-4">Output Flow Rate (ton/h)</label>
+                                <div className="space-y-4">
+                                    {TANKS[selectedTank].outputDestinations.filter(d => d.hasFlow).map(dest => {
+                                        const lastRate = currentOutputFlowRates[selectedTank]?.find(f => f.destinationLabel === dest.name);
+                                        return (
+                                            <div key={dest.name} className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/50 relative overflow-hidden focus-within:border-rose-500/50 transition-colors">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
+                                                    <span className="text-sm font-bold text-slate-300">{dest.name}</span>
+                                                    {lastRate && <span className="text-[10px] sm:text-xs text-slate-500 ml-auto bg-slate-800 px-2 py-0.5 rounded-full">terakhir: {lastRate.rate.toFixed(1)} ton/h</span>}
+                                                </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number" inputMode="decimal"
+                                                        value={current.outputFlowInputs[dest.name] || ''}
+                                                        onChange={e => setField('outputFlowInputs', { ...current.outputFlowInputs, [dest.name]: e.target.value })}
+                                                        placeholder={lastRate ? lastRate.rate.toFixed(1) : '0.0'}
+                                                        min="0" step="0.1"
+                                                        className="w-full px-4 py-3 bg-slate-800 border-none rounded-lg text-xl sm:text-2xl font-black text-white focus:outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 appearance-none"
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 select-none">ton/h</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Pompa aktif */}
+                        {TANKS[selectedTank].outputDestinations.some(d => !d.hasFlow && d.pumps?.length) && (
+                            <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                                <label className="block text-base font-bold text-white mb-4">Status Pompa</label>
+                                <div className="space-y-4">
+                                    {TANKS[selectedTank].outputDestinations.filter(d => !d.hasFlow && d.pumps?.length).map(dest => {
+                                        const lastOut = currentOutputFlowRates[selectedTank]?.find(f => f.destinationLabel === dest.name);
+                                        return (
+                                            <div key={dest.name} className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-4">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <p className="text-sm font-bold text-slate-300 uppercase">{dest.name}</p>
+                                                    {lastOut?.pump && (
+                                                        <p className="text-[10px] bg-slate-800 px-2 py-1 rounded-md text-slate-400">Terakhir: <span className="text-white font-bold">{lastOut.pump}</span></p>
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <button type="button" onClick={() => setField('selectedPump', '')}
+                                                        className={`py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border ${!current.selectedPump ? 'bg-slate-700 text-white border-slate-500 shadow-inner' : 'bg-slate-800/80 text-slate-500 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300'}`}>
+                                                        MATI
+                                                    </button>
+                                                    {dest.pumps!.map(pump => (
+                                                        <button key={pump} type="button" onClick={() => setField('selectedPump', pump)}
+                                                            className={`py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border ${current.selectedPump === pump ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300 hover:border-slate-600'}`}>
                                                             {pump}
                                                         </button>
                                                     ))}
                                                 </div>
                                             </div>
                                         );
-                                    })()}
+                                    })}
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {/* Solar Unloading form (only for SOLAR) */}
-            {selectedTank === 'SOLAR' && (
-                <div className="mb-5">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Data Unloading Solar</label>
-                    <div className="space-y-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-                        <div>
-                            <label className="text-xs text-slate-400 mb-1 block">Tanggal Unloading</label>
-                            <input
-                                type="date"
-                                value={solarDate}
-                                onChange={(e) => setSolarDate(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-600/50 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-400 mb-1 block">Jumlah (liter)</label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    value={solarLiters}
-                                    onChange={(e) => setSolarLiters(e.target.value)}
-                                    placeholder="5000"
-                                    min="0"
-                                    className="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-600/50 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 placeholder:text-slate-600 appearance-none"
-                                />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">liter</span>
                             </div>
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-400 mb-1 block">Perusahaan Pengirim</label>
-                            <input
-                                type="text"
-                                value={solarSupplier}
-                                onChange={(e) => setSolarSupplier(e.target.value)}
-                                placeholder="PT Pertamina"
-                                className="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-600/50 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 placeholder:text-slate-600"
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
+                        )}
 
-            {/* Note input */}
-            <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Catatan <span className="text-slate-500 font-normal">(opsional, max 100 karakter)</span>
-                </label>
-                <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value.slice(0, 100))}
-                    placeholder="Contoh: Setelah pengisian dari truk..."
-                    maxLength={100}
-                    rows={2}
-                    className="w-full px-4 py-3 bg-slate-800/80 border border-slate-600/50 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 placeholder:text-slate-600 resize-none"
-                />
-                <p className="text-xs text-slate-500 mt-1 text-right">{note.length}/100</p>
+                        {/* Kedatangan & Permintaan Solar */}
+                        {selectedTank === 'SOLAR' && (
+                            <div className="flex flex-col gap-4">
+                                {/* Kedatangan Solar */}
+                                <div className="bg-gradient-to-br from-amber-900/20 to-slate-900/80 border border-amber-500/30 rounded-2xl p-4 shadow-xl">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-amber-500">local_shipping</span>
+                                            <span className="text-base font-bold text-white">Kedatangan Solar</span>
+                                        </div>
+                                        <button
+                                            onClick={() => { setSolarForm({ date: today, liters: '', supplier: '', tujuan: '' }); setSolarPopup({ type: 'kedatangan' }); }}
+                                            className="flex items-center gap-1 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-white border border-amber-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                                            <span className="material-symbols-outlined text-[16px]">add</span> Tambah
+                                        </button>
+                                    </div>
+                                    {pendingKedatangan.length === 0 ? (
+                                        <p className="text-xs text-slate-500 italic py-2 text-center">Belum ada data kedatangan</p>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            {pendingKedatangan.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2.5">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-white font-bold text-sm">{new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                        <p className="text-slate-400 text-xs truncate">{item.supplier}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                                                        <span className="text-amber-400 font-black text-sm">{item.liters.toLocaleString('id-ID')} L</span>
+                                                        <button onClick={() => { setSolarForm({ date: item.date, liters: item.liters.toString(), supplier: item.supplier!, tujuan: '' }); setSolarPopup({ type: 'kedatangan', editId: item.id }); }}
+                                                            className="text-slate-400 hover:text-amber-400 transition-colors cursor-pointer p-1">
+                                                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        </button>
+                                                        <button onClick={() => setPendingKedatangan(prev => prev.filter(x => x.id !== item.id))}
+                                                            className="text-slate-400 hover:text-rose-400 transition-colors cursor-pointer p-1">
+                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Permintaan Solar */}
+                                <div className="bg-gradient-to-br from-rose-900/20 to-slate-900/80 border border-rose-500/30 rounded-2xl p-4 shadow-xl">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-rose-400">upload</span>
+                                            <span className="text-base font-bold text-white">Permintaan Solar</span>
+                                        </div>
+                                        <button
+                                            onClick={() => { setSolarForm({ date: today, liters: '', supplier: '', tujuan: '' }); setSolarPopup({ type: 'permintaan' }); }}
+                                            className="flex items-center gap-1 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                                            <span className="material-symbols-outlined text-[16px]">add</span> Tambah
+                                        </button>
+                                    </div>
+                                    {pendingPermintaan.length === 0 ? (
+                                        <p className="text-xs text-slate-500 italic py-2 text-center">Belum ada data permintaan</p>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            {pendingPermintaan.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2.5">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-white font-bold text-sm">{new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                        <p className="text-slate-400 text-xs truncate">{item.tujuan}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                                                        <span className="text-rose-400 font-black text-sm">{item.liters.toLocaleString('id-ID')} L</span>
+                                                        <button onClick={() => { setSolarForm({ date: item.date, liters: item.liters.toString(), supplier: '', tujuan: item.tujuan! }); setSolarPopup({ type: 'permintaan', editId: item.id }); }}
+                                                            className="text-slate-400 hover:text-rose-400 transition-colors cursor-pointer p-1">
+                                                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        </button>
+                                                        <button onClick={() => setPendingPermintaan(prev => prev.filter(x => x.id !== item.id))}
+                                                            className="text-slate-400 hover:text-rose-400 transition-colors cursor-pointer p-1">
+                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                    </div>
+                )}
             </div>
 
-            {/* Submit button */}
-            <button
-                onClick={handleSubmit}
-                disabled={!isValid || isSubmitting}
-                className={`w-full py-4 rounded-xl text-lg font-bold transition-all duration-300 cursor-pointer ${isValid && !isSubmitting
-                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.01] active:scale-[0.99]'
-                    : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
-                    }`}
-            >
-                {isSubmitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                        Menyimpan...
-                    </span>
-                ) : (
-                    'SIMPAN'
-                )}
-            </button>
+            {/* Sticky Bottom Action Bar */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6 bg-gradient-to-t from-slate-950 via-slate-900/95 to-transparent pt-12 pb-[calc(64px+env(safe-area-inset-bottom,0px)+8px)] sm:pb-8 md:pb-8 backdrop-blur-[2px]">
+                <div className="max-w-xl mx-auto">
+                    <button 
+                        onClick={handleSubmit} 
+                        disabled={!isValid || isSubmitting}
+                        className={`w-full py-4 sm:py-5 rounded-2xl text-lg sm:text-xl font-black tracking-wide transition-all duration-300 cursor-pointer flex items-center justify-center gap-3 overflow-hidden relative group
+                        ${isValid && !isSubmitting
+                            ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white shadow-[0_10px_40px_-10px_rgba(16,185,129,0.8)] border border-emerald-400/50 hover:scale-[1.02] active:scale-[0.98]'
+                            : 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed hidden sm:flex'
+                        }`}
+                        // on mobile only show button if valid to save space, but it's okay to keep it visible but disabled
+                        style={{ display: (!isValid && !isSubmitting) ? 'none' : 'flex' }}
+                    >
+                        {/* Button shine effect */}
+                        {isValid && !isSubmitting && (
+                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
+                        )}
+                        
+                        {isSubmitting ? (
+                            <>
+                                <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                                <span>Menyimpan Data...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="material-symbols-outlined text-2xl drop-shadow-sm">save</span>
+                                <span className="drop-shadow-sm text-shadow-sm shadow-black/20">SIMPAN SEMUA DATA</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
 
-            {/* Toast */}
+            {/* Custom animations for tailwind config if not added globally */}
+            <style jsx>{`
+                @keyframes shimmer {
+                    100% { transform: translateX(100%); }
+                }
+            `}</style>
+
             {showToast && (
-                <Toast
-                    message="Level berhasil disimpan!"
-                    type="success"
-                    onClose={() => setShowToast(false)}
-                />
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top fade-in duration-300">
+                    <Toast message={toastMsg} type="success" onClose={() => setShowToast(false)} duration={3000} />
+                </div>
+            )}
+
+            {/* Solar Popup Modal */}
+            {solarPopup && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                    onClick={() => setSolarPopup(null)}>
+                    <div className={`bg-[#16202e] border rounded-2xl w-full max-w-sm shadow-2xl p-5 animate-in fade-in zoom-in-95 ${solarPopup.type === 'kedatangan' ? 'border-amber-500/30' : 'border-rose-500/30'}`}
+                        onClick={e => e.stopPropagation()}>
+                        <h3 className="text-white font-black text-lg mb-4 flex items-center gap-2">
+                            <span className={`material-symbols-outlined ${solarPopup.type === 'kedatangan' ? 'text-amber-500' : 'text-rose-400'}`}>
+                                {solarPopup.type === 'kedatangan' ? 'local_shipping' : 'upload'}
+                            </span>
+                            {solarPopup.editId ? 'Edit' : 'Tambah'} {solarPopup.type === 'kedatangan' ? 'Kedatangan' : 'Permintaan'} Solar
+                        </h3>
+                        <div className="flex flex-col gap-3">
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tanggal</label>
+                                <div className="w-full overflow-hidden" style={{ minWidth: 0 }}>
+                                    <input type="date" value={solarForm.date} onChange={e => setSolarForm(f => ({ ...f, date: e.target.value }))}
+                                        className="px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none [color-scheme:dark]"
+                                        style={{ boxSizing: 'border-box', width: '100%', maxWidth: '100%', minWidth: 0, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', display: 'block' }} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Jumlah (Liter)</label>
+                                <input type="text" inputMode="numeric" value={solarForm.liters}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        setSolarForm(f => ({ ...f, liters: digits ? parseInt(digits).toLocaleString('id-ID') : '' }));
+                                    }}
+                                    placeholder="0"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none" />
+                            </div>
+                            {solarPopup.type === 'kedatangan' ? (
+                                <div>
+                                    <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Perusahaan Pengirim</label>
+                                    <input type="text" value={solarForm.supplier} onChange={e => setSolarForm(f => ({ ...f, supplier: e.target.value }))}
+                                        placeholder="Cth: PT Pertamina"
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none" />
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 block">Tujuan / Keterangan</label>
+                                    <input type="text" value={solarForm.tujuan} onChange={e => setSolarForm(f => ({ ...f, tujuan: e.target.value }))}
+                                        placeholder="Cth: Operasional Alat Berat"
+                                        className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-3 mt-5">
+                            <button onClick={() => setSolarPopup(null)}
+                                className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors cursor-pointer">Batal</button>
+                            <button onClick={saveSolarPopup}
+                                className={`flex-1 py-2.5 rounded-xl text-white font-bold transition-colors cursor-pointer ${solarPopup.type === 'kedatangan' ? 'bg-amber-500 hover:bg-amber-400' : 'bg-rose-500 hover:bg-rose-400'}`}>
+                                {solarPopup.editId ? 'Update' : 'Tambah'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

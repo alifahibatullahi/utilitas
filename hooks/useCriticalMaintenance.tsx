@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { deriveShiftKeyFromIso } from '@/lib/utils';
 import type {
     CriticalEquipmentRow,
     MaintenanceLogRow,
@@ -12,6 +13,10 @@ import type {
     CriticalStatus,
     HarScope,
     ActivityActionType,
+    PhotoRow,
+    WorkOrderRow,
+    WorkOrderWithPekerjaan,
+    WorkOrderStatus,
 } from '@/lib/supabase/types';
 
 export interface CriticalMaintenanceFilters {
@@ -83,9 +88,27 @@ async function insertActivityLog(
     });
 }
 
+async function insertWOActivityLog(
+    supabase: ReturnType<typeof createClient>,
+    workOrderId: string,
+    actionType: ActivityActionType,
+    description: string,
+    actor: string | null = null,
+    metadata: Record<string, unknown> | null = null
+) {
+    await supabase.from('work_order_activity_logs').insert({
+        work_order_id: workOrderId,
+        action_type: actionType,
+        description,
+        actor,
+        metadata,
+    });
+}
+
 export function useCriticalMaintenance() {
     const [criticals, setCriticals] = useState<CriticalWithMaintenance[]>([]);
     const [maintenances, setMaintenances] = useState<MaintenanceWithCritical[]>([]);
+    const [workOrders, setWorkOrders] = useState<WorkOrderWithPekerjaan[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -96,22 +119,23 @@ export function useCriticalMaintenance() {
         setLoading(true);
         setError(null);
         try {
-            const { data: critData, error: critErr } = await supabase
-                .from('critical_equipment')
-                .select('*, maintenance_logs(*), critical_activity_logs(*)')
-                .order('created_at', { ascending: false });
+            const [
+                { data: critData, error: critErr },
+                { data: maintData, error: maintErr },
+                { data: woData, error: woErr },
+            ] = await Promise.all([
+                supabase.from('critical_equipment').select('*, maintenance_logs(*), critical_activity_logs(*)').order('created_at', { ascending: false }),
+                supabase.from('maintenance_logs').select('*, critical_equipment(*)').order('created_at', { ascending: false }),
+                supabase.from('work_orders').select('*, maintenance_logs(*), work_order_activity_logs(*)').order('created_at', { ascending: false }),
+            ]);
 
             if (critErr) throw critErr;
-
-            const { data: maintData, error: maintErr } = await supabase
-                .from('maintenance_logs')
-                .select('*, critical_equipment(*)')
-                .order('created_at', { ascending: false });
-
             if (maintErr) throw maintErr;
+            if (woErr) throw woErr;
 
             setCriticals((critData ?? []) as CriticalWithMaintenance[]);
             setMaintenances((maintData ?? []) as MaintenanceWithCritical[]);
+            setWorkOrders((woData ?? []) as WorkOrderWithPekerjaan[]);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Gagal memuat data');
         } finally {
@@ -124,18 +148,19 @@ export function useCriticalMaintenance() {
     // ─── Silent background sync (no loading state, for optimistic flows) ───
     const silentFetch = useCallback(async () => {
         try {
-            const { data: critData, error: critErr } = await supabase
-                .from('critical_equipment')
-                .select('*, maintenance_logs(*), critical_activity_logs(*)')
-                .order('created_at', { ascending: false });
-            if (critErr) return;
-            const { data: maintData, error: maintErr } = await supabase
-                .from('maintenance_logs')
-                .select('*, critical_equipment(*)')
-                .order('created_at', { ascending: false });
-            if (maintErr) return;
+            const [
+                { data: critData, error: critErr },
+                { data: maintData, error: maintErr },
+                { data: woData, error: woErr },
+            ] = await Promise.all([
+                supabase.from('critical_equipment').select('*, maintenance_logs(*), critical_activity_logs(*)').order('created_at', { ascending: false }),
+                supabase.from('maintenance_logs').select('*, critical_equipment(*)').order('created_at', { ascending: false }),
+                supabase.from('work_orders').select('*, maintenance_logs(*), work_order_activity_logs(*)').order('created_at', { ascending: false }),
+            ]);
+            if (critErr || maintErr || woErr) return;
             setCriticals((critData ?? []) as CriticalWithMaintenance[]);
             setMaintenances((maintData ?? []) as MaintenanceWithCritical[]);
+            setWorkOrders((woData ?? []) as WorkOrderWithPekerjaan[]);
         } catch { /* silent */ }
     }, [supabase]);
 
@@ -219,14 +244,25 @@ export function useCriticalMaintenance() {
 
     // ─── CRUD Maintenance ───
     const createMaintenance = useCallback(async (data: Omit<MaintenanceLogRow, 'id' | 'created_at' | 'updated_at'>) => {
-        const { error: err } = await supabase.from('maintenance_logs').insert(data);
+        const { data: inserted, error: err } = await supabase
+            .from('maintenance_logs')
+            .insert(data)
+            .select('id')
+            .single();
         if (err) return { error: err.message };
+        // Auto-assign ke shift report kalau dibuat dari context laporan shift
+        if (data.shift_report_id && inserted?.id) {
+            await supabase.from('maintenance_shift_assignments').upsert(
+                { maintenance_id: inserted.id, shift_report_id: data.shift_report_id, assigned_by: data.reported_by ?? null },
+                { onConflict: 'maintenance_id,shift_report_id', ignoreDuplicates: true }
+            );
+        }
         if (data.critical_id) {
             await insertActivityLog(
                 supabase, data.critical_id, 'maintenance_added',
-                `Maintenance ditambahkan: ${data.uraian}`,
+                `Maintenance ditambahkan: (Tim ${data.scope.charAt(0).toUpperCase() + data.scope.slice(1)}) ${data.uraian}`,
                 data.reported_by ?? null,
-                { maintenance_item: data.item }
+                { maintenance_id: inserted?.id, maintenance_item: data.item, maintenance_uraian: data.uraian, scope: data.scope }
             );
         }
         await fetchData();
@@ -235,25 +271,35 @@ export function useCriticalMaintenance() {
 
     const updateMaintenance = useCallback(async (id: string, data: Partial<MaintenanceLogRow>, actor?: string | null) => {
         const oldMaint = maintenances.find(m => m.id === id);
+        const nowIso = new Date().toISOString();
+        const dataWithTs = { ...data, updated_at: nowIso };
         // Optimistic update
-        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
+        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, ...dataWithTs } : m));
         setCriticals(prev => prev.map(c => ({
             ...c,
-            maintenance_logs: c.maintenance_logs.map(m => m.id === id ? { ...m, ...data } : m),
+            maintenance_logs: c.maintenance_logs.map(m => m.id === id ? { ...m, ...dataWithTs } : m),
         })));
-        const { error: err } = await supabase.from('maintenance_logs').update(data).eq('id', id);
+        const { error: err } = await supabase.from('maintenance_logs').update(dataWithTs).eq('id', id);
         if (err) {
             await fetchData(); // rollback
             return { error: err.message };
         }
         if (data.status && oldMaint?.critical_id && data.status !== oldMaint.status) {
-            if (isForwardTransition(oldMaint.status, data.status)) {
-                await deleteMilestoneLog(supabase, oldMaint.critical_id, data.status, id);
+            const isForward = isForwardTransition(oldMaint.status, data.status);
+            const prevShiftKey = deriveShiftKeyFromIso(oldMaint.updated_at);
+            const currShiftKey = deriveShiftKeyFromIso(nowIso);
+            const isSameShift = prevShiftKey.date === currShiftKey.date && prevShiftKey.shift === currShiftKey.shift;
+            // Cross-shift: log all. Same-shift: log only forward; backward silent cleanup.
+            const shouldLog = isForward || !isSameShift;
+            if (shouldLog) {
+                if (isForward) {
+                    await deleteMilestoneLog(supabase, oldMaint.critical_id, data.status, id);
+                }
                 await insertActivityLog(
                     supabase, oldMaint.critical_id, 'maintenance_updated',
-                    `Status maintenance '${oldMaint.uraian}': ${STATUS_LABEL[oldMaint.status]} → ${STATUS_LABEL[data.status]}`,
+                    `(Tim ${oldMaint.scope.charAt(0).toUpperCase() + oldMaint.scope.slice(1)}) ${oldMaint.uraian}`,
                     actor ?? null,
-                    { old_status: oldMaint.status, new_status: data.status, maintenance_id: id }
+                    { old_status: oldMaint.status, new_status: data.status, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope, cross_shift: !isSameShift }
                 );
             } else {
                 await deleteForwardMilestonesAbove(supabase, oldMaint.critical_id, data.status, id);
@@ -271,8 +317,26 @@ export function useCriticalMaintenance() {
             await insertActivityLog(
                 supabase, oldMaint.critical_id, 'maintenance_deleted',
                 `Maintenance '${oldMaint.uraian}' dihapus`,
-                actor ?? null
+                actor ?? null,
+                { maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope }
             );
+        }
+        // Cascade: jika pekerjaan terakhir di work order (preventif/modifikasi), hapus work order juga
+        if (oldMaint?.work_order_id) {
+            const remainingReal = maintenances.filter(
+                m => m.work_order_id === oldMaint.work_order_id
+                    && m.id !== id
+                    && m.keterangan !== 'IS_NOTE'
+                    && m.item !== 'NOTE'
+            );
+            if (remainingReal.length === 0) {
+                // Hapus sisa notes jika ada
+                await supabase.from('maintenance_logs').delete().eq('work_order_id', oldMaint.work_order_id);
+                // Hapus activity logs work order
+                await supabase.from('work_order_activity_logs').delete().eq('work_order_id', oldMaint.work_order_id);
+                // Hapus work order itu sendiri
+                await supabase.from('work_orders').delete().eq('id', oldMaint.work_order_id);
+            }
         }
         await fetchData();
         return { error: null };
@@ -281,28 +345,41 @@ export function useCriticalMaintenance() {
     // ─── Kanban move (optimistic update) ───
     const moveMaintenanceStatus = useCallback(async (id: string, newStatus: MaintenanceStatus, actor?: string | null) => {
         const oldMaint = maintenances.find(m => m.id === id);
-        // Optimistic update
-        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
+        // Optimistic update — set updated_at jadi sekarang biar card langsung pindah ke shift sekarang di board
+        const nowIso = new Date().toISOString();
+        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, status: newStatus, updated_at: nowIso } : m));
         setCriticals(prev => prev.map(c => ({
             ...c,
-            maintenance_logs: c.maintenance_logs.map(m => m.id === id ? { ...m, status: newStatus } : m),
+            maintenance_logs: c.maintenance_logs.map(m => m.id === id ? { ...m, status: newStatus, updated_at: nowIso } : m),
         })));
 
-        const { error: err } = await supabase.from('maintenance_logs').update({ status: newStatus }).eq('id', id);
+        const { error: err } = await supabase.from('maintenance_logs').update({ status: newStatus, updated_at: nowIso }).eq('id', id);
         if (err) {
             await fetchData(); // rollback
             return { error: err.message };
         }
         if (oldMaint?.critical_id && oldMaint.status !== newStatus) {
-            if (isForwardTransition(oldMaint.status, newStatus)) {
-                await deleteMilestoneLog(supabase, oldMaint.critical_id, newStatus, id);
+            const isForward = isForwardTransition(oldMaint.status, newStatus);
+            // Tentukan apakah perubahan ini terjadi di shift yang sama dengan terakhir status berubah
+            const prevShiftKey = deriveShiftKeyFromIso(oldMaint.updated_at);
+            const currShiftKey = deriveShiftKeyFromIso(nowIso);
+            const isSameShift = prevShiftKey.date === currShiftKey.date && prevShiftKey.shift === currShiftKey.shift;
+            // Aturan log:
+            // - Cross-shift (beda shift): SEMUA perubahan dicatat (forward & backward)
+            // - Same-shift: hanya forward (OPEN→IP→OK) yang dicatat; backward silent (cleanup)
+            const shouldLog = isForward || !isSameShift;
+            if (shouldLog) {
+                if (isForward) {
+                    await deleteMilestoneLog(supabase, oldMaint.critical_id, newStatus, id);
+                }
                 await insertActivityLog(
                     supabase, oldMaint.critical_id, 'maintenance_updated',
-                    `Status maintenance '${oldMaint.uraian}': ${STATUS_LABEL[oldMaint.status]} → ${STATUS_LABEL[newStatus]}`,
+                    `(Tim ${oldMaint.scope.charAt(0).toUpperCase() + oldMaint.scope.slice(1)}) ${oldMaint.uraian}`,
                     actor ?? null,
-                    { old_status: oldMaint.status, new_status: newStatus, maintenance_id: id }
+                    { old_status: oldMaint.status, new_status: newStatus, maintenance_id: id, maintenance_item: oldMaint.item, maintenance_uraian: oldMaint.uraian, scope: oldMaint.scope, cross_shift: !isSameShift }
                 );
             } else {
+                // Same-shift backward: silent cleanup (e.g., user accidentally clicked OK lalu balik IP)
                 await deleteForwardMilestonesAbove(supabase, oldMaint.critical_id, newStatus, id);
             }
             await silentFetch();
@@ -336,15 +413,15 @@ export function useCriticalMaintenance() {
         return { error: null };
     }, [supabase, fetchData, silentFetch, criticals]);
 
-    // ─── Konfirmasi maintenance ke shift ini (touch updated_at) ───
+    // ─── Konfirmasi maintenance ke shift ini (set updated_at = now) ───
     const konfirmasiShift = useCallback(async (id: string) => {
         const maint = maintenances.find(m => m.id === id);
         if (!maint) return { error: 'Tidak ditemukan' };
         // Optimistic: update updated_at locally so card moves to "Shift ini"
         const now = new Date().toISOString();
         setMaintenances(prev => prev.map(m => m.id === id ? { ...m, updated_at: now } : m));
-        // Touch the record in DB — triggers updated_at via DB trigger
-        const { error: err } = await supabase.from('maintenance_logs').update({ status: maint.status }).eq('id', id);
+        // Set explicit di DB karena tidak ada trigger auto-update updated_at
+        const { error: err } = await supabase.from('maintenance_logs').update({ updated_at: now }).eq('id', id);
         if (err) {
             await fetchData();
             return { error: err.message };
@@ -352,6 +429,134 @@ export function useCriticalMaintenance() {
         await silentFetch();
         return { error: null };
     }, [supabase, fetchData, silentFetch, maintenances]);
+
+    // ─── CRUD Work Orders ───
+    const createWorkOrder = useCallback(async (data: Omit<WorkOrderRow, 'id' | 'created_at' | 'updated_at'>) => {
+        const { error: err } = await supabase.from('work_orders').insert(data);
+        if (err) return { error: err.message };
+        await fetchData();
+        return { error: null };
+    }, [supabase, fetchData]);
+
+    // Create WorkOrder (preventif/modifikasi) + 1 MaintenanceLog tertaut, atomic
+    const createPreventifModifikasi = useCallback(async (
+        woData: Omit<WorkOrderRow, 'id' | 'created_at' | 'updated_at'>,
+        uraian: string,
+    ) => {
+        const { data: wo, error: woErr } = await supabase
+            .from('work_orders')
+            .insert(woData)
+            .select()
+            .single();
+        if (woErr || !wo) return { error: woErr?.message ?? 'Gagal membuat work order' };
+
+        const woRow = wo as WorkOrderRow;
+        const today = new Date().toISOString().slice(0, 10);
+        const { error: mErr } = await supabase.from('maintenance_logs').insert({
+            shift_report_id: null,
+            critical_id: null,
+            work_order_id: woRow.id,
+            date: woData.date || today,
+            item: woData.item,
+            uraian,
+            scope: woData.scope,
+            foreman: woData.foreman,
+            tipe: woData.tipe,
+            status: 'OPEN',
+            keterangan: null,
+            notif: woData.notif,
+            reported_by: woData.reported_by,
+        });
+        if (mErr) {
+            await supabase.from('work_orders').delete().eq('id', woRow.id);
+            return { error: mErr.message };
+        }
+        // Activity log: created
+        await insertWOActivityLog(
+            supabase, woRow.id, 'created',
+            `${woData.tipe === 'preventif' ? 'Preventif' : 'Modifikasi'} dibuat untuk ${woData.item}`,
+            woData.reported_by,
+            { item: woData.item, tipe: woData.tipe }
+        );
+        await fetchData();
+        return { error: null };
+    }, [supabase, fetchData]);
+
+    const updateWorkOrder = useCallback(async (id: string, data: Partial<WorkOrderRow>, actor?: string | null) => {
+        const oldWO = workOrders.find(w => w.id === id);
+        setWorkOrders(prev => prev.map(w => w.id === id ? { ...w, ...data } : w));
+        const { error: err } = await supabase.from('work_orders').update(data).eq('id', id);
+        if (err) { await fetchData(); return { error: err.message }; }
+        // Track field changes in activity log
+        if (oldWO) {
+            const changes: string[] = [];
+            const meta: Record<string, unknown> = {};
+            if (data.deskripsi && data.deskripsi !== oldWO.deskripsi) {
+                changes.push(`Deskripsi: "${oldWO.deskripsi}" → "${data.deskripsi}"`);
+                meta.deskripsi = { old: oldWO.deskripsi, new: data.deskripsi };
+            }
+            if (data.scope && data.scope !== oldWO.scope) {
+                changes.push(`Scope: ${oldWO.scope} → ${data.scope}`);
+                meta.scope = { old: oldWO.scope, new: data.scope };
+            }
+            if (data.foreman && data.foreman !== oldWO.foreman) {
+                changes.push(`P. Jawab: ${oldWO.foreman} → ${data.foreman}`);
+                meta.foreman = { old: oldWO.foreman, new: data.foreman };
+            }
+            if (data.notif !== undefined && data.notif !== oldWO.notif) {
+                changes.push(`Notif: ${oldWO.notif ?? '-'} → ${data.notif ?? '-'}`);
+                meta.notif = { old: oldWO.notif, new: data.notif };
+            }
+            if (changes.length > 0) {
+                await insertWOActivityLog(supabase, id, 'maintenance_updated', changes.join(' | '), actor ?? null, meta);
+            }
+        }
+        await silentFetch();
+        return { error: null };
+    }, [supabase, fetchData, silentFetch, workOrders]);
+
+    const deleteWorkOrder = useCallback(async (id: string) => {
+        await supabase.from('maintenance_logs').delete().eq('work_order_id', id);
+        const { error: err } = await supabase.from('work_orders').delete().eq('id', id);
+        if (err) return { error: err.message };
+        await fetchData();
+        return { error: null };
+    }, [supabase, fetchData]);
+
+    const moveWorkOrderStatus = useCallback(async (id: string, newStatus: WorkOrderStatus, actor?: string | null) => {
+        const oldWO = workOrders.find(w => w.id === id);
+        setWorkOrders(prev => prev.map(w => w.id === id ? { ...w, status: newStatus } : w));
+        const { error: err } = await supabase.from('work_orders').update({ status: newStatus }).eq('id', id);
+        if (err) { await fetchData(); return { error: err.message }; }
+        if (oldWO && oldWO.status !== newStatus) {
+            await insertWOActivityLog(
+                supabase, id, 'status_changed',
+                `Status diubah: ${STATUS_LABEL[oldWO.status] ?? oldWO.status} → ${STATUS_LABEL[newStatus] ?? newStatus}`,
+                actor ?? null,
+                { old_status: oldWO.status, new_status: newStatus }
+            );
+        }
+        await silentFetch();
+        return { error: null };
+    }, [supabase, fetchData, silentFetch, workOrders]);
+
+    const addWOActivityNote = useCallback(async (workOrderId: string, note: string, actor?: string | null) => {
+        const { error: err } = await supabase.from('work_order_activity_logs').insert({
+            work_order_id: workOrderId,
+            action_type: 'note',
+            description: note,
+            actor: actor ?? null,
+            metadata: null,
+        });
+        if (err) return { error: err.message };
+        await silentFetch();
+        return { error: null };
+    }, [supabase, silentFetch]);
+
+    const fetchWOPhotos = useCallback(async (workOrderId: string) => {
+        const { data } = await supabase.from('photos').select('*').eq('work_order_id', workOrderId).order('created_at', { ascending: false });
+        return (data ?? []) as PhotoRow[];
+    }, [supabase]);
 
     // ─── Add manual activity note ───
     const addActivityNote = useCallback(async (criticalId: string, note: string, actor?: string | null) => {
@@ -366,9 +571,144 @@ export function useCriticalMaintenance() {
         return { error: null };
     }, [supabase, fetchData]);
 
+    // ─── Photos ───
+
+    const fetchPhotos = useCallback(async (
+        parentType: 'critical' | 'maintenance',
+        parentId: string,
+    ): Promise<PhotoRow[]> => {
+        const column = parentType === 'critical' ? 'critical_id' : 'maintenance_id';
+        const { data, error: err } = await supabase
+            .from('photos')
+            .select('*')
+            .eq(column, parentId)
+            .order('created_at', { ascending: true });
+        if (err) {
+            console.error('[fetchPhotos]', err.message);
+            return [];
+        }
+        return (data ?? []) as PhotoRow[];
+    }, [supabase]);
+
+    const deletePhoto = useCallback(async (photoId: string): Promise<{ error: string | null }> => {
+        const res = await fetch(`/api/upload/${photoId}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const json = await res.json().catch(() => ({}));
+            return { error: (json as { error?: string }).error ?? 'Hapus foto gagal' };
+        }
+        return { error: null };
+    }, []);
+
+    /**
+     * Assign maintenance ke shift report (date+shift). Otomatis create draft shift_report kalau belum ada.
+     * Idempotent karena UNIQUE constraint di pivot.
+     */
+    const assignMaintenanceToShift = useCallback(async (
+        maintenanceIds: string[],
+        date: string,
+        shift: 'pagi' | 'sore' | 'malam',
+        actor?: string | null,
+    ): Promise<{ error: string | null }> => {
+        if (maintenanceIds.length === 0) return { error: null };
+        // Resolve / create shift_report
+        let reportId: string | null = null;
+        const { data: existing } = await supabase
+            .from('shift_reports')
+            .select('id')
+            .eq('date', date)
+            .eq('shift', shift)
+            .maybeSingle();
+        if (existing && (existing as Record<string, unknown>).id) {
+            reportId = (existing as Record<string, unknown>).id as string;
+        } else {
+            const { data: created, error: cErr } = await supabase
+                .from('shift_reports')
+                .insert({ date, shift, group_name: '', supervisor: '', status: 'draft' } as Record<string, unknown>)
+                .select('id')
+                .single();
+            if (cErr || !created) return { error: cErr?.message ?? 'Gagal create shift report' };
+            reportId = (created as Record<string, unknown>).id as string;
+        }
+        const rows = maintenanceIds.map(mid => ({ maintenance_id: mid, shift_report_id: reportId, assigned_by: actor ?? null }));
+        const { error: insErr } = await supabase
+            .from('maintenance_shift_assignments')
+            .upsert(rows, { onConflict: 'maintenance_id,shift_report_id', ignoreDuplicates: true });
+        if (insErr) return { error: insErr.message };
+        return { error: null };
+    }, [supabase]);
+
+    /**
+     * Unassign maintenance dari shift report (date+shift). Hapus row di pivot.
+     * Tidak menghapus shift_report itu sendiri (tetap ada untuk maintenance lain).
+     */
+    /**
+     * Revert maintenance dari "Shift Ini" ke "Shift Sebelumnya" pada board.
+     * Set updated_at ke timestamp sebelum shift window start, supaya card pindah ke section prev.
+     * (Catatan: ini hanya mempengaruhi tampilan board + filter laporan shift, status tidak berubah.)
+     */
+    const revertMaintenanceFromCurrentShift = useCallback(async (
+        id: string,
+        shiftWindow: { start: Date; end: Date },
+    ): Promise<{ error: string | null }> => {
+        const beforeShift = new Date(shiftWindow.start.getTime() - 1000).toISOString(); // 1 detik sebelum shift mulai
+        setMaintenances(prev => prev.map(m => m.id === id ? { ...m, updated_at: beforeShift } : m));
+        const { error: err } = await supabase
+            .from('maintenance_logs')
+            .update({ updated_at: beforeShift })
+            .eq('id', id);
+        if (err) {
+            await fetchData();
+            return { error: err.message };
+        }
+        await silentFetch();
+        return { error: null };
+    }, [supabase, fetchData, silentFetch]);
+
+    const unassignMaintenanceFromShift = useCallback(async (
+        maintenanceIds: string[],
+        date: string,
+        shift: 'pagi' | 'sore' | 'malam',
+    ): Promise<{ error: string | null }> => {
+        if (maintenanceIds.length === 0) return { error: null };
+        const { data: rep } = await supabase
+            .from('shift_reports')
+            .select('id')
+            .eq('date', date)
+            .eq('shift', shift)
+            .maybeSingle();
+        const reportId = (rep as Record<string, unknown> | null)?.id as string | undefined;
+        if (!reportId) return { error: null }; // tidak ada laporan → tidak ada yang perlu di-unassign
+        const { error: delErr } = await supabase
+            .from('maintenance_shift_assignments')
+            .delete()
+            .eq('shift_report_id', reportId)
+            .in('maintenance_id', maintenanceIds);
+        if (delErr) return { error: delErr.message };
+        return { error: null };
+    }, [supabase]);
+
+    /** Batch fetch photos for a list of maintenance IDs — returns a map of maintId → PhotoRow[] */
+    const fetchPhotosForMaintList = useCallback(async (maintIds: string[]): Promise<Record<string, PhotoRow[]>> => {
+        if (maintIds.length === 0) return {};
+        const { data, error: err } = await supabase
+            .from('photos')
+            .select('*')
+            .in('maintenance_id', maintIds)
+            .order('created_at', { ascending: true });
+        if (err || !data) return {};
+        const map: Record<string, PhotoRow[]> = {};
+        for (const photo of (data as PhotoRow[])) {
+            if (!photo.maintenance_id) continue;
+            if (!map[photo.maintenance_id]) map[photo.maintenance_id] = [];
+            map[photo.maintenance_id].push(photo);
+        }
+        return map;
+    }, [supabase]);
+
     return {
         criticals,
         maintenances,
+        workOrders,
         loading,
         error,
         refetch: fetchData,
@@ -383,6 +723,19 @@ export function useCriticalMaintenance() {
         moveMaintenanceStatus,
         moveCriticalStatus,
         konfirmasiShift,
+        assignMaintenanceToShift,
+        unassignMaintenanceFromShift,
+        revertMaintenanceFromCurrentShift,
         addActivityNote,
+        fetchPhotos,
+        deletePhoto,
+        fetchPhotosForMaintList,
+        createWorkOrder,
+        createPreventifModifikasi,
+        updateWorkOrder,
+        deleteWorkOrder,
+        moveWorkOrderStatus,
+        addWOActivityNote,
+        fetchWOPhotos,
     };
 }

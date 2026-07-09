@@ -1,37 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import type { CriticalWithMaintenance, ActivityActionType } from '@/lib/supabase/types';
+import type { CriticalWithMaintenance } from '@/lib/supabase/types';
 import OperatorCombobox from './OperatorCombobox';
-
-const ACTION_ICON: Record<ActivityActionType, string> = {
-    created: 'flag',
-    status_changed: 'published_with_changes',
-    note: 'chat_bubble',
-    maintenance_added: 'build_circle',
-    maintenance_updated: 'handyman',
-    maintenance_deleted: 'remove_circle',
-};
-
-const ACTION_COLOR: Record<ActivityActionType, string> = {
-    created: 'text-rose-400',
-    status_changed: 'text-amber-400',
-    note: 'text-sky-400',
-    maintenance_added: 'text-emerald-400',
-    maintenance_updated: 'text-purple-400',
-    maintenance_deleted: 'text-slate-400',
-};
+import ActivityTimelineImproved from './ActivityTimelineImproved';
 
 const MAINT_STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
     OPEN: { bg: 'bg-blue-100 border border-blue-300', text: 'text-blue-700', label: 'Open' },
     IP:   { bg: 'bg-amber-100 border border-amber-300', text: 'text-amber-700', label: 'In Progress' },
     OK:   { bg: 'bg-emerald-100 border border-emerald-300', text: 'text-emerald-700', label: 'OK' },
 };
-
-function formatDateTime(ts: string) {
-    const d = new Date(ts);
-    return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 
 interface CloseCriticalModalProps {
     open: boolean;
@@ -52,10 +30,7 @@ export default function CloseCriticalModal({ open, critical, onClose, onConfirm,
     const allOK = maintenances.length > 0 && maintenances.every(m => m.status === 'OK');
     const okCount = maintenances.filter(m => m.status === 'OK').length;
 
-    const recentLogs = [...(critical.critical_activity_logs ?? [])]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 6)
-        .reverse();
+    const allLogs = critical.critical_activity_logs ?? [];
 
     const handleConfirm = async () => {
         if (!actor.trim()) {
@@ -135,36 +110,7 @@ export default function CloseCriticalModal({ open, critical, onClose, onConfirm,
                     {/* Activity Summary */}
                     <div className="px-5 pt-2 pb-3 border-t border-gray-100">
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Ringkasan Aktivitas</p>
-                        {recentLogs.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic text-center py-3">Belum ada aktivitas tercatat</p>
-                        ) : (
-                            <div className="space-y-2 pr-1">
-                                {recentLogs.map((log, i) => {
-                                    const actionType = log.action_type as ActivityActionType;
-                                    return (
-                                        <div key={log.id} className="flex items-start gap-2.5">
-                                            <div className="flex flex-col items-center flex-shrink-0">
-                                                <div className="w-6 h-6 rounded-full border-2 bg-white flex items-center justify-center border-gray-200">
-                                                    <span className={`material-symbols-outlined ${ACTION_COLOR[actionType]}`} style={{ fontSize: 12 }}>
-                                                        {ACTION_ICON[actionType] ?? 'circle'}
-                                                    </span>
-                                                </div>
-                                                {i < recentLogs.length - 1 && (
-                                                    <div className="w-px h-3 bg-gray-200 mt-0.5" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0 pb-1">
-                                                <p className="text-xs font-semibold text-gray-700 leading-snug">{log.description}</p>
-                                                <p className="text-[10px] text-gray-400 mt-0.5">
-                                                    {log.actor && <span className="font-bold text-gray-500">{log.actor} · </span>}
-                                                    {formatDateTime(log.created_at)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                        <ActivityTimelineImproved logs={allLogs} compact />
                     </div>
 
                 </div>

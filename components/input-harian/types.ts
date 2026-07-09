@@ -3,7 +3,7 @@ export interface DailyTabProps {
     steam: Record<string, number | null>;
     power: Record<string, number | null>;
     coal: Record<string, number | null>;
-    turbineMisc: Record<string, number | null>;
+    turbineMisc: Record<string, number | string | null>;
     stockTank: Record<string, number | null>;
     coalTransfer: Record<string, number | null>;
     totalizer: Record<string, number | string | null>;
@@ -12,6 +12,7 @@ export interface DailyTabProps {
     prevSteam?: Record<string, number | null>;
     prevPower?: Record<string, number | null>;
     prevCoal?: Record<string, number | null>;
+    prevTurbineMisc?: Record<string, number | null>;
     prevTotalizer?: Record<string, number | string | null>;
     prevStockTank?: Record<string, number | null>;
     prevCoalTransfer?: Record<string, number | null>;
@@ -29,7 +30,65 @@ export interface DailyTabProps {
     crA: number;
     crB: number;
 
-    // Solar and Ash unloadings from shift reports (read-only in daily)
-    solarUnloadings?: { date: string; liters: number; supplier: string }[];
-    ashUnloadings?: { date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[];
+    /** Stock Batubara — nilai kolom DW (stock_batubara_rendal) dari Google Sheets pada tanggal
+     *  LHUBB yang sama. Display-only di TabStockBatubara. */
+    stockBatubaraSheet?: string | number | null;
+    /** Tanggal LHUBB (ISO YYYY-MM-DD) — untuk label "Data dari LHUBB tanggal ...". */
+    lhubbDate?: string;
+
+    // Solar and Ash unloadings from shift reports (deletable in daily)
+    solarUnloadings?: { id?: string; date: string; liters: number; supplier: string; shift?: string | null }[];
+    solarUsages?: { id?: string; date: string; shift: string; liters: number; tujuan: string }[];
+    ashUnloadings?: { id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[];
+    onDeleteSolarUnloading?: (id: string) => void;
+    onDeleteSolarUsage?: (id: string) => void;
+    onEditSolarUnloading?: (id: string, fields: { liters: number; supplier: string }) => void;
+    onEditSolarUsage?: (id: string, fields: { liters: number; tujuan: string; shift: string }) => void;
+    onAddSolarUnloading?: (fields: { liters: number; supplier: string }) => void | Promise<void>;
+    onAddSolarUsage?: (fields: { liters: number; tujuan: string; shift: string }) => void | Promise<void>;
+    onDeleteAshUnloading?: (id: string) => void;
+    onEditAshUnloading?: (id: string, fields: { silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number }) => void;
+
+}
+
+/** Subset prop yang dipakai TabStockBatubara (form In/Out batubara per kategori) — supaya
+ *  komponen bisa dipakai ulang di luar form harian (mis. panel publish) tanpa menyediakan
+ *  seluruh DailyTabProps. */
+export type CoalReviewProps = Pick<DailyTabProps,
+    | 'coalTransfer'
+    | 'onCoalTransferChange'
+>;
+
+export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string; shift?: string | null }
+export interface SolarUsageEntry { id?: string; date: string; shift: string; liters: number; tujuan: string }
+
+/** Kolom nilai solar (m³) form di daily_report_stock_tank — inilah yang tersimpan ke Sheets. */
+export type SolarValueCol = 'kedatangan_solar' | 'solar_boiler' | 'solar_bengkel' | 'solar_3b';
+
+/** Prop TabSolarReview. Nilai FORM (kedatangan/boilerAB/bengkel/sasu, m³) = yang tersimpan
+ *  ke Sheets; bila null → default dari agregat entri (catatan). Entri kedatangan/permintaan
+ *  bisa CRUD tapi hanya sebagai catatan & sumber default. */
+export interface SolarReviewProps {
+    /** Entri kedatangan (solar_unloadings) — catatan + sumber default kedatangan. CRUD. */
+    solarUnloadings?: SolarUnloadingEntry[];
+    /** Entri permintaan (solar_usages) — catatan + sumber default bengkel/SA·SU. CRUD. */
+    solarUsages?: SolarUsageEntry[];
+    /** Level tank solar sekarang (m³) — daily_report_stock_tank.solar_tank_a. */
+    solarLevel?: number | null;
+    /** Level tank solar kemarin (m³) — display read-only. */
+    prevSolarLevel?: number | null;
+    /** Nilai form (null = belum dioverride → pakai default agregat entri). */
+    kedatangan?: number | null;
+    boilerAB?: number | null;
+    bengkel?: number | null;
+    sasu?: number | null;
+    onLevelChange?: (value: number | null) => void;
+    /** Ubah nilai form → persist ke kolom daily_report_stock_tank terkait. */
+    onValueChange?: (col: SolarValueCol, value: number | null) => void;
+    onAddUnloading?: (f: { liters: number; supplier: string }) => void | Promise<void>;
+    onEditUnloading?: (id: string, f: { liters: number; supplier: string }) => void | Promise<void>;
+    onDeleteUnloading?: (id: string) => void | Promise<void>;
+    onAddUsage?: (f: { liters: number; tujuan: string; shift: string }) => void | Promise<void>;
+    onEditUsage?: (id: string, f: { liters: number; tujuan: string; shift: string }) => void | Promise<void>;
+    onDeleteUsage?: (id: string) => void | Promise<void>;
 }

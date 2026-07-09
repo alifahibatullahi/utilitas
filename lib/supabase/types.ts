@@ -16,6 +16,17 @@ export interface EquipmentItemRow {
     updated_at: string;
 }
 
+// ─── HAR Scopes (master data) ───
+
+export interface HarScopeRow {
+    id: string;
+    value: string;
+    label: string;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+}
+
 // ─── Base / Anchor Tables ───
 
 export interface OperatorRow {
@@ -37,6 +48,16 @@ export interface ShiftReportRow {
     created_by: string;
     created_at: string;
     updated_at: string;
+    /** Map station → nama operator yang mengisi tab tersebut. Mendukung kasus tukar shift
+     *  di mana pengisi bisa berasal dari grup lain. Diisi via picker "Diisi oleh" di
+     *  station view. Tidak overwrite station lain saat partial submit. */
+    station_fillers?: Record<string, string> | null;
+    /** Map station → catatan operasional milik station tsb (panel_boiler/turbin). Digabung
+     *  dengan catatan utama jadi satu catatan shift saat ditampilkan/publish. */
+    station_catatan?: Record<string, string> | null;
+    /** Approval supervisor/foreman saat publish. Di-set bersamaan dengan status='approved'. */
+    reviewed_by?: string | null;
+    reviewed_at?: string | null;
 }
 
 export interface DailyReportRow {
@@ -50,6 +71,8 @@ export interface DailyReportRow {
     status: ReportStatus;
     created_by: string | null;
     created_at: string;
+    /** Lihat ShiftReportRow.station_fillers. */
+    station_fillers?: Record<string, string> | null;
 }
 
 // ─── Shift Tables (10 tabel) ───
@@ -75,6 +98,11 @@ export interface ShiftTurbinRow {
     press_deaerator: number | null;
     temp_deaerator: number | null;
     stream_days: number | null;
+    /** Status turbin: 'running' | 'shutdown'. Saat shutdown, semua field operasional di-zero
+     *  di submit handler kecuali kartu deaerator (press/temp_deaerator) dan raw totalizer
+     *  (totalizer_steam_inlet, totalizer_condensate). Juga cascade: gen output di
+     *  shift_generator_gi ikut di-zero. */
+    status_turbin?: string | null;
     created_at: string;
 }
 
@@ -143,7 +171,12 @@ export interface ShiftTankyardRow {
     id: string;
     shift_report_id: string;
     tk_rcw: number | null;
+    tk_rcw_2: number | null;
+    tk_rcw_3: number | null;
+    tk_rcw_4: number | null;
+    tk_rcw_trend?: string | null;
     tk_demin: number | null;
+    tk_demin_trend?: string | null;
     tk_solar_ab: number | null;
     created_at: string;
 }
@@ -179,6 +212,7 @@ export interface ShiftBoilerRow {
     stream_days: number | null;
     steam_drum_press: number | null;
     bfw_press: number | null;
+    status_boiler: string | null;
     created_at: string;
 }
 
@@ -203,6 +237,12 @@ export interface ShiftCoalBunkerRow {
     status_bunker_d: string | null;
     status_bunker_e: string | null;
     status_bunker_f: string | null;
+    status_feeder_a: string | null;
+    status_feeder_b: string | null;
+    status_feeder_c: string | null;
+    status_feeder_d: string | null;
+    status_feeder_e: string | null;
+    status_feeder_f: string | null;
     created_at: string;
 }
 
@@ -223,12 +263,15 @@ export interface ShiftWaterQualityRow {
     bfw_sio2: number | null;
     bfw_nh4: number | null;
     bfw_chz: number | null;
+    bfw_fe: number | null;
     boiler_water_a_ph: number | null;
     boiler_water_a_conduct: number | null;
+    boiler_water_a_th: number | null;
     boiler_water_a_sio2: number | null;
     boiler_water_a_po4: number | null;
     boiler_water_b_ph: number | null;
     boiler_water_b_conduct: number | null;
+    boiler_water_b_th: number | null;
     boiler_water_b_sio2: number | null;
     boiler_water_b_po4: number | null;
     product_steam_ph: number | null;
@@ -265,6 +308,15 @@ export interface DailyReportSteamRow {
     lps_3a_00: number | null;
     fully_condens_00: number | null;
     internal_ubb_00: number | null;
+    // Selisih (today_raw − yesterday_raw) — di-precompute saat submit.
+    selisih_prod_boiler_a: number | null;
+    selisih_prod_boiler_b: number | null;
+    selisih_inlet_turbine: number | null;
+    selisih_mps_i: number | null;
+    selisih_mps_3a: number | null;
+    selisih_lps_ii: number | null;
+    selisih_lps_3a: number | null;
+    selisih_fully_condens: number | null;
     created_at: string;
 }
 
@@ -298,6 +350,25 @@ export interface DailyReportPowerRow {
     pie_pln_00: number | null;
     pie_import_00: number | null;
     pie_gi_00: number | null;
+    // Distribusi power per factory (tab Generator harian)
+    power_ubb_totalizer: number | null;
+    power_ubb: number | null;
+    power_pabrik2_totalizer: number | null;
+    power_pabrik2: number | null;
+    power_pabrik3a_totalizer: number | null;
+    power_pabrik3a: number | null;
+    power_revamping_totalizer: number | null;
+    power_revamping: number | null;
+    power_pie_totalizer: number | null;
+    power_pie: number | null;
+    power_stg_ubb_totalizer: number | null;
+    // Selisih totalizer (today − yesterday) MWh — di-precompute saat submit.
+    selisih_ubb: number | null;
+    selisih_pabrik2: number | null;
+    selisih_pabrik3a: number | null;
+    selisih_revamping: number | null;
+    selisih_pie: number | null;
+    selisih_stg_ubb: number | null;
     created_at: string;
 }
 
@@ -322,6 +393,13 @@ export interface DailyReportCoalRow {
     coal_f_00: number | null;
     total_boiler_b_00: number | null;
     grand_total_00: number | null;
+    // Selisih totalizer feeder (today − yesterday) ton — di-precompute saat submit.
+    selisih_coal_a: number | null;
+    selisih_coal_b: number | null;
+    selisih_coal_c: number | null;
+    selisih_coal_d: number | null;
+    selisih_coal_e: number | null;
+    selisih_coal_f: number | null;
     created_at: string;
 }
 
@@ -330,6 +408,27 @@ export interface DailyReportTurbineMiscRow {
     daily_report_id: string;
     temp_furnace_a: number | null;
     temp_furnace_b: number | null;
+    // Pembacaan sesaat boiler jam 24.00 (untuk e-Logbook) — per boiler A/B.
+    press_steam_a?: number | null;
+    temp_steam_a?: number | null;
+    bfw_press_a?: number | null;
+    temp_bfw_a?: number | null;
+    temp_flue_gas_a?: number | null;
+    air_heater_ti113_a?: number | null;
+    o2_a?: number | null;
+    steam_drum_press_a?: number | null;
+    primary_air_a?: number | null;
+    secondary_air_a?: number | null;
+    press_steam_b?: number | null;
+    temp_steam_b?: number | null;
+    bfw_press_b?: number | null;
+    temp_bfw_b?: number | null;
+    temp_flue_gas_b?: number | null;
+    air_heater_ti113_b?: number | null;
+    o2_b?: number | null;
+    steam_drum_press_b?: number | null;
+    primary_air_b?: number | null;
+    secondary_air_b?: number | null;
     axial_displacement: number | null;
     thrust_bearing_temp: number | null;
     steam_inlet_press: number | null;
@@ -340,6 +439,28 @@ export interface DailyReportTurbineMiscRow {
     totalizer_gi: number | null;
     totalizer_export: number | null;
     totalizer_import: number | null;
+    // Generator electrical params (tab Generator harian)
+    gen_ampere: number | null;
+    gen_amp_react: number | null;
+    gen_cos_phi: number | null;
+    gen_tegangan: number | null;
+    gen_frequensi: number | null;
+    // Gardu Induk
+    gi_sum_p: number | null;
+    gi_sum_q: number | null;
+    gi_cos_phi: number | null;
+    // Status feeder coal (tab Boiler harian) — running/standby/emergency standby/not standby.
+    status_feeder_a?: string | null;
+    status_feeder_b?: string | null;
+    status_feeder_c?: string | null;
+    status_feeder_d?: string | null;
+    status_feeder_e?: string | null;
+    status_feeder_f?: string | null;
+    /** Status turbin di harian. Saat shutdown, field instantaneous (jam 00:00) di-zero:
+     *  inlet_turbine_00, co_gen_00 (di daily_report_steam), gen_00 (di daily_report_power),
+     *  + axial_displacement, thrust_bearing_temp, steam_inlet_press, steam_inlet_temp.
+     *  Field 24h totals dan raw totalizer (totalizer_gi/export/import) tetap editable. */
+    status_turbin?: string | null;
     created_at: string;
 }
 
@@ -412,6 +533,13 @@ export interface DailyReportTotalizerRow {
     penerimaan_demin_3a: number | null;
     penerimaan_demin_1b: number | null;
     penerimaan_rcw_1a: number | null;
+    tot_rcw_1a: number | null;
+    tot_demin: number | null;
+    tot_demin_pb1: number | null;
+    tot_demin_pb3: number | null;
+    tot_hydrant: number | null;
+    tot_basin: number | null;
+    tot_service: number | null;
     created_at: string;
 }
 
@@ -420,7 +548,9 @@ export interface DailyReportTotalizerRow {
 export type CriticalEquipmentStatus = 'OPEN' | 'CLOSED';
 export type MaintenanceStatus = 'OPEN' | 'IP' | 'OK';
 export type CriticalStatus = CriticalEquipmentStatus | MaintenanceStatus;
-export type MaintenanceType = 'corrective' | 'preventif';
+export type MaintenanceType = 'corrective' | 'preventif' | 'modifikasi';
+export type WorkOrderType = 'preventif' | 'modifikasi';
+export type WorkOrderStatus = 'OPEN' | 'IP' | 'OK';
 export type HarScope = 'mekanik' | 'listrik' | 'instrumen' | 'sipil';
 export type ForemanType = 'foreman_turbin' | 'foreman_boiler';
 export type ActivityActionType = 'created' | 'status_changed' | 'note' | 'maintenance_added' | 'maintenance_updated' | 'maintenance_deleted';
@@ -442,10 +572,32 @@ export interface CriticalEquipmentRow {
     updated_at: string;
 }
 
+export interface WorkOrderRow {
+    id: string;
+    date: string;
+    item: string;
+    deskripsi: string;
+    tipe: WorkOrderType;
+    scope: HarScope;
+    foreman: ForemanType;
+    status: WorkOrderStatus;
+    notif: string | null;
+    reported_by: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface WorkOrderWithPekerjaan extends WorkOrderRow {
+    maintenance_logs: MaintenanceLogRow[];
+    work_order_activity_logs?: WorkOrderActivityLogRow[];
+    photos?: PhotoRow[];
+}
+
 export interface MaintenanceLogRow {
     id: string;
     shift_report_id: string | null;
     critical_id: string | null;
+    work_order_id: string | null;
     date: string;
     item: string;
     uraian: string;
@@ -470,15 +622,44 @@ export interface CriticalActivityLogRow {
     created_at: string;
 }
 
+// ─── Work Order Activity Logs (mirror CriticalActivityLogRow) ───
+
+export interface WorkOrderActivityLogRow {
+    id: string;
+    work_order_id: string;
+    action_type: ActivityActionType;
+    description: string;
+    actor: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+}
+
+// ─── Photos ───
+
+export interface PhotoRow {
+    id:             string;
+    critical_id:    string | null;
+    maintenance_id: string | null;
+    work_order_id:  string | null;
+    url:            string;
+    filename:       string;
+    caption:        string | null;
+    uploaded_via:   'app' | 'whatsapp';
+    uploaded_by:    string | null;
+    created_at:     string;
+}
+
 // ─── Joined types for UI ───
 
 export interface CriticalWithMaintenance extends CriticalEquipmentRow {
     maintenance_logs: MaintenanceLogRow[];
     critical_activity_logs: CriticalActivityLogRow[];
+    photos?: PhotoRow[];
 }
 
 export interface MaintenanceWithCritical extends MaintenanceLogRow {
     critical_equipment: CriticalEquipmentRow | null;
+    photos?: PhotoRow[];
 }
 
 export interface ShiftNoteRow {
@@ -492,8 +673,19 @@ export interface ShiftNoteRow {
 export interface SolarUnloadingRow {
     id: string;
     date: string;
+    shift?: string;
     liters: number;
     supplier: string;
+    operator_id: string | null;
+    created_at: string;
+}
+
+export interface SolarUsageRow {
+    id: string;
+    date: string;
+    shift: string;
+    liters: number;
+    tujuan: string;
     operator_id: string | null;
     created_at: string;
 }
@@ -517,5 +709,17 @@ export interface TankLevelRow {
     level_m3: number;
     operator_name: string;
     note: string | null;
+    trend?: string | null;
+    created_at: string;
+}
+
+export interface TankFlowReadingRow {
+    id: string;
+    tank_id: 'DEMIN' | 'RCW' | 'SOLAR';
+    direction: 'in' | 'out';
+    label: string;        // nama source / destination
+    rate: number;         // ton/h; 0 untuk pump-only
+    pump: string | null;  // pompa aktif (khusus Demin Revamp)
+    operator_name: string | null;
     created_at: string;
 }

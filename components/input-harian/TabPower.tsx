@@ -1,77 +1,162 @@
 'use client';
-import React from 'react';
-import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, TotalizerInput } from '@/components/input-shift/SharedComponents';
+import React, { useEffect } from 'react';
+import { Card, InputField, SelisihInfo, CalculatedField } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
+
+const GEN_OUTPUT_FIELDS_HARIAN = ['gen_ampere', 'gen_tegangan', 'gen_amp_react', 'gen_frequensi', 'gen_cos_phi'];
+
+// Sama persis dengan TabGenerator laporan shift
+const DIST_ITEMS = [
+    { key: 'ubb',      label: 'Internal UBB' },
+    { key: 'pabrik2',  label: 'Pabrik 2'     },
+    { key: 'pabrik3a', label: 'Pabrik 3A'    },
+    { key: 'revamping',label: 'Pabrik 3B'    },
+    { key: 'pie',      label: 'PIU'           },
+] as const;
 
 export default function TabPower({
     power, turbineMisc,
     prevPower,
     onPowerChange, onTurbineMiscChange,
 }: DailyTabProps) {
-    const n = (v: number | null | undefined) => Number(v) || 0;
-    const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
-    const pn = (key: string) => prevPower ? n(prevPower[key]) : 0;
+    const pv = power as Record<string, number | string | null>;
+    const gv = turbineMisc as Record<string, number | string | null>;
+    const prevPD = prevPower as Record<string, number | null> | undefined;
+
+    const fmt = (v: number | string | null | undefined) => (Number(v) || 0).toFixed(2);
+    // Saat turbin shutdown (di turbineMisc.status_turbin), kunci kartu Generator Output.
+    // GI & Distribusi Power tetap editable (PLN tetap connect lewat GI).
+    const isTurbinShutdown = gv.status_turbin === 'shutdown';
+
+    // Auto-zero kartu Generator Output saat turbin shutdown.
+    // Raw totalizer STG UBB (power_stg_ubb_totalizer) di-auto-fill dari prev day kalau kosong —
+    // STG tidak generate power saat shutdown, jadi totalizer stagnant.
+    useEffect(() => {
+        if (!isTurbinShutdown) return;
+        if (onPowerChange) {
+            if (pv.gen_00 != null && Number(pv.gen_00) !== 0) onPowerChange('gen_00', 0);
+            const prevStgTot = prevPD?.power_stg_ubb_totalizer;
+            if (prevStgTot != null && pv.power_stg_ubb_totalizer == null) {
+                onPowerChange('power_stg_ubb_totalizer', prevStgTot);
+            }
+        }
+        if (onTurbineMiscChange) {
+            GEN_OUTPUT_FIELDS_HARIAN.forEach(k => {
+                if (gv[k] != null && Number(gv[k]) !== 0) onTurbineMiscChange(k, 0);
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isTurbinShutdown]);
 
     return (
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-            {/* ═══ Produksi & Distribusi ═══ */}
-            <Card title="Power — Produksi & Distribusi" icon="bolt" color="amber">
-                <SectionLabel label="Total Harian" badge="Totalizer · MWh" />
-                <TotalizerInput label="Generator (20EG-01.02)" name="gen_24" value={power.gen_24} prev={pn('gen_24')} onChange={onPowerChange} unit="MWh" color="amber" />
-                <div className="grid grid-cols-2 gap-4">
-                    <TotalizerInput label="Dist. IB" name="dist_ib_24" value={power.dist_ib_24} prev={pn('dist_ib_24')} onChange={onPowerChange} unit="MWh" color="amber" />
-                    <TotalizerInput label="Dist. II" name="dist_ii_24" value={power.dist_ii_24} prev={pn('dist_ii_24')} onChange={onPowerChange} unit="MWh" color="amber" />
-                    <TotalizerInput label="Dist. III A" name="dist_3a_24" value={power.dist_3a_24} prev={pn('dist_3a_24')} onChange={onPowerChange} unit="MWh" color="amber" />
-                    <TotalizerInput label="Dist. III B" name="dist_3b_24" value={power.dist_3b_24} prev={pn('dist_3b_24')} onChange={onPowerChange} unit="MWh" color="amber" />
-                </div>
+        <div className="flex-1 flex flex-col xl:flex-row gap-6 w-full overflow-y-auto">
+            <div className="flex-1 min-w-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                <SectionLabel label="Data Aktual" badge="Flow · MW" />
-                <InputField label="Generator (20EG-01.02)" name="gen_00" value={power.gen_00} onChange={onPowerChange} unit="MW" color="emerald" />
-                <div className="grid grid-cols-2 gap-4">
-                    <InputField label="Dist. IB" name="dist_ib_00" value={power.dist_ib_00} onChange={onPowerChange} unit="MW" color="emerald" />
-                    <InputField label="Dist. II" name="dist_ii_00" value={power.dist_ii_00} onChange={onPowerChange} unit="MW" color="emerald" />
-                    <InputField label="Dist. III A" name="dist_3a_00" value={power.dist_3a_00} onChange={onPowerChange} unit="MW" color="emerald" />
-                    <InputField label="Dist. III B" name="dist_3b_00" value={power.dist_3b_00} onChange={onPowerChange} unit="MW" color="emerald" />
-                </div>
-                <CalculatedField label="Total Generator" value={`${fmt(n(power.gen_24))} MWh / ${fmt(n(power.gen_00))} MW`} unit="" variant="primary" />
-            </Card>
+                    <Card title="Generator Output" icon="flash_on" color="blue">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <InputField label="Load STG"      unit="MW"   color="blue" name="gen_00"        value={pv.gen_00}        onChange={onPowerChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Ampere"        unit="A"    color="blue" name="gen_ampere"    value={gv.gen_ampere}    onChange={onTurbineMiscChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Voltage"       unit="kV"   color="blue" name="gen_tegangan"  value={gv.gen_tegangan}  onChange={onTurbineMiscChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Reactive Power"unit="Mvar" color="blue" name="gen_amp_react" value={gv.gen_amp_react} onChange={onTurbineMiscChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Frekuensi"     unit="Hz"   color="blue" name="gen_frequensi" value={gv.gen_frequensi} onChange={onTurbineMiscChange} readOnly={isTurbinShutdown} />
+                            <InputField label="Cos θ"                     color="blue" name="gen_cos_phi"   value={gv.gen_cos_phi}   onChange={onTurbineMiscChange} readOnly={isTurbinShutdown} />
+                        </div>
+                    </Card>
 
-            {/* ═══ Internal & Ekspor ═══ */}
-            <Card title="Power — Internal & Ekspor" icon="electrical_services" color="sky">
-                <SectionLabel label="Total Harian" badge="Totalizer · MWh" />
-                <div className="grid grid-cols-2 gap-4">
-                    <TotalizerInput label="Internal BUS I" name="internal_bus1_24" value={power.internal_bus1_24} prev={pn('internal_bus1_24')} onChange={onPowerChange} unit="MWh" color="sky" />
-                    <TotalizerInput label="Internal BUS II" name="internal_bus2_24" value={power.internal_bus2_24} prev={pn('internal_bus2_24')} onChange={onPowerChange} unit="MWh" color="sky" />
-                    <TotalizerInput label="PJA" name="pja_24" value={power.pja_24} prev={pn('pja_24')} onChange={onPowerChange} unit="MWh" color="sky" />
-                    <TotalizerInput label="Revamp STG 17.5" name="revamp_stg175_24" value={power.revamp_stg175_24} prev={pn('revamp_stg175_24')} onChange={onPowerChange} unit="MWh" color="sky" />
-                    <TotalizerInput label="Revamp STG 12.5" name="revamp_stg125_24" value={power.revamp_stg125_24} prev={pn('revamp_stg125_24')} onChange={onPowerChange} unit="MWh" color="sky" />
-                    <TotalizerInput label="Exsport" name="exsport_24" value={power.exsport_24} prev={pn('exsport_24')} onChange={onPowerChange} unit="MWh" color="sky" />
-                    <TotalizerInput label="PIE PLN" name="pie_pln_24" value={power.pie_pln_24} prev={pn('pie_pln_24')} onChange={onPowerChange} unit="MWh" color="sky" />
-                    <TotalizerInput label="PIE Import" name="pie_import_24" value={power.pie_import_24} prev={pn('pie_import_24')} onChange={onPowerChange} unit="MWh" color="sky" />
-                </div>
+                    <Card title="Gardu Induk (PLN)" icon="electrical_services" color="orange">
+                        <InputField label="Σ P"   unit="MW"   color="orange" name="gi_sum_p"  value={gv.gi_sum_p}  onChange={onTurbineMiscChange} />
+                        <InputField label="Σ Q"   unit="MVAR" color="orange" name="gi_sum_q"  value={gv.gi_sum_q}  onChange={onTurbineMiscChange} />
+                        <InputField label="Cos θ"             color="orange" name="gi_cos_phi" value={gv.gi_cos_phi} onChange={onTurbineMiscChange} />
+                    </Card>
 
-                <SectionLabel label="Data Aktual" badge="Flow · MW" />
-                <div className="grid grid-cols-2 gap-4">
-                    <InputField label="Internal BUS I" name="internal_bus1_00" value={power.internal_bus1_00} onChange={onPowerChange} unit="MW" color="orange" />
-                    <InputField label="Internal BUS II" name="internal_bus2_00" value={power.internal_bus2_00} onChange={onPowerChange} unit="MW" color="orange" />
-                    <InputField label="PJA" name="pja_00" value={power.pja_00} onChange={onPowerChange} unit="MW" color="orange" />
-                    <InputField label="Revamp STG 17.5" name="revamp_stg175_00" value={power.revamp_stg175_00} onChange={onPowerChange} unit="MW" color="orange" />
-                    <InputField label="Revamp STG 12.5" name="revamp_stg125_00" value={power.revamp_stg125_00} onChange={onPowerChange} unit="MW" color="orange" />
-                    <InputField label="Exsport" name="exsport_00" value={power.exsport_00} onChange={onPowerChange} unit="MW" color="orange" />
-                    <InputField label="PIE PLN" name="pie_pln_00" value={power.pie_pln_00} onChange={onPowerChange} unit="MW" color="orange" />
-                    <InputField label="PIE Import" name="pie_import_00" value={power.pie_import_00} onChange={onPowerChange} unit="MW" color="orange" />
-                    <InputField label="PIE GI" name="pie_gi_00" value={power.pie_gi_00} onChange={onPowerChange} unit="MW" color="orange" />
-                </div>
-            </Card>
+                    <div className="md:col-span-2">
+                        <Card title="Distribusi Power" icon="account_tree" color="emerald">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {DIST_ITEMS.map(({ key, label }) => {
+                                    const mwName  = `power_${key}`;
+                                    const totName = `power_${key}_totalizer`;
+                                    const prevTot = Number(prevPD?.[totName]) || 0;
+                                    const defaultZero = key === 'revamping' || key === 'pie';
+                                    const totValue = defaultZero ? (pv[totName] ?? '') : pv[totName];
+                                    const curTot  = Number(totValue) || 0;
 
-            {/* ═══ Totalizer Power ═══ */}
-            <Card title="Totalizer Power" icon="electric_meter" color="amber">
-                <div className="grid grid-cols-1 gap-4">
-                    <InputField label="GI" name="totalizer_gi" value={turbineMisc.totalizer_gi} onChange={onTurbineMiscChange} unit="" color="amber" />
-                    <InputField label="Exsport" name="totalizer_export" value={turbineMisc.totalizer_export} onChange={onTurbineMiscChange} unit="" color="amber" />
-                    <InputField label="Import" name="totalizer_import" value={turbineMisc.totalizer_import} onChange={onTurbineMiscChange} unit="" color="amber" />
+                                    return (
+                                        <div key={key} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
+                                            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
+                                            <div className="grid grid-cols-2 gap-3 mt-2">
+                                                <div>
+                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} thousands />
+                                                    <SelisihInfo prev={prevTot} current={curTot} />
+                                                </div>
+                                                <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {/* STG UBB: totalizer only, MW = Load STG */}
+                                <div className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
+                                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
+                                    <div className="grid grid-cols-2 gap-3 mt-2">
+                                        <div>
+                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} thousands />
+                                            <SelisihInfo prev={Number(prevPD?.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} />
+                                        </div>
+                                        <div>
+                                            <InputField label="MW" unit="MW" color="emerald" size="small" name="_stg_mw" value={pv.gen_00} readOnly />
+                                            <p className="mt-1 text-[10px] text-slate-500">= Load STG</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+
                 </div>
-            </Card>
+            </div>
+
+            <div className="w-full xl:w-[240px] shrink-0 flex flex-col">
+                <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
+                    {/* ── MWh totals (selisih totalizer) ── */}
+                    {(() => {
+                        const sel = (key: string) => {
+                            const cur = Number(pv[key]) || 0;
+                            const prv = Number(prevPD?.[key]) || 0;
+                            return prv > 0 ? cur - prv : 0;
+                        };
+                        const totalUbb     = sel('power_ubb_totalizer');
+                        const totalUbbInt  = Math.round(totalUbb);
+                        const b1           = Math.floor(totalUbbInt / 2);
+                        const b2           = totalUbbInt - b1;
+                        const totalPabrik2 = sel('power_pabrik2_totalizer');
+                        const totalPabrik3a= sel('power_pabrik3a_totalizer');
+                        const totalStgUbb  = sel('power_stg_ubb_totalizer');
+
+                        // MW values
+                        const mwUbb = Number(pv['power_ubb']) || 0;
+                        const mwB1  = mwUbb / 2;
+                        const mwB2  = mwUbb / 2;
+
+                        return (
+                            <>
+                                <CalculatedField label="TOTAL INTERNAL UBB" value={totalUbbInt.toString()} unit="MWh" variant="primary" />
+                                <CalculatedField label="Bus Bar 1"           value={b1.toString()}          unit="MWh" variant="transparent" />
+                                <CalculatedField label="Bus Bar 2"           value={b2.toString()}          unit="MWh" variant="transparent" />
+                                <CalculatedField label="TOTAL PABRIK 2"      value={totalPabrik2.toFixed(2)} unit="MWh" variant="secondary"   />
+                                <CalculatedField label="TOTAL PABRIK 3A"     value={totalPabrik3a.toFixed(2)}unit="MWh" variant="secondary"   />
+                                <CalculatedField label="TOTAL STG UBB"       value={totalStgUbb.toFixed(2)}  unit="MWh" variant="secondary"   />
+
+                                <div className="h-px bg-slate-700/80 w-full my-1" />
+
+                                <CalculatedField label="INTERNAL UBB" value={fmt(pv['power_ubb'])} unit="MW" variant="primary" />
+                                <CalculatedField label="Bus Bar 1"    value={mwB1.toFixed(2)}       unit="MW" variant="transparent" />
+                                <CalculatedField label="Bus Bar 2"    value={mwB2.toFixed(2)}       unit="MW" variant="transparent" />
+                            </>
+                        );
+                    })()}
+                </Card>
+            </div>
         </div>
     );
 }

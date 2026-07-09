@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { useAppSettings, useStreamDays } from '@/hooks/useAppSettings';
+import { todayWIB } from '@/lib/utils';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -305,7 +306,7 @@ export default function LaporanHarianPage() {
 
     const dateObj = new Date(selectedDate);
     const hariStr = HARI_ID[dateObj.getDay()];
-    const formatDate = (d: string) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    const formatDate = (d: string) => new Date(d + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'long', year: 'numeric' });
 
     const prevDate = new Date(dateObj);
     prevDate.setDate(prevDate.getDate() - 1);
@@ -327,7 +328,7 @@ export default function LaporanHarianPage() {
                         d.setDate(d.getDate() - 3 + i);
                         const iso = toISO(d);
                         const isActive = iso === selectedDate;
-                        const isToday = iso === toISO(new Date());
+                        const isToday = iso === todayWIB();
                         const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
                         const dayNum = d.getDate();
                         return (
@@ -467,9 +468,9 @@ export default function LaporanHarianPage() {
                                     <div>Stock Hydrazine</div>
                                 </div>
                                 <div className="grid grid-cols-3 text-center font-bold text-lg text-white">
-                                    <div>{r.stockPhosphat} <span className="text-[10px] font-normal text-slate-500">pc</span></div>
-                                    <div>{r.stockAmine} <span className="text-[10px] font-normal text-slate-500">pc</span></div>
-                                    <div>{r.stockHydrazine} <span className="text-[10px] font-normal text-slate-500">pc</span></div>
+                                    <div>{r.stockPhosphat} <span className="text-[10px] font-normal text-slate-500">pcs</span></div>
+                                    <div>{r.stockAmine} <span className="text-[10px] font-normal text-slate-500">pcs</span></div>
+                                    <div>{r.stockHydrazine} <span className="text-[10px] font-normal text-slate-500">pcs</span></div>
                                 </div>
                             </div>
 
@@ -838,14 +839,29 @@ export default function LaporanHarianPage() {
                 </div>
             </div>
 
-            {/* Floating Print PDF Button */}
-            <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30">
-                <button onClick={() => window.open('/laporan-harian/preview', '_blank')}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(43,124,238,0.5)] hover:shadow-[0_4px_32px_rgba(43,124,238,0.7)] hover:scale-105">
-                    <span className="material-symbols-outlined text-lg">print</span>
-                    Print PDF
-                </button>
-            </div>
+            {/* Floating Action Buttons */}
+            {report?.id && (
+                <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3">
+                    <button onClick={() => window.open(`/logbook?date=${selectedDate}`, '_blank')}
+                        title="Review tampilan buku (E-Logbook)"
+                        className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(0,0,0,0.4)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">menu_book</span>
+                        E-Logbook
+                    </button>
+                    <button onClick={() => window.open('/laporan-harian/preview', '_blank')}
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(37,99,235,0.5)] hover:shadow-[0_4px_32px_rgba(37,99,235,0.7)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">visibility</span>
+                        Lihat Preview
+                    </button>
+                    <button
+                        onClick={() => report?.id && router.push(`/laporan-harian/publish?id=${encodeURIComponent(report.id as string)}&date=${encodeURIComponent(selectedDate)}&group=${encodeURIComponent(r.group ?? '')}&sup=${encodeURIComponent(r.supervisor || '')}`)}
+                        title="Review ringkasan laporan sebelum kirim ke WhatsApp"
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(16,185,129,0.5)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.7)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">fact_check</span>
+                        Review / Publish
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

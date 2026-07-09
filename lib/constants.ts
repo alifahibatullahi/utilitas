@@ -21,32 +21,32 @@ export const TANKS: Record<string, {
     DEMIN: {
         id: 'demin',
         name: 'DEMIN',
-        capacity: '1.200 m³',
-        capacityM3: 1200,
+        capacity: '1.250 m³',
+        capacityM3: 1250,
         liquidColor: '#38bdf8',       // sky-400
         liquidColorLight: '#7dd3fc',  // sky-300
         gradientFrom: '#0284c7',      // sky-600
         gradientTo: '#38bdf8',        // sky-400
         inputSources: ['Utilitas 1', 'Demin 3A'],
         outputDestinations: [
-            { name: 'Internal UBB', hasFlow: true },
-            { name: 'Demin Revamp', hasFlow: true, pumps: ['P-1000A', 'P-1000B', 'Demin B'] },
+            { name: 'Deaerator', hasFlow: true },
+            { name: 'Demin Revamp', hasFlow: false, pumps: ['P-1000A', 'P-1000B', 'Demin B'] },
         ],
     },
     RCW: {
         id: 'rcw',
         name: 'RCW',
-        capacity: '4.600 m³',
-        capacityM3: 4600,
+        capacity: '5.000 m³',
+        capacityM3: 5000,
         liquidColor: '#2dd4bf',       // teal-400
         liquidColorLight: '#5eead4',  // teal-300
         gradientFrom: '#0d9488',      // teal-600
         gradientTo: '#2dd4bf',        // teal-400
         inputSources: ['Utilitas 1'],
         outputDestinations: [
-            { name: 'Make UP Cooling Tower', hasFlow: false },
-            { name: 'Hydrant', hasFlow: false },
-            { name: 'Service', hasFlow: false },
+            { name: 'Cooling Tower', hasFlow: true },
+            { name: 'Hydrant', hasFlow: true },
+            { name: 'Service', hasFlow: true },
         ],
     },
     SOLAR: {
@@ -72,6 +72,15 @@ export const DEFAULT_THRESHOLDS = {
     warning_low: 40,
     warning_high: 80,
     critical_high: 90,
+};
+
+// Per-tank thresholds (in %)
+// DEMIN: normal 900–1120 m³ dari 1250 = 72%–89.6%
+// RCW  : normal 3800–4600 m³ dari 5000 = 76%–92%
+export const TANK_THRESHOLDS: Record<string, typeof DEFAULT_THRESHOLDS> = {
+    DEMIN:  { critical_low: 0, warning_low: 75,   warning_high: 93.3, critical_high: 101 },
+    RCW:    { critical_low: 0, warning_low: 76,    warning_high: 92,   critical_high: 101 },
+    SOLAR:  DEFAULT_THRESHOLDS,
 };
 
 // Alert status colors
@@ -113,6 +122,7 @@ export type OperatorRole = 'group_a' | 'group_b' | 'group_c' | 'group_d' | 'supe
 
 export interface Operator {
     id: number;
+    supabaseId?: string;    // UUID dari DB operators.id
     name: string;
     role: OperatorRole;
     group?: string;         // Group A/B/C/D
@@ -174,11 +184,11 @@ export const ROLE_DOT_COLORS: Record<OperatorRole, string> = {
 export const OPERATORS: Operator[] = [
     // ─── Group A ─── (7 Organik UBB)
     { id: 1, name: 'Ardhian Wisnu Perdana', role: 'group_a', group: 'A', nik: '2074878', jabatan: 'Supervisor', company: 'UBB' },
-    { id: 2, name: 'Jaka Riyantaka', role: 'group_a', group: 'A', nik: '2146101', jabatan: 'Foreman Turbin', company: 'UBB' },
+    { id: 38, name: 'Yudistira Alnur', role: 'group_a', group: 'A', nik: '2125525', jabatan: 'Foreman Turbin', company: 'UBB' },
     { id: 3, name: 'Aldilla Indra R', role: 'group_a', group: 'A', nik: '2180323', company: 'UBB' },
-    { id: 4, name: 'Ilham Mirza Nur R', role: 'group_a', group: 'A', nik: '2146074', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 6, name: 'Rizky Dharmaji', role: 'group_a', group: 'A', nik: '2156352', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 2, name: 'Jaka Riyantaka', role: 'group_a', group: 'A', nik: '2146101', company: 'UBB' },
     { id: 5, name: 'Bagus Indra Prasetya', role: 'group_a', group: 'A', nik: '2190502', company: 'UBB' },
-    { id: 6, name: 'Rizky Dharmaji', role: 'group_a', group: 'A', nik: '2156352', company: 'UBB' },
     { id: 7, name: 'Lutfi Abdul Aziz', role: 'group_a', group: 'A', nik: '2180237', company: 'UBB' },
     // Group A — Tenaga Alih Daya (3 PT FJM + 2 PT Shohib Jaya Putra)
     { id: 8, name: 'Andreansyah', role: 'handling', group: 'A', nik: '25-09677', company: 'PT FJM' },
@@ -189,12 +199,12 @@ export const OPERATORS: Operator[] = [
 
     // ─── Group B ─── (7 Organik UBB)
     { id: 13, name: 'Putra Aris Hidayat', role: 'group_b', group: 'B', nik: '2125518', jabatan: 'Supervisor', company: 'UBB' },
-    { id: 14, name: 'Bili Pratama Kurnia', role: 'group_b', group: 'B', nik: '2146080', jabatan: 'Foreman Turbin', company: 'UBB' },
-    { id: 15, name: 'Yusuf Efendi Saputra', role: 'group_b', group: 'B', nik: '2156361', company: 'UBB' },
-    { id: 16, name: 'Ferdian Maulana Fah', role: 'group_b', group: 'B', nik: '2125676', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 16, name: 'Ferdian Maulana Fah', role: 'group_b', group: 'B', nik: '2125676', jabatan: 'Foreman Turbin', company: 'UBB' },
+    { id: 19, name: 'Mohamad Rizky Arsyi', role: 'group_b', group: 'B', nik: '2180310', company: 'UBB' },
+    { id: 15, name: 'Yusuf Efendi Saputra', role: 'group_b', group: 'B', nik: '2156361', jabatan: 'Foreman Boiler', company: 'UBB' },
     { id: 17, name: 'Rachmat Nordiyansyah', role: 'group_b', group: 'B', nik: '2146117', company: 'UBB' },
     { id: 18, name: 'Nastainul Firdaus Z', role: 'group_b', group: 'B', nik: '2146089', company: 'UBB' },
-    { id: 19, name: 'Mohamad Rizky Arsyi', role: 'group_b', group: 'B', nik: '2180310', company: 'UBB' },
+    { id: 14, name: 'Bili Pratama Kurnia', role: 'group_b', group: 'B', nik: '2146080', company: 'UBB' },
     // Group B — Tenaga Alih Daya
     { id: 20, name: 'Muhammad Syahri', role: 'handling', group: 'B', nik: '25-09683', company: 'PT FJM' },
     { id: 21, name: 'Mulyono', role: 'group_b', group: 'B', nik: '25-10302', company: 'PT FJM' },
@@ -206,10 +216,10 @@ export const OPERATORS: Operator[] = [
     { id: 25, name: 'Zulkarnain Bayu', role: 'group_c', group: 'C', nik: '2125519', jabatan: 'Supervisor', company: 'UBB' },
     { id: 26, name: 'Ryo Risky Faizal', role: 'group_c', group: 'C', nik: '2125716', jabatan: 'Foreman Turbin', company: 'UBB' },
     { id: 27, name: 'Rofindra Alif Iskandar', role: 'group_c', group: 'C', nik: '2180327', company: 'UBB' },
-    { id: 28, name: 'Akhmad Agung Prabowo', role: 'group_c', group: 'C', nik: '2156285', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 30, name: 'Muhammad Indra Ali', role: 'group_c', group: 'C', nik: '2156337', jabatan: 'Foreman Boiler', company: 'UBB' },
     { id: 29, name: 'Dimas Cahyo Nugroho', role: 'group_c', group: 'C', nik: '2180302', company: 'UBB' },
-    { id: 30, name: 'Muhammad Indra Ali', role: 'group_c', group: 'C', nik: '2156337', company: 'UBB' },
     { id: 31, name: 'Rizqy Aulia Rahman', role: 'group_c', group: 'C', nik: '2156353', company: 'UBB' },
+    { id: 28, name: 'Akhmad Agung Prabowo', role: 'group_c', group: 'C', nik: '2156285', company: 'UBB' },
     // Group C — Tenaga Alih Daya
     { id: 32, name: 'Achmad Mirza Yusuf', role: 'handling', group: 'C', nik: '25-10304', company: 'PT FJM' },
     { id: 33, name: 'Moh. Muchlis', role: 'group_c', group: 'C', nik: '25-09675', company: 'PT FJM' },
@@ -217,13 +227,14 @@ export const OPERATORS: Operator[] = [
     { id: 35, name: 'Alif Amirul', role: 'group_c', group: 'C', nik: '24-25633', company: 'PT Shohib Jaya Putra' },
     { id: 36, name: 'Naufal Nasrulloh', role: 'group_c', group: 'C', nik: '24-05636', company: 'PT Shohib Jaya Putra' },
 
-    // ─── Group D ─── (7 Organik UBB)
-    { id: 37, name: 'Ade Rahmad Abrianto', role: 'group_d', group: 'D', nik: '2125719', jabatan: 'Supervisor', company: 'UBB' },
-    { id: 38, name: 'Yudistira Alnur', role: 'group_d', group: 'D', nik: '2125525', jabatan: 'Foreman Turbin', company: 'UBB' },
+    // ─── Group D ─── (8 Organik UBB — Sandhy Yudha P baru Mei 2026)
+    { id: 52, name: 'Sandhy Yudha P', role: 'group_d', group: 'D', nik: '2084983', jabatan: 'Supervisor', company: 'UBB' },
+    { id: 37, name: 'Ade Rahmad Abrianto', role: 'group_d', group: 'D', nik: '2125719', jabatan: 'Foreman Turbin', company: 'UBB' },
     { id: 39, name: 'Moh. Taufiqurrohman', role: 'group_d', group: 'D', nik: '2146088', company: 'UBB' },
-    { id: 40, name: 'Julio Purnanugraha', role: 'group_d', group: 'D', nik: '2146090', jabatan: 'Foreman Boiler', company: 'UBB' },
+    { id: 4, name: 'Ilham Mirza Nur R', role: 'group_d', group: 'D', nik: '2146074', company: 'UBB' },
+    { id: 42, name: 'Ahmad Shofi Hamim', role: 'group_d', group: 'D', nik: '2156283', jabatan: 'Foreman Boiler', company: 'UBB' },
     { id: 41, name: 'Alifahi Batullahi', role: 'group_d', group: 'D', nik: '2180331', company: 'UBB' },
-    { id: 42, name: 'Ahmad Shofi Hamim', role: 'group_d', group: 'D', nik: '2156283', company: 'UBB' },
+    { id: 40, name: 'Julio Purnanugraha', role: 'group_d', group: 'D', nik: '2146090', company: 'UBB' },
     { id: 43, name: 'Achmad Ali Chorudin', role: 'group_d', group: 'D', nik: '2125718', company: 'UBB' },
     // Group D — Tenaga Alih Daya
     { id: 44, name: 'Mohammad Agil', role: 'handling', group: 'D', nik: '25-09679', company: 'PT FJM' },
@@ -237,6 +248,54 @@ export const OPERATORS: Operator[] = [
     { id: 50, name: 'Mashasan Imanuddin', role: 'admin', nik: '2085010', jabatan: 'Junior AVP', company: 'UBB' },
     { id: 51, name: 'Admin Sistem', role: 'admin' },
 ];
+
+// ─── Shift Group Rotation ───
+// Pola 28 hari: M=Malam, P=Pagi, S=Sore, O=Off
+// Group A pos 0 = 9 Maret 2026; tiap grup offset 7 hari
+// OO = Sabtu-Minggu (pos 0-1), pola berulang 28 hari
+const SHIFT_PATTERN = 'OOMMOPPSSSOMMOPPPSSOMMMOPPSS';
+const GROUP_ANCHORS: Record<string, string> = {
+    A: '2026-03-07',
+    B: '2026-03-14',
+    C: '2026-03-28',
+    D: '2026-03-21',
+};
+
+/**
+ * Returns the shift type for a group on a given date.
+ * Returns 'M' | 'P' | 'S' | 'O'
+ */
+export function getGroupShiftOnDate(group: 'A' | 'B' | 'C' | 'D', dateStr: string): 'M' | 'P' | 'S' | 'O' {
+    const anchor = new Date(GROUP_ANCHORS[group] + 'T00:00:00');
+    const target = new Date(dateStr + 'T00:00:00');
+    const daysDiff = Math.round((target.getTime() - anchor.getTime()) / 86400000);
+    const pos = ((daysDiff % 28) + 28) % 28;
+    return SHIFT_PATTERN[pos] as 'M' | 'P' | 'S' | 'O';
+}
+
+/**
+ * Returns which group is assigned to a shift type on a given date.
+ * shiftType: 'malam' | 'pagi' | 'sore'
+ */
+export function getGroupForShift(dateStr: string, shiftType: 'malam' | 'pagi' | 'sore'): string {
+    const shiftLetter: Record<string, string> = { malam: 'M', pagi: 'P', sore: 'S' };
+    const letter = shiftLetter[shiftType];
+    // Shift malam (23:00–07:00 hari D) dikerjakan oleh grup yang jadwalnya 'M' pada hari D-1.
+    // Hitung D-1 lewat UTC murni supaya hasilnya TIDAK bergeser saat server bukan WIB
+    // (Vercel jalan di UTC). Sebelumnya pakai 'T00:00:00+07:00' + getDate() lokal → di
+    // server UTC tanggal lookup mundur 1 hari ekstra, jadi salah grup.
+    let lookupDate = dateStr;
+    if (shiftType === 'malam') {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const prev = new Date(Date.UTC(y, m - 1, d - 1));
+        const pad = (n: number) => String(n).padStart(2, '0');
+        lookupDate = `${prev.getUTCFullYear()}-${pad(prev.getUTCMonth() + 1)}-${pad(prev.getUTCDate())}`;
+    }
+    for (const group of ['A', 'B', 'C', 'D'] as const) {
+        if (getGroupShiftOnDate(group, lookupDate) === letter) return group;
+    }
+    return '';
+}
 
 // ─── Shift Configuration ───
 // Shifts: 07:00-15:00, 15:00-23:00, 23:00-07:00
@@ -267,15 +326,111 @@ export interface NavItem {
 // Which roles can input shift data
 export const SHIFT_INPUT_ROLES: OperatorRole[] = ['group_a', 'group_b', 'group_c', 'group_d', 'foreman_boiler', 'foreman_turbin'];
 
+// ─── Operator Stations ────────────────────────────────────────────────────────
+// Setiap shift, tugas pengisian laporan dibagi per "station". Link reminder WA
+// membawa operator langsung ke tab(s) yang sesuai station-nya via query param
+// ?station=<id>.
+export type OperatorStation =
+    | 'panel_boiler'        // legacy/full panel — A + B (back-compat untuk link lama)
+    | 'panel_boiler_a'
+    | 'panel_boiler_b'
+    | 'panel_turbin'
+    | 'handling'
+    | 'esp'
+    | 'bunker'
+    | 'lapangan_boiler'
+    | 'lapangan_turbin';
+
+export const STATION_LABELS: Record<OperatorStation, string> = {
+    panel_boiler: 'Panel Boiler',
+    panel_boiler_a: 'Panel Boiler A',
+    panel_boiler_b: 'Panel Boiler B',
+    panel_turbin: 'Panel Turbin',
+    handling: 'Handling',
+    esp: 'ESP',
+    bunker: 'Bunker',
+    lapangan_boiler: 'Lapangan Boiler',
+    lapangan_turbin: 'Lapangan Turbin',
+};
+
+// Tab IDs harus match dengan TabId di app/input-shift/page.tsx.
+export const STATION_SHIFT_TABS: Record<OperatorStation, string[]> = {
+    panel_boiler: ['Boiler A', 'Boiler B', 'Catatan Operasional'],
+    panel_boiler_a: ['Boiler A', 'Catatan Operasional'],
+    panel_boiler_b: ['Boiler B', 'Catatan Operasional'],
+    panel_turbin: ['Turbin', 'Distribusi Steam', 'Generator', 'Catatan Operasional'],
+    handling: ['Handling'],
+    esp: ['ESP'],
+    bunker: ['Coal Bunker'],
+    lapangan_boiler: ['Lab'],
+    lapangan_turbin: [],
+};
+
+// Tab IDs harus match dengan HarianTabId di components/input-harian/InputHarianForm.tsx.
+export const STATION_HARIAN_TABS: Record<OperatorStation, string[]> = {
+    panel_boiler: ['Boiler A', 'Boiler B'],
+    panel_boiler_a: ['Boiler A'],
+    panel_boiler_b: ['Boiler B'],
+    panel_turbin: ['Turbin', 'Power'],
+    handling: ['Handling'],
+    esp: ['Silo & Fly Ash'],
+    bunker: ['Coal Bunker'],
+    lapangan_boiler: [],
+    lapangan_turbin: ['PIU'],
+};
+
+export function isValidStation(s: string | null | undefined): s is OperatorStation {
+    if (!s) return false;
+    return s in STATION_LABELS;
+}
+
+// Urutan station untuk render link block reminder WA.
+export const STATION_ORDER: OperatorStation[] = [
+    'panel_boiler_a',
+    'panel_boiler_b',
+    'panel_turbin',
+    'handling',
+    'esp',
+    'bunker',
+    'lapangan_boiler',
+    'lapangan_turbin',
+];
+
+// Konsumen tersisa: BottomTabBar (mobile tank-level). Navigasi utama = grid /home.
 export const NAV_ITEMS: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/dashboard', roles: 'all' },
+    { id: 'home', label: 'Home', icon: 'home', path: '/home', roles: 'all' },
     { id: 'tank-level', label: 'Tank Level', icon: 'tank', path: '/tank-level', roles: 'all' },
-    { id: 'input-shift', label: 'Input Laporan', icon: 'edit', path: '/input-shift', roles: [...SHIFT_INPUT_ROLES, 'supervisor'] },
+    { id: 'input-laporan', label: 'Input Laporan', icon: 'edit', path: '/input-laporan', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'] },
     { id: 'critical', label: 'Critical & Maint', icon: 'warning', path: '/critical', roles: 'all' },
     { id: 'laporan-shift', label: 'Laporan Shift', icon: 'report', path: '/laporan-shift', roles: 'all' },
     { id: 'laporan-harian', label: 'Laporan Harian', icon: 'daily', path: '/laporan-harian', roles: 'all' },
-    { id: 'history', label: 'History & Trend', icon: 'trend', path: '/history', roles: 'all' },
-    { id: 'admin-users', label: 'Kelola User', icon: 'users', path: '/admin/users', roles: ['admin'] },
+    { id: 'logbook', label: 'e-Logbook', icon: 'report', path: '/logbook', roles: 'all' },
+    { id: 'history', label: 'History Data', icon: 'trend', path: '/history', roles: 'all' },
+    { id: 'admin-wa-hub', label: 'WhatsApp Hub', icon: 'forum', path: '/admin/notification-log', roles: ['admin'] },
+    { id: 'admin-sync-sheets', label: 'Sync Sheets', icon: 'sync', path: '/admin/sync-sheets', roles: ['admin'] },
+    { id: 'maintenance-broadcast', label: 'Broadcast Maintenance', icon: 'campaign', path: '/critical/broadcast', roles: ['admin', 'supervisor', 'foreman_boiler', 'foreman_turbin'] },
+];
+
+export interface HomeMenuItem extends NavItem {
+    description: string;
+    featured: boolean;
+}
+
+// Menu grid di halaman /home. Hanya fitur yang sudah aktif yang ditampilkan;
+// menu lain menyusul saat sudah siap dipakai.
+export const HOME_MENU_ITEMS: HomeMenuItem[] = [
+    { id: 'tank-level', label: 'Tank Level', description: 'Monitoring level tangki DEMIN, RCW & Solar', icon: 'tank', path: '/tank-level', roles: 'all', featured: true },
+    { id: 'input-laporan', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-laporan', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'], featured: true },
+    { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
+];
+
+// Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah
+// mencakup log, jadwal, template, grup, penerima pribadi & test kirim (tab di
+// dalamnya), jadi tidak perlu kartu terpisah per halaman legacy.
+export const HOME_ADMIN_MENU_ITEMS: HomeMenuItem[] = [
+    { id: 'admin-wa-hub', label: 'WhatsApp Hub', description: 'Log notifikasi, jadwal reminder, template & penerima WA', icon: 'forum', path: '/admin/notification-log', roles: ['admin'], featured: false },
+    { id: 'admin-sync-sheets', label: 'Sync Sheets', description: 'Sinkronisasi data laporan dengan Google Sheets', icon: 'sync', path: '/admin/sync-sheets', roles: ['admin'], featured: false },
+    { id: 'admin-users', label: 'Manajemen User', description: 'Kelola akun operator, role & grup', icon: 'users', path: '/admin/users', roles: ['admin'], featured: false },
 ];
 
 // ─── Critical & Maintenance Constants ───
@@ -333,6 +488,9 @@ export const SHIFT_OPTIONS: { value: ShiftKey; label: string; start: string; end
     { value: 'malam', label: 'Malam (23:00–07:00)', start: '23:00', end: '07:00' },
 ];
 
+// KONVENSI: ENDING — shift malam D = shift yang SUBMIT di hari D
+// (working window 23:00 D-1 → 07:00 D, deadline 09:00 D).
+// Pagi/sore tidak terpengaruh (working sepenuhnya di hari D).
 export function getShiftWindow(date: string, shift: ShiftKey): { start: Date; end: Date } {
     const [y, m, d] = date.split('-').map(Number);
     if (shift === 'pagi') {
@@ -341,8 +499,8 @@ export function getShiftWindow(date: string, shift: ShiftKey): { start: Date; en
     if (shift === 'sore') {
         return { start: new Date(y, m - 1, d, 15, 0, 0), end: new Date(y, m - 1, d, 23, 0, 0) };
     }
-    // malam: 23:00 same day – 07:00 next day
-    return { start: new Date(y, m - 1, d, 23, 0, 0), end: new Date(y, m - 1, d + 1, 7, 0, 0) };
+    // malam D (ENDING): mulai 23:00 D-1, selesai 07:00 D
+    return { start: new Date(y, m - 1, d - 1, 23, 0, 0), end: new Date(y, m - 1, d, 7, 0, 0) };
 }
 
 export function detectCurrentShift(): { shift: ShiftKey; date: string } {
@@ -352,12 +510,33 @@ export function detectCurrentShift(): { shift: ShiftKey; date: string } {
     const fmt = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
     if (h >= 7 && h < 15) return { shift: 'pagi', date: fmt(now) };
     if (h >= 15 && h < 23) return { shift: 'sore', date: fmt(now) };
-    // malam: 23:00+ same day, or 00:00–06:59 = previous day's malam
-    if (h < 7) {
-        const prev = new Date(now); prev.setDate(prev.getDate() - 1);
-        return { shift: 'malam', date: fmt(prev) };
+    // malam (ENDING): h<7 = shift sedang berlangsung & selesai 07:00 hari ini → date=today.
+    // h>=23 = shift baru mulai, selesai 07:00 besok → date=tomorrow.
+    if (h < 7) return { shift: 'malam', date: fmt(now) };
+    const next = new Date(now); next.setDate(next.getDate() + 1);
+    return { shift: 'malam', date: fmt(next) };
+}
+
+// Laporan yang WAKTUNYA DIISI sekarang — mengikuti jendela pengisian, bukan
+// sekadar shift yang sedang berjalan. Beda tipis dengan detectCurrentShift pada
+// malam hari: laporan harian bisa diisi 22:30–07:00, sedangkan laporan shift
+// malam baru bisa diisi mulai 04:15. Partisi waktu:
+//   22:30–04:15 → Harian (tanggal rollover 21:00: sebelum 21:00 = kemarin)
+//   04:15–07:00 → Shift Malam (ENDING: tanggal hari ini)
+//   07:00–15:00 → Shift Pagi   |   15:00–22:30 → Shift Sore
+// Dipakai untuk default pilihan di dialog "Pilih Laporan" & state awal input-shift.
+export function detectDefaultReport(): { mode: 'shift' | 'harian'; shift: ShiftKey; date: string } {
+    const now = new Date();
+    const min = now.getHours() * 60 + now.getMinutes();
+    if (min >= 22 * 60 + 30 || min < 4 * 60 + 15) {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const target = new Date(now);
+        if (min < 21 * 60) target.setDate(target.getDate() - 1);
+        const date = `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
+        return { mode: 'harian', shift: detectCurrentShift().shift, date };
     }
-    return { shift: 'malam', date: fmt(now) };
+    const cur = detectCurrentShift();
+    return { mode: 'shift', shift: cur.shift, date: cur.date };
 }
 
 export const KANBAN_COLUMNS = [

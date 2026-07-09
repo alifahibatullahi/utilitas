@@ -1,67 +1,127 @@
 'use client';
-import React from 'react';
-import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo } from '@/components/input-shift/SharedComponents';
+import React, { useEffect } from 'react';
+import { InputField, Card, CalculatedField, SelisihInfo } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
+
+// Status chip turbin dipindah ke header utama tab di InputHarianForm.tsx (commit kebijakan
+// "status di header bukan di kartu"). Komponen lokal tidak dipakai lagi.
+
+// Distribution items — urutan: Inlet Turbin, Pabrik 1, Pabrik 3, Condensate
+const DIST_ITEMS = [
+    { totKey: 'inlet_turbine_24', flowKey: 'inlet_turbine_00', label: 'Inlet Turbin', totUnit: 'Ton', flowUnit: 'T/H' },
+    { totKey: 'mps_i_24',         flowKey: 'mps_i_00',         label: 'Pabrik 1',     totUnit: 'Ton', flowUnit: 'T/H' },
+    { totKey: 'mps_3a_24',        flowKey: 'mps_3a_00',        label: 'Pabrik 3',     totUnit: 'Ton', flowUnit: 'T/H' },
+    { totKey: 'fully_condens_24', flowKey: 'fully_condens_00', label: 'Condensate',   totUnit: 'Ton', flowUnit: 'T/H' },
+] as const;
 
 export default function TabTurbin({
     steam, turbineMisc,
-    prevSteam,
+    prevSteam, prevTurbineMisc,
     onSteamChange, onTurbineMiscChange,
 }: DailyTabProps) {
     const n = (v: number | null | undefined) => Number(v) || 0;
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
+    const isTurbinShutdown = turbineMisc.status_turbin === 'shutdown';
 
-    // Internal UBB = Inlet Turbin - Condensate
-    const internalUbb24 = n(steam.inlet_turbine_24) - n(steam.fully_condens_24);
-    const internalUbb00 = n(steam.inlet_turbine_00) - n(steam.co_gen_00);
+    // Auto-zero field instantaneous + parameter operasional saat turbin shutdown.
+    // Raw totalizer 24h yang spesifik ke turbin (inlet_turbine_24) di-auto-fill dari prev day
+    // kalau masih kosong — mirror pattern shift: shutdown = stagnant, sama dengan kemarin.
+    useEffect(() => {
+        if (!isTurbinShutdown) return;
+        if (onSteamChange) {
+            if (n(steam.inlet_turbine_00) !== 0) onSteamChange('inlet_turbine_00', 0);
+            // Totalizer 24h ikut nilai kemarin; tanpa baseline → 0 (jangan kosong).
+            if (steam.inlet_turbine_24 == null) {
+                const prevInletTot = prevSteam?.inlet_turbine_24;
+                onSteamChange('inlet_turbine_24', prevInletTot != null ? prevInletTot : 0);
+            }
+        }
+        if (onTurbineMiscChange) {
+            // Field sesaat → 0 walau belum pernah diisi (null) → dianggap "terisi 0".
+            (['steam_inlet_press', 'steam_inlet_temp', 'thrust_bearing_temp', 'axial_displacement'] as const).forEach(k => {
+                if (Number(turbineMisc[k]) !== 0 || turbineMisc[k] == null) onTurbineMiscChange(k, 0);
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isTurbinShutdown]);
+
+    // suppress unused warning kalau ada
+    void prevTurbineMisc;
+
+    // Selisih per distribusi steam item
+    const selisih = (key: typeof DIST_ITEMS[number]['totKey']) => {
+        const prev = prevSteam ? n(prevSteam[key]) : 0;
+        return prev > 0 ? n(steam[key]) - prev : 0;
+    };
+
+    const totalInlet     = selisih('inlet_turbine_24');
+    const totalPabrik1   = selisih('mps_i_24');
+    const totalPabrik3   = selisih('mps_3a_24');
+    const totalCondensat = selisih('fully_condens_24');
 
     return (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-            {/* ═══ Distribusi Steam ═══ */}
-            <Card title="Distribusi Steam" icon="fork_right" color="cyan">
-                <SectionLabel label="Total Harian" badge="Totalizer" />
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <InputField label="Totalizer Inlet Turbin" name="inlet_turbine_24" value={steam.inlet_turbine_24} onChange={onSteamChange} unit="Ton" color="cyan" />
-                        {prevSteam && <SelisihInfo prev={n(prevSteam.inlet_turbine_24)} current={n(steam.inlet_turbine_24)} />}
-                    </div>
-                    <div>
-                        <InputField label="Totalizer Pabrik 1" name="mps_i_24" value={steam.mps_i_24} onChange={onSteamChange} unit="Ton" color="cyan" />
-                        {prevSteam && <SelisihInfo prev={n(prevSteam.mps_i_24)} current={n(steam.mps_i_24)} />}
-                    </div>
-                    <div>
-                        <InputField label="Totalizer Pabrik 3" name="mps_3a_24" value={steam.mps_3a_24} onChange={onSteamChange} unit="Ton" color="cyan" />
-                        {prevSteam && <SelisihInfo prev={n(prevSteam.mps_3a_24)} current={n(steam.mps_3a_24)} />}
-                    </div>
-                    <div>
-                        <InputField label="Totalizer Condensate" name="fully_condens_24" value={steam.fully_condens_24} onChange={onSteamChange} unit="Ton" color="cyan" />
-                        {prevSteam && <SelisihInfo prev={n(prevSteam.fully_condens_24)} current={n(steam.fully_condens_24)} />}
-                    </div>
-                </div>
-                <CalculatedField label="LPS II" value="0" unit="Ton" variant="small" />
-                <CalculatedField label="LPS III A" value="0" unit="Ton" variant="small" />
-                <CalculatedField label="Internal UBB (Inlet Turbin − Condensate)" value={fmt(internalUbb24)} unit="Ton" variant="primary" />
 
-                <SectionLabel label="Data Aktual" badge="Flow" />
-                <div className="grid grid-cols-2 gap-4">
-                    <InputField label="Flow Inlet Turbin" name="inlet_turbine_00" value={steam.inlet_turbine_00} onChange={onSteamChange} unit="T/H" color="orange" />
-                    <InputField label="Flow Pabrik 1" name="mps_i_00" value={steam.mps_i_00} onChange={onSteamChange} unit="T/H" color="orange" />
-                    <InputField label="Flow Pabrik 3" name="mps_3a_00" value={steam.mps_3a_00} onChange={onSteamChange} unit="T/H" color="orange" />
-                    <InputField label="Flow Condensate" name="fully_condens_00" value={steam.fully_condens_00} onChange={onSteamChange} unit="T/H" color="orange" />
-                    <InputField label="Flow Condensate (Co Gen)" name="co_gen_00" value={steam.co_gen_00} onChange={onSteamChange} unit="T/H" color="orange" />
+            {/* ═══ Distribusi Steam — kiri ═══ */}
+            <Card title="Distribusi Steam" icon="fork_right" color="cyan">
+                {/* Header row */}
+                <div className="grid grid-cols-2 gap-3 mb-1 px-1">
+                    <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Totalizer</span>
+                    <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Flow (00.00)</span>
                 </div>
-                <CalculatedField label="LPS II" value="0" unit="T/H" variant="small" />
-                <CalculatedField label="LPS III A" value="0" unit="T/H" variant="small" />
-                <CalculatedField label="Internal UBB (Inlet Turbin − Condensate)" value={fmt(internalUbb00)} unit="T/H" variant="secondary" />
+
+                {DIST_ITEMS.map(({ totKey, flowKey, label, totUnit, flowUnit }) => {
+                    const prev = prevSteam ? n(prevSteam[totKey]) : 0;
+                    return (
+                        <div key={totKey} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3 mb-2">
+                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">{label}</span>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <InputField
+                                        label={totUnit}
+                                        name={totKey}
+                                        value={steam[totKey]}
+                                        onChange={onSteamChange}
+                                        unit={totUnit}
+                                        color="cyan"
+                                        size="small"
+                                        thousands
+                                    />
+                                    {prevSteam && <SelisihInfo prev={prev} current={n(steam[totKey])} />}
+                                </div>
+                                <InputField
+                                    label={flowUnit}
+                                    name={flowKey}
+                                    value={steam[flowKey]}
+                                    onChange={onSteamChange}
+                                    unit={flowUnit}
+                                    color="orange"
+                                    size="small"
+                                    readOnly={isTurbinShutdown && flowKey === 'inlet_turbine_00'}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
             </Card>
 
-            {/* ═══ Turbine Generator ═══ */}
-            <Card title="Turbine Generator (Data Aktual)" icon="mode_fan" color="sky">
+            {/* ═══ Turbine Generator — kanan (mobile: row 2) ═══ */}
+            <Card title="Turbine Generator" icon="mode_fan" color="sky">
                 <div className="grid grid-cols-2 gap-4">
-                    <InputField label="Axial Displacement" name="axial_displacement" value={turbineMisc.axial_displacement} onChange={onTurbineMiscChange} unit="mm" color="sky" />
-                    <InputField label="Thrust Bearing Temp" name="thrust_bearing_temp" value={turbineMisc.thrust_bearing_temp} onChange={onTurbineMiscChange} unit="°C" color="sky" />
-                    <InputField label="Steam Inlet Press" name="steam_inlet_press" value={turbineMisc.steam_inlet_press} onChange={onTurbineMiscChange} unit="MPa" color="sky" />
-                    <InputField label="Steam Inlet Temp" name="steam_inlet_temp" value={turbineMisc.steam_inlet_temp} onChange={onTurbineMiscChange} unit="°C" color="sky" />
+                    <InputField label="Steam Inlet Press"   name="steam_inlet_press"   value={turbineMisc.steam_inlet_press}   onChange={onTurbineMiscChange} unit="MPa" color="sky" readOnly={isTurbinShutdown} />
+                    <InputField label="Steam Inlet Temp"    name="steam_inlet_temp"    value={turbineMisc.steam_inlet_temp}    onChange={onTurbineMiscChange} unit="°C"  color="sky" readOnly={isTurbinShutdown} />
+                    <InputField label="Thrust Bearing Temp" name="thrust_bearing_temp" value={turbineMisc.thrust_bearing_temp} onChange={onTurbineMiscChange} unit="°C"  color="sky" readOnly={isTurbinShutdown} />
+                    <InputField label="Axial Displacement"  name="axial_displacement"  value={turbineMisc.axial_displacement}  onChange={onTurbineMiscChange} unit="mm"  color="sky" textMode readOnly={isTurbinShutdown} />
+                </div>
+            </Card>
+
+            {/* ═══ Calculated Steam — bawah (mobile: row 3, desktop: row 2 col 1 via col-span-2) ═══ */}
+            <Card title="Calculated Steam" icon="calculate" color="purple" className="lg:col-span-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <CalculatedField label="Total Inlet Turbin" value={fmt(totalInlet)}     unit="Ton" variant="primary"     />
+                    <CalculatedField label="Total Pabrik 1"     value={fmt(totalPabrik1)}   unit="Ton" variant="secondary"   />
+                    <CalculatedField label="Total Pabrik 3"     value={fmt(totalPabrik3)}   unit="Ton" variant="secondary"   />
+                    <CalculatedField label="Total Condensate"   value={fmt(totalCondensat)} unit="Ton" variant="transparent" />
                 </div>
             </Card>
         </div>

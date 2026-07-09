@@ -7,12 +7,15 @@ interface OperatorComboboxProps {
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
+    dropUp?: boolean;
 }
 
-export default function OperatorCombobox({ value, onChange, placeholder = 'Ketik nama...' }: OperatorComboboxProps) {
+export default function OperatorCombobox({ value, onChange, placeholder = 'Ketik nama...', dropUp = false }: OperatorComboboxProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState(value);
+    const [activeIndex, setActiveIndex] = useState(-1);
     const ref = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => { setSearch(value); }, [value]);
 
@@ -37,24 +40,56 @@ export default function OperatorCombobox({ value, onChange, placeholder = 'Ketik
         .sort((a, b) => jabatanOrder(a.jabatan) - jabatanOrder(b.jabatan))
         .slice(0, 15);
 
+    function selectItem(name: string) {
+        onChange(name);
+        setSearch(name);
+        setOpen(false);
+        setActiveIndex(-1);
+    }
+
+    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (!open) { if (e.key === 'ArrowDown') { setOpen(true); setActiveIndex(0); } return; }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = Math.min(activeIndex + 1, filtered.length - 1);
+            setActiveIndex(next);
+            listRef.current?.children[next]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = Math.max(activeIndex - 1, 0);
+            setActiveIndex(prev);
+            listRef.current?.children[prev]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0 && filtered[activeIndex]) selectItem(filtered[activeIndex].name);
+        } else if (e.key === 'Escape') {
+            setOpen(false);
+            setActiveIndex(-1);
+        }
+    }
+
+    const dropdownPos = dropUp ? 'bottom-full mb-1' : 'top-full mt-1';
+
     return (
         <div ref={ref} className="relative">
             <input
                 type="text"
                 value={search}
-                onChange={e => { setSearch(e.target.value); onChange(''); setOpen(true); }}
+                onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); setActiveIndex(-1); }}
                 onFocus={() => setOpen(true)}
+                onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none transition-all shadow-sm placeholder-gray-400"
             />
             {open && filtered.length > 0 && (
-                <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto light-scrollbar rounded-xl border border-gray-200 bg-white shadow-xl">
-                    {filtered.map(op => (
+                <div ref={listRef} className={`absolute z-50 ${dropdownPos} w-full max-h-52 overflow-y-auto light-scrollbar rounded-xl border border-gray-200 bg-white shadow-xl`}>
+                    {filtered.map((op, idx) => (
                         <button
                             key={op.id}
                             type="button"
-                            onClick={() => { onChange(op.name); setSearch(op.name); setOpen(false); }}
-                            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-800 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+                            onMouseEnter={() => setActiveIndex(idx)}
+                            onClick={() => selectItem(op.name)}
+                            className={`w-full text-left px-3 py-2 text-sm font-medium transition-colors ${idx === activeIndex ? 'bg-rose-50 text-rose-700' : 'text-gray-800 hover:bg-rose-50 hover:text-rose-700'}`}
                         >
                             {op.name}
                         </button>

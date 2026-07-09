@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import { useShiftReport, ShiftReportData } from '@/hooks/useShiftReport';
+import { todayWIB } from '@/lib/utils';
 
 // ─── Data Interfaces ───
 interface BoilerData {
@@ -75,12 +76,56 @@ interface ShiftReport {
 
 const SHIFT_LABELS: Record<string, string> = { pagi: 'Pagi', sore: 'Sore', malam: 'Malam' };
 
+/** Convert scope slug (e.g. "bengkel_las") jadi label readable (e.g. "Bengkel Las"). */
+function humanizeScope(slug: string | null | undefined): string {
+    if (!slug) return '-';
+    return slug.split(/[_\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+/** Capitalize huruf pertama. Trim whitespace di depan. */
+function capFirst(s: string | null | undefined): string {
+    if (!s) return '';
+    const t = s.trimStart();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Split `item` field yang disimpan sebagai "NO_ITEM - DESKRIPSI" (oleh ItemCombobox)
+ *  menjadi { code, desc }. Kalau tidak ada " - ", desc kosong. */
+function splitItem(item: string | null | undefined): { code: string; desc: string } {
+    const s = (item ?? '').trim();
+    const idx = s.indexOf(' - ');
+    if (idx === -1) return { code: s, desc: '' };
+    return { code: s.slice(0, idx).trim(), desc: s.slice(idx + 3).trim() };
+}
+
+/** Format "2026-05-23" → "23/05" (DD/MM). */
+function toDMShort(isoDate: string | null | undefined): string {
+    if (!isoDate) return '-';
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+    return `${parts[2]}/${parts[1]}`;
+}
+
 /** Format a Date as YYYY-MM-DD in local timezone (avoids UTC shift from toISOString) */
 function toLocalDateStr(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
+}
+
+// Gabungkan catatan utama + catatan tiap station jadi SATU blok, tanpa label per-station
+// (permintaan user: "semua jadi satu, jangan dibedakan").
+function mergeShiftCatatan(main: string | null | undefined, sc: Record<string, string> | null | undefined): string {
+    const parts: string[] = [];
+    const m = (main ?? '').trim();
+    if (m) parts.push(m);
+    const obj = sc ?? {};
+    for (const key of ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin']) {
+        const note = (obj[key] ?? '').trim();
+        if (note) parts.push(note);
+    }
+    return parts.join('\n');
 }
 
 // ─── Build Report from Supabase Data ───
@@ -205,7 +250,10 @@ function buildReportFromSupabase(sr: ShiftReportData): ShiftReport {
             status: ml.status ?? '',
             notif: ml.notif ?? null,
         })),
-        catatan: note?.content ?? '',
+        // Sumber utama catatan = shift_reports.catatan (diisi via tab "Catatan Operasional"
+        // di form input). Legacy shift_notes.content dipakai sebagai fallback untuk
+        // laporan lama yang belum migrasi.
+        catatan: mergeShiftCatatan(sr.catatan, sr.station_catatan) || (note?.content ?? ''),
         catatanTime: note?.timestamp ?? '',
         catatanAuthor: sr.created_by ?? '',
         catatanRole: '',
@@ -265,15 +313,46 @@ function CylinderTank({ label, value, unit, color, fillPercent }: {
 export default function LaporanShiftPage() {
     const { operator } = useOperator();
     const router = useRouter();
-    const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('pagi');
-    const [selectedDate, setSelectedDate] = useState(() => toLocalDateStr(new Date()));
-
+    const [activeShift, setActiveShift] = useState<'pagi' | 'sore' | 'malam'>('malam');
+    const [selectedDate, setSelectedDate] = useState(todayWIB);
     const { report: supaReport, activeMaintenance, openCriticals, loading, error } = useShiftReport(selectedDate, activeShift);
 
     const report = useMemo(() => {
         if (supaReport) return buildReportFromSupabase(supaReport);
         return null;
     }, [supaReport]);
+
+    // Catatan Operasional KANONIK — ambil dari endpoint publish supaya 100% identik dengan
+    // Review & PDF (manual + solar/fly ash + bunker berasap, satu blok tanpa label).
+    const [canonCatatan, setCanonCatatan] = useState<string | null>(null);
+    useEffect(() => {
+        setCanonCatatan(null);
+        const id = supaReport?.id;
+        if (!id) return;
+        let cancelled = false;
+        fetch(`/api/whatsapp/publish-shift?reportId=${id}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => { if (!cancelled && d?.summary?.catatan != null) setCanonCatatan(d.summary.catatan as string); })
+            .catch(() => { /* fallback ke report.catatan */ });
+        return () => { cancelled = true; };
+    }, [supaReport?.id]);
+
+    // Navigasi ke halaman Review/Publish shift (full-screen, URL sendiri).
+    const goPublishShift = () => {
+        if (!supaReport?.id) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sp0 = (supaReport as any)?.shift_personnel?.[0] as { turbin_karu?: string; boiler_karu?: string } | undefined;
+        const q = new URLSearchParams({
+            id: supaReport.id,
+            date: selectedDate,
+            shift: SHIFT_LABELS[activeShift] ?? '',
+            group: report?.group ?? '',
+            sup: supaReport.supervisor ?? '',
+            ft: sp0?.turbin_karu ?? '',
+            fb: sp0?.boiler_karu ?? '',
+        });
+        router.push(`/laporan-shift/publish?${q.toString()}`);
+    };
 
     useEffect(() => {
         if (!operator) router.push('/');
@@ -297,7 +376,7 @@ export default function LaporanShiftPage() {
                     d.setDate(d.getDate() - 3 + i);
                     const iso = toLocalDateStr(d);
                     const isActive = iso === selectedDate;
-                    const isToday = iso === toLocalDateStr(new Date());
+                    const isToday = iso === todayWIB();
                     const dayShort = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
                     const dayNum = d.getDate();
                     return (
@@ -329,7 +408,7 @@ export default function LaporanShiftPage() {
 
             {/* Shift Selector - Centered */}
             <div className="flex items-center gap-2 justify-center">
-                {(['pagi', 'sore', 'malam'] as const).map(s => {
+                {(['malam', 'pagi', 'sore'] as const).map(s => {
                     const icons: Record<string, string> = { pagi: 'wb_sunny', sore: 'wb_twilight', malam: 'dark_mode' };
                     const activeColors: Record<string, string> = {
                         pagi: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)]',
@@ -379,7 +458,7 @@ export default function LaporanShiftPage() {
                         Belum ada laporan shift {SHIFT_LABELS[activeShift]} untuk tanggal {dateFormatted}.
                         <br />Silakan input laporan terlebih dahulu di menu <strong>Input Laporan</strong>.
                     </p>
-                    <button onClick={() => router.push('/input-shift')}
+                    <button onClick={() => router.push('/input-laporan')}
                         className="mt-2 px-5 py-2.5 bg-primary hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(43,124,238,0.3)]">
                         <span className="material-symbols-outlined text-lg">edit_note</span>
                         Input Laporan
@@ -393,6 +472,15 @@ export default function LaporanShiftPage() {
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tanggal</span><span className="text-sm font-black text-white">{dateFormatted}</span></div>
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Grup</span><span className="text-sm font-black text-white">{report.group}</span></div>
                 <div className="flex items-center justify-center gap-3 px-4"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Supervisor</span><span className="text-sm font-black text-white">{report.supervisor}</span></div>
+                {supaReport?.reviewed_by && (
+                    <div className="flex items-center justify-center gap-2 px-4 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
+                        <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 14 }}>verified</span>
+                        <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Disetujui {supaReport.reviewed_by}</span>
+                        {supaReport.reviewed_at && (
+                            <span className="text-[10px] text-emerald-200/70">· {new Date(supaReport.reviewed_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        )}
+                    </div>
+                )}
             </div>)}
 
             {/* Main 2-Column Grid (matching PDF preview layout) */}
@@ -554,9 +642,13 @@ export default function LaporanShiftPage() {
                             <p className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow-md">Catatan Shift</p>
                         </div>
                         <div className="p-4">
-                            <div className="text-sm text-slate-300 leading-relaxed space-y-3 italic">
-                                {report.catatan.split('\n\n').map((p, i) => <p key={i}>&ldquo;{p}&rdquo;</p>)}
-                            </div>
+                            {(canonCatatan ?? report.catatan).trim() ? (
+                                <pre className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
+{canonCatatan ?? report.catatan}
+                                </pre>
+                            ) : (
+                                <p className="text-sm text-slate-500 italic">Tidak ada catatan untuk shift ini.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -564,11 +656,12 @@ export default function LaporanShiftPage() {
                 {/* Right Column (flex-1) */}
                 <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0">
 
-                    {/* Maintenance Logs */}
+                    {/* Maintenance Logs — auto-populated dari maintenance dengan status IP/OK yang terjadi di shift ini */}
                     <section className="flex-1 flex flex-col">
                         <div className="flex items-center gap-2 mb-3">
                             <div className="w-1.5 h-4 bg-green-500 rounded-full" />
                             <h3 className="text-xs font-bold text-white uppercase tracking-widest">Maintenance Logs</h3>
+                            <span className="text-[10px] text-slate-500 italic">otomatis dari shift {activeShift}</span>
                         </div>
                         <div className="bg-surface-dark rounded-xl border border-slate-800 flex flex-col flex-1 overflow-hidden">
                             <div className="bg-green-600 p-2.5">
@@ -577,28 +670,38 @@ export default function LaporanShiftPage() {
                             <div className="flex-1 overflow-y-auto">
                                 <table className="w-full border-collapse">
                                     <thead>
-                                        <tr className="text-[10px] text-green-300 font-bold uppercase bg-green-900/30 tracking-tighter">
-                                            <th className="py-2 px-1 w-[8%] border-b border-green-800/40 text-center">Tgl</th>
-                                            <th className="py-2 px-2 w-[14%] border-b border-green-800/40 text-left">Item</th>
-                                            <th className="py-2 px-1 w-[43%] border-b border-green-800/40 text-left">Uraian</th>
-                                            <th className="py-2 px-1 w-[18%] border-b border-green-800/40 text-center">Scope</th>
-                                            <th className="py-2 px-2 w-[12%] border-b border-green-800/40 text-center">Ket</th>
+                                        <tr className="text-[9px] text-emerald-100 font-extrabold uppercase bg-emerald-950/60 tracking-wider border-b border-emerald-900/50">
+                                            <th className="py-2.5 px-3 w-[22%] text-center">Item</th>
+                                            <th className="py-2.5 px-2 w-[44%] text-center">Uraian</th>
+                                            <th className="py-2.5 px-2 w-[20%] text-center">Scope</th>
+                                            <th className="py-2.5 px-3 w-[14%] text-center">Ket</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {activeMaintenance.map((m, i) => (
-                                            <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
-                                                <td className="text-[10px] py-2 px-1 text-center text-slate-400">{m.date}</td>
-                                                <td className="text-[10px] py-2 px-2 font-mono font-bold text-primary">{m.item}</td>
-                                                <td className="text-[10px] py-2 px-1 text-slate-300">{m.uraian}</td>
-                                                <td className="text-[10px] py-2 px-1 text-center text-slate-400">{m.scope}</td>
-                                                <td className="text-center py-2 px-2">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${m.status === 'OK' ? 'bg-emerald-500/20 text-emerald-400' : m.status === 'IP' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>{m.status}</span>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {activeMaintenance.map((m, i) => {
+                                            const { code, desc } = splitItem(m.item);
+                                            return (
+                                                <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                                                    <td className="py-2.5 px-3 leading-tight text-center">
+                                                        <div className="text-[10.5px] font-mono font-extrabold text-cyan-400">{code}</div>
+                                                        {desc && <div className="text-[9.5px] text-cyan-300/90 font-bold mt-0.5">{capFirst(desc)}</div>}
+                                                    </td>
+                                                    <td className="text-[11.5px] py-2.5 px-2 text-white font-medium text-center">{capFirst(m.uraian)}</td>
+                                                    <td className="text-[10.5px] py-2.5 px-2 text-center text-slate-300 font-bold">{humanizeScope(m.scope)}</td>
+                                                    <td className="text-center py-2.5 px-3">
+                                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                                            m.status === 'OK'
+                                                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.1)]'
+                                                                : m.status === 'IP'
+                                                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.1)]'
+                                                                    : 'bg-blue-500/10 border-blue-500/30 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.1)]'
+                                                        }`}>{m.status}</span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                         {activeMaintenance.length === 0 && (
-                                            <tr><td colSpan={5} className="text-center text-[10px] text-slate-500 italic py-4">Tidak ada maintenance aktif</td></tr>
+                                            <tr><td colSpan={4} className="text-center text-xs text-slate-400 font-medium italic py-6">Tidak ada maintenance aktif</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -619,24 +722,30 @@ export default function LaporanShiftPage() {
                             <div className="flex-1 overflow-y-auto">
                                 <table className="w-full border-collapse">
                                     <thead>
-                                        <tr className="text-[10px] text-red-300 font-bold uppercase bg-red-900/30 tracking-tighter text-center">
-                                            <th className="py-2 px-1 w-[10%] border-b border-red-800/40">Tgl</th>
-                                            <th className="py-2 px-1 w-[15%] border-b border-red-800/40">Item</th>
-                                            <th className="py-2 px-1 w-[45%] border-b border-red-800/40">Uraian</th>
-                                            <th className="py-2 px-2 w-[30%] border-b border-red-800/40">Scope</th>
+                                        <tr className="text-[9px] text-rose-100 font-extrabold uppercase bg-rose-950/60 tracking-wider text-center border-b border-rose-900/50">
+                                            <th className="py-2.5 px-2 w-[10%]">Tgl</th>
+                                            <th className="py-2.5 px-2 w-[28%] text-center">Item</th>
+                                            <th className="py-2.5 px-2 w-[42%] text-center">Uraian</th>
+                                            <th className="py-2.5 px-3 w-[20%]">Scope</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center">
-                                        {openCriticals.map((eq, i) => (
-                                            <tr key={i} className="border-b border-slate-800/50 hover:bg-surface-highlight/20 transition-colors">
-                                                <td className="text-[10px] py-2 px-1 text-slate-400">{eq.date}</td>
-                                                <td className="text-[10px] py-2 px-1 font-mono font-bold text-rose-400">{eq.item}</td>
-                                                <td className="text-[10px] py-2 px-1 text-left text-slate-300">{eq.deskripsi}</td>
-                                                <td className="text-[10px] py-2 px-2 text-slate-400">{eq.scope}</td>
-                                            </tr>
-                                        ))}
+                                        {openCriticals.map((eq, i) => {
+                                            const { code, desc } = splitItem(eq.item);
+                                            return (
+                                                <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                                                    <td className="text-[10.5px] py-2.5 px-2 text-slate-300 font-bold">{toDMShort(eq.date)}</td>
+                                                    <td className="py-2.5 px-2 text-center leading-tight">
+                                                        <div className="text-[10.5px] font-mono font-extrabold text-rose-400">{code}</div>
+                                                        {desc && <div className="text-[9.5px] text-rose-300/90 font-bold mt-0.5">{capFirst(desc)}</div>}
+                                                    </td>
+                                                    <td className="text-[11.5px] py-2.5 px-2 text-white font-medium text-center">{capFirst(eq.deskripsi)}</td>
+                                                    <td className="text-[10.5px] py-2.5 px-3 text-slate-300 font-bold">{humanizeScope(eq.scope)}</td>
+                                                </tr>
+                                            );
+                                        })}
                                         {openCriticals.length === 0 && (
-                                            <tr><td colSpan={4} className="text-center text-[10px] text-slate-500 italic py-4">Tidak ada critical aktif</td></tr>
+                                            <tr><td colSpan={4} className="text-center text-xs text-slate-400 font-medium italic py-6">Tidak ada critical aktif</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -649,18 +758,33 @@ export default function LaporanShiftPage() {
             {report && (<>
             {/* Footer */}
             <footer className="flex justify-center items-center py-3 border-t border-slate-800 flex-shrink-0 pb-20">
-                <p className="text-slate-500 text-[10px]">&copy; 2026 PowerOps Control Systems. Generated from Shift {report.group} Terminal.</p>
+                <p className="text-slate-500 text-[10px]">&copy; 2026 Web Utilitas Batubara. Generated from Shift {report.group} Terminal.</p>
             </footer>
 
-            {/* Floating Print PDF Button */}
-            <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30">
-                <button onClick={() => window.open('/laporan-shift/preview', '_blank')}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(43,124,238,0.5)] hover:shadow-[0_4px_32px_rgba(43,124,238,0.7)] hover:scale-105">
-                    <span className="material-symbols-outlined text-lg">print</span>
-                    Print PDF
-                </button>
-            </div>
+            {/* Floating Action Buttons */}
+            {supaReport && (
+                <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3">
+                    <button onClick={() => window.open(`/logbook?date=${selectedDate}`, '_blank')}
+                        title="Review tampilan buku (E-Logbook)"
+                        className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(0,0,0,0.4)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">menu_book</span>
+                        E-Logbook
+                    </button>
+                    <button onClick={() => window.open('/laporan-shift/preview', '_blank')}
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(37,99,235,0.5)] hover:shadow-[0_4px_32px_rgba(37,99,235,0.7)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">visibility</span>
+                        Lihat Preview
+                    </button>
+                    <button onClick={goPublishShift}
+                        title="Review ringkasan laporan sebelum kirim ke WhatsApp"
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-[0_4px_24px_rgba(16,185,129,0.5)] hover:shadow-[0_4px_32px_rgba(16,185,129,0.7)] hover:scale-105">
+                        <span className="material-symbols-outlined text-lg">fact_check</span>
+                        Review / Publish
+                    </button>
+                </div>
+            )}
             </>)}
+
         </div>
     );
 }

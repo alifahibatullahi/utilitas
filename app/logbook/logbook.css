@@ -1,0 +1,219 @@
+/* ───────────────────────────────────────────────────────────
+   Logbook "kertas" — gaya persis buku PG-LB-50-5004.
+   Semua aturan di-scope di bawah .lb-paper agar tidak bocor
+   ke tema gelap aplikasi. Warna mengikuti lembar fisik:
+   kertas putih, garis grid hitam, teks hitam.
+   ─────────────────────────────────────────────────────────── */
+
+.lb-paper {
+    background: #ffffff;
+    color: #000000;
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    /* Lebar TETAP (bukan 100%) supaya di HP tidak menyempit — tampil penuh,
+       user scroll/pinch-zoom untuk lihat detail. */
+    width: 1000px;
+    margin: 0 auto;
+    padding: 12px;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+}
+
+.lb-paper * {
+    box-sizing: border-box;
+}
+
+.lb-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.lb-table th,
+.lb-table td {
+    border: 1px solid #000000;
+    padding: 2px 3px;
+    font-size: 11px;
+    line-height: 1.15;
+    text-align: center;
+    vertical-align: middle;
+    word-break: break-word;
+}
+
+/* Kolom label kiri rata kiri */
+.lb-table td.lb-name,
+.lb-table td.lb-sub {
+    text-align: left;
+    white-space: nowrap;
+}
+
+.lb-name {
+    width: 17%;
+    font-weight: 600;
+}
+
+.lb-unit {
+    width: 9%;
+    font-size: 10px;
+    color: #000000;
+}
+
+/* Nilai isian parameter → hitam tebal */
+.lb-val {
+    font-weight: 700;
+    color: #000000;
+}
+
+/* Header dokumen */
+.lb-dochead {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid #000;
+    margin-bottom: 0;
+    background: #ffffff;
+    color: #000000;
+}
+.lb-doclogo {
+    width: 270px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 6px 10px 6px 22px;
+}
+.lb-doclogo img {
+    height: 54px;
+    width: auto;
+    max-width: 72px;
+    object-fit: contain;
+}
+.lb-doctitle {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px 6px;
+    gap: 2px;
+}
+.lb-doctitle .t1 { font-size: 13px; font-weight: 800; }
+.lb-doctitle .t2 { font-size: 11px; font-weight: 700; }
+.lb-doctitle .t3 { font-size: 11px; font-weight: 600; }
+.lb-docmeta {
+    width: 270px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
+    padding: 6px 8px;
+}
+.lb-meta-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.lb-meta-value {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+/* Baris judul section (BOILER A / BOILER B) */
+.lb-section {
+    background: #e8e8e8;
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-size: 12px;
+}
+
+/* Sub-band kelompok di dalam Generator (OUTPUT GENERATOR / Power Gi-PKG / PIE) */
+.lb-subsection {
+    background: #f0f0f0;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    font-size: 11px;
+}
+
+/* Band sub-header dokumen (Turbin / Generator) — warna sama dgn judul section */
+.lb-subdoc td {
+    padding: 0;
+    background: #e8e8e8;
+}
+.lb-subdoc-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 5px 10px;
+}
+.lb-subdoc-title {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+.lb-subdoc-doc {
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Header jam — seragam (ukuran & tebal sama untuk semua section) */
+.lb-time {
+    background: #f3f3f3;
+}
+.lb-time th,
+.lb-time td {
+    font-size: 13px;
+    font-weight: 800;
+    color: #000000;
+}
+
+.lb-tot-head {
+    font-size: 9px;
+    font-weight: 700;
+    background: #f7f7f7;
+}
+
+/* Label "Totalizer" pada Turbin — bold, lebih besar, rata tengah */
+.lb-table td.lb-tot-label {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.lb-muted { color: #000000; font-weight: 600; }
+
+/* Toolbar (tidak ikut tercetak) */
+.lb-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+/* ─── PRINT ─── */
+@media print {
+    /* Reset zoom-to-fit saat cetak supaya ukuran penuh */
+    .lb-fit { zoom: 1 !important; }
+    body * { visibility: hidden !important; }
+    .lb-paper, .lb-paper * { visibility: visible !important; }
+    .lb-paper {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: none;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+    }
+    .lb-no-print { display: none !important; }
+    .lb-table th, .lb-table td { font-size: 9.5px; padding: 1px 2px; }
+    @page { size: A4 portrait; margin: 8mm; }
+}

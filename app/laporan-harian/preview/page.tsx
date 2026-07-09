@@ -266,9 +266,9 @@ export default function PreviewPdfLaporanHarian() {
                                             <div>Stock Hydrazine</div>
                                         </div>
                                         <div className="grid grid-cols-3 text-center font-bold text-lg text-slate-800">
-                                            <div>{r.stockPhosphat} <span className="text-[10px] font-normal text-slate-400">pc</span></div>
-                                            <div>{r.stockAmine} <span className="text-[10px] font-normal text-slate-400">pc</span></div>
-                                            <div>{r.stockHydrazine} <span className="text-[10px] font-normal text-slate-400">pc</span></div>
+                                            <div>{r.stockPhosphat} <span className="text-[10px] font-normal text-slate-400">pcs</span></div>
+                                            <div>{r.stockAmine} <span className="text-[10px] font-normal text-slate-400">pcs</span></div>
+                                            <div>{r.stockHydrazine} <span className="text-[10px] font-normal text-slate-400">pcs</span></div>
                                         </div>
                                     </div>
 

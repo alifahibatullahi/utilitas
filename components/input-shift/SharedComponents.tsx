@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "normal", value, onChange, name, negative, readOnly, textMode }: {
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands }: {
     label?: string;
     placeholder?: string;
     unit?: string;
@@ -13,10 +14,30 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     negative?: boolean;
     readOnly?: boolean;
     textMode?: boolean;
+    thousands?: boolean;
 }) => {
     // Local state for textMode to handle intermediate values like "-" or "1."
     const [rawText, setRawText] = useState('');
+    const [thuText, setThuText] = useState('');
     const isFocused = useRef(false);
+    const thuFocused = useRef(false);
+
+    const fmtThu = (v: number | string | null | undefined): string => {
+        if (v == null || v === '') return '';
+        const num = Number(v);
+        if (isNaN(num)) return '';
+        return num.toLocaleString('id-ID', { maximumFractionDigits: 3 });
+    };
+
+    // Skala font menyesuaikan panjang nilai → angka totalizer yang panjang tetap
+    // terlihat penuh di semua ukuran layar (tidak terpotong di kolom sempit).
+    const sizeForLen = (s: string | null | undefined): string => {
+        const len = (s ?? '').length;
+        if (len > 14) return 'text-xs';
+        if (len > 11) return 'text-sm';
+        if (len > 8) return 'text-base';
+        return 'text-lg';
+    };
 
     // Sync rawText when value changes from parent (e.g. loading saved data)
     useEffect(() => {
@@ -25,18 +46,82 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
         }
     }, [value, textMode]);
 
+    useEffect(() => {
+        if (thousands && !thuFocused.current) {
+            setThuText(value != null && value !== '' ? fmtThu(value) : '');
+        }
+    }, [value, thousands]);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const inputs = Array.from(document.querySelectorAll('input:not([readonly]):not([disabled])'));
+            const idx = inputs.indexOf(e.target as Element);
+            if (idx >= 0 && idx < inputs.length - 1) {
+                (inputs[idx + 1] as HTMLElement).focus();
+            }
+        }
+    };
+
+    const labelEl = label && (
+        <label className="font-bold text-white uppercase tracking-wider block text-left text-xs">
+            {label}
+        </label>
+    );
+
+    // ── Thousands separator mode ───────────────────────────────────────────────
+    if (thousands) {
+        const isEmpty = !thuText;
+        return (
+            <div className="space-y-1.5 w-full">
+                {labelEl}
+                <div className="relative">
+                    <input
+                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(thuText)} font-mono font-bold tracking-wide transition-all text-left`}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder={placeholder}
+                        readOnly={readOnly}
+                        tabIndex={readOnly ? -1 : undefined}
+                        value={thuText}
+                        onFocus={() => {
+                            thuFocused.current = true;
+                            // Show raw number for easy editing
+                            const num = value != null && value !== '' ? Number(value) : null;
+                            setThuText(num != null && !isNaN(num) ? String(num) : '');
+                        }}
+                        onBlur={() => {
+                            thuFocused.current = false;
+                            setThuText(fmtThu(value));
+                        }}
+                        onChange={e => {
+                            if (readOnly) return;
+                            const raw = e.target.value;
+                            if (raw !== '' && !/^-?\d*\.?\d*$/.test(raw)) return;
+                            setThuText(raw);
+                            if (raw === '' || raw === '-' || raw.endsWith('.')) {
+                                if (raw === '') onChange?.(name || label || '', null);
+                                return;
+                            }
+                            const num = parseFloat(raw);
+                            if (!isNaN(num)) onChange?.(name || label || '', num);
+                        }}
+                        onKeyDown={handleKeyDown}
+                    />
+                    {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
+                </div>
+            </div>
+        );
+    }
+
     const displayValue = negative && value != null && value !== '' ? Math.abs(Number(value)) : value;
     return (
         <div className="space-y-1.5 w-full">
-            {label && (
-                <label className={`font-medium text-[#92a9c9] uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
-                    {label}
-                </label>
-            )}
+            {labelEl}
             <div className="relative">
                 {negative && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">−</span>}
                 <input
-                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all text-left`}
+                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(String(textMode ? rawText : (displayValue ?? '')))} font-mono font-bold tracking-wide transition-all text-left`}
                     placeholder={placeholder}
                     type={textMode ? "text" : "number"}
                     inputMode={textMode ? "text" : "decimal"}
@@ -47,7 +132,6 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                     onBlur={() => {
                         if (!textMode) return;
                         isFocused.current = false;
-                        // Clean up intermediate values on blur
                         if (rawText === '-' || rawText === '.' || rawText === '-.') {
                             setRawText('');
                             onChange?.(name || label || '', null);
@@ -57,11 +141,9 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                         if (readOnly) return;
                         if (textMode) {
                             const raw = e.target.value;
-                            // Only allow digits, minus, dot
                             if (raw !== '' && !/^-?\d*\.?\d*$/.test(raw)) return;
                             setRawText(raw);
                             if (raw === '' ) { onChange?.(name || label || '', null); return; }
-                            // Intermediate: don't propagate yet
                             if (raw === '-' || raw === '.' || raw === '-.' || raw.endsWith('.')) return;
                             const num = parseFloat(raw);
                             if (!isNaN(num)) onChange?.(name || label || '', num);
@@ -71,16 +153,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                         const val = negative && raw != null ? -Math.abs(raw) : raw;
                         onChange?.(name || label || '', val);
                     }}
-                    onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const inputs = Array.from(document.querySelectorAll('input:not([readonly]):not([disabled])'));
-                            const idx = inputs.indexOf(e.target as Element);
-                            if (idx >= 0 && idx < inputs.length - 1) {
-                                (inputs[idx + 1] as HTMLElement).focus();
-                            }
-                        }
-                    }}
+                    onKeyDown={handleKeyDown}
                 />
                 {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">{unit}</span>}
             </div>
@@ -100,12 +173,12 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
 }) => (
     <div className="space-y-1.5 w-full">
         {label && (
-            <label className={`font-medium text-[#92a9c9] uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+            <label className={`font-medium text-white uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
                 {label}
             </label>
         )}
         <select
-            className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-sm font-mono transition-all appearance-none cursor-pointer`}
+            className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-lg font-mono font-bold tracking-wide transition-all appearance-none cursor-pointer`}
             value={value ?? ''}
             onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : e.target.value)}
         >
@@ -119,12 +192,14 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
     </div>
 );
 
-export const Card = ({ title, icon, color = "blue", children, isSidebar = false }: {
+export const Card = ({ title, icon, color = "blue", children, isSidebar = false, className = '', headerRight }: {
     title: string;
     icon: string;
     color?: 'blue' | 'cyan' | 'orange' | 'emerald' | 'purple' | 'indigo' | 'slate' | 'amber' | 'rose' | 'teal' | 'sky';
     children: React.ReactNode;
     isSidebar?: boolean;
+    className?: string;
+    headerRight?: React.ReactNode;
 }) => {
     const colorMap: Record<string, { icon: string; iconBg: string; headerGradient: string; border: string; glow: string }> = {
         blue:    { icon: 'text-blue-400',    iconBg: 'bg-blue-500/20',    headerGradient: 'from-blue-500/10',    border: 'border-blue-500/20 hover:border-blue-400/40',    glow: 'shadow-blue-500/5 hover:shadow-blue-500/15' },
@@ -143,12 +218,13 @@ export const Card = ({ title, icon, color = "blue", children, isSidebar = false 
     const c = colorMap[color] || colorMap.blue;
 
     return (
-        <div className={`bg-[#0f1923]/90 backdrop-blur-md border rounded-xl overflow-hidden flex flex-col group transition-all duration-300 ${c.border} shadow-lg ${c.glow}`}>
+        <div className={`bg-[#0f1923]/90 backdrop-blur-md border rounded-xl overflow-hidden flex flex-col group transition-all duration-300 ${c.border} shadow-lg ${c.glow} ${className}`}>
             <div className={`p-4 border-b border-slate-800/60 flex items-center gap-3 bg-gradient-to-r ${c.headerGradient} to-transparent shrink-0`}>
                 <div className={`p-2 rounded-lg ${c.iconBg} ring-1 ring-white/5`}>
                     <span className={`material-symbols-outlined ${c.icon}`}>{icon}</span>
                 </div>
                 <h3 className="text-white font-bold text-lg tracking-wide">{title}</h3>
+                {headerRight}
             </div>
             <div className={`${isSidebar ? 'p-4 space-y-2' : 'p-5 space-y-4'} flex flex-col justify-start`}>
                 {children}
@@ -186,11 +262,52 @@ export const TotalizerInput = ({ label, name, value, prev, onChange, unit, color
     </div>
 );
 
+// ── Feeder status chip (Coal Feeder) ──────────────────────────────────────────
+// Dipakai bersama oleh tab Boiler laporan shift & harian supaya tampil identik.
+export const FEEDER_STATUS_OPTIONS = [
+    { value: 'running', label: 'Running' },
+    { value: 'standby', label: 'Standby' },
+    { value: 'emergency standby', label: 'Emergency Standby' },
+    { value: 'not standby', label: 'Not Standby' },
+];
+
+export const FEEDER_STATUS_STYLE: Record<string, { border: string; dot: string }> = {
+    'running':          { border: 'border-emerald-500/50', dot: 'bg-emerald-500' },
+    'standby':          { border: 'border-amber-500/50',   dot: 'bg-amber-500' },
+    'emergency standby':{ border: 'border-orange-500/50',  dot: 'bg-orange-500' },
+    'not standby':      { border: 'border-red-500/50',     dot: 'bg-red-500' },
+};
+
+export function FeederStatusChip({ sk, value, onChange }: {
+    sk: string;
+    value: string;
+    onChange?: (name: string, v: number | string | null) => void;
+}) {
+    const style = FEEDER_STATUS_STYLE[value];
+    const border = style?.border ?? 'border-slate-700/60';
+    const dot = style?.dot ?? 'bg-slate-500';
+    return (
+        <div className={`inline-flex items-center gap-1.5 bg-[#101822]/60 border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
+            <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
+            <select
+                className="bg-transparent appearance-none text-sm text-white font-semibold pr-3 cursor-pointer outline-none"
+                value={value}
+                onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
+            >
+                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                {FEEDER_STATUS_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
 export const CalculatedField = ({ label, value = "0.00", unit, variant = "primary" }: {
     label: string;
     value?: string;
     unit: string;
-    variant?: 'primary' | 'secondary' | 'small' | 'purple' | 'transparent';
+    variant?: 'primary' | 'secondary' | 'small' | 'purple' | 'transparent' | 'amber' | 'rose';
     size?: 'large' | 'medium' | 'small';
 }) => {
     const variantStyles = {
@@ -208,7 +325,7 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
         },
         small: {
             bg: 'bg-[#1f2b3e]/30 border-slate-700/30 p-2.5',
-            label: 'text-[#92a9c9] text-[10px] font-medium uppercase tracking-wider',
+            label: 'text-white text-[10px] font-medium uppercase tracking-wider',
             value: 'text-white font-mono font-bold text-sm',
             unit: 'text-slate-500 text-[10px] font-medium',
         },
@@ -218,9 +335,21 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
             value: 'text-purple-300 font-mono font-black text-2xl',
             unit: 'text-purple-500/80 text-xs font-bold',
         },
+        amber: {
+            bg: 'bg-amber-500/10 border-amber-500/30 p-3',
+            label: 'text-amber-300 text-xs font-bold uppercase tracking-wider',
+            value: 'text-amber-100 font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-amber-400/70 text-xs font-bold',
+        },
+        rose: {
+            bg: 'bg-rose-500/10 border-rose-500/30 p-3',
+            label: 'text-rose-300 text-xs font-bold uppercase tracking-wider',
+            value: 'text-rose-100 font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-rose-400/70 text-xs font-bold',
+        },
         transparent: {
             bg: 'bg-transparent border-slate-700/50 p-2.5',
-            label: 'text-[#92a9c9] text-xs font-bold uppercase tracking-wider',
+            label: 'text-white text-xs font-bold uppercase tracking-wider',
             value: 'text-white font-mono font-black text-2xl',
             unit: 'text-slate-400 text-xs font-bold',
         }
@@ -236,5 +365,41 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
                 <span className={`${s.unit}`}>{unit}</span>
             </div>
         </div>
+    );
+};
+
+export const Modal = ({ open, onClose, title, color = 'blue', children }: {
+    open: boolean;
+    onClose: () => void;
+    title: string;
+    color?: string;
+    children: React.ReactNode;
+}) => {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    if (!open || !mounted) return null;
+
+    const colorBorder: Record<string, string> = {
+        amber: 'border-amber-500/40', rose: 'border-rose-500/40', orange: 'border-orange-500/40',
+        blue: 'border-blue-500/40', emerald: 'border-emerald-500/40', cyan: 'border-cyan-500/40',
+    };
+    const border = colorBorder[color] ?? 'border-slate-700/80';
+
+    return createPortal(
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+            <div className={`relative bg-[#16202e] border ${border} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl max-h-[90dvh] flex flex-col`}>
+                <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-800/60 shrink-0">
+                    <h3 className="text-white font-bold text-base tracking-wide">{title}</h3>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-700/50 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                </div>
+                <div className="overflow-y-auto px-5 py-4 flex flex-col gap-4">
+                    {children}
+                </div>
+            </div>
+        </div>,
+        document.body
     );
 };

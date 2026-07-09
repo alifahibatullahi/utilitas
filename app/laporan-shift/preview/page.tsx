@@ -21,27 +21,27 @@ const REPORT = {
         boilerWaterB: { pH: 9.1, cond: 17.4, sio2: 0.94, po4: 2.9 },
     },
     criticalEquipment: [
-        { date: '14/03', item: 'BT-01A', deskripsi: 'Boiler Tube Leak', uraian: 'Boiler Tube Leak', scope: 'Mekanik', foreman: 'Foreman Boiler' },
-        { date: '14/03', item: 'TG-01', deskripsi: 'High Bearing Temp', uraian: 'High Bearing Temp', scope: 'Instrumen', foreman: 'Foreman Turbin' },
-        { date: '14/03', item: 'P-402', deskripsi: 'Seal Leakage', uraian: 'Seal Leakage', scope: 'Mekanik', foreman: 'Foreman Turbin' },
-        { date: '14/03', item: 'BL-02', deskripsi: 'Vibration Alert', uraian: 'Vibration Alert', scope: 'Instrumen', foreman: 'Foreman Boiler' },
-        { date: '14/03', item: 'CV-001', deskripsi: 'Belt Alignment', uraian: 'Belt Alignment', scope: 'Mekanik', foreman: 'Foreman Boiler' },
-        { date: '14/03', item: 'ST-405', deskripsi: 'Trap Stuck Open', uraian: 'Trap Stuck Open', scope: 'Instrumen', foreman: 'Foreman Turbin' },
-        { date: '13/03', item: 'P-201B', deskripsi: 'Mechanical Seal', uraian: 'Mechanical Seal', scope: 'Mekanik', foreman: 'Foreman Turbin' },
-        { date: '13/03', item: 'FN-103', deskripsi: 'Overload Trip', uraian: 'Overload Trip', scope: 'Listrik', foreman: 'Foreman Boiler' },
-        { date: '12/03', item: 'TK-12', deskripsi: 'Level Sensor', uraian: 'Level Sensor', scope: 'Instrumen', foreman: 'Foreman Turbin' },
-        { date: '12/03', item: 'V-909', deskripsi: 'Air Leakage', uraian: 'Air Leakage', scope: 'Sipil', foreman: 'Foreman Boiler' },
+        { date: '14/03', item: 'BT-01A - Boiler Tube Bank A1', deskripsi: 'Boiler Tube Leak', uraian: 'Boiler Tube Leak', scope: 'Mekanik', foreman: 'Foreman Boiler' },
+        { date: '14/03', item: 'TG-01 - Turbin Generator Utama', deskripsi: 'High Bearing Temp', uraian: 'High Bearing Temp', scope: 'Instrumen', foreman: 'Foreman Turbin' },
+        { date: '14/03', item: 'P-402 - Pompa Condensate', deskripsi: 'Seal Leakage', uraian: 'Seal Leakage', scope: 'Mekanik', foreman: 'Foreman Turbin' },
+        { date: '14/03', item: 'BL-02 - Blower Forced Draft B', deskripsi: 'Vibration Alert', uraian: 'Vibration Alert', scope: 'Instrumen', foreman: 'Foreman Boiler' },
+        { date: '14/03', item: 'CV-001 - Conveyor Coal Bunker', deskripsi: 'Belt Alignment', uraian: 'Belt Alignment', scope: 'Mekanik', foreman: 'Foreman Boiler' },
+        { date: '14/03', item: 'ST-405 - Steam Trap Line MPS', deskripsi: 'Trap Stuck Open', uraian: 'Trap Stuck Open', scope: 'Instrumen', foreman: 'Foreman Turbin' },
+        { date: '13/03', item: 'P-201B - Pompa BFW Standby', deskripsi: 'Mechanical Seal', uraian: 'Mechanical Seal', scope: 'Mekanik', foreman: 'Foreman Turbin' },
+        { date: '13/03', item: 'FN-103 - Fan ID Boiler B', deskripsi: 'Overload Trip', uraian: 'Overload Trip', scope: 'Listrik', foreman: 'Foreman Boiler' },
+        { date: '12/03', item: 'TK-12 - Tangki Air Demin', deskripsi: 'Level Sensor', uraian: 'Level Sensor', scope: 'Instrumen', foreman: 'Foreman Turbin' },
+        { date: '12/03', item: 'V-909 - Valve Bypass Steam', deskripsi: 'Air Leakage', uraian: 'Air Leakage', scope: 'Sipil', foreman: 'Foreman Boiler' },
     ],
     maintenance: [
-        { date: '14/03', item: 'L-08.12 E', uraian: 'Cek ampere motor', scope: 'Listrik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
-        { date: '14/03', item: 'B-12.01 A', uraian: 'Pelumasan bearing', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'preventif', status: 'OK', notif: null },
-        { date: '14/03', item: 'M-04.05', uraian: 'Pembersihan area', scope: 'Sipil', foreman: 'Foreman Boiler', tipe: 'preventif', status: 'OK', notif: null },
-        { date: '14/03', item: 'P-101 C', uraian: 'Ganti oli pump', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
-        { date: '13/03', item: 'V-22.1', uraian: 'Kalibrasi valve', scope: 'Instrumen', foreman: 'Foreman Turbin', tipe: 'preventif', status: 'OK', notif: null },
-        { date: '13/03', item: 'E-304', uraian: 'Check efficiency', scope: 'Instrumen', foreman: 'Foreman Boiler', tipe: 'corrective', status: 'IP', notif: null },
-        { date: '12/03', item: 'C-12A', uraian: 'Greasing coupling', scope: 'Mekanik', foreman: 'Foreman Boiler', tipe: 'preventif', status: 'OK', notif: null },
-        { date: '12/03', item: 'T-501', uraian: 'Drain condensate', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
-        { date: '12/03', item: 'R-102', uraian: 'Inspection lining', scope: 'Mekanik', foreman: 'Foreman Boiler', tipe: 'corrective', status: 'OK', notif: null },
+        { date: '14/03', item: 'L-08.12 E - Motor Fan Cooler', uraian: 'Cek ampere motor', scope: 'Listrik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
+        { date: '14/03', item: 'B-12.01 A - Bearing Pompa BFW', uraian: 'Pelumasan bearing', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'preventif', status: 'OK', notif: null },
+        { date: '14/03', item: 'M-04.05 - Area Boiler House', uraian: 'Pembersihan area', scope: 'Sipil', foreman: 'Foreman Boiler', tipe: 'preventif', status: 'OK', notif: null },
+        { date: '14/03', item: 'P-101 C - Pompa Condensate', uraian: 'Ganti oli pump', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
+        { date: '13/03', item: 'V-22.1 - Valve Steam Inlet', uraian: 'Kalibrasi valve', scope: 'Instrumen', foreman: 'Foreman Turbin', tipe: 'preventif', status: 'OK', notif: null },
+        { date: '13/03', item: 'E-304 - Electrical Panel STG', uraian: 'Check efficiency', scope: 'Instrumen', foreman: 'Foreman Boiler', tipe: 'corrective', status: 'IP', notif: null },
+        { date: '12/03', item: 'C-12A - Conveyor Coal Feeder A', uraian: 'Greasing coupling', scope: 'Mekanik', foreman: 'Foreman Boiler', tipe: 'preventif', status: 'OK', notif: null },
+        { date: '12/03', item: 'T-501 - Tangki Demin Water', uraian: 'Drain condensate', scope: 'Mekanik', foreman: 'Foreman Turbin', tipe: 'corrective', status: 'OK', notif: null },
+        { date: '12/03', item: 'R-102 - Boiler Refractory A', uraian: 'Inspection lining', scope: 'Mekanik', foreman: 'Foreman Boiler', tipe: 'corrective', status: 'OK', notif: null },
     ],
     catatan: 'Kondisi operasional Boiler A dan B terpantau stabil sepanjang shift pagi. Load TG dipertahankan pada level aman. Semua parameter lab berada dalam batas normal sesuai SOP.',
 };
@@ -385,26 +385,37 @@ export default function PreviewPdfPage() {
                                     </div>
                                     <table className="w-full border-collapse text-left">
                                         <thead>
-                                            <tr className="text-xs text-green-900 font-bold uppercase bg-green-100 tracking-tighter">
-                                                <th className="py-2 px-1 w-[10%] border-b border-green-200 text-center">Tgl</th>
-                                                <th className="py-2 px-3 w-[15%] border-b border-green-200">Item</th>
-                                                <th className="py-2 px-1 w-[45%] border-b border-green-200">Uraian</th>
-                                                <th className="py-2 px-1 w-[15%] border-b border-green-200 text-center">Scope</th>
-                                                <th className="py-2 px-3 w-[15%] border-b border-green-200 text-center">Ket</th>
+                                            <tr className="text-xs text-green-950 font-black uppercase bg-green-100 tracking-wider">
+                                                <th className="py-2.5 px-3 w-[24%] border-b border-green-200 text-center">Item</th>
+                                                <th className="py-2.5 px-2 w-[46%] border-b border-green-200 text-center">Uraian</th>
+                                                <th className="py-2.5 px-2 w-[15%] border-b border-green-200 text-center">Scope</th>
+                                                <th className="py-2.5 px-3 w-[15%] border-b border-green-200 text-center">Ket</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-slate-800">
-                                            {r.maintenance.map((m, i) => (
-                                                <tr key={i} className="border-b border-slate-200">
-                                                    <td className="text-xs py-2 text-center font-medium">{m.date}</td>
-                                                    <td className="text-xs py-2 px-3 font-mono font-bold">{m.item}</td>
-                                                    <td className="text-xs py-2 whitespace-normal break-words font-medium">{m.uraian}</td>
-                                                    <td className="text-xs py-2 font-bold text-slate-600 text-center">{m.scope}</td>
-                                                    <td className="text-center py-2">
-                                                        <span className={`px-2 py-1 rounded font-black text-[9px] shadow-sm ${m.status === 'OK' ? 'bg-green-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>{m.status}</span>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                        <tbody className="text-slate-950">
+                                            {r.maintenance.map((m, i) => {
+                                                const s = (m.item ?? '').trim();
+                                                const sep = s.indexOf(' - ');
+                                                const code = sep === -1 ? s : s.slice(0, sep).trim();
+                                                const desc = sep === -1 ? '' : s.slice(sep + 3).trim();
+                                                return (
+                                                    <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
+                                                        <td className="py-2.5 px-3 leading-tight text-center">
+                                                            <div className="text-xs font-mono font-extrabold text-blue-700">{code}</div>
+                                                            {desc && <div className="text-[10px] text-blue-900 font-bold mt-0.5">{desc}</div>}
+                                                        </td>
+                                                        <td className="text-xs py-2.5 px-2 whitespace-normal break-words font-semibold text-slate-900 text-center">{m.uraian}</td>
+                                                        <td className="text-xs py-2.5 px-2 font-bold text-slate-800 text-center">{m.scope}</td>
+                                                        <td className="text-center py-2.5 px-3">
+                                                            <span className={`px-2 py-0.5 rounded font-black text-[9px] shadow-sm border ${
+                                                                m.status === 'OK'
+                                                                    ? 'bg-green-500/10 border-green-500/25 text-green-700'
+                                                                    : 'bg-yellow-400/15 border-yellow-400/25 text-yellow-800'
+                                                            }`}>{m.status}</span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -413,7 +424,7 @@ export default function PreviewPdfPage() {
                             {/* Critical Equipment */}
                             <section className="flex-grow flex flex-col">
                                 <div className="flex items-center gap-2 mb-3">
-                                    <div className="w-1.5 h-4 bg-red-600 rounded-full"></div>
+                                    <div className="w-1.5 h-4 bg-red-650 rounded-full"></div>
                                     <h3 className="text-xxs font-bold text-slate-800 uppercase tracking-widest">Critical Equipment</h3>
                                 </div>
                                 <div className="bg-red-50/30 rounded-lg border border-red-100 overflow-hidden flex-grow shadow-sm">
@@ -422,22 +433,31 @@ export default function PreviewPdfPage() {
                                     </div>
                                     <table className="w-full border-collapse">
                                         <thead>
-                                            <tr className="text-xs text-red-900 font-bold uppercase tracking-tighter text-center bg-red-100">
-                                                <th className="py-2 px-1 w-[10%] border-b border-red-200">Tgl</th>
-                                                <th className="py-2 px-1 w-[15%] border-b border-red-200">Item</th>
-                                                <th className="py-2 px-1 w-[40%] border-b border-red-200">Uraian</th>
-                                                <th className="py-2 px-3 w-[35%] border-b border-red-200 text-center">Scope</th>
+                                            <tr className="text-xs text-red-950 font-black uppercase tracking-wider text-center bg-red-100">
+                                                <th className="py-2.5 px-2 w-[10%] border-b border-red-200">Tgl</th>
+                                                <th className="py-2.5 px-2 w-[28%] border-b border-red-200 text-center">Item</th>
+                                                <th className="py-2.5 px-2 w-[42%] border-b border-red-200 text-center">Uraian</th>
+                                                <th className="py-2.5 px-3 w-[20%] border-b border-red-200 text-center">Scope</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-center text-slate-800">
-                                            {r.criticalEquipment.map((eq, i) => (
-                                                <tr key={i} className="border-b border-slate-200">
-                                                    <td className="text-xs py-2 font-medium">{eq.date}</td>
-                                                    <td className="text-xs py-2 font-mono font-bold">{eq.item}</td>
-                                                    <td className="text-xs py-2 text-left px-2 whitespace-normal break-words font-medium">{eq.uraian}</td>
-                                                    <td className="text-xs py-2 font-bold text-slate-600 text-center">{eq.scope}</td>
-                                                </tr>
-                                            ))}
+                                        <tbody className="text-center text-slate-950">
+                                            {r.criticalEquipment.map((eq, i) => {
+                                                const s = (eq.item ?? '').trim();
+                                                const sep = s.indexOf(' - ');
+                                                const code = sep === -1 ? s : s.slice(0, sep).trim();
+                                                const desc = sep === -1 ? '' : s.slice(sep + 3).trim();
+                                                return (
+                                                    <tr key={i} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
+                                                        <td className="text-xs py-2.5 font-bold text-slate-900">{eq.date}</td>
+                                                        <td className="py-2.5 px-2 text-center leading-tight">
+                                                            <div className="text-xs font-mono font-extrabold text-red-600">{code}</div>
+                                                            {desc && <div className="text-[10px] text-red-900 font-bold mt-0.5">{desc}</div>}
+                                                        </td>
+                                                        <td className="text-xs py-2.5 px-2 font-medium text-center text-slate-900">{eq.deskripsi}</td>
+                                                        <td className="text-xs py-2.5 font-bold text-slate-800 text-center">{eq.scope}</td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -447,7 +467,7 @@ export default function PreviewPdfPage() {
 
                     {/* Footer */}
                     <footer className="mt-8 pt-4 border-t-2 border-blue-100 flex justify-between items-center">
-                        <p className="text-[8px] text-blue-400 font-bold uppercase tracking-wider">&copy; 2026 PowerOps Control Systems &bull; Shift {r.group} Terminal</p>
+                        <p className="text-[8px] text-blue-400 font-bold uppercase tracking-wider">&copy; 2026 Web Utilitas Batubara &bull; Shift {r.group} Terminal</p>
                         <div className="flex items-center gap-4">
                             <p className="text-[8px] text-slate-400 font-medium">Digital Signature ID: PO-{r.group}-140326-X99</p>
                             <p className="text-[8px] text-slate-400 font-medium tracking-tight">Generated: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date().toLocaleTimeString('id-ID')}</p>

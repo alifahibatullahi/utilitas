@@ -3,118 +3,398 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type { MaintenanceWithCritical, CriticalStatus } from '@/lib/supabase/types';
+import type { MaintenanceWithCritical, CriticalStatus, PhotoRow, WorkOrderWithPekerjaan } from '@/lib/supabase/types';
 import { KANBAN_COLUMNS } from '@/lib/constants';
 import KanbanCard from './KanbanCard';
 
-interface KanbanColumnProps {
-    status: CriticalStatus;
-    items: MaintenanceWithCritical[];
-    prevItems?: MaintenanceWithCritical[];
-    onKonfirmasiShift?: (id: string) => Promise<{ error: string | null }>;
+function DroppableSection({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) {
+    const { setNodeRef, isOver } = useDroppable({ id });
+    return (
+        <div ref={setNodeRef} className={`${className} ${isOver ? 'bg-amber-100/10 ring-2 ring-amber-400/30 scale-[1.002] border-solid border-amber-300' : ''} transition-all duration-150`}>
+            {children}
+        </div>
+    );
 }
 
-function PrevItemWrapper({ item, onKonfirmasi }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }> }) {
+interface KanbanColumnProps {
+    status: 'OPEN' | 'IP' | 'OK' | 'CLOSED';
+    items: MaintenanceWithCritical[];
+    prevItems?: MaintenanceWithCritical[];
+    hiddenFuture?: number;
+    onKonfirmasiShift?: (id: string) => Promise<{ error: string | null }>;
+    photosByMaintId?: Record<string, PhotoRow[]>;
+    onMoveInColumn?: (id: string, direction: 'up' | 'down') => void;
+    statusTimeByMaintId?: Record<string, string>;
+    statusActorByMaintId?: Record<string, { ip?: string; ok?: string }>;
+    /** Optional slot dirender di bawah column header (mis. search input). */
+    headerExtra?: React.ReactNode;
+    /** Handler batalkan assignment dari shift sekarang (akan ditampilkan untuk card di items kolom IP/OK). */
+    onUnassignCurrentShift?: (id: string) => Promise<{ error: string | null }>;
+    boardDate?: string;
+    boardShift?: 'pagi' | 'sore' | 'malam';
+    readOnly?: boolean;
+    workOrders?: WorkOrderWithPekerjaan[];
+    onOpenDetail?: (id: string, type: 'critical' | 'preventif' | 'modifikasi') => void;
+}
+
+function PrevItemWrapper({ item, onKonfirmasi, photos, statusTimeIso, statusActors, boardDate, boardShift }: { item: MaintenanceWithCritical; onKonfirmasi?: (id: string) => Promise<{ error: string | null }>; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
     const [loading, setLoading] = useState(false);
-    const handleKonfirmasi = async () => {
+    const handleKonfirmasi = async (e: React.MouseEvent) => {
+        e.stopPropagation();
         if (!onKonfirmasi) return;
         setLoading(true);
-        await onKonfirmasi(item.id);
+        const res = await onKonfirmasi(item.id);
         setLoading(false);
+        if (res?.error) {
+            alert(`Gagal: ${res.error}`);
+        }
     };
     return (
-        <div className="relative">
-            <KanbanCard item={item} />
+        <div className="opacity-80 hover:opacity-100 transition-opacity">
+            <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} statusActors={statusActors} boardDate={boardDate} boardShift={boardShift} />
+            {onKonfirmasi && (
+                <button
+                    onClick={handleKonfirmasi}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    disabled={loading}
+                    className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Tandai ada pekerjaan di shift ini → maintenance masuk laporan shift"
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{loading ? 'progress_activity' : 'add_task'}</span>
+                    {loading ? 'Memproses…' : '+ Lanjut Kerja di Shift Ini'}
+                </button>
+            )}
+        </div>
+    );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function AssignedItemWrapper({ item, photos, statusTimeIso, statusActors, onUnassign, boardDate, boardShift }: { item: MaintenanceWithCritical; photos?: PhotoRow[]; statusTimeIso?: string; statusActors?: { ip?: string; ok?: string }; onUnassign: (id: string) => Promise<{ error: string | null }>; boardDate?: string; boardShift?: 'pagi' | 'sore' | 'malam' }) {
+    const [loading, setLoading] = useState(false);
+    return (
+        <div>
+            <KanbanCard item={item} photos={photos} statusTimeIso={statusTimeIso} statusActors={statusActors} boardDate={boardDate} boardShift={boardShift} />
             <button
-                onClick={handleKonfirmasi}
+                onClick={async () => {
+                    if (!confirm('Batalkan "Lanjut Kerja" — maintenance ini akan dihapus dari laporan shift sekarang. Lanjut?')) return;
+                    setLoading(true);
+                    await onUnassign(item.id);
+                    setLoading(false);
+                }}
                 disabled={loading}
-                className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-extrabold transition-colors cursor-pointer disabled:opacity-50"
+                className="mt-1 w-full flex items-center justify-center gap-1 py-0.5 rounded text-rose-600 hover:bg-rose-50 text-[9px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+                title="Batalkan: hapus dari laporan shift sekarang"
             >
-                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{loading ? 'progress_activity' : 'arrow_upward'}</span>
-                {loading ? 'Memproses...' : 'Konfirmasi ke Shift Ini'}
+                <span className="material-symbols-outlined" style={{ fontSize: 11 }}>{loading ? 'progress_activity' : 'undo'}</span>
+                {loading ? 'Memproses…' : 'Batalkan dari shift ini'}
             </button>
         </div>
     );
 }
 
-export default function KanbanColumn({ status, items, prevItems = [], onKonfirmasiShift }: KanbanColumnProps) {
-    const { setNodeRef, isOver } = useDroppable({ id: status });
+export default function KanbanColumn({ status, items, prevItems = [], hiddenFuture = 0, onKonfirmasiShift, photosByMaintId, onMoveInColumn, statusTimeByMaintId, statusActorByMaintId, headerExtra, onUnassignCurrentShift, boardDate, boardShift, readOnly = false, workOrders, onOpenDetail }: KanbanColumnProps) {
     const config = KANBAN_COLUMNS.find(c => c.id === status)!;
 
-    function renderGroups(list: MaintenanceWithCritical[], keyPrefix = '') {
-        const groups: { isGroup: boolean; criticalId: string | null; itemName: string | null; cards: MaintenanceWithCritical[] }[] = [];
-        let current: MaintenanceWithCritical[] = [];
-        list.forEach(item => {
-            if (current.length === 0) {
-                current.push(item);
-            } else {
-                const prev = current[current.length - 1];
-                if (item.critical_id && prev.critical_id === item.critical_id) {
-                    current.push(item);
-                } else {
-                    groups.push({ isGroup: current.length > 1, criticalId: current[0].critical_id, itemName: current[0].critical_equipment?.item || 'Unknown Critical', cards: current });
-                    current = [item];
-                }
-            }
-        });
-        if (current.length > 0) groups.push({ isGroup: current.length > 1, criticalId: current[0].critical_id, itemName: current[0].critical_equipment?.item || 'Unknown Critical', cards: current });
+    function renderCardOrWrapper(item: MaintenanceWithCritical, flatIdx: number, totalLen: number, withControls: boolean, isPrev = false) {
+        const card = (
+            <KanbanCard
+                item={item}
+                photos={photosByMaintId?.[item.id]}
+                statusTimeIso={statusTimeByMaintId?.[item.id]}
+                statusActors={statusActorByMaintId?.[item.id]}
+                boardDate={boardDate}
+                boardShift={boardShift}
+                index={flatIdx + 1}
+                isFirst={flatIdx === 0}
+                isLast={flatIdx === totalLen - 1}
+                onMoveUp={withControls ? () => onMoveInColumn?.(item.id, 'up') : undefined}
+                onMoveDown={withControls ? () => onMoveInColumn?.(item.id, 'down') : undefined}
+            />
+        );
 
-        return groups.map((g, idx) => g.isGroup ? (
-            <div key={keyPrefix + 'group-' + idx} className="bg-slate-100/70 border-2 border-slate-200/80 rounded-2xl p-2 flex flex-col gap-2 relative shadow-inner overflow-hidden">
-                <div className="px-1.5 pt-0.5 flex items-center gap-1.5 opacity-80">
-                    <span className="material-symbols-outlined text-blue-500" style={{ fontSize: 14 }}>layers</span>
-                    <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-widest truncate">{g.itemName}</span>
+        if (isPrev) {
+            return (
+                <div key={item.id}>
+                    <PrevItemWrapper
+                        item={item}
+                        onKonfirmasi={readOnly ? undefined : onKonfirmasiShift}
+                        photos={photosByMaintId?.[item.id]}
+                        statusTimeIso={statusTimeByMaintId?.[item.id]}
+                        statusActors={statusActorByMaintId?.[item.id]}
+                        boardDate={boardDate}
+                        boardShift={boardShift}
+                    />
                 </div>
-                {g.cards.map(item => <KanbanCard key={item.id} item={item} />)}
+            );
+        }
+
+        return (
+            <div key={item.id}>
+                {card}
             </div>
-        ) : (
-            <KanbanCard key={g.cards[0].id} item={g.cards[0]} />
-        ));
+        );
     }
 
+    function renderGroups(list: MaintenanceWithCritical[], keyPrefix = '', withControls = false) {
+        // Group by parent ID (critical_id or work_order_id)
+        const groupsMap = new Map<string, MaintenanceWithCritical[]>();
+        const groupKeys: string[] = []; // preserve original order of first appearance
+
+        list.forEach(item => {
+            let key = '';
+            if (item.critical_id) {
+                key = `critical-${item.critical_id}`;
+            } else if (item.work_order_id) {
+                key = `wo-${item.work_order_id}`;
+            } else {
+                key = `standalone-${item.id}`;
+            }
+
+            if (!groupsMap.has(key)) {
+                groupsMap.set(key, []);
+                groupKeys.push(key);
+            }
+            groupsMap.get(key)!.push(item);
+        });
+
+        // Build flat index for numbering (based on original list position)
+        const flatIndexMap = new Map<string, number>();
+        list.forEach((item, idx) => flatIndexMap.set(item.id, idx));
+
+        return groupKeys.map((key, groupIdx) => {
+            const cards = groupsMap.get(key) || [];
+            if (cards.length === 0) return null;
+
+            const firstCard = cards[0];
+            const isGroup = cards.length > 1;
+
+            if (!isGroup) {
+                const flatIdx = flatIndexMap.get(firstCard.id) ?? 0;
+                return renderCardOrWrapper(firstCard, flatIdx, list.length, withControls, keyPrefix === 'prev');
+            }
+
+            // Resolve parent properties for grouped items
+            let parentTitle = firstCard.item;
+            let parentDesc = '';
+            let parentType: 'critical' | 'preventif' | 'modifikasi' = 'critical';
+
+            if (firstCard.critical_id) {
+                parentTitle = firstCard.critical_equipment?.item || firstCard.item;
+                parentDesc = firstCard.critical_equipment?.deskripsi || '';
+                parentType = 'critical';
+            } else if (firstCard.work_order_id && workOrders) {
+                const wo = workOrders.find(w => w.id === firstCard.work_order_id);
+                parentTitle = wo?.item || firstCard.item;
+                parentDesc = wo?.deskripsi || '';
+                parentType = wo?.tipe === 'preventif' ? 'preventif' : 'modifikasi';
+            } else if (firstCard.work_order_id) {
+                parentTitle = firstCard.item;
+                parentType = firstCard.tipe === 'preventif' ? 'preventif' : 'modifikasi';
+            }
+
+            // Style tokens per parent type
+            const styles: Record<'critical' | 'preventif' | 'modifikasi', {
+                bg: string;
+                border: string;
+                borderLeft: string;
+                badgeBg: string;
+                badgeText: string;
+                badgeBorder: string;
+                iconColor: string;
+                icon: string;
+                label: string;
+            }> = {
+                critical: {
+                    bg: 'bg-rose-50/30 backdrop-blur-[2px]',
+                    border: 'border-rose-200/75 shadow-sm shadow-rose-100/10',
+                    borderLeft: 'border-l-rose-500',
+                    badgeBg: 'bg-rose-100/60',
+                    badgeText: 'text-rose-700',
+                    badgeBorder: 'border-rose-200/50',
+                    iconColor: 'text-rose-500',
+                    icon: 'report_problem',
+                    label: 'Critical'
+                },
+                preventif: {
+                    bg: 'bg-emerald-50/20 backdrop-blur-[2px]',
+                    border: 'border-emerald-250/50 shadow-sm shadow-emerald-100/5',
+                    borderLeft: 'border-l-emerald-500',
+                    badgeBg: 'bg-emerald-100/60',
+                    badgeText: 'text-emerald-700',
+                    badgeBorder: 'border-emerald-200/50',
+                    iconColor: 'text-emerald-500',
+                    icon: 'build_circle',
+                    label: 'Preventif'
+                },
+                modifikasi: {
+                    bg: 'bg-indigo-50/20 backdrop-blur-[2px]',
+                    border: 'border-indigo-200/60 shadow-sm shadow-indigo-100/5',
+                    borderLeft: 'border-l-indigo-500',
+                    badgeBg: 'bg-indigo-100/60',
+                    badgeText: 'text-indigo-700',
+                    badgeBorder: 'border-indigo-200/50',
+                    iconColor: 'text-indigo-500',
+                    icon: 'published_with_changes',
+                    label: 'Modifikasi'
+                }
+            };
+
+            const style = styles[parentType] || styles.critical;
+
+            return (
+                <div
+                    key={`${keyPrefix}group-${key}-${groupIdx}`}
+                    className={`rounded-2xl p-3 flex flex-col gap-2.5 relative border border-l-4 ${style.bg} ${style.border} ${style.borderLeft} transition-all hover:shadow-md duration-200`}
+                >
+                    {/* Parent Header */}
+                    <div className="flex flex-col gap-1 border-b border-slate-200/40 pb-2 px-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`material-symbols-outlined ${style.iconColor}`} style={{ fontSize: 16 }}>
+                                {style.icon}
+                            </span>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${style.badgeBg} ${style.badgeText} ${style.badgeBorder}`}>
+                                {style.label}
+                            </span>
+                            <h4 className="text-xs font-black text-slate-800 tracking-tight truncate max-w-[130px]" title={parentTitle}>
+                                {parentTitle}
+                            </h4>
+                            <button
+                                onClick={() => {
+                                    const parentId = firstCard.critical_id || firstCard.work_order_id;
+                                    if (parentId) onOpenDetail?.(parentId, parentType);
+                                }}
+                                className={`flex items-center justify-center p-1 rounded-lg text-slate-400 hover:scale-105 transition-all cursor-pointer ${
+                                    parentType === 'critical' ? 'hover:bg-rose-100/80 hover:text-rose-700' :
+                                    parentType === 'preventif' ? 'hover:bg-emerald-100/80 hover:text-emerald-700' :
+                                    'hover:bg-indigo-100/80 hover:text-indigo-700'
+                                }`}
+                                title="Buka Detail"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>open_in_new</span>
+                            </button>
+                            <span className="ml-auto text-[9px] font-black text-slate-500 bg-white/70 px-2 py-0.5 rounded-full border border-slate-200 shadow-sm whitespace-nowrap">
+                                {cards.length} Pekerjaan
+                            </span>
+                        </div>
+                        {parentDesc && (
+                            <p className="text-sm text-slate-900 font-bold mt-1.5 leading-snug line-clamp-2" title={parentDesc}>
+                                {style.label}: {parentDesc.charAt(0).toUpperCase() + parentDesc.slice(1)}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Grouped Cards nested list with connector line */}
+                    <div className="flex flex-col gap-2 pl-2 border-l border-dashed border-slate-300/70 ml-2">
+                        {cards.map(item => {
+                            const flatIdx = flatIndexMap.get(item.id) ?? 0;
+                            return renderCardOrWrapper(item, flatIdx, list.length, withControls, keyPrefix === 'prev');
+                        })}
+                    </div>
+                </div>
+            );
+        });
+    }
+
+    const headerGradient: Record<string, string> = {
+        OPEN: 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-sm',
+        IP: 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-sm',
+        OK: 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-sm',
+    };
+    const headerIcon: Record<string, string> = {
+        OPEN: 'info',
+        IP: 'pending',
+        OK: 'check_circle',
+    };
+
     return (
-        <div className={`flex flex-col min-w-[300px] md:min-w-0 md:flex-1 rounded-2xl border-2 transition-all
-            ${isOver ? `${config.borderColor} shadow-lg scale-[1.01]` : 'border-gray-200'}
-            ${config.bgColor}`}
+        <div className={`flex flex-col min-w-[280px] md:min-w-0 md:flex-1 rounded-2xl border transition-all duration-200 border-gray-200 shadow-sm ${config.bgColor}`}
         >
             {/* Column header */}
-            <div className={`${config.headerBg} rounded-t-xl px-4 py-3 flex items-center justify-between`}>
-                <h3 className="text-sm font-bold text-white">{config.label}</h3>
-                <span className="bg-white/30 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+            <div className={`${headerGradient[status]} rounded-t-2xl px-4 py-2.5 flex items-center justify-between`}>
+                <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-white" style={{ fontSize: 16 }}>
+                        {headerIcon[status]}
+                    </span>
+                    <h3 className="text-sm font-extrabold text-white tracking-wider uppercase">{config.label}</h3>
+                </div>
+                <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-black px-2.5 py-0.5 rounded-full border border-white/10 shadow-inner">
                     {items.length + prevItems.length}
                 </span>
             </div>
 
+            {headerExtra}
+
             {/* Cards container */}
-            <div
-                ref={setNodeRef}
-                className="flex-1 p-3 space-y-3 min-h-[200px] overflow-y-auto"
-            >
-                <SortableContext items={[...items, ...prevItems].map(i => i.id)} strategy={verticalListSortingStrategy}>
-                    {renderGroups(items)}
-
-                    {/* Divider: shift sebelumnya */}
-                    {prevItems.length > 0 && (
-                        <>
-                            <div className="flex items-center gap-2 py-1">
-                                <div className="flex-1 h-px bg-gray-300" />
-                                <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest whitespace-nowrap">Shift Sebelumnya</span>
-                                <div className="flex-1 h-px bg-gray-300" />
+            <div className={`flex-1 p-2 min-h-[200px] flex flex-col ${status === 'IP' ? 'overflow-hidden' : 'overflow-y-auto light-scrollbar'}`}>
+                {status === 'IP' ? (
+                    <div className="flex flex-col gap-3 h-full overflow-hidden">
+                        {/* Section: Shift Ini */}
+                        <div className="flex-1 flex flex-col min-h-0 bg-amber-50/20 border border-amber-200/60 rounded-2xl p-2.5 shadow-sm">
+                            <div className="flex items-center gap-1.5 pb-2 border-b border-amber-200/40 mb-2 px-1">
+                                <span className="material-symbols-outlined text-amber-500 font-bold" style={{ fontSize: 14 }}>pending</span>
+                                <span className="text-[10px] font-black text-amber-800 uppercase tracking-wider">Pekerjaan Shift Ini</span>
+                                <span className="ml-auto text-[9px] font-black text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-full border border-amber-250/30">
+                                    {items.length}
+                                </span>
                             </div>
-                            <div className="opacity-60 flex flex-col gap-3">
-                                {prevItems.map(item => (
-                                    <PrevItemWrapper key={item.id} item={item} onKonfirmasi={onKonfirmasiShift} />
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </SortableContext>
+                            <DroppableSection id="IP" className="flex-1 overflow-y-auto light-scrollbar space-y-2 pr-0.5">
+                                <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                                    {renderGroups(items, 'curr', true)}
+                                    {items.length === 0 && (
+                                        <div className="h-full flex flex-col items-center justify-center py-6 text-amber-600/40 text-xs">
+                                            <span className="material-symbols-outlined text-2xl">pending</span>
+                                            <span className="mt-1 font-bold">Belum ada pekerjaan shift ini</span>
+                                        </div>
+                                    )}
+                                </SortableContext>
+                            </DroppableSection>
+                        </div>
 
-                {items.length === 0 && prevItems.length === 0 && (
-                    <div className={`flex flex-col items-center justify-center py-8 ${config.textColor} opacity-50`}>
-                        <span className="material-symbols-outlined text-3xl">inbox</span>
-                        <span className="text-xs mt-1">Kosong</span>
+                        {/* Section: Shift Sebelumnya */}
+                        <div className="flex-1 flex flex-col min-h-0 bg-slate-105/40 border border-slate-200/80 rounded-2xl p-2.5 shadow-sm">
+                            <div className="flex items-center gap-1.5 pb-2 border-b border-slate-250 mb-2 px-1">
+                                <span className="material-symbols-outlined text-slate-500 font-bold" style={{ fontSize: 14 }}>history</span>
+                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Pekerjaan Shift Sebelumnya</span>
+                                <span className="ml-auto text-[9px] font-black text-slate-500 bg-slate-200/50 px-2 py-0.5 rounded-full border border-slate-300/40">
+                                    {prevItems.length}
+                                </span>
+                            </div>
+                            {!readOnly && prevItems.length > 0 && (
+                                <p className="px-1 text-[9px] italic text-slate-500 mb-1.5">Drag ke box atas untuk Lanjut Kerja</p>
+                            )}
+                            <DroppableSection id="IP_PREV" className="flex-1 overflow-y-auto light-scrollbar space-y-2 pr-0.5">
+                                <SortableContext items={prevItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                                    {renderGroups(prevItems, 'prev', true)}
+                                    {prevItems.length === 0 && (
+                                        <div className="h-full flex flex-col items-center justify-center py-6 text-slate-400 text-xs">
+                                            <span className="material-symbols-outlined text-2xl">history</span>
+                                            <span className="mt-1 font-bold">Tidak ada carry-forward</span>
+                                        </div>
+                                    )}
+                                </SortableContext>
+                            </DroppableSection>
+                        </div>
                     </div>
+                ) : (
+                    <DroppableSection id={status} className="h-full min-h-[160px] space-y-1.5">
+                        <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                            {renderGroups(items, '', true)}
+                        </SortableContext>
+
+                        {items.length === 0 && (
+                            <div className={`flex flex-col items-center justify-center py-8 ${config.textColor} opacity-50`}>
+                                <span className="material-symbols-outlined text-3xl">inbox</span>
+                                <span className="text-xs mt-1">Kosong</span>
+                            </div>
+                        )}
+
+                        {hiddenFuture > 0 && (
+                            <div className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-slate-100 border border-dashed border-slate-300 text-[11px] font-bold text-slate-500" title="Maintenance dengan tanggal di masa depan tidak ditampilkan untuk fokus pada backlog & hari ini">
+                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
+                                +{hiddenFuture} dijadwalkan untuk tanggal mendatang
+                            </div>
+                        )}
+                    </DroppableSection>
                 )}
             </div>
         </div>

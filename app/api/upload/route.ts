@@ -1,0 +1,103 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { uploadToR2, deleteFromR2, keyFromUrl, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
+
+export async function POST(req: NextRequest) {
+  // ── Early env validation: surface missing config dengan pesan yang jelas ──
+  const missing: string[] = [];
+  if (!process.env.R2_ACCOUNT_ID) missing.push('R2_ACCOUNT_ID');
+  if (!process.env.R2_ACCESS_KEY_ID) missing.push('R2_ACCESS_KEY_ID');
+  if (!process.env.R2_SECRET_ACCESS_KEY) missing.push('R2_SECRET_ACCESS_KEY');
+  if (!process.env.R2_BUCKET_NAME) missing.push('R2_BUCKET_NAME');
+  if (!process.env.R2_PUBLIC_URL) missing.push('R2_PUBLIC_URL');
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missing.length > 0) {
+    return NextResponse.json({
+      error: `Konfigurasi server belum lengkap. Env hilang: ${missing.join(', ')}. Hubungi admin untuk set env di Vercel/deployment.`,
+    }, { status: 500 });
+  }
+
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+  try {
+    const formData      = await req.formData();
+    const file          = formData.get('file')           as File   | null;
+    const criticalId    = formData.get('critical_id')    as string | null;
+    const maintId       = formData.get('maintenance_id') as string | null;
+    const workOrderId   = formData.get('work_order_id')  as string | null;
+    const uploadedBy    = formData.get('uploaded_by')    as string | null;
+
+    // ── Validation ──
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+    const parentCount = [criticalId, maintId, workOrderId].filter(Boolean).length;
+    if (parentCount === 0) {
+      return NextResponse.json({ error: 'critical_id, maintenance_id, or work_order_id required' }, { status: 400 });
+    }
+    if (parentCount > 1) {
+      return NextResponse.json({ error: 'Only one parent ID allowed' }, { status: 400 });
+    }
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: `Tipe file tidak didukung. Gunakan: JPEG, PNG, WebP, atau GIF` },
+        { status: 415 },
+      );
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: `Ukuran file terlalu besar. Maksimal ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB` },
+        { status: 413 },
+      );
+    }
+
+    // ── Build R2 key ──
+    const ext        = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const prefix     = criticalId ? 'critical' : workOrderId ? 'work-order' : 'maintenance';
+    const parentId   = criticalId ?? workOrderId ?? maintId;
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const r2Key      = `photos/${prefix}/${parentId}/${uniqueName}`;
+
+    // ── Upload to R2 ──
+    const buffer    = Buffer.from(await file.arrayBuffer());
+    const publicUrl = await uploadToR2(r2Key, buffer, file.type);
+
+    // ── Insert Supabase row ──
+    const { data, error: dbErr } = await supabaseAdmin
+      .from('photos')
+      .insert({
+        critical_id:    criticalId    ?? null,
+        maintenance_id: maintId       ?? null,
+        work_order_id:  workOrderId   ?? null,
+        url:            publicUrl,
+        filename:       file.name,
+        uploaded_via:   'app',
+        uploaded_by:    uploadedBy    ?? null,
+      })
+      .select()
+      .single();
+
+    if (dbErr) {
+      // DB failed — clean up orphaned R2 object
+      try { await deleteFromR2(r2Key); } catch { /* best effort */ }
+      return NextResponse.json({ error: dbErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ photo: data }, { status: 201 });
+
+  } catch (err) {
+    console.error('[upload/POST]', err);
+    const message = err instanceof Error ? err.message : String(err);
+    // Surface specific error so client can show it (and we can debug)
+    return NextResponse.json({
+      error: message || 'Internal server error',
+      // In dev, also include stack to speed debugging
+      ...(process.env.NODE_ENV !== 'production' && err instanceof Error
+        ? { stack: err.stack }
+        : {}),
+    }, { status: 500 });
+  }
+}

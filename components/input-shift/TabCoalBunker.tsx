@@ -49,7 +49,7 @@ export default function TabCoalBunker({ values = {}, onFieldChange, onStatusChan
     const activeWarnings = bunkerWarnings.filter(b => berasapSince[b.key]);
 
     return (
-        <div className="flex-1 w-full overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
+        <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
             {/* Berasap warnings */}
             {activeWarnings.length > 0 && (
                 <div className="flex flex-col gap-2 mb-4">

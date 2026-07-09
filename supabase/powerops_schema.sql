@@ -234,6 +234,8 @@ CREATE TABLE shift_boiler (
     primary_air NUMERIC, secondary_air NUMERIC, o2 NUMERIC,
     feeder_a_flow NUMERIC, feeder_b_flow NUMERIC, feeder_c_flow NUMERIC,
     feeder_d_flow NUMERIC, feeder_e_flow NUMERIC, feeder_f_flow NUMERIC,
+    -- Status boiler (running / shutdown)
+    status_boiler TEXT DEFAULT 'running',
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id, boiler)
 );
@@ -253,6 +255,13 @@ CREATE TABLE shift_coal_bunker (
     status_bunker_d TEXT DEFAULT 'Normal',
     status_bunker_e TEXT DEFAULT 'Normal',
     status_bunker_f TEXT DEFAULT 'Normal',
+    -- Status feeder (running / standby / emergency standby / not standby)
+    status_feeder_a TEXT DEFAULT 'running',
+    status_feeder_b TEXT DEFAULT 'running',
+    status_feeder_c TEXT DEFAULT 'running',
+    status_feeder_d TEXT DEFAULT 'running',
+    status_feeder_e TEXT DEFAULT 'running',
+    status_feeder_f TEXT DEFAULT 'running',
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)
 );
@@ -269,12 +278,12 @@ CREATE TABLE shift_water_quality (
     demin_750_th NUMERIC, demin_750_sio2 NUMERIC,
     -- BFW
     bfw_ph NUMERIC, bfw_conduct NUMERIC, bfw_th NUMERIC,
-    bfw_sio2 NUMERIC, bfw_nh4 NUMERIC, bfw_chz NUMERIC,
+    bfw_sio2 NUMERIC, bfw_nh4 NUMERIC, bfw_chz NUMERIC, bfw_fe NUMERIC,
     -- Boiler Water A
-    boiler_water_a_ph NUMERIC, boiler_water_a_conduct NUMERIC,
+    boiler_water_a_ph NUMERIC, boiler_water_a_conduct NUMERIC, boiler_water_a_th NUMERIC,
     boiler_water_a_sio2 NUMERIC, boiler_water_a_po4 NUMERIC,
     -- Boiler Water B
-    boiler_water_b_ph NUMERIC, boiler_water_b_conduct NUMERIC,
+    boiler_water_b_ph NUMERIC, boiler_water_b_conduct NUMERIC, boiler_water_b_th NUMERIC,
     boiler_water_b_sio2 NUMERIC, boiler_water_b_po4 NUMERIC,
     -- Product Steam
     product_steam_ph NUMERIC, product_steam_conduct NUMERIC,
@@ -292,6 +301,8 @@ CREATE TABLE shift_water_quality (
     -- Chemical Dosing: Hydrazine
     hydrazine_level_tanki NUMERIC, hydrazine_stroke_pompa NUMERIC,
     hydrazine_penambahan_air NUMERIC, hydrazine_penambahan_chemical NUMERIC,
+    -- Operator Boiler lapangan (dipilih di form Lab, utk LogSheet Boiler kolom EL/EM)
+    operator_boiler_a TEXT, operator_boiler_b TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(shift_report_id)
 );
@@ -505,15 +516,30 @@ CREATE TABLE shift_notes (
     timestamp TIMESTAMPTZ DEFAULT now()
 );
 
--- ─── Solar Unloadings ───
+-- ─── Solar Unloadings (kedatangan/in solar per shift) ───
 CREATE TABLE solar_unloadings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL,
+    shift TEXT,
     liters NUMERIC NOT NULL,
     supplier TEXT NOT NULL,
     operator_id UUID REFERENCES operators(id),
     created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- ─── Solar Usages (pemakaian/out solar per shift) ───
+CREATE TABLE solar_usages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    date DATE NOT NULL,
+    shift TEXT NOT NULL,
+    liters NUMERIC NOT NULL,
+    tujuan TEXT NOT NULL,
+    operator_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_solar_usages_date ON solar_usages(date);
+CREATE INDEX idx_solar_usages_date_shift ON solar_usages(date, shift);
 
 -- ─── Ash Unloadings (Unloading Fly Ash per Shift) ───
 CREATE TABLE ash_unloadings (

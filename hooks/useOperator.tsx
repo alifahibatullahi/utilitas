@@ -22,6 +22,7 @@ interface OperatorContextType {
     canInputTank: boolean;
     canApprove: boolean;
     canManageUsers: boolean;
+    canReviewReport: boolean;
 }
 
 const GROUP_ROLES: OperatorRole[] = ['group_a', 'group_b', 'group_c', 'group_d'];
@@ -42,6 +43,7 @@ const OperatorContext = createContext<OperatorContextType>({
     canInputTank: false,
     canApprove: false,
     canManageUsers: false,
+    canReviewReport: false,
 });
 
 function getStoredOperator(): Operator | null {
@@ -136,6 +138,8 @@ export function OperatorProvider({ children }: { children: ReactNode }) {
                 canInputTank: isHandling,
                 canApprove: isSupervisor || isAdmin,
                 canManageUsers: isAdmin,
+                // Reviewer untuk approval publish — supervisor + foreman boiler/turbin + admin.
+                canReviewReport: isAdmin || isSupervisor || isForeman,
             }}
         >
             {children}

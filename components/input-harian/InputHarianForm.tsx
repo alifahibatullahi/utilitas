@@ -827,41 +827,29 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     }).catch(() => { /* non-blocking */ });
                 }
 
-                // Build WA preview for Utilitas 2 & SU 3A when panel_turbin saves harian
+                // Preview WA untuk Utilitas 2 & SU 3A saat panel_turbin save harian.
+                // Teks diambil dari server (mode preview/dry-run di notify-turbin-save)
+                // supaya identik dengan pesan yang benar-benar dikirim — termasuk
+                // Temperatur Pabrik 3A yang server ambil dari data shift terakhir.
                 if (station === 'panel_turbin' && result?.reportId) {
-                    const fmt = (v: number | string | null | undefined) => {
-                        if (v == null) return '-';
-                        const n = Number(v);
-                        if (isNaN(n)) return '-';
-                        return Number.isInteger(n) ? String(n) : n.toFixed(1);
-                    };
-                    setWaPreview({
-                        reportId: result.reportId,
-                        sending: false,
-                        items: [
-                            {
-                                target: 'utilitas_2', label: 'Utilitas 2', status: 'pending',
-                                message: [
-                                    `⚡ *Laporan Power Harian*`,
-                                    `Tanggal: ${date}`,
-                                    '',
-                                    `Totalizer Pabrik 2 : ${fmt(powerForSubmit.power_pabrik2_totalizer)} MWh`,
-                                    `Selisih (hari ini − kemarin): ${fmt(powerForSubmit.selisih_pabrik2)} MWh`,
-                                ].join('\n'),
-                            },
-                            {
-                                target: 'su_3a', label: 'SU 3A', status: 'pending',
-                                message: [
-                                    `🔥 *Distribusi Steam Pabrik 3 — Harian*`,
-                                    `Tanggal: ${date}`,
-                                    '',
-                                    `Flow jam 00:00   : ${fmt(steamWithCalcs.mps_3a_00)} t/h`,
-                                    `Totalizer 24 jam : ${fmt(steamWithCalcs.mps_3a_24)} ton`,
-                                    `Selisih (hari ini − kemarin): ${fmt(steamWithCalcs.selisih_mps_3a)} ton`,
-                                ].join('\n'),
-                            },
-                        ],
-                    });
+                    const reportId = result.reportId;
+                    fetch('/api/whatsapp/notify-turbin-save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'harian', date, reportId, preview: true }),
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            const items = (data?.results ?? []) as { target: string; label: string; message: string }[];
+                            if (items.length > 0) {
+                                setWaPreview({
+                                    reportId,
+                                    sending: false,
+                                    items: items.map(it => ({ ...it, status: 'pending' as const })),
+                                });
+                            }
+                        })
+                        .catch(() => showToast('Gagal memuat preview notifikasi WhatsApp', 'error'));
                 }
             }
             clearInterval(progressInterval);

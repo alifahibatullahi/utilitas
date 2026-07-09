@@ -1315,48 +1315,28 @@ function InputShiftPageInner() {
                     }).catch(() => { /* non-blocking */ });
                 }
 
-                // Build WA preview for Utilitas 2 & SU 3A when panel_turbin saves
+                // Preview WA untuk Utilitas 2 & SU 3A saat panel_turbin save.
+                // Teks diambil dari server (mode preview/dry-run di notify-turbin-save)
+                // supaya identik dengan pesan yang benar-benar dikirim — tanpa kirim WA.
                 if (station === 'panel_turbin' && result?.reportId) {
-                    const fmt = (v: number | string | null | undefined) => {
-                        if (v == null) return '-';
-                        const n = Number(v);
-                        if (isNaN(n)) return '-';
-                        return Number.isInteger(n) ? String(n) : n.toFixed(1);
-                    };
-                    const sn = shiftMap[selectedShift];
-                    const sc = sn.charAt(0).toUpperCase() + sn.slice(1);
-                    setWaPreview({
-                        reportId: result.reportId,
-                        sending: false,
-                        items: [
-                            {
-                                target: 'utilitas_2', label: 'Utilitas 2', status: 'pending',
-                                message: [
-                                    `⚡ *Laporan Power Shift ${sc}*`,
-                                    `Tanggal: ${selectedDate}`,
-                                    '',
-                                    `Internal UBB : ${fmt(powerDist.power_ubb)} MW`,
-                                    `Pabrik 2     : ${fmt(powerDist.power_pabrik2)} MW`,
-                                    `Pabrik 3A    : ${fmt(powerDist.power_pabrik3a)} MW`,
-                                    `Pabrik 3B    : ${fmt(powerDist.power_revamping)} MW`,
-                                    `PIU          : ${fmt(powerDist.power_pie)} MW`,
-                                    `STG UBB      : ${fmt(generatorGi.gen_load)} MW`,
-                                ].join('\n'),
-                            },
-                            {
-                                target: 'su_3a', label: 'SU 3A', status: 'pending',
-                                message: [
-                                    `🔥 *Distribusi Steam Pabrik 3 — Shift ${sc}*`,
-                                    `Tanggal: ${selectedDate}`,
-                                    '',
-                                    `Flow      : ${fmt(steamDist.pabrik3a_flow)} t/h`,
-                                    `Temperatur: ${fmt(steamDist.pabrik3a_temp)} °C`,
-                                    `Totalizer : ${fmt(steamDist.pabrik3a_totalizer)} ton`,
-                                    `Selisih   : ${fmt(selisihSteamDist.selisih_pabrik3a)} ton`,
-                                ].join('\n'),
-                            },
-                        ],
-                    });
+                    const reportId = result.reportId;
+                    fetch('/api/whatsapp/notify-turbin-save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'shift', date: selectedDate, shift: shiftMap[selectedShift], reportId, preview: true }),
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            const items = (data?.results ?? []) as { target: string; label: string; message: string }[];
+                            if (items.length > 0) {
+                                setWaPreview({
+                                    reportId,
+                                    sending: false,
+                                    items: items.map(it => ({ ...it, status: 'pending' as const })),
+                                });
+                            }
+                        })
+                        .catch(() => showToast('Gagal memuat preview notifikasi WhatsApp', 'error'));
                 }
                 // Refresh saved data
                 const spb = createClient();

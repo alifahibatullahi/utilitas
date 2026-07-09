@@ -7,7 +7,46 @@ import { TANK_IDS, TANKS, TankId, TANK_THRESHOLDS, DEFAULT_THRESHOLDS } from '@/
 import { getAlertStatus } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import BottomTabBar from '@/components/layout/BottomTabBar';
+
+// View Ash Silo dimuat lazy: chunk + fetch datanya baru jalan saat user
+// membuka view-nya, supaya load awal tank level tetap ringan.
+const AshSiloSection = dynamic(() => import('@/components/ash-silo/AshSiloSection'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex items-center justify-center py-16 text-slate-500 gap-3">
+            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+            <span className="text-sm font-bold uppercase tracking-widest">Memuat Ash Silo…</span>
+        </div>
+    ),
+});
+
+type MonitorView = 'tank' | 'ash';
+
+function ViewToggle({ view, onChange, size = 'sm' }: { view: MonitorView; onChange: (v: MonitorView) => void; size?: 'sm' | 'lg' }) {
+    const btnBase = size === 'lg'
+        ? 'px-5 py-2.5 2xl:px-6 2xl:py-3 text-xs 2xl:text-sm'
+        : 'flex-1 px-3 py-2 text-[11px]';
+    const opts: { id: MonitorView; label: string; icon: string }[] = [
+        { id: 'tank', label: 'Tank', icon: 'water_drop' },
+        { id: 'ash', label: 'Ash Silo', icon: 'inventory_2' },
+    ];
+    return (
+        <div className={`bg-slate-800/60 border border-slate-700 rounded-full p-1 flex gap-1 ${size === 'sm' ? 'w-full' : ''}`}>
+            {opts.map(opt => (
+                <button key={opt.id} onClick={() => onChange(opt.id)}
+                    className={`${btnBase} rounded-full font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        view === opt.id
+                            ? 'bg-primary text-white shadow-[0_0_15px_rgba(43,124,238,0.4)]'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}>
+                    <span className={`material-symbols-outlined ${size === 'lg' ? 'text-[18px]' : 'text-[15px]'}`}>{opt.icon}</span>
+                    {opt.label}
+                </button>
+            ))}
+        </div>
+    );
+}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -916,6 +955,14 @@ function TankLevelPageInner() {
     const isGuest = searchParams.get('guest') === '1';
     const [now, setNow] = useState('');
 
+    // View switch Tank ↔ Ash Silo tanpa reload. Kedua view tetap mounted
+    // setelah pertama dibuka (toggle hanya CSS) agar pindah view instan;
+    // ash baru mount saat pertama kali dibuka (lazy).
+    const initialView: MonitorView = searchParams.get('view') === 'ash' ? 'ash' : 'tank';
+    const [view, setView] = useState<MonitorView>(initialView);
+    const [ashMounted, setAshMounted] = useState(initialView === 'ash');
+    const openView = (v: MonitorView) => { setView(v); if (v === 'ash') setAshMounted(true); };
+
     // Live clock
     useEffect(() => {
         const tick = () => setNow(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
@@ -970,7 +1017,7 @@ function TankLevelPageInner() {
                     <div className="flex items-center justify-between gap-2 mb-2">
                         <div>
                             <h1 className="text-lg font-black tracking-tight text-white leading-tight">
-                                Tank Level <span className="text-primary">Monitoring UBB</span>
+                                {view === 'ash' ? 'Ash Silo' : 'Tank Level'} <span className="text-primary">Monitoring UBB</span>
                             </h1>
                             <p className="text-[10px] text-slate-500 uppercase tracking-[0.15em] font-bold">CCR Live Display</p>
                         </div>
@@ -1015,9 +1062,15 @@ function TankLevelPageInner() {
                         </div>
                     </div>
                 </header>
-                <div className="grid grid-cols-1 gap-4">
+                <ViewToggle view={view} onChange={openView} size="sm" />
+                <div className={view === 'tank' ? 'grid grid-cols-1 gap-4' : 'hidden'}>
                     {TANK_IDS.map(id => <TankCard key={id} tankId={id} readOnly={isGuest} />)}
                 </div>
+                {ashMounted && (
+                    <div className={view === 'ash' ? '' : 'hidden'}>
+                        <AshSiloSection />
+                    </div>
+                )}
             </div>
 
             {/* Bottom tab bar — mobile only (sembunyikan untuk guest agar full kiosk) */}
@@ -1045,10 +1098,13 @@ function TankLevelPageInner() {
                             {/* Title */}
                             <div>
                                 <h1 className="text-4xl 2xl:text-[48px] font-black text-white leading-none tracking-tight m-0">
-                                    Tank Level <span className="text-primary">Monitoring UBB</span>
+                                    {view === 'ash' ? 'Ash Silo' : 'Tank Level'} <span className="text-primary">Monitoring UBB</span>
                                 </h1>
                                 <p className="text-xs 2xl:text-[13px] text-primary uppercase font-black tracking-[0.3em] mt-2">CCR Live Display</p>
                             </div>
+
+                            {/* View switch Tank | Ash Silo */}
+                            <ViewToggle view={view} onChange={openView} size="lg" />
 
                             {/* Clocks */}
                             <div className="flex items-stretch gap-4">
@@ -1099,9 +1155,14 @@ function TankLevelPageInner() {
                     </header>
 
                     {/* Tank cards — fill remaining height */}
-                    <div className="grid grid-cols-3 gap-4 2xl:gap-6 flex-1 min-h-0 mt-2">
+                    <div className={view === 'tank' ? 'grid grid-cols-3 gap-4 2xl:gap-6 flex-1 min-h-0 mt-2' : 'hidden'}>
                         {TANK_IDS.map(id => <TankCard key={id} tankId={id} compact readOnly={isGuest} />)}
                     </div>
+                    {ashMounted && (
+                        <div className={view === 'ash' ? 'flex-1 min-h-0 mt-2 overflow-y-auto custom-scrollbar' : 'hidden'}>
+                            <AshSiloSection compact />
+                        </div>
+                    )}
                 </div>
             </div>
         </>

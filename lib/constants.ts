@@ -539,6 +539,20 @@ export function detectDefaultReport(): { mode: 'shift' | 'harian'; shift: ShiftK
     return { mode: 'shift', shift: cur.shift, date: cur.date };
 }
 
+// ─── Format tanggal Indonesia ───
+export const HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+export const BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+/** Format tanggal ISO (YYYY-MM-DD) ke Indonesia "Hari, DD Bulan YYYY"
+ *  (mis. "Selasa, 10 Juni 2026"). Pakai UTC murni supaya nama hari tidak bergeser
+ *  saat server bukan WIB (Vercel jalan di UTC). */
+export function formatTanggalIndo(iso: string): string {
+    const [y, m, d] = iso.split('-').map(Number);
+    if (!y || !m || !d) return iso;
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return `${HARI_ID[dt.getUTCDay()]}, ${d} ${BULAN_ID[m - 1]} ${y}`;
+}
+
 export const KANBAN_COLUMNS = [
     { id: 'OPEN', label: 'Open', bgColor: 'bg-blue-50', borderColor: 'border-blue-300', headerBg: 'bg-blue-500', textColor: 'text-blue-700', badgeBg: 'bg-blue-100' },
     { id: 'IP', label: 'In Progress', bgColor: 'bg-amber-50', borderColor: 'border-amber-300', headerBg: 'bg-amber-500', textColor: 'text-amber-700', badgeBg: 'bg-amber-100' },

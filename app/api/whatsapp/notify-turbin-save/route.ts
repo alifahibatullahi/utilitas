@@ -5,6 +5,7 @@ import {
     getWhatsappGroup,
     logNotification,
 } from '@/lib/whatsapp';
+import { BULAN_ID, formatTanggalIndo } from '@/lib/constants';
 
 function fmtNum(v: number | null | undefined, decimals = 1): string {
     if (v == null) return '-';
@@ -17,20 +18,11 @@ function shiftLabel(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-const BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
 /** Format "2026-05-23" → "23 Mei". Parse local agar tidak ke-shift TZ. */
 function formatTanggalBulan(isoDate: string): string {
     const [, m, d] = (isoDate || '').split('-').map(Number);
     if (!m || !d) return isoDate ?? '';
     return `${d} ${BULAN_ID[m - 1] ?? ''}`.trim();
-}
-
-/** Format "2026-05-23" → "23 Mei 2026" untuk baris Tanggal di pesan WA. */
-function formatTanggalIndo(isoDate: string): string {
-    const [y, m, d] = (isoDate || '').split('-').map(Number);
-    if (!y || !m || !d) return isoDate ?? '';
-    return `${d} ${BULAN_ID[m - 1] ?? ''} ${y}`.replace(/\s+/g, ' ').trim();
 }
 
 interface NotifyBody {

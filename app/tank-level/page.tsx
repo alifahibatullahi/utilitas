@@ -1103,9 +1103,6 @@ function TankLevelPageInner() {
                                 <p className="text-xs 2xl:text-[13px] text-primary uppercase font-black tracking-[0.3em] mt-2">CCR Live Display</p>
                             </div>
 
-                            {/* View switch Tank | Ash Silo */}
-                            <ViewToggle view={view} onChange={openView} size="lg" />
-
                             {/* Clocks */}
                             <div className="flex items-stretch gap-4">
                                 <div className="bg-primary/10 border-2 border-primary/50 rounded-2xl md:rounded-[24px] px-6 py-3 2xl:px-7 2xl:py-3.5 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(43,124,238,0.3)] relative overflow-hidden group">
@@ -1124,6 +1121,9 @@ function TankLevelPageInner() {
                                     <span className="text-4xl 2xl:text-[48px] font-black font-mono text-white tracking-widest leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] mt-1.5">{now}</span>
                                 </div>
                             </div>
+
+                            {/* View switch Tank | Ash Silo — di kanan Local Time */}
+                            <ViewToggle view={view} onChange={openView} size="lg" />
 
                             {/* Buttons / Guest badge */}
                             <div className="flex items-center gap-3">

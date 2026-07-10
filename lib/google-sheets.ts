@@ -717,3 +717,114 @@ export async function upsertCatatanOperasional(
     }), `update catatan ${tab}!D${newRow}`);
     return { action: 'created', tab, rowIndex: newRow };
 }
+
+// ─── EVAL CM (Total PA/SA coal mill per boiler, shift pagi) ───────────────────
+//
+// Sheet "EVAL CM" (gid 773770664) di spreadsheet catatan yang sama:
+//   Baris 2 header, data mulai baris 4. Kolom A = tanggal (satu baris per
+//   tanggal, pre-filled berurutan s/d ~Agustus 2026), kolom B = shift
+//   (historis selalu "PAGI" — parameter dicatat sekali sehari di shift pagi).
+//   Blok boiler A: Total PA kolom R, Total SA kolom S.
+//   Blok boiler B: Total PA kolom AL, Total SA kolom AM.
+// Ditulis HANYA dari laporan shift pagi. Baris dicari by tanggal kolom A
+// (bukan anchor offset) supaya tahan baris sisipan/gap; tidak ketemu → skip
+// dengan reason (baris tanggal diisi manual oleh user, kita tidak menambah).
+
+const EVAL_CM_GID = 773770664;
+const EVAL_CM_COLUMNS = { aPa: 'R', aSa: 'S', bPa: 'AL', bSa: 'AM' } as const;
+
+let evalCmTabTitleCache: string | null = null;
+
+async function resolveEvalCmTab(sheets: ReturnType<typeof getSheetsClient>, force = false): Promise<string> {
+    if (evalCmTabTitleCache && !force) return evalCmTabTitleCache;
+    const meta = await withRetry(() => sheets.spreadsheets.get({
+        spreadsheetId: CATATAN_SPREADSHEET_ID,
+        fields: 'sheets.properties(sheetId,title)',
+    }), 'get eval cm tab meta');
+    const tab = meta.data.sheets?.find(s => s.properties?.sheetId === EVAL_CM_GID);
+    const title = tab?.properties?.title;
+    if (!title) throw new Error(`Tab gid=${EVAL_CM_GID} (EVAL CM) tidak ditemukan di spreadsheet catatan`);
+    evalCmTabTitleCache = title;
+    return title;
+}
+
+export interface EvalCmAirValues {
+    aPa?: number | null;  // boiler A primary air   → kolom R
+    aSa?: number | null;  // boiler A secondary air → kolom S
+    bPa?: number | null;  // boiler B primary air   → kolom AL
+    bSa?: number | null;  // boiler B secondary air → kolom AM
+}
+
+export interface EvalCmUpdateResult {
+    action: 'updated' | 'skipped';
+    tab?: string;
+    rowIndex?: number;
+    updates?: { range: string; value: number | string }[];
+    reason?: string;
+}
+
+/**
+ * Tulis Total PA/SA boiler A/B (input station Panel Boiler, shift pagi) ke
+ * sheet EVAL CM. Nilai null/undefined dilewati sehingga station Panel A tidak
+ * menimpa kolom milik Panel B (dan sebaliknya) — pola scoping yang sama
+ * dengan upsertShiftRow. Kolom B diisi "PAGI" hanya bila masih kosong
+ * (tidak menimpa isian manual).
+ */
+export async function upsertEvalCmAir(isoDate: string, values: EvalCmAirValues): Promise<EvalCmUpdateResult> {
+    const entries = (Object.entries(EVAL_CM_COLUMNS) as [keyof EvalCmAirValues, string][])
+        .filter(([key]) => values[key] != null)
+        .map(([key, col]) => ({ col, value: values[key] as number }));
+    if (entries.length === 0) return { action: 'skipped', reason: 'tidak ada nilai PA/SA' };
+
+    const sheets = getSheetsClient();
+    let tab = await resolveEvalCmTab(sheets);
+
+    const readRows = async (): Promise<string[][]> => {
+        const res = await withRetry(() => sheets.spreadsheets.values.get({
+            spreadsheetId: CATATAN_SPREADSHEET_ID,
+            range: `${quoteTab(tab)}!A1:B`,
+            valueRenderOption: 'FORMATTED_VALUE',
+        }), `get eval cm ${tab}!A1:B`);
+        return (res.data.values ?? []) as string[][];
+    };
+
+    let rows: string[][];
+    try {
+        rows = await readRows();
+    } catch (err) {
+        // Judul tab basi (di-rename setelah di-cache) → refresh dari gid, 1x ulang.
+        if (!/unable to parse range/i.test(err instanceof Error ? err.message : String(err))) throw err;
+        tab = await resolveEvalCmTab(sheets, true);
+        rows = await readRows();
+    }
+
+    let matchRow: number | null = null; // 1-based sheet row
+    let shiftCellEmpty = false;
+    for (let i = 0; i < rows.length; i++) {
+        if (parseCatatanSheetDate((rows[i][0] ?? '').trim()) === isoDate) {
+            matchRow = i + 1;
+            shiftCellEmpty = (rows[i][1] ?? '').trim() === '';
+            break;
+        }
+    }
+    if (matchRow === null) {
+        return { action: 'skipped', tab, reason: `tanggal ${isoDate} tidak ditemukan di kolom A EVAL CM` };
+    }
+
+    const data: { range: string; values: (number | string)[][] }[] = entries.map(e => ({
+        range: `${quoteTab(tab)}!${e.col}${matchRow}`,
+        values: [[e.value]],
+    }));
+    if (shiftCellEmpty) {
+        data.push({ range: `${quoteTab(tab)}!B${matchRow}`, values: [['PAGI']] });
+    }
+    await withRetry(() => sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: CATATAN_SPREADSHEET_ID,
+        requestBody: { valueInputOption: 'USER_ENTERED', data },
+    }), `batchUpdate eval cm baris ${matchRow}`);
+
+    return {
+        action: 'updated', tab, rowIndex: matchRow,
+        updates: entries.map(e => ({ range: `${e.col}${matchRow}`, value: e.value })),
+    };
+}

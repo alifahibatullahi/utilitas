@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift, upsertCatatanOperasional } from '@/lib/google-sheets';
+import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift, upsertCatatanOperasional, upsertEvalCmAir, type EvalCmUpdateResult } from '@/lib/google-sheets';
 import { getShiftCatatanCanonical } from '@/lib/shift-catatan';
 import { upsertLogsheetBoiler, type LogsheetShift, type LogsheetBunker, type LogsheetLab, type LogsheetPersonnel } from '@/lib/logsheet-boiler';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
@@ -92,7 +92,37 @@ export async function POST(req: NextRequest) {
         try {
             const row = shiftReportToRow({ ...reportData, shift }, { boilerA: prevBoilerA, boilerB: prevBoilerB });
             const result = await upsertShiftRow(shift, reportData.date, group_name ?? '', row);
-            return NextResponse.json(result);
+
+            // EVAL CM: Total PA/SA panel boiler A/B — hanya shift pagi. Payload
+            // boilerA/boilerB sudah di-scope per station di klien, jadi Panel A
+            // tidak membawa (dan tidak menimpa) kolom milik Panel B. Gagal EVAL CM
+            // → warning (klien retry; upsert idempotent), baris utama sudah masuk.
+            let evalCm: EvalCmUpdateResult | undefined;
+            if (shift === 'pagi') {
+                const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v));
+                const bA = (reportData.boilerA ?? {}) as Record<string, unknown>;
+                const bB = (reportData.boilerB ?? {}) as Record<string, unknown>;
+                const air = {
+                    aPa: reportData.boilerA ? num(bA.primary_air) : null,
+                    aSa: reportData.boilerA ? num(bA.secondary_air) : null,
+                    bPa: reportData.boilerB ? num(bB.primary_air) : null,
+                    bSa: reportData.boilerB ? num(bB.secondary_air) : null,
+                };
+                if (air.aPa != null || air.aSa != null || air.bPa != null || air.bSa != null) {
+                    try {
+                        evalCm = await upsertEvalCmAir(reportData.date, air);
+                        console.log(`[sheets/write] eval_cm ${reportData.date} →`, evalCm);
+                    } catch (evalErr) {
+                        console.error('[sheets/write] eval_cm error:', evalErr);
+                        return NextResponse.json({
+                            ...result,
+                            warning: `Sheet utama OK, EVAL CM gagal: ${evalErr instanceof Error ? evalErr.message : String(evalErr)}`,
+                        });
+                    }
+                }
+            }
+
+            return NextResponse.json({ ...result, evalCm });
         } catch (err) {
             console.error('[sheets/write] shift_report error:', err);
             return NextResponse.json({

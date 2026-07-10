@@ -7,10 +7,28 @@ import {
 } from '@/lib/ash-silo';
 import { AshUnloadingEntry, SiloLevelInfo } from '@/hooks/useAshSiloData';
 
-// Tema aksen ash silo — pola sama seperti TANK_COLORS di halaman tank-level.
-const SILO_COLOR = {
-    base: '#a78bfa', bgClass: 'bg-violet-500', textClass: 'text-violet-400',
-    icon: 'inventory_2', borderClass: 'border-violet-500/30',
+// Tema aksen per silo — pola sama seperti TANK_COLORS di halaman tank-level.
+// A ungu, B cyan supaya kedua kartu langsung terbedakan di layar CCR.
+const SILO_COLORS: Record<SiloId, {
+    base: string; bgClass: string; textClass: string; icon: string; borderClass: string;
+    itemClass: string; iconBoxClass: string; buttonClass: string; modalIconClass: string;
+}> = {
+    A: {
+        base: '#a78bfa', bgClass: 'bg-violet-500', textClass: 'text-violet-400',
+        icon: 'inventory_2', borderClass: 'border-violet-500/30',
+        itemClass: 'border-l-violet-500 hover:border-violet-500/40 hover:shadow-[0_6px_20px_rgba(167,139,250,0.12)]',
+        iconBoxClass: 'bg-violet-500/10 border-violet-500/20 text-violet-400 group-hover:bg-violet-500/20 group-hover:border-violet-500/40',
+        buttonClass: 'bg-violet-500/10 hover:bg-violet-500 text-violet-400 border-violet-500/30 hover:border-violet-500',
+        modalIconClass: 'bg-violet-500/20 text-violet-400',
+    },
+    B: {
+        base: '#22d3ee', bgClass: 'bg-cyan-500', textClass: 'text-cyan-400',
+        icon: 'inventory_2', borderClass: 'border-cyan-500/30',
+        itemClass: 'border-l-cyan-500 hover:border-cyan-500/40 hover:shadow-[0_6px_20px_rgba(34,211,238,0.12)]',
+        iconBoxClass: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:border-cyan-500/40',
+        buttonClass: 'bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 border-cyan-500/30 hover:border-cyan-500',
+        modalIconClass: 'bg-cyan-500/20 text-cyan-400',
+    },
 };
 
 // Siluet silinder + kerucut bawah. Sambungan kerucut di 4,8 m dari 12,69 m
@@ -41,7 +59,7 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyPage, setHistoryPage] = useState(1);
 
-    const tc = SILO_COLOR;
+    const tc = SILO_COLORS[siloId];
     const pct = level?.pct ?? null;
     const status = pct === null ? 'normal' : getSiloStatus(pct);
 
@@ -61,17 +79,16 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
         const lbl = `${formatDateLabel(entry.date)} • Shift ${SHIFT_LABEL[entry.shift] ?? entry.shift}`;
         return (
             <div key={entry.id ?? idx}
-                className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-violet-500 hover:border-violet-500/40 hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:shadow-[0_6px_20px_rgba(167,139,250,0.12)] hover:z-10 transition-all duration-300 group relative overflow-hidden cursor-default shadow-sm">
-                <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
-                    <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center border border-violet-500/20 text-violet-400 shrink-0 shadow-inner group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:border-violet-500/40 transition-all duration-300">
-                        <span className="material-symbols-outlined text-[22px]">local_shipping</span>
+                className={`flex items-center justify-between px-5 py-4 xl:px-6 xl:py-5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 ${tc.itemClass} hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:z-10 transition-all duration-300 group relative overflow-hidden cursor-default shadow-sm`}>
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                    <div className={`w-12 h-12 rounded-lg ${tc.iconBoxClass} flex items-center justify-center border shrink-0 shadow-inner group-hover:scale-110 transition-all duration-300`}>
+                        <span className="material-symbols-outlined text-[26px]">local_shipping</span>
                     </div>
                     <div className="flex flex-col min-w-0">
-                        <span className="text-xs text-slate-500 font-bold uppercase tracking-wider leading-none mb-1">{lbl}</span>
-                        <span className="text-base xl:text-lg font-black text-white truncate leading-tight drop-shadow-md"
-                            title={`${entry.ritase.toLocaleString('id-ID')} rit ke ${entry.perusahaan}${entry.tujuan ? ` → ${entry.tujuan}` : ''}`}>
-                            <span className="font-mono text-violet-400">{entry.ritase.toLocaleString('id-ID')} rit</span>
-                            <span className="text-slate-400 font-bold"> ke </span>
+                        <span className="text-sm text-slate-300 font-bold uppercase tracking-wider leading-none mb-1.5">{lbl}</span>
+                        <span className="text-lg xl:text-xl font-black text-white leading-snug break-words drop-shadow-md">
+                            <span className={`font-mono ${tc.textClass}`}>{entry.ritase.toLocaleString('id-ID')} rit</span>
+                            <span className="text-white font-bold"> ke </span>
                             {entry.perusahaan}{entry.tujuan ? ` → ${entry.tujuan}` : ''}
                         </span>
                     </div>
@@ -99,7 +116,7 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                 </div>
                 <div className="flex items-center gap-2 lg:gap-3">
                     <button onClick={() => { setHistoryPage(1); setIsHistoryModalOpen(true); }}
-                        className="bg-violet-500/10 hover:bg-violet-500 text-violet-400 hover:text-white border border-violet-500/30 hover:border-violet-500 p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group">
+                        className={`${tc.buttonClass} hover:text-white border p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>
                         <span className="material-symbols-outlined text-[16px] lg:text-[14px]">history</span>
                         <span className="hidden lg:inline">History</span>
                     </button>
@@ -151,10 +168,11 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                     <div className="mt-6 flex flex-col items-center">
                         <span className="text-xs text-slate-500 uppercase tracking-[0.2em] font-black mb-1.5">Estimasi Isi</span>
                         <div className="flex items-baseline gap-1.5">
-                            <p className="text-4xl xl:text-5xl font-black font-mono leading-none tracking-tighter" style={{ color: tc.base, textShadow: `0 0 20px ${tc.base}40` }}>
+                            <p className="text-4xl xl:text-5xl font-black font-mono leading-none tracking-tighter text-white"
+                                style={{ textShadow: `0 0 40px ${tc.base}80, 0 0 80px ${tc.base}30` }}>
                                 {ton === null ? '—' : ton.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
                             </p>
-                            {ton !== null && <span className="text-lg xl:text-xl font-black text-slate-400">ton</span>}
+                            {ton !== null && <span className={`text-lg xl:text-xl font-black ${tc.textClass}`}>ton</span>}
                         </div>
                     </div>
                 </div>
@@ -188,8 +206,9 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                                     </div>
                                     {/* tonase on mobile (no silo visual) */}
                                     <div className="lg:hidden ml-auto flex items-baseline gap-1 shrink-0">
-                                        <span className="text-2xl font-black font-mono" style={{ color: tc.base }}>{ton!.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
-                                        <span className="text-xs font-black text-slate-400">ton</span>
+                                        <span className="text-2xl font-black font-mono text-white"
+                                            style={{ textShadow: `0 0 20px ${tc.base}80` }}>{ton!.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                                        <span className={`text-xs font-black ${tc.textClass}`}>ton</span>
                                     </div>
                                 </div>
                                 <div className="mt-3 bg-slate-800/50 border border-slate-700/60 px-3 py-2 rounded-xl w-full overflow-hidden">
@@ -232,13 +251,14 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8 bg-slate-950/80 backdrop-blur-md"
                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
                     <div className="bg-surface-dark border border-slate-700/60 rounded-[28px] shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden"
-                        style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(167, 139, 250, 0.1)' }}>
+                        style={{ boxShadow: `0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px ${tc.base}1A` }}>
                         {/* Header Modal */}
                         <div className="flex items-center justify-between px-6 py-5 2xl:px-8 2xl:py-6 border-b border-slate-800"
                             style={{ background: `linear-gradient(to right, ${tc.base}22, transparent 70%)` }}>
                             <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-2xl bg-violet-500/20 shadow-[0_0_20px_rgba(167,139,250,0.2)] flex items-center justify-center">
-                                    <span className="text-violet-400 material-symbols-outlined text-2xl 2xl:text-3xl">history</span>
+                                <div className={`p-3 rounded-2xl ${tc.modalIconClass} flex items-center justify-center`}
+                                    style={{ boxShadow: `0 0 20px ${tc.base}33` }}>
+                                    <span className="material-symbols-outlined text-2xl 2xl:text-3xl">history</span>
                                 </div>
                                 <div>
                                     <h3 className="text-xl 2xl:text-2xl font-black text-white leading-tight">History Unloading Silo {siloId}</h3>
@@ -269,7 +289,7 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                                     </button>
                                     <span className="text-xs font-bold text-slate-400">Page {historyPage} / {totalPages}</span>
                                     <button onClick={() => setHistoryPage(p => Math.min(totalPages, p + 1))} disabled={historyPage === totalPages}
-                                        className="flex items-center gap-1.5 px-4 py-2 bg-violet-500/10 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold text-violet-400 hover:text-white border border-violet-500/30 hover:border-violet-500 rounded-xl transition-colors cursor-pointer">
+                                        className={`flex items-center gap-1.5 px-4 py-2 ${tc.buttonClass} disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold hover:text-white border rounded-xl transition-colors cursor-pointer`}>
                                         Next <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                                     </button>
                                 </div>

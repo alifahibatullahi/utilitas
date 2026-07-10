@@ -1160,7 +1160,7 @@ function TankLevelPageInner() {
                     </div>
                     {ashMounted && (
                         <div className={view === 'ash' ? 'flex-1 min-h-0 mt-2 overflow-y-auto custom-scrollbar' : 'hidden'}>
-                            <AshSiloSection compact />
+                            <AshSiloSection />
                         </div>
                     )}
                 </div>

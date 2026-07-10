@@ -27,18 +27,16 @@ const SCALE_MARKS = [100, 40, 20, 0].map(pct => ({
 
 const SHIFT_LABEL: Record<string, string> = { pagi: 'Pagi', sore: 'Sore', malam: 'Malam' };
 
-function formatDateLabel(dateStr: string, compact: boolean) {
-    return new Date(dateStr).toLocaleDateString('id-ID', compact
-        ? { day: '2-digit', month: 'short' }
-        : { day: '2-digit', month: 'short', year: 'numeric' });
+function formatDateLabel(dateStr: string) {
+    return new Date(dateStr).toLocaleDateString('id-ID',
+        { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function SiloCard({ siloId, level, unloadings, loading, compact = false }: {
+export default function SiloCard({ siloId, level, unloadings, loading }: {
     siloId: SiloId;
     level: SiloLevelInfo | null;
     unloadings: AshUnloadingEntry[];
     loading: boolean;
-    compact?: boolean;
 }) {
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyPage, setHistoryPage] = useState(1);
@@ -60,7 +58,7 @@ export default function SiloCard({ siloId, level, unloadings, loading, compact =
     const totalPages = Math.max(1, Math.ceil(unloadings.length / 5));
 
     const renderUnloadingItem = (entry: AshUnloadingEntry, idx: number) => {
-        const lbl = `${formatDateLabel(entry.date, false)} • Shift ${SHIFT_LABEL[entry.shift] ?? entry.shift}`;
+        const lbl = `${formatDateLabel(entry.date)} • Shift ${SHIFT_LABEL[entry.shift] ?? entry.shift}`;
         return (
             <div key={entry.id ?? idx}
                 className="flex items-center justify-between px-4 py-3 xl:px-5 xl:py-3.5 rounded-xl xl:rounded-2xl bg-surface-highlight/30 border border-slate-800 border-l-4 border-l-violet-500 hover:border-violet-500/40 hover:bg-surface-highlight/85 hover:-translate-y-[2px] hover:translate-x-[4px] hover:shadow-[0_6px_20px_rgba(167,139,250,0.12)] hover:z-10 transition-all duration-300 group relative overflow-hidden cursor-default shadow-sm">
@@ -70,16 +68,13 @@ export default function SiloCard({ siloId, level, unloadings, loading, compact =
                     </div>
                     <div className="flex flex-col min-w-0">
                         <span className="text-xs text-slate-500 font-bold uppercase tracking-wider leading-none mb-1">{lbl}</span>
-                        <span className="text-base xl:text-lg font-black text-white truncate leading-tight drop-shadow-md" title={`${entry.perusahaan} → ${entry.tujuan}`}>
+                        <span className="text-base xl:text-lg font-black text-white truncate leading-tight drop-shadow-md"
+                            title={`${entry.ritase.toLocaleString('id-ID')} rit ke ${entry.perusahaan}${entry.tujuan ? ` → ${entry.tujuan}` : ''}`}>
+                            <span className="font-mono text-violet-400">{entry.ritase.toLocaleString('id-ID')} rit</span>
+                            <span className="text-slate-400 font-bold"> ke </span>
                             {entry.perusahaan}{entry.tujuan ? ` → ${entry.tujuan}` : ''}
                         </span>
                     </div>
-                </div>
-                <div className="flex items-baseline gap-1 whitespace-nowrap z-10">
-                    <span className="text-2xl xl:text-3xl font-black font-mono tracking-tighter leading-none text-violet-400">
-                        {entry.ritase.toLocaleString('id-ID')}
-                    </span>
-                    <span className="text-xs xl:text-sm text-slate-500 font-bold">rit</span>
                 </div>
             </div>
         );
@@ -125,9 +120,9 @@ export default function SiloCard({ siloId, level, unloadings, loading, compact =
             <div className="flex-1 flex gap-0 lg:min-h-0 lg:overflow-hidden">
 
                 {/* Silo visual column — desktop only */}
-                <div className="hidden lg:flex flex-shrink-0 w-60 xl:w-72 flex-col items-center justify-between py-6 px-6 border-r border-slate-800/60"
+                <div className="hidden lg:flex flex-shrink-0 w-72 xl:w-80 flex-col items-center justify-between py-6 px-6 border-r border-slate-800/60"
                     style={{ background: `linear-gradient(to bottom, ${tc.base}08, transparent)` }}>
-                    <div className="w-full xl:w-5/6 flex-1 relative min-h-[380px]">
+                    <div className="w-full flex-1 relative min-h-[380px]">
                         {/* badan silo ter-clip bentuk silinder+kerucut.
                             position absolute via inline style — .glass-tank
                             (unlayered CSS) menimpa utility `absolute` Tailwind. */}
@@ -152,13 +147,14 @@ export default function SiloCard({ siloId, level, unloadings, loading, compact =
                             ))}
                         </div>
                     </div>
-                    {/* % label below silo */}
+                    {/* tonase di bawah silo — tukar posisi dengan % yang pindah ke hero */}
                     <div className="mt-6 flex flex-col items-center">
-                        <span className="text-xs text-slate-500 uppercase tracking-[0.2em] font-black mb-1.5">Level</span>
-                        <div className="flex items-center gap-2">
-                            <p className="text-5xl xl:text-6xl font-black font-mono leading-none tracking-tighter" style={{ color: tc.base, textShadow: `0 0 20px ${tc.base}40` }}>
-                                {pct === null ? '—' : `${pct.toFixed(1)}%`}
+                        <span className="text-xs text-slate-500 uppercase tracking-[0.2em] font-black mb-1.5">Estimasi Isi</span>
+                        <div className="flex items-baseline gap-1.5">
+                            <p className="text-4xl xl:text-5xl font-black font-mono leading-none tracking-tighter" style={{ color: tc.base, textShadow: `0 0 20px ${tc.base}40` }}>
+                                {ton === null ? '—' : ton.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
                             </p>
+                            {ton !== null && <span className="text-lg xl:text-xl font-black text-slate-400">ton</span>}
                         </div>
                     </div>
                 </div>
@@ -169,8 +165,8 @@ export default function SiloCard({ siloId, level, unloadings, loading, compact =
                     {/* Berat fly ash — hero number */}
                     <div>
                         <p className="text-xs lg:text-sm text-slate-500 uppercase tracking-[0.2em] font-black mb-2 flex items-center gap-2">
-                            <span className="material-symbols-outlined text-sm">scale</span>
-                            Estimasi Isi Fly Ash
+                            <span className="material-symbols-outlined text-sm">percent</span>
+                            Level Fly Ash
                         </p>
                         {pct === null ? (
                             <div>
@@ -186,13 +182,14 @@ export default function SiloCard({ siloId, level, unloadings, loading, compact =
                                         <span className="font-black text-white leading-none tracking-tighter"
                                             style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)',
                                                 textShadow: `0 0 40px ${tc.base}80, 0 0 80px ${tc.base}30` }}>
-                                            {ton!.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
+                                            {pct.toFixed(1)}
                                         </span>
-                                        <span className={`font-black ${tc.textClass} tracking-tighter shrink-0`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>ton</span>
+                                        <span className={`font-black ${tc.textClass} tracking-tighter shrink-0`} style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }}>%</span>
                                     </div>
-                                    {/* % on mobile (no silo visual) */}
-                                    <div className="lg:hidden ml-auto flex items-center gap-1 shrink-0">
-                                        <span className="text-2xl font-black font-mono" style={{ color: tc.base }}>{pct.toFixed(1)}%</span>
+                                    {/* tonase on mobile (no silo visual) */}
+                                    <div className="lg:hidden ml-auto flex items-baseline gap-1 shrink-0">
+                                        <span className="text-2xl font-black font-mono" style={{ color: tc.base }}>{ton!.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                                        <span className="text-xs font-black text-slate-400">ton</span>
                                     </div>
                                 </div>
                                 <div className="mt-3 bg-slate-800/50 border border-slate-700/60 px-3 py-2 rounded-xl w-full overflow-hidden">
@@ -207,14 +204,6 @@ export default function SiloCard({ siloId, level, unloadings, loading, compact =
                                     <div className="h-full rounded-full transition-all duration-700"
                                         style={{ width: `${Math.min(fillPct, 100)}%`, backgroundColor: tc.base,
                                             boxShadow: `0 0 15px ${tc.base}` }} />
-                                </div>
-                                {/* Asal data level */}
-                                <div className="flex items-center gap-2 text-xs xl:text-sm text-slate-400 font-semibold mt-3">
-                                    <span className="material-symbols-outlined text-[16px]">schedule</span>
-                                    Data level:{' '}
-                                    <span className={`font-black ${tc.textClass}`}>
-                                        {formatDateLabel(level!.reportDate, compact)} • Shift {SHIFT_LABEL[level!.reportShift]}
-                                    </span>
                                 </div>
                             </>
                         )}

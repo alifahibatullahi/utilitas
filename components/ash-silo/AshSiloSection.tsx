@@ -7,7 +7,7 @@ import SiloCard from '@/components/ash-silo/SiloCard';
 // View ash silo di halaman tank-level. Dimuat lazy via next/dynamic —
 // bundle + fetch data baru jalan saat user membuka view ini.
 export default function AshSiloSection() {
-    const { siloLevels, unloadings, loading, error } = useAshSiloData();
+    const { siloLevels, unloadings, trendData, loadHistory, loading, error } = useAshSiloData();
 
     return (
         <div className="flex flex-col gap-3 lg:h-full lg:min-h-0">
@@ -22,6 +22,8 @@ export default function AshSiloSection() {
                     <SiloCard key={id} siloId={id}
                         level={siloLevels[id]}
                         unloadings={unloadings.filter(u => u.silo === id)}
+                        trend={trendData[id]}
+                        loadTrend={loadHistory}
                         loading={loading} />
                 ))}
             </div>

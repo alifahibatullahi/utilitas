@@ -16,6 +16,11 @@ export interface SiloLevelInfo {
     reportShift: ShiftType;
 }
 
+export interface SiloTrendPoint {
+    ts: number;   // epoch ms — akhir shift (konvensi ENDING)
+    pct: number;
+}
+
 export interface AshUnloadingEntry {
     id: string;
     date: string;
@@ -102,9 +107,42 @@ async function queryAshData(): Promise<AshData> {
     };
 }
 
+// Jam akhir tiap shift pada tanggal DB (konvensi ENDING): malam berakhir
+// 07:00, pagi 15:00, sore 23:00 — dipakai sebagai posisi waktu titik trend.
+const SHIFT_END_HOUR: Record<ShiftType, number> = { malam: 7, pagi: 15, sore: 23 };
+
+async function queryTrendHistory(): Promise<Record<SiloId, SiloTrendPoint[]>> {
+    const supabase = createClient();
+    const res = await supabase
+        .from('shift_esp_handling')
+        .select('silo_a, silo_b, created_at, shift_reports!inner(date, shift)')
+        .or('silo_a.not.is.null,silo_b.not.is.null')
+        .order('created_at', { ascending: false })
+        .limit(400);
+    if (res.error) throw res.error;
+
+    const rows = (res.data ?? []) as unknown as EspRow[];
+    const toTs = (r: EspRow) => new Date(
+        `${r.shift_reports.date}T${String(SHIFT_END_HOUR[r.shift_reports.shift]).padStart(2, '0')}:00:00`
+    ).getTime();
+    const build = (col: 'silo_a' | 'silo_b'): SiloTrendPoint[] => rows
+        .filter(r => r[col] !== null)
+        .map(r => ({ ts: toTs(r), pct: Number(r[col]) }))
+        .sort((a, b) => a.ts - b.ts);
+
+    return { A: build('silo_a'), B: build('silo_b') };
+}
+
 let cachedData: AshData | null = null;
 let inflight: Promise<AshData> | null = null;
 let lastFetchAt = 0;
+
+// History trend di-fetch lazy saat modal trend dibuka (hemat egress),
+// cache module-level dengan pola dedup yang sama seperti data utama.
+let cachedTrend: Record<SiloId, SiloTrendPoint[]> | null = null;
+let trendInflight: Promise<Record<SiloId, SiloTrendPoint[]>> | null = null;
+let trendFetchAt = 0;
+const TREND_STALE_MS = 5 * 60 * 1000;
 
 function sharedFetch(): Promise<AshData> {
     if (inflight) return inflight;
@@ -122,8 +160,27 @@ export function useAshSiloData() {
     const [siloLevels, setSiloLevels] = useState<Record<SiloId, SiloLevelInfo | null>>(
         cachedData?.siloLevels ?? { A: null, B: null });
     const [unloadings, setUnloadings] = useState<AshUnloadingEntry[]>(cachedData?.unloadings ?? []);
+    const [trendData, setTrendData] = useState<Record<SiloId, SiloTrendPoint[]>>(
+        cachedTrend ?? { A: [], B: [] });
     const [loading, setLoading] = useState(!cachedData);
     const [error, setError] = useState<string | null>(null);
+
+    const loadHistory = useCallback(async () => {
+        if (!isSupabaseConfigured()) return;
+        try {
+            if (!cachedTrend || Date.now() - trendFetchAt >= TREND_STALE_MS) {
+                if (!trendInflight) {
+                    trendInflight = queryTrendHistory()
+                        .then(d => { cachedTrend = d; trendFetchAt = Date.now(); return d; })
+                        .finally(() => { trendInflight = null; });
+                }
+                await trendInflight;
+            }
+            if (cachedTrend) setTrendData(cachedTrend);
+        } catch (e) {
+            console.warn('[useAshSiloData] fetch history trend gagal', e);
+        }
+    }, []);
 
     const fetchAll = useCallback(async () => {
         if (!isSupabaseConfigured()) { setLoading(false); return; }
@@ -162,5 +219,5 @@ export function useAshSiloData() {
         };
     }, [fetchAll]);
 
-    return { siloLevels, unloadings, loading, error, refetch: fetchAll };
+    return { siloLevels, unloadings, trendData, loadHistory, loading, error, refetch: fetchAll };
 }

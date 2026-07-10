@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-    SiloId, SILO_SPEC, getSiloStatus,
+    ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
+    CartesianGrid, Tooltip as RechartsTooltip, ReferenceLine,
+} from 'recharts';
+import {
+    SiloId, SILO_SPEC, SILO_THRESHOLDS, getSiloStatus,
     siloFillHeightPct, siloVolumeM3, siloWeightTon,
 } from '@/lib/ash-silo';
-import { AshUnloadingEntry, SiloLevelInfo } from '@/hooks/useAshSiloData';
+import { AshUnloadingEntry, SiloLevelInfo, SiloTrendPoint } from '@/hooks/useAshSiloData';
 
 // Tema aksen per silo — pola sama seperti TANK_COLORS di halaman tank-level.
 // A ungu, B cyan supaya kedua kartu langsung terbedakan di layar CCR.
@@ -50,14 +54,23 @@ function formatDateLabel(dateStr: string) {
         { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function SiloCard({ siloId, level, unloadings, loading }: {
+export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, loading }: {
     siloId: SiloId;
     level: SiloLevelInfo | null;
     unloadings: AshUnloadingEntry[];
+    trend: SiloTrendPoint[];
+    loadTrend: () => void;
     loading: boolean;
 }) {
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyPage, setHistoryPage] = useState(1);
+    const [isTrendModalOpen, setIsTrendModalOpen] = useState(false);
+    const [trendRange, setTrendRange] = useState<'7d' | '30d' | 'all'>('7d');
+
+    // History level di-fetch lazy saat modal trend dibuka (hemat egress).
+    useEffect(() => {
+        if (isTrendModalOpen) loadTrend();
+    }, [isTrendModalOpen, loadTrend]);
 
     const tc = SILO_COLORS[siloId];
     const pct = level?.pct ?? null;
@@ -117,6 +130,11 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 lg:gap-3">
+                    <button onClick={() => setIsTrendModalOpen(true)}
+                        className={`${tc.buttonClass} hover:text-white border p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>
+                        <span className="material-symbols-outlined text-[16px] lg:text-[14px]">timeline</span>
+                        <span className="hidden lg:inline">Trend</span>
+                    </button>
                     <button onClick={() => { setHistoryPage(1); setIsHistoryModalOpen(true); }}
                         className={`${tc.buttonClass} hover:text-white border p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>
                         <span className="material-symbols-outlined text-[16px] lg:text-[14px]">history</span>
@@ -296,6 +314,128 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Trend Level (%) — pola sama seperti trend tank */}
+            {isTrendModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8 bg-slate-950/80 backdrop-blur-md"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                    <div className="bg-surface-dark border border-slate-700/60 rounded-[28px] shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden"
+                        style={{ boxShadow: `0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px ${tc.base}1A` }}>
+                        <div className="flex items-center justify-between px-6 py-5 2xl:px-8 2xl:py-6 border-b border-slate-800"
+                            style={{ background: `linear-gradient(to right, ${tc.base}22, transparent 70%)` }}>
+                            <div className="flex items-center gap-4">
+                                <div className={`p-3 rounded-2xl ${tc.modalIconClass} flex items-center justify-center`}
+                                    style={{ boxShadow: `0 0 20px ${tc.base}33` }}>
+                                    <span className="material-symbols-outlined text-2xl 2xl:text-3xl">timeline</span>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl 2xl:text-2xl font-black text-white leading-tight">Trend Level Silo {siloId}</h3>
+                                    <p className="text-[11px] 2xl:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Level Fly Ash (%)</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsTrendModalOpen(false)}
+                                className="text-slate-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 transition-all cursor-pointer bg-slate-800/80 border border-slate-700 w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl flex items-center justify-center">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <div className="p-6 2xl:p-8 overflow-y-auto flex-1 flex flex-col gap-3 bg-slate-900/50">
+                            {/* Range filter chips */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {([
+                                    { key: '7d',  label: '7 Hari' },
+                                    { key: '30d', label: '30 Hari' },
+                                    { key: 'all', label: 'Semua' },
+                                ] as const).map(opt => (
+                                    <button key={opt.key}
+                                        onClick={() => setTrendRange(opt.key)}
+                                        style={trendRange === opt.key ? { backgroundColor: tc.base, boxShadow: `0 0 15px ${tc.base}66` } : undefined}
+                                        className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all cursor-pointer border ${
+                                            trendRange === opt.key
+                                                ? 'text-white border-transparent'
+                                                : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
+                                        }`}>
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {(() => {
+                                const nowMs = Date.now();
+                                const rangeMs: Record<typeof trendRange, number | null> = {
+                                    '7d': 7 * 24 * 60 * 60 * 1000,
+                                    '30d': 30 * 24 * 60 * 60 * 1000,
+                                    'all': null,
+                                };
+                                const cutoff = rangeMs[trendRange];
+                                const filtered = cutoff == null ? trend : trend.filter(d => nowMs - d.ts <= cutoff);
+
+                                const fmtTick = (ts: number) => {
+                                    const d = new Date(ts);
+                                    if (trendRange === '7d') {
+                                        return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) + ' ' +
+                                               d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                    }
+                                    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: trendRange === 'all' ? '2-digit' : undefined });
+                                };
+
+                                return (
+                                    <>
+                                        <div className="text-xs text-slate-500 font-bold mt-1">
+                                            {filtered.length} titik data{filtered.length === 0 ? ' — tidak ada data pada rentang ini' : ''}
+                                        </div>
+                                        <div className="h-[360px] 2xl:h-[460px] w-full mt-2">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={filtered} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                                    <defs>
+                                                        <linearGradient id={`colorSiloTrend-${siloId}`} x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor={tc.base} stopOpacity={0.4} />
+                                                            <stop offset="95%" stopColor={tc.base} stopOpacity={0} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                                    <XAxis dataKey="ts" type="number" scale="time"
+                                                        domain={['dataMin', 'dataMax']}
+                                                        stroke="#94a3b8"
+                                                        tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 'bold' }}
+                                                        tickLine={false} axisLine={{ stroke: '#334155' }} dy={10}
+                                                        tickFormatter={fmtTick} interval="preserveStartEnd" minTickGap={50} />
+                                                    <YAxis stroke="#94a3b8"
+                                                        tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }}
+                                                        tickLine={false} axisLine={{ stroke: '#334155' }} dx={-10}
+                                                        domain={[0, 100]}
+                                                        tickFormatter={v => `${v}%`} />
+                                                    <RechartsTooltip content={({ active, payload }) => {
+                                                        if (!active || !payload?.length) return null;
+                                                        const p = payload[0].payload as SiloTrendPoint;
+                                                        return (
+                                                            <div className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 shadow-xl">
+                                                                <p className="text-[11px] text-slate-400 font-bold">
+                                                                    {new Date(p.ts).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                                </p>
+                                                                <p className="text-base font-black font-mono" style={{ color: tc.base }}>{p.pct.toFixed(1)}%</p>
+                                                            </div>
+                                                        );
+                                                    }} />
+                                                    {/* Ambang alarm: level TINGGI = perlu unloading */}
+                                                    <ReferenceLine y={SILO_THRESHOLDS.warning_high} stroke="#f59e0b" strokeDasharray="6 4"
+                                                        label={{ value: `Perlu Unloading ${SILO_THRESHOLDS.warning_high}%`, fill: '#f59e0b', fontSize: 11, fontWeight: 'bold', position: 'insideBottomRight' }} />
+                                                    <ReferenceLine y={SILO_THRESHOLDS.critical_high} stroke="#ef4444" strokeDasharray="6 4"
+                                                        label={{ value: `Kritis ${SILO_THRESHOLDS.critical_high}%`, fill: '#ef4444', fontSize: 11, fontWeight: 'bold', position: 'insideTopRight' }} />
+                                                    <Area type="monotone" dataKey="pct"
+                                                        stroke={tc.base} strokeWidth={3}
+                                                        fill={`url(#colorSiloTrend-${siloId})`}
+                                                        dot={filtered.length <= 60 ? { r: 4, fill: '#0f172a', stroke: tc.base, strokeWidth: 2 } : false}
+                                                        activeDot={{ r: 7, fill: tc.base, stroke: '#fff', strokeWidth: 2 }} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>

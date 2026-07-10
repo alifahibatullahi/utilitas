@@ -18,13 +18,13 @@ const SILO_COLORS: Record<SiloId, {
     itemClass: string; iconBoxClass: string; buttonClass: string; trendBtnClass: string; modalIconClass: string;
 }> = {
     A: {
-        base: '#a78bfa', bgClass: 'bg-violet-500', textClass: 'text-violet-400',
-        icon: 'inventory_2', borderClass: 'border-violet-500/30',
-        itemClass: 'border-l-violet-500 hover:border-violet-500/40 hover:shadow-[0_6px_20px_rgba(167,139,250,0.12)]',
-        iconBoxClass: 'bg-violet-500/10 border-violet-500/20 text-violet-400 group-hover:bg-violet-500/20 group-hover:border-violet-500/40',
-        buttonClass: 'bg-violet-500/10 hover:bg-violet-500 text-violet-400 border-violet-500/30 hover:border-violet-500',
-        trendBtnClass: 'bg-violet-500 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)] hover:bg-violet-400',
-        modalIconClass: 'bg-violet-500/20 text-violet-400',
+        base: '#a3e635', bgClass: 'bg-lime-500', textClass: 'text-lime-400',
+        icon: 'inventory_2', borderClass: 'border-lime-500/30',
+        itemClass: 'border-l-lime-500 hover:border-lime-500/40 hover:shadow-[0_6px_20px_rgba(163,230,53,0.12)]',
+        iconBoxClass: 'bg-lime-500/10 border-lime-500/20 text-lime-400 group-hover:bg-lime-500/20 group-hover:border-lime-500/40',
+        buttonClass: 'bg-lime-500/10 hover:bg-lime-500 text-lime-400 border-lime-500/30 hover:border-lime-500',
+        trendBtnClass: 'bg-lime-500 text-white shadow-[0_0_15px_rgba(132,204,22,0.4)] hover:bg-lime-400',
+        modalIconClass: 'bg-lime-500/20 text-lime-400',
     },
     B: {
         base: '#22d3ee', bgClass: 'bg-cyan-500', textClass: 'text-cyan-400',

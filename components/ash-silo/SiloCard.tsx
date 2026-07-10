@@ -15,7 +15,7 @@ import { AshUnloadingEntry, SiloLevelInfo, SiloTrendPoint } from '@/hooks/useAsh
 // A ungu, B cyan supaya kedua kartu langsung terbedakan di layar CCR.
 const SILO_COLORS: Record<SiloId, {
     base: string; bgClass: string; textClass: string; icon: string; borderClass: string;
-    itemClass: string; iconBoxClass: string; buttonClass: string; modalIconClass: string;
+    itemClass: string; iconBoxClass: string; buttonClass: string; trendBtnClass: string; modalIconClass: string;
 }> = {
     A: {
         base: '#a78bfa', bgClass: 'bg-violet-500', textClass: 'text-violet-400',
@@ -23,6 +23,7 @@ const SILO_COLORS: Record<SiloId, {
         itemClass: 'border-l-violet-500 hover:border-violet-500/40 hover:shadow-[0_6px_20px_rgba(167,139,250,0.12)]',
         iconBoxClass: 'bg-violet-500/10 border-violet-500/20 text-violet-400 group-hover:bg-violet-500/20 group-hover:border-violet-500/40',
         buttonClass: 'bg-violet-500/10 hover:bg-violet-500 text-violet-400 border-violet-500/30 hover:border-violet-500',
+        trendBtnClass: 'bg-violet-500 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)] hover:bg-violet-400',
         modalIconClass: 'bg-violet-500/20 text-violet-400',
     },
     B: {
@@ -31,6 +32,7 @@ const SILO_COLORS: Record<SiloId, {
         itemClass: 'border-l-cyan-500 hover:border-cyan-500/40 hover:shadow-[0_6px_20px_rgba(34,211,238,0.12)]',
         iconBoxClass: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:border-cyan-500/40',
         buttonClass: 'bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 border-cyan-500/30 hover:border-cyan-500',
+        trendBtnClass: 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-400',
         modalIconClass: 'bg-cyan-500/20 text-cyan-400',
     },
 };
@@ -131,9 +133,9 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                 </div>
                 <div className="flex items-center gap-2 lg:gap-3">
                     <button onClick={() => setIsTrendModalOpen(true)}
-                        className={`${tc.buttonClass} hover:text-white border p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>
-                        <span className="material-symbols-outlined text-[16px] lg:text-[14px]">timeline</span>
+                        className={`${tc.trendBtnClass} p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer group`}>
                         <span className="hidden lg:inline">Trend</span>
+                        <span className="material-symbols-outlined text-[16px] lg:text-[14px] transition-transform group-hover:rotate-12 group-hover:scale-125">timeline</span>
                     </button>
                     <button onClick={() => { setHistoryPage(1); setIsHistoryModalOpen(true); }}
                         className={`${tc.buttonClass} hover:text-white border p-2 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group`}>

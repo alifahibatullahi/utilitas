@@ -87,9 +87,11 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                     <div className="flex flex-col min-w-0">
                         <span className="text-sm text-slate-300 font-bold uppercase tracking-wider leading-none mb-1.5">{lbl}</span>
                         <span className="text-lg xl:text-xl font-black text-white leading-snug break-words drop-shadow-md">
-                            <span className={`font-mono ${tc.textClass}`}>{entry.ritase.toLocaleString('id-ID')} rit</span>
-                            <span className="text-white font-bold"> ke </span>
-                            {entry.perusahaan}{entry.tujuan ? ` → ${entry.tujuan}` : ''}
+                            <span className={`font-mono ${tc.textClass}`}>{entry.ritase.toLocaleString('id-ID')} Rit</span>
+                            <span className="text-slate-300 font-bold"> Tujuan : </span>
+                            {entry.tujuan || '—'}
+                            <span className="text-slate-300 font-bold"> Truck : </span>
+                            {entry.perusahaan || '—'}
                         </span>
                     </div>
                 </div>
@@ -229,12 +231,12 @@ export default function SiloCard({ siloId, level, unloadings, loading }: {
                     </div>
 
                     {/* Unloading Fly Ash */}
-                    <div className="flex flex-col gap-3 lg:gap-3 mt-2 xl:mt-3 pt-3 border-t border-slate-800/60 flex-1">
+                    <div className="flex flex-col gap-3 lg:gap-3 mt-2 xl:mt-3 pt-3 border-t border-slate-800/60 flex-1 lg:min-h-0">
                         <p className="text-xs xl:text-sm text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
                             <span className="material-symbols-outlined text-base xl:text-lg">local_shipping</span> Unloading Fly Ash
                         </p>
-                        <div className={`${unloadings.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3 mt-1.5' : 'mt-1.5'}`}>
-                            {unloadings.slice(0, 3).map((entry, idx) => renderUnloadingItem(entry, idx))}
+                        <div className={`${unloadings.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3 mt-1.5 lg:flex-1 lg:min-h-0 lg:overflow-y-auto custom-scrollbar pr-1' : 'mt-1.5'}`}>
+                            {unloadings.slice(0, 5).map((entry, idx) => renderUnloadingItem(entry, idx))}
                         </div>
                         {unloadings.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-6 px-4 rounded-xl bg-surface-highlight/10 border border-slate-800/40 text-center mt-1.5">

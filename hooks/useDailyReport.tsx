@@ -269,7 +269,27 @@ const STATION_OWNS_COLS: Record<string, Record<string, string[]>> = {
     lapangan_boiler: {},
 };
 
-export function useDailyReport(date: string) {
+// Semua child table harian — dipakai membangun select yang di-scope per station.
+const ALL_DAILY_CHILD_TABLES = [
+    'daily_report_steam', 'daily_report_power', 'daily_report_coal',
+    'daily_report_turbine_misc', 'daily_report_stock_tank',
+    'daily_report_coal_transfer', 'daily_report_totalizer',
+] as const;
+
+// Mode station: fetch hanya child table milik station (pola sama dgn
+// buildShiftReportSelect di useShiftReport) — hemat beban DB & payload halaman.
+// Scoping WRITE tetap lewat STATION_OWNS_COLS saat submit (partial UPDATE), jadi
+// narrowing fetch ini tidak bisa bikin wipe; konsumen pakai optional chaining
+// sehingga child key yang absen aman. Form penuh (station null) → semua table.
+function buildDailySelect(station: string | null): string {
+    if (!station || !(station in STATION_OWNS_COLS)) {
+        return ['*', ...ALL_DAILY_CHILD_TABLES.map(t => `${t}(*)`)].join(', ');
+    }
+    const owned = new Set(Object.keys(STATION_OWNS_COLS[station]));
+    return ['*', ...ALL_DAILY_CHILD_TABLES.filter(t => owned.has(t)).map(t => `${t}(*)`)].join(', ');
+}
+
+export function useDailyReport(date: string, station: string | null = null) {
     const [report, setReport] = useState<DailyReportData | null>(null);
     const [prevReport, setPrevReport] = useState<DailyReportData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -285,16 +305,7 @@ export function useDailyReport(date: string) {
         let stale = false;
         const supabase = createClient();
 
-        const selectQuery = `
-            *,
-            daily_report_steam(*),
-            daily_report_power(*),
-            daily_report_coal(*),
-            daily_report_turbine_misc(*),
-            daily_report_stock_tank(*),
-            daily_report_coal_transfer(*),
-            daily_report_totalizer(*)
-        `;
+        const selectQuery = buildDailySelect(station);
 
         async function fetchReport() {
             setLoading(true);
@@ -324,9 +335,9 @@ export function useDailyReport(date: string) {
                     'daily_report_coal_transfer', 'daily_report_totalizer',
                 ] as const;
                 for (const key of oneToOneKeys) {
-                    const val = (data as Record<string, unknown>)[key];
+                    const val = (data as unknown as Record<string, unknown>)[key];
                     if (val && !Array.isArray(val)) {
-                        (data as Record<string, unknown>)[key] = [val];
+                        (data as unknown as Record<string, unknown>)[key] = [val];
                     }
                 }
                 setReport(data as unknown as DailyReportData);
@@ -352,9 +363,9 @@ export function useDailyReport(date: string) {
                     'daily_report_coal_transfer', 'daily_report_totalizer',
                 ] as const;
                 for (const key of oneToOneKeys) {
-                    const val = (prevData as Record<string, unknown>)[key];
+                    const val = (prevData as unknown as Record<string, unknown>)[key];
                     if (val && !Array.isArray(val)) {
-                        (prevData as Record<string, unknown>)[key] = [val];
+                        (prevData as unknown as Record<string, unknown>)[key] = [val];
                     }
                 }
                 setPrevReport(prevData as unknown as DailyReportData);
@@ -368,7 +379,7 @@ export function useDailyReport(date: string) {
         fetchReport();
 
         return () => { stale = true; };
-    }, [date, fetchKey]);
+    }, [date, fetchKey, station]);
 
     const submitReport = useCallback(async (reportData: {
         created_by?: string;
@@ -552,10 +563,11 @@ export function useDailyReport(date: string) {
 
         if (childErrors.length > 0) return { error: childErrors.join('; '), reportId };
 
-        // Sync ke Google Sheets — retry (hingga 3x): PASTIKAN data benar-benar terkirim
-        // saat user simpan. Server juga retry transient (withRetry). Sukses → stop.
+        // Sync ke Google Sheets — retry (hingga 2x): PASTIKAN data benar-benar terkirim
+        // saat user simpan. Server sudah retry transient 3x (withRetry), jadi 2x di sini
+        // cukup untuk gagal jaringan POST-nya sendiri. Sukses → stop.
         let sheetsSyncResult: { ok: boolean; warning?: string } = { ok: false, warning: 'belum tersinkron' };
-        for (let attempt = 1; attempt <= 3; attempt++) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
             try {
                 const res = await fetch('/api/sheets/write', {
                     method: 'POST',
@@ -572,9 +584,9 @@ export function useDailyReport(date: string) {
             } catch (sheetsErr) {
                 sheetsSyncResult = { ok: false, warning: String(sheetsErr) };
             }
-            if (attempt < 3) await new Promise(r => setTimeout(r, 600 * attempt));
+            if (attempt < 2) await new Promise(r => setTimeout(r, 600 * attempt));
         }
-        if (!sheetsSyncResult.ok) console.warn('[submitDailyReport] Sheets sync gagal setelah 3x:', sheetsSyncResult.warning);
+        if (!sheetsSyncResult.ok) console.warn('[submitDailyReport] Sheets sync gagal setelah 2x:', sheetsSyncResult.warning);
 
         return { error: null, reportId, sheetsWarning: sheetsSyncResult.ok ? undefined : sheetsSyncResult.warning };
     }, [date]);

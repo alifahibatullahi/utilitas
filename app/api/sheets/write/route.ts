@@ -140,20 +140,17 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-            const dbData = await fetchDailyReport(date);
-            if (!dbData) {
-                return NextResponse.json({ warning: `Daily report untuk ${date} tidak ditemukan di database` });
-            }
-
-            // Fetch previous day for selisih calculation (use UTC to avoid server timezone offset)
+            // Previous day for selisih calculation (use UTC to avoid server timezone offset)
             const [dy, dm, dd] = date.split('-').map(Number);
             const prevDateObj = new Date(Date.UTC(dy, dm - 1, dd - 1));
             const prevDateStr = prevDateObj.toISOString().slice(0, 10);
-            const prevData = await fetchDailyReport(prevDateStr);
 
-            // Fetch solar unloadings, usages, and chemical consumption for this date
+            // Semua read Supabase diparalelkan (dulu 3 tahap serial: current →
+            // prev → aux) — memangkas latensi route sebelum tulis Sheets.
             const supabase = getSupabase();
-            const [solarIn, solarOut, shiftChem] = await Promise.all([
+            const [dbData, prevData, solarIn, solarOut, shiftChem] = await Promise.all([
+                fetchDailyReport(date),
+                fetchDailyReport(prevDateStr),
                 supabase.from('solar_unloadings').select('liters').eq('date', date),
                 supabase.from('solar_usages').select('liters, tujuan').eq('date', date),
                 supabase
@@ -161,6 +158,9 @@ export async function POST(req: NextRequest) {
                     .select('shift_water_quality(phosphate_penambahan_chemical, phosphate_b_penambahan_chemical, amine_penambahan_chemical, hydrazine_penambahan_chemical)')
                     .eq('date', date),
             ]);
+            if (!dbData) {
+                return NextResponse.json({ warning: `Daily report untuk ${date} tidak ditemukan di database` });
+            }
             const sumByTujuan = (t: string) =>
                 (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === t).reduce((s, r) => s + (Number(r.liters) || 0), 0);
             // Boiler A+B (CL) TIDAK diagregasi di sini — diambil mapper dari daily_report_stock_tank.solar_boiler (manual supervisor).

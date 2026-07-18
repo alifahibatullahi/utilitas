@@ -1376,59 +1376,61 @@ export function useShiftReport(
             : ['A', 'B'];
         const sheetsBoilerA = canWriteTable('shift_boiler') && allowedBoilersSheets.includes('A') ? reportData.boilerA : undefined;
         const sheetsBoilerB = canWriteTable('shift_boiler') && allowedBoilersSheets.includes('B') ? reportData.boilerB : undefined;
-        let sheetsWarning: string | undefined;
-        // Retry sisi-klien (hingga 3x): PASTIKAN data benar-benar terkirim ke Sheets saat
-        // user simpan. Server juga sudah retry error transient (withRetry). Sukses → keluar
-        // loop & warning dibersihkan; gagal/`warning` → ulang dgn jeda kecil.
-        for (let sheetAttempt = 1; sheetAttempt <= 3; sheetAttempt++) {
-          try {
-            const res = await fetch('/api/sheets/write', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'shift_report',
-                    data: {
-                        shift,
-                        date,
-                        group_name: reportData.group_name,
-                        turbin: scopeSection('shift_turbin', reportData.turbin),
-                        steamDist: scopeSection('shift_steam_dist', reportData.steamDist),
-                        generatorGi: scopeSection('shift_generator_gi', reportData.generatorGi),
-                        powerDist: scopeSection('shift_power_dist', reportData.powerDist),
-                        espHandling: scopePartial('shift_esp_handling', reportData.espHandling as Record<string, unknown> | undefined),
-                        tankyard: scopeSection('shift_tankyard', reportData.tankyard),
-                        // Personnel (grup/foreman/kasi): station panel kirim subset kolom miliknya
-                        // (turbin_* vs boiler_*) — sama dgn DB. Mapper menulis sel boiler dari
-                        // boiler_* dgn fallback turbin_*, jadi grup+karu+kasi tetap masuk Sheets
-                        // walau submit dari station view.
-                        personnel: scopePartial('shift_personnel', reportData.personnel as Record<string, unknown> | undefined),
-                        boilerA: sheetsBoilerA,
-                        boilerB: sheetsBoilerB,
-                        coalBunker: scopePartial('shift_coal_bunker', reportData.coalBunker as Record<string, unknown> | undefined),
-                        waterQuality: scopeSection('shift_water_quality', reportData.waterQuality),
-                        prevBoilerA: reportData.prevBoilerA,
-                        prevBoilerB: reportData.prevBoilerB,
-                    },
-                }),
-            });
-            if (!res.ok) {
-                sheetsWarning = `Google Sheets HTTP ${res.status}`;
-            } else {
-                const result = await res.json();
-                if (result.warning) {
-                    sheetsWarning = result.warning;
-                } else {
-                    sheetsWarning = undefined; // sukses
+        // Retry sisi-klien (hingga 2x): PASTIKAN data benar-benar terkirim ke Sheets saat
+        // user simpan. Server sudah retry error transient 3x (withRetry), jadi 2x di sini
+        // cukup untuk gagal jaringan POST-nya sendiri — 3x2 dulu (worst 9 attempt) bikin
+        // overlay simpan lama. Sukses → keluar loop & warning dibersihkan.
+        // Dibungkus async fn agar jalan PARALEL dgn sync LogSheet Boiler di bawah
+        // (spreadsheet berbeda, independen): blocking tail = max(A,B), bukan A+B.
+        const syncShiftRow = async (): Promise<string | undefined> => {
+            let warning: string | undefined;
+            for (let sheetAttempt = 1; sheetAttempt <= 2; sheetAttempt++) {
+                try {
+                    const res = await fetch('/api/sheets/write', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: 'shift_report',
+                            data: {
+                                shift,
+                                date,
+                                group_name: reportData.group_name,
+                                turbin: scopeSection('shift_turbin', reportData.turbin),
+                                steamDist: scopeSection('shift_steam_dist', reportData.steamDist),
+                                generatorGi: scopeSection('shift_generator_gi', reportData.generatorGi),
+                                powerDist: scopeSection('shift_power_dist', reportData.powerDist),
+                                espHandling: scopePartial('shift_esp_handling', reportData.espHandling as Record<string, unknown> | undefined),
+                                tankyard: scopeSection('shift_tankyard', reportData.tankyard),
+                                // Personnel (grup/foreman/kasi): station panel kirim subset kolom miliknya
+                                // (turbin_* vs boiler_*) — sama dgn DB. Mapper menulis sel boiler dari
+                                // boiler_* dgn fallback turbin_*, jadi grup+karu+kasi tetap masuk Sheets
+                                // walau submit dari station view.
+                                personnel: scopePartial('shift_personnel', reportData.personnel as Record<string, unknown> | undefined),
+                                boilerA: sheetsBoilerA,
+                                boilerB: sheetsBoilerB,
+                                coalBunker: scopePartial('shift_coal_bunker', reportData.coalBunker as Record<string, unknown> | undefined),
+                                waterQuality: scopeSection('shift_water_quality', reportData.waterQuality),
+                                prevBoilerA: reportData.prevBoilerA,
+                                prevBoilerB: reportData.prevBoilerB,
+                            },
+                        }),
+                    });
+                    if (!res.ok) {
+                        warning = `Google Sheets HTTP ${res.status}`;
+                    } else {
+                        const result = await res.json();
+                        warning = result.warning ? String(result.warning) : undefined; // undefined = sukses
+                    }
+                } catch (sheetsErr) {
+                    warning = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
                 }
+                if (!warning) break; // terkirim → stop retry
+                if (sheetAttempt < 2) await new Promise(r => setTimeout(r, 600 * sheetAttempt));
             }
-          } catch (sheetsErr) {
-            sheetsWarning = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
-          }
-          if (!sheetsWarning) break; // terkirim → stop retry
-          if (sheetAttempt < 3) await new Promise(r => setTimeout(r, 600 * sheetAttempt));
-        }
-        if (sheetsWarning) console.warn('[submitReport] Sheets sync gagal setelah 3x:', sheetsWarning);
-        else console.log('[submitReport] Sheets sync OK');
+            if (warning) console.warn('[submitReport] Sheets sync gagal setelah 2x:', warning);
+            else console.log('[submitReport] Sheets sync OK');
+            return warning;
+        };
 
         // Sync Catatan Operasional ke spreadsheet catatan — fire-and-forget.
         // Server re-fetch dari DB (sudah termasuk merge station_catatan via RPC di
@@ -1446,9 +1448,10 @@ export function useShiftReport(
         // Hanya station Bunker (blok level bunker) & Lapangan Boiler (blok lab +
         // personnel) — atau form penuh (keduanya). Sesuai station masing-masing;
         // sel null dilewati update sehingga blok antar-station tidak saling timpa.
-        const writeBunker = stationKey === null || stationKey === 'bunker';
-        const writeLab = stationKey === null || stationKey === 'lapangan_boiler';
-        if (writeBunker || writeLab) {
+        const syncLogsheetBoiler = async (): Promise<string | undefined> => {
+            const writeBunker = stationKey === null || stationKey === 'bunker';
+            const writeLab = stationKey === null || stationKey === 'lapangan_boiler';
+            if (!writeBunker && !writeLab) return undefined;
             const cb = (reportData.coalBunker ?? {}) as Record<string, unknown>;
             const bunkerBlock = {
                 bunker_a: cb.bunker_a, bunker_b: cb.bunker_b, bunker_c: cb.bunker_c,
@@ -1458,34 +1461,38 @@ export function useShiftReport(
             const sendBunker = writeBunker && hasAny(bunkerBlock);
             const labBlock = (reportData.waterQuality ?? {}) as Record<string, unknown>;
             const sendLab = writeLab && hasAny(labBlock);
-            if (sendBunker || sendLab) {
-                try {
-                    const res = await fetch('/api/sheets/write', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            type: 'logsheet_boiler',
-                            data: {
-                                shift,
-                                date,
-                                bunker: sendBunker ? bunkerBlock : undefined,
-                                lab: sendLab ? labBlock : undefined,
-                            },
-                        }),
-                    });
-                    const result = res.ok ? await res.json() : { warning: `LogSheet Boiler HTTP ${res.status}` };
-                    if (result.warning) {
-                        if (!sheetsWarning) sheetsWarning = result.warning;
-                        console.warn('[submitReport] LogSheet Boiler warning:', result.warning);
-                    } else {
-                        console.log('[submitReport] LogSheet Boiler OK:', result);
-                    }
-                } catch (lsErr) {
-                    if (!sheetsWarning) sheetsWarning = lsErr instanceof Error ? lsErr.message : String(lsErr);
-                    console.warn('[submitReport] LogSheet Boiler sync failed:', lsErr);
+            if (!sendBunker && !sendLab) return undefined;
+            try {
+                const res = await fetch('/api/sheets/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'logsheet_boiler',
+                        data: {
+                            shift,
+                            date,
+                            bunker: sendBunker ? bunkerBlock : undefined,
+                            lab: sendLab ? labBlock : undefined,
+                        },
+                    }),
+                });
+                const result = res.ok ? await res.json() : { warning: `LogSheet Boiler HTTP ${res.status}` };
+                if (result.warning) {
+                    console.warn('[submitReport] LogSheet Boiler warning:', result.warning);
+                    return String(result.warning);
                 }
+                console.log('[submitReport] LogSheet Boiler OK:', result);
+                return undefined;
+            } catch (lsErr) {
+                console.warn('[submitReport] LogSheet Boiler sync failed:', lsErr);
+                return lsErr instanceof Error ? lsErr.message : String(lsErr);
             }
-        }
+        };
+
+        // Dua spreadsheet berbeda → sync paralel; warning baris utama menang
+        // (prioritas sama dengan urutan sekuensial lama).
+        const [rowWarning, logsheetWarning] = await Promise.all([syncShiftRow(), syncLogsheetBoiler()]);
+        const sheetsWarning = rowWarning ?? logsheetWarning;
 
         if (errors.length > 0) {
             console.error('Child table errors:', errors);

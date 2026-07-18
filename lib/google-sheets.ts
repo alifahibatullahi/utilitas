@@ -30,7 +30,13 @@ export type ShiftTab = 'pagi' | 'sore' | 'malam';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
+// Singleton per instance server: GoogleAuth meng-cache & me-refresh access token
+// sendiri, jadi membangun client baru tiap panggilan hanya menambah token exchange
+// (4-6x per save). Umur cache = umur module, sama seperti cache judul tab di bawah.
+let sheetsClientSingleton: ReturnType<typeof google.sheets> | null = null;
+
 export function getSheetsClient() {
+    if (sheetsClientSingleton) return sheetsClientSingleton;
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
         throw new Error('Google Sheets credentials not configured (GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY)');
     }
@@ -45,7 +51,8 @@ export function getSheetsClient() {
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
-    return google.sheets({ version: 'v4', auth });
+    sheetsClientSingleton = google.sheets({ version: 'v4', auth });
+    return sheetsClientSingleton;
 }
 
 // ─── Retry (transient Google Sheets API failures) ─────────────────────────────

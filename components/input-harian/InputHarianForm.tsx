@@ -17,6 +17,7 @@ import TabChemical from './TabChemical';
 import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import PersonnelConfirmModal, { type PersonnelConfirmField } from '@/components/ui/PersonnelConfirmModal';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
 import {
     type DailyState,
@@ -108,6 +109,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // Station panel (boiler A/B + turbin) wajib mengisi supervisor (KASI).
     const isPanelStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b', 'panel_turbin'].includes(station);
     const supervisorOptions = operators.filter(op => op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman'));
+    // Pop-up konfirmasi personel (Supervisor/Diisi oleh) sebelum simpan harian.
+    const [personnelConfirm, setPersonnelConfirm] = useState<{ fields: PersonnelConfirmField[] } | null>(null);
 
     // Per-station filler — default ke operator login, bisa di-override saat swap shift.
     const [fillerName, setFillerName] = useState(() => {
@@ -123,6 +126,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         const allowed = STATION_HARIAN_TABS[station];
         return HARIAN_TABS.filter(t => allowed.includes(t.id));
     }, [station]);
+
+    // Kebutuhan data pendukung per station — diturunkan dari peta tab harian supaya
+    // station baru otomatis benar. Solar dipakai tab Handling; ash dipakai tab
+    // Silo & Fly Ash (esp) + derivasi unloading_fly_ash_a/b saat submit (owned esp).
+    const harianStationTabs = station ? STATION_HARIAN_TABS[station] : null;
+    const needsSolar = !station || harianStationTabs!.includes('Handling');
+    const needsAsh = !station || harianStationTabs!.includes('Silo & Fly Ash');
 
     const [activeTab, setActiveTab] = useState<HarianTabId>(() => {
         if (station) {
@@ -175,7 +185,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
     const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
 
-    const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date);
+    // Mode station: select di-narrow ke child table milik station (hemat DB & payload).
+    const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date, station);
     const router = useRouter();
 
     // Navigasi ke halaman Review/Publish harian (full-screen, URL sendiri).
@@ -213,11 +224,14 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [report, station]);
 
-        // Fetch solar & ash unloadings for the selected date
+        // Fetch solar & ash unloadings for the selected date.
+        // Di-gate per station: solar hanya utk tab Handling, ash hanya utk tab
+        // Silo & Fly Ash (esp) — station lain tidak menarik data ini.
         useEffect(() => {
+            if (!needsSolar && !needsAsh) return;
             const supabase = createClient();
-            
-            supabase
+
+            if (needsSolar) supabase
                 .from('solar_unloadings')
                 .select('id, date, liters, supplier, shift')
                 .eq('date', date)
@@ -234,7 +248,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     );
                 });
 
-            supabase
+            if (needsSolar) supabase
                 .from('solar_usages')
                 .select('id, date, shift, liters, tujuan')
                 .eq('date', date)
@@ -251,7 +265,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     );
                 });
 
-            supabase
+            if (needsAsh) supabase
                 .from('ash_unloadings')
                 .select('id, date, shift, silo, perusahaan, tujuan, ritase')
                 .eq('date', date)
@@ -269,11 +283,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         }))
                     );
                 });
-        }, [date]);
+        }, [date, needsSolar, needsAsh]);
 
     // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DW = stock batubara
-    // (stock_batubara_rendal).
+    // (stock_batubara_rendal). Hanya form penuh — tab Stock BB tidak ada di station
+    // manapun, dan stock_batubara_rendal di-strip ownsMap saat submit station.
     useEffect(() => {
+        if (station) { setStockBatubaraSheet(null); return; }
         let stale = false;
         setStockBatubaraSheet(null);
         fetch(`/api/sheets/read?type=daily_report&date=${date}`)
@@ -289,7 +305,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             })
             .catch(() => { /* non-blocking — biarkan tampil default */ });
         return () => { stale = true; };
-    }, [date]);
+    }, [date, station]);
 
     // ─── Solar delete handlers ───
     const handleEditSolarUnloading = async (id: string, fields: { liters: number; supplier: string }) => {
@@ -475,7 +491,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // malam-besok — jadi harian(D) mewarisi dari sore(D) (atau pagi/malam(D), lalu mundur
     // ke hari sebelumnya lintas shift_reports & daily_reports). Konsisten dgn input-shift,
     // sehingga status boiler & turbin berlanjut pagi → sore → harian → malam.
-    const latestStatus = useLatestBoilerStatus(date, 'harian');
+    // Konsumen inherit = status boiler/turbin (turbineMisc) — hanya panel & form penuh.
+    const latestStatus = useLatestBoilerStatus(date, 'harian', !station || isPanelStation);
     const _inhBoilerA = latestStatus.statusBoilerA;
     const _inhBoilerB = latestStatus.statusBoilerB;
     const _inhTurbin = latestStatus.statusTurbin;
@@ -529,7 +546,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const crB = steamProdB > 0 ? coalTotalB / steamProdB : 0;
 
     // ─── Submit handler ───
-    const handleSubmit = async () => {
+    const handleSubmit = async (confirmed?: { supervisor: string; fillerName: string }) => {
         if (submitting) return;
         // Guard submit window — operator pengganti yang akses link lama tidak boleh
         // nge-edit harian di luar window (sebelum 23:00 D atau setelah 09:00 D+1).
@@ -556,8 +573,30 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             }
         }
 
+        // ─── Pop-up konfirmasi personel sebelum simpan ───
+        // Muncul HANYA kalau masih ada field personel yang kosong; kalau Supervisor
+        // (KASI) & Diisi oleh sudah lengkap, simpan lanjut tanpa pop-up. Setelah
+        // dikonfirmasi, handleSubmit dipanggil ulang dengan nilai final.
+        const currentKasi = ((totalizer.kasi_name as string) || supervisorName || '').trim();
+        if (!confirmed) {
+            const fields: PersonnelConfirmField[] = [];
+            if (!station || isPanelStation) {
+                fields.push({ key: 'supervisor', label: 'Supervisor (KASI)', value: currentKasi, options: supervisorOptions.map(op => ({ value: op.name, label: op.name })), required: true });
+            }
+            if (station) {
+                fields.push({ key: 'fillerName', label: 'Diisi oleh', value: fillerName || operator?.name || '', options: operators.map(op => ({ value: op.name, label: `${op.name}${op.group ? ` (Group ${op.group})` : ''}` })), required: true });
+            }
+            if (fields.some(f => !(f.value ?? '').trim())) {
+                setPersonnelConfirm({ fields });
+                return;
+            }
+            confirmed = { supervisor: currentKasi, fillerName: fillerName || operator?.name || '' };
+        }
+        const supervisorVal = confirmed.supervisor;
+        const fillerVal = confirmed.fillerName;
+
         // ─── Supervisor (KASI) wajib: form penuh & station panel (boiler A/B + turbin) ───
-        if ((!station || isPanelStation) && !(supervisorName || '').trim() && !((totalizer.kasi_name as string) || '').trim()) {
+        if ((!station || isPanelStation) && !supervisorVal.trim()) {
             setToast({ message: 'Kolom Supervisor wajib diisi sebelum simpan.', type: 'error' });
             setTimeout(() => setToast(null), 4000);
             return;
@@ -794,7 +833,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 totalizer: {
                     ...totalizer,
                     group_name: groupName || totalizer.group_name || null,
-                    kasi_name: supervisorName || totalizer.kasi_name || null,
+                    kasi_name: supervisorVal || totalizer.kasi_name || null,
                     // Stock Batubara (kolom DW) — diambil dari Sheets LHUBB, disimpan ke
                     // Supabase supaya muncul di review In/Out & ditulis balik ke DW.
                     stock_batubara_rendal:
@@ -803,7 +842,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         ?? null,
                 },
                 // Station-scoped fill audit: hanya di-kirim kalau submit dari station view.
-                ...(station && fillerName ? { station_filler: { station, name: fillerName } } : {}),
+                ...(station && fillerVal ? { station_filler: { station, name: fillerVal } } : {}),
             });
 
             if (result?.error) {
@@ -864,6 +903,23 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         }
     };
 
+    // Konfirmasi personel dari pop-up → sinkronkan ke state form (header + localStorage
+    // ikut nilai final), lalu lanjutkan simpan dengan nilai TERKONFIRMASI (bukan state,
+    // yang updatenya async dan bisa basi di closure handleSubmit).
+    const handlePersonnelConfirm = (values: Record<string, string>) => {
+        setPersonnelConfirm(null);
+        const merged = {
+            supervisor: values.supervisor ?? ((totalizer.kasi_name as string) || supervisorName || ''),
+            fillerName: values.fillerName ?? fillerName,
+        };
+        if (values.supervisor !== undefined) {
+            setTotalizer(prev => ({ ...prev, kasi_name: merged.supervisor }));
+            onSupervisorChange?.(merged.supervisor);
+        }
+        if (values.fillerName !== undefined) setFillerName(merged.fillerName);
+        void handleSubmit(merged);
+    };
+
     // Latest-ref: handleSubmit dibuat ulang tiap render (menutup state form terbaru).
     // registerSave mendaftarkan wrapper yang selalu memanggil versi terbaru, supaya
     // tombol SIMPAN floating di parent tidak menyimpan data basi.
@@ -912,6 +968,15 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         <>
             {/* Pop-up peringatan nilai tidak wajar */}
             {warningModal}
+            {/* Pop-up konfirmasi personel (Supervisor/Diisi oleh) sebelum simpan harian */}
+            <PersonnelConfirmModal
+                open={!!personnelConfirm}
+                subtitle={`Group ${groupName || '?'} • Harian ${date}`}
+                fields={personnelConfirm?.fields ?? []}
+                onConfirm={handlePersonnelConfirm}
+                onCancel={() => setPersonnelConfirm(null)}
+            />
+
             {/* Toast */}
             {toast && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -1082,7 +1147,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             registerSave — SIMPAN pindah ke grup floating halaman. */}
                         {!registerSave && (
                         <button
-                            onClick={handleSubmit}
+                            onClick={() => { void handleSubmit(); }}
                             disabled={submitting || isHarianLocked}
                             title={isHarianBeforeStart && submitWindowStart
                                 ? `Window submit mulai ${submitWindowStart.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}`

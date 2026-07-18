@@ -19,6 +19,7 @@ import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import StationPickerModal, { type StationSetupSelection } from '@/components/ui/StationPickerModal';
+import PersonnelConfirmModal, { type PersonnelConfirmField } from '@/components/ui/PersonnelConfirmModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
@@ -163,6 +164,8 @@ function InputShiftPageInner() {
         if (typeof window === 'undefined') return '';
         try { return localStorage.getItem('shift_station_filler') || ''; } catch { return ''; }
     });
+    // Pop-up konfirmasi personel (Supervisor/Foreman/Diisi oleh) sebelum simpan shift.
+    const [personnelConfirm, setPersonnelConfirm] = useState<{ fields: PersonnelConfirmField[] } | null>(null);
 
     const skipNextClear = useRef(false);
     const lastSubmittedReportId = useRef<string | null>(null);
@@ -191,6 +194,11 @@ function InputShiftPageInner() {
     // fetch effect langsung jalan — kalau tidak digating, laporan sempat ke-load
     // satu kali sebelum modal ambil alih. `!mounted` menahannya sampai kondisi pasti.
     const pickerGate = !mounted || noReportParams;
+    // Gate data SHIFT: selain pickerGate, hook/effect shift juga tidak boleh jalan di
+    // mode harian — dulu semua fetch shift (report+history+ash/solar/stock) ikut nyala
+    // di mode harian, dobel dengan fetch InputHarianForm. Balik ke mode shift →
+    // enabled flip true → hook reset & refetch sendiri.
+    const shiftGate = pickerGate || inputMode !== 'shift';
 
     useEffect(() => {
         const qShift = searchParams?.get('shift');
@@ -269,6 +277,14 @@ function InputShiftPageInner() {
         return TABS.filter(t => allowed.includes(t.id));
     }, [station]);
 
+    // Kebutuhan data pendukung per station — DITURUNKAN dari peta tab supaya station
+    // baru otomatis benar. Ash juga dibutuhkan tab Handling: submit handling menghitung
+    // total rit unloading fly ash (unloading_a/b) dari entri ash tersimpan.
+    const stationShiftTabs = station ? STATION_SHIFT_TABS[station] : null;
+    const needsAsh = !station || ['ESP', 'Handling', 'Catatan Operasional'].some(t => stationShiftTabs!.includes(t));
+    const needsSolar = !station || ['Handling', 'Catatan Operasional'].some(t => stationShiftTabs!.includes(t));
+    const needsChemStock = !station || stationShiftTabs!.includes('Lab');
+
     // Auto-pick tab pertama yang visible saat mount kalau activeTab default ('Boiler A')
     // tidak ada di visibleTabs (mis. station=esp).
     useEffect(() => {
@@ -279,25 +295,17 @@ function InputShiftPageInner() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [station]);
 
-    // Pre-warm: saat halaman pertama kali dibuka, fetch report 3 hari terakhir
-    // untuk memastikan koneksi Supabase siap dan data sudah di-cache browser
+    // Pre-warm: pastikan koneksi Supabase (TLS/auth) siap sebelum fetch sungguhan —
+    // paling berguna selagi modal Pilih Laporan masih terbuka. Cukup 1 baris paling
+    // ringan; dulu tarik report 3 hari penuh (berat, apalagi di jam sibuk ganti shift).
     useEffect(() => {
         const supabase = createClient();
-        const today = new Date();
-        const dates: string[] = [];
-        for (let i = 0; i < 3; i++) {
-            const d = new Date(today);
-            d.setDate(d.getDate() - i);
-            dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
-        }
-        // Fire-and-forget: pre-warm koneksi Supabase dengan fetch ringan
         supabase
             .from('shift_reports')
-            .select('id, date, shift')
-            .in('date', dates)
-            .order('date', { ascending: false })
+            .select('id')
+            .limit(1)
             .then(() => {
-                console.log('[pre-warm] Supabase connection warmed for', dates);
+                console.log('[pre-warm] Supabase connection warmed');
             });
     }, []);
 
@@ -367,19 +375,19 @@ function InputShiftPageInner() {
     const isBoilerStation = !!station && ['panel_boiler', 'panel_boiler_a', 'panel_boiler_b'].includes(station);
     // skipMaintenance: form input tidak menampilkan maintenance/critical — hemat 2 query
     // per load; halaman /laporan-shift (view) tetap fetch sendiri.
-    const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift], station, { skipMaintenance: true, enabled: !pickerGate });
+    const { report, loading, submitReport, refetch } = useShiftReport(selectedDate, shiftMap[selectedShift], station, { skipMaintenance: true, enabled: !shiftGate });
     // Deep-link ?review=1 (dari notif "siap dipublish") → navigasi ke halaman
     // Review/Publish begitu report target selesai di-load. Sekali pakai.
     const autoReviewRef = useRef(false);
     // Semua hook history di-disable saat pickerGate aktif (modal belum pilih station).
     // prev data: dipakai tab Boiler/Turbin/Generator/Distribusi Steam (selisih totalizer).
-    const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift], !pickerGate && (!station || isPanelStation));
+    const { prevBoilerA, prevBoilerB, prevCoalBunker, prevTurbin, prevSteamDist, prevPowerDist } = usePreviousShiftData(selectedDate, shiftMap[selectedShift], !shiftGate && (!station || isPanelStation));
     // berasap history: tab Coal Bunker (station bunker) + auto-line catatan (form penuh).
-    const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift], !pickerGate && (!station || station === 'bunker'));
+    const bunkerBerasapSince = useBunkerBerasapHistory(selectedDate, shiftMap[selectedShift], !shiftGate && (!station || station === 'bunker'));
     // shutdown history: badge "shutdown sejak" di tab Boiler A/B.
-    const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift], !pickerGate && (!station || isBoilerStation));
+    const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift], !shiftGate && (!station || isBoilerStation));
     // inherit status boiler/turbin/feeder: hanya relevan untuk station panel & form penuh.
-    const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift], !pickerGate && (!station || isPanelStation));
+    const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift], !shiftGate && (!station || isPanelStation));
     const { operator, operators } = useOperator();
     const isAdmin = operator?.role === 'admin';
 
@@ -561,12 +569,15 @@ function InputShiftPageInner() {
         setPickerManual(false);
     }, [router]);
 
-    // Fetch saved ash unloadings and solar for current date+shift
+    // Fetch saved ash unloadings and solar for current date+shift.
+    // Di-gate per station (needsAsh/needsSolar dari peta tab) & mode shift saja —
+    // station tanpa tab konsumen tidak perlu menarik data ini.
     useEffect(() => {
-        if (pickerGate) return; // modal Pilih Laporan terbuka → belum fetch apa pun
+        if (shiftGate) return; // picker terbuka / mode harian → belum fetch apa pun
+        if (!needsAsh && !needsSolar) return;
         const supabase = createClient();
 
-        supabase
+        if (needsAsh) supabase
             .from('ash_unloadings')
             .select('id, silo, perusahaan, tujuan, ritase')
             .eq('date', selectedDate)
@@ -574,7 +585,7 @@ function InputShiftPageInner() {
             .order('created_at', { ascending: true })
             .then(({ data }) => setSavedAshEntries((data ?? []).map((r: any) => ({ id: r.id, silo: r.silo, perusahaan: r.perusahaan, tujuan: r.tujuan, ritase: r.ritase }))));
 
-        supabase
+        if (needsSolar) supabase
             .from('solar_unloadings')
             .select('id, date, supplier, liters')
             .eq('date', selectedDate)
@@ -582,7 +593,7 @@ function InputShiftPageInner() {
             .order('created_at', { ascending: true })
             .then(({ data }) => setSavedSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, perusahaan: r.supplier }))));
 
-        supabase
+        if (needsSolar) supabase
             .from('solar_usages')
             .select('id, date, tujuan, liters')
             .eq('date', selectedDate)
@@ -590,11 +601,12 @@ function InputShiftPageInner() {
             .order('created_at', { ascending: true })
             .then(({ data }) => setSavedOutSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, tujuan: r.tujuan }))));
 
-    }, [selectedDate, selectedShift, pickerGate]);
+    }, [selectedDate, selectedShift, shiftGate, needsAsh, needsSolar]);
 
-    // Fetch last known chemical stock (latest shift report with non-null stock)
+    // Fetch last known chemical stock (latest shift report with non-null stock).
+    // Konsumennya hanya tab Lab → skip untuk station tanpa tab Lab & di mode harian.
     useEffect(() => {
-        if (pickerGate) return; // modal Pilih Laporan terbuka → belum fetch apa pun
+        if (shiftGate || !needsChemStock) return;
         const supabase = createClient();
         supabase
             .from('shift_water_quality')
@@ -611,7 +623,7 @@ function InputShiftPageInner() {
                     });
                 }
             });
-    }, [pickerGate]);
+    }, [shiftGate, needsChemStock]);
 
     // ─── Delete handlers untuk entri yang sudah tersimpan di DB ───
     const handleDeleteSavedAsh = async (id: string) => {
@@ -765,14 +777,25 @@ function InputShiftPageInner() {
 
     // Default supervisor = supervisor grup yang bertugas. DIDEKLARASI SETELAH clear-effect
     // supaya urutan efek benar: clear kosongkan supervisor dulu, baru fill isi default.
-    // Diisi hanya kalau field masih KOSONG & report belum menyimpan supervisor sendiri
-    // (report.supervisor menang, di-restore effect lain). `prev || ...` menjaga pilihan
-    // manual user tidak ketimpa dalam konteks tanggal/shift yang sama.
+    // Report yang sudah menyimpan supervisor sendiri menang (di-restore effect lain).
+    // Nilai lama yang ternyata SUPERVISOR GRUP LAIN ikut dikoreksi — supervisor nyangkut
+    // dari localStorage rotasi sebelumnya pernah bikin kasi harian salah grup
+    // (insiden LHUBB 13 Jul 2026: grup D tersimpan supervisor grup C).
     useEffect(() => {
         if (!groupSupervisor) return;
-        if (report?.supervisor) return;
-        setSupervisor(prev => prev || groupSupervisor);
-    }, [groupSupervisor, report]);
+        // Guard report.supervisor HANYA di mode shift: di mode harian, report = laporan
+        // shift terpilih (grup lain) — supervisor-nya tidak boleh menahan/menimpa KASI
+        // harian grup malam. Saat balik ke mode shift, nilai report di-apply ulang.
+        if (inputMode === 'shift' && report?.supervisor) {
+            setSupervisor(report.supervisor);
+            return;
+        }
+        setSupervisor(prev => {
+            if (!prev) return groupSupervisor;
+            const prevOp = operators.find(op => op.name === prev && op.jabatan === 'Supervisor');
+            return prevOp && prevOp.group !== dutyGroup ? groupSupervisor : prev;
+        });
+    }, [groupSupervisor, report, operators, dutyGroup, inputMode]);
 
     // Populate form when report data arrives from Supabase
     useEffect(() => {
@@ -1000,7 +1023,7 @@ function InputShiftPageInner() {
         'feeder_a_flow','feeder_b_flow','feeder_c_flow','feeder_d_flow','feeder_e_flow','feeder_f_flow',
     ];
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (confirmed?: { supervisor: string; foremanBoiler: string; foremanTurbin: string; fillerName: string }) => {
         if (submitting) return;
         // Guard submit window — operator pengganti yang akses link lama tidak boleh nge-edit
         // shift di luar window submit (sebelum reminder time atau setelah grace period).
@@ -1025,31 +1048,44 @@ function InputShiftPageInner() {
             }
         }
 
+        // ─── Pop-up konfirmasi personel sebelum simpan ───
+        // Muncul HANYA kalau masih ada field personel yang kosong; kalau Supervisor/
+        // Foreman/Diisi oleh sudah lengkap, simpan lanjut tanpa pop-up. Setelah
+        // dikonfirmasi, handleSubmit dipanggil ulang dengan nilai final.
+        if (!confirmed) {
+            const fields: PersonnelConfirmField[] = [];
+            if (!station || isPanelStation) {
+                fields.push({ key: 'supervisor', label: 'Supervisor', value: supervisor, options: supervisorOptions.map(op => ({ value: op.name, label: op.name })), required: true });
+            }
+            if (!station || (isPanelStation && station !== 'panel_turbin')) {
+                fields.push({ key: 'foremanBoiler', label: 'Foreman Boiler', value: foremanBoiler, options: foremanBoilerOptions.map(op => ({ value: op.name, label: op.name })), required: true });
+            }
+            if (!station || station === 'panel_turbin') {
+                fields.push({ key: 'foremanTurbin', label: 'Foreman Turbin', value: foremanTurbin, options: foremanTurbinOptions.map(op => ({ value: op.name, label: op.name })), required: true });
+            }
+            if (station && station !== 'lapangan_boiler') {
+                fields.push({ key: 'fillerName', label: 'Diisi oleh', value: fillerName || operator?.name || '', options: operators.map(op => ({ value: op.name, label: `${op.name}${op.group ? ` (Group ${op.group})` : ''}` })), required: true });
+            }
+            if (fields.some(f => !(f.value ?? '').trim())) {
+                setPersonnelConfirm({ fields });
+                return;
+            }
+            confirmed = { supervisor, foremanBoiler, foremanTurbin, fillerName: fillerName || operator?.name || '' };
+        }
+        const supervisorVal = confirmed.supervisor;
+        const foremanBoilerVal = confirmed.foremanBoiler;
+        const foremanTurbinVal = confirmed.foremanTurbin;
+        const fillerNameVal = confirmed.fillerName;
+
         // ─── Supervisor wajib diisi: form penuh & station panel (boiler A/B + turbin) ───
-        if ((!station || isPanelStation) && !supervisor.trim()) {
+        if ((!station || isPanelStation) && !supervisorVal.trim()) {
             setToast({ type: 'error', message: 'Kolom Supervisor wajib diisi sebelum simpan.' });
             setTimeout(() => setToast(null), 4000);
             return;
         }
 
-        // ─── Foreman wajib diisi — scoping sama dgn supervisor: form penuh wajib
-        // keduanya, station panel wajib foreman sisi-nya (turbin/boiler) saja. ───
-        const missingForeman: string[] = [];
-        if (!station) {
-            if (!foremanBoiler.trim()) missingForeman.push('Foreman Boiler');
-            if (!foremanTurbin.trim()) missingForeman.push('Foreman Turbin');
-        } else if (isPanelStation) {
-            if (station === 'panel_turbin') {
-                if (!foremanTurbin.trim()) missingForeman.push('Foreman Turbin');
-            } else if (!foremanBoiler.trim()) {
-                missingForeman.push('Foreman Boiler');
-            }
-        }
-        if (missingForeman.length > 0) {
-            setToast({ type: 'error', message: `Kolom ${missingForeman.join(' & ')} wajib diisi sebelum simpan.` });
-            setTimeout(() => setToast(null), 4000);
-            return;
-        }
+        // Foreman TIDAK divalidasi wajib di sini — kewajibannya di-enforce lewat
+        // pop-up konfirmasi personel (field required, tombol Simpan disabled sampai terisi).
 
         // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
         // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
@@ -1219,7 +1255,7 @@ function InputShiftPageInner() {
 
             const result = await submitReport({
                 group_name: currentGroup || operator?.group || 'A',
-                supervisor: supervisor || operator?.name || 'Operator',
+                supervisor: supervisorVal || operator?.name || 'Operator',
                 catatan: catatanForSubmit || null,
                 created_by: operator?.supabaseId || '',
                 boilerA: { ...finalBoilerA, batubara_ton: batubaraA, selisih_steam: selisihSteamA, selisih_bfw: selisihBfwA },
@@ -1228,22 +1264,24 @@ function InputShiftPageInner() {
                 steamDist: { ...steamDist, ...selisihSteamDist },
                 generatorGi: finalGeneratorGi,
                 powerDist: { ...powerDist, ...selisihPowerDist },
-                espHandling: { hopper: 'A', conveyor: 'AB', ...espHandling, unloading_a: totalRitA, unloading_b: totalRitB },
+                // pf1/pf2 default 0 di payload (bukan hardcode di mapper) — scopePartial
+                // meloloskannya hanya untuk handling/form penuh, station lain tak menimpa.
+                espHandling: { hopper: 'A', conveyor: 'AB', pf1: 0, pf2: 0, ...espHandling, unloading_a: totalRitA, unloading_b: totalRitB },
                 tankyard,
                 personnel: {
                     turbin_grup: currentGroup || operator?.group || null,
-                    turbin_karu: foremanTurbin || null,
-                    turbin_kasi: supervisor || null,
+                    turbin_karu: foremanTurbinVal || null,
+                    turbin_kasi: supervisorVal || null,
                     boiler_grup: currentGroup || operator?.group || null,
-                    boiler_karu: foremanBoiler || null,
-                    boiler_kasi: supervisor || null,
+                    boiler_karu: foremanBoilerVal || null,
+                    boiler_kasi: supervisorVal || null,
                 },
                 coalBunker: { ...coalBunker, ...selisihCoalBunker },
                 waterQuality: { ...waterQuality, ...chemicalDosing },
                 prevBoilerA: { totalizer_steam: (prevBoilerA.totalizer_steam as number | null) ?? null },
                 prevBoilerB: { totalizer_steam: (prevBoilerB.totalizer_steam as number | null) ?? null },
                 // Station-scoped fill audit: hanya di-kirim kalau operator submit dari station view.
-                ...(station && fillerName ? { station_filler: { station, name: fillerName } } : {}),
+                ...(station && fillerNameVal ? { station_filler: { station, name: fillerNameVal } } : {}),
                 // Catatan operasional per-station (hanya station yg punya tab Catatan, mis.
                 // panel_boiler/turbin) — di-merge ke station_catatan JSONB, digabung saat publish.
                 ...(station && STATION_SHIFT_TABS[station]?.includes('Catatan Operasional')
@@ -1391,6 +1429,24 @@ function InputShiftPageInner() {
         await handleSubmit();
     };
 
+    // Konfirmasi personel dari pop-up → sinkronkan ke state (header form + localStorage
+    // ikut nilai final), lalu lanjutkan simpan dengan nilai TERKONFIRMASI (bukan state,
+    // yang updatenya async dan bisa basi di closure handleSubmit).
+    const handlePersonnelConfirm = (values: Record<string, string>) => {
+        setPersonnelConfirm(null);
+        const merged = {
+            supervisor: values.supervisor ?? supervisor,
+            foremanBoiler: values.foremanBoiler ?? foremanBoiler,
+            foremanTurbin: values.foremanTurbin ?? foremanTurbin,
+            fillerName: values.fillerName ?? fillerName,
+        };
+        if (values.supervisor !== undefined) setSupervisor(merged.supervisor);
+        if (values.foremanBoiler !== undefined) setForemanBoiler(merged.foremanBoiler);
+        if (values.foremanTurbin !== undefined) setForemanTurbin(merged.foremanTurbin);
+        if (values.fillerName !== undefined) setFillerName(merged.fillerName);
+        void handleSubmit(merged);
+    };
+
     const isTabLengkap = React.useCallback((tabId: TabId) => {
         const hasVal = (obj: Record<string, any>, keys: string[]) => keys.every(k => obj[k] !== null && obj[k] !== undefined && obj[k] !== '');
         
@@ -1449,6 +1505,15 @@ function InputShiftPageInner() {
         <div className="flex-1 w-full max-w-[1366px] mx-auto p-4 lg:p-6 pb-28 lg:pb-24 flex flex-col gap-4 xl:h-full xl:overflow-hidden">
             {/* Pop-up peringatan nilai tidak wajar */}
             {warningModal}
+            {/* Pop-up konfirmasi personel (Supervisor/Foreman/Diisi oleh) sebelum simpan shift */}
+            <PersonnelConfirmModal
+                open={!!personnelConfirm}
+                subtitle={`Group ${dutyGroup || '?'} • ${SHIFT_LABELS[selectedShift]} • ${selectedDate}`}
+                fields={personnelConfirm?.fields ?? []}
+                onConfirm={handlePersonnelConfirm}
+                onCancel={() => setPersonnelConfirm(null)}
+            />
+
             {/* Loading Overlay */}
             {submitting && (
                 <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
@@ -2166,7 +2231,7 @@ function InputShiftPageInner() {
                     aktif hanya saat window submit terbuka. */}
                 {(() => {
                     const save = inputMode === 'shift'
-                        ? { submit: handleSubmit, submitting, locked: isLocked, beforeStart: isBeforeStart, pastEnd: isPastDeadline }
+                        ? { submit: () => { void handleSubmit(); }, submitting, locked: isLocked, beforeStart: isBeforeStart, pastEnd: isPastDeadline }
                         : harianSave;
                     if (!save) return null;
                     const saveDisabled = save.submitting || save.locked;

@@ -242,8 +242,11 @@ export function shiftReportToRow(
     row[COL.loading] = s(eh.loading as string | null);
     row[COL.hopper] = s(eh.hopper as string | null);
     row[COL.conveyor] = s(eh.conveyor as string | null);
-    row[COL.pf1] = 0;
-    row[COL.pf2] = 0;
+    // PF1/PF2 milik station handling: tulis hanya kalau key-nya ada di payload
+    // (di-default 0 oleh form untuk pemilik; scopePartial strip untuk station lain).
+    // Dulu hardcode 0 → SETIAP save station menimpa sel handling dengan 0 palsu.
+    row[COL.pf1] = 'pf1' in eh ? nz((eh.pf1 as number | null) ?? 0) : null;
+    row[COL.pf2] = 'pf2' in eh ? nz((eh.pf2 as number | null) ?? 0) : null;
 
     // Tankyard
     const ty = data.tankyard ?? {};

@@ -1,24 +1,35 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { PhotoRow } from '@/lib/supabase/types';
+
+/** Bentuk minimal foto yang bisa ditampilkan galeri — dipenuhi PhotoRow (fitur
+ *  critical lama) maupun SheetPhoto (viewer /critical-maintenance). */
+export interface GalleryPhoto {
+    id: string;
+    filename: string;
+    caption: string | null;
+    url?: string;
+    uploaded_via?: string;
+}
 
 interface PhotoGalleryProps {
-    photos: PhotoRow[];
+    photos: GalleryPhoto[];
     onDelete?: (id: string) => Promise<void>;
     onCaptionUpdate?: (id: string, caption: string) => Promise<void> | void;
     compact?: boolean;
+    /** Base endpoint proxy foto (`{srcBase}/{id}/file`). Default = fitur critical lama. */
+    srcBase?: string;
 }
 
 /**
  * Build src URL untuk foto. Pakai proxy `/api/photos/[id]/file` instead of R2 langsung,
  * supaya bekerja di network yang memblokir domain `*.r2.dev`.
  */
-function photoSrc(photo: PhotoRow): string {
-    return `/api/photos/${photo.id}/file`;
+function photoSrc(photo: GalleryPhoto, srcBase: string): string {
+    return `${srcBase}/${photo.id}/file`;
 }
 
-export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compact = false }: PhotoGalleryProps) {
+export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compact = false, srcBase = '/api/photos' }: PhotoGalleryProps) {
     const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [draftCaption, setDraftCaption] = useState('');
@@ -125,7 +136,7 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                                src={photoSrc(photo)}
+                                src={photoSrc(photo, srcBase)}
                                 alt={photo.caption || photo.filename}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
@@ -246,7 +257,7 @@ export default function PhotoGallery({ photos, onDelete, onCaptionUpdate, compac
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 key={photos[lightboxIdx].id}
-                                src={photoSrc(photos[lightboxIdx])}
+                                src={photoSrc(photos[lightboxIdx], srcBase)}
                                 alt={photos[lightboxIdx].caption || photos[lightboxIdx].filename}
                                 draggable={false}
                                 referrerPolicy="no-referrer"

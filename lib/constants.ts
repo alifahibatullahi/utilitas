@@ -414,6 +414,8 @@ export const NAV_ITEMS: NavItem[] = [
 export interface HomeMenuItem extends NavItem {
     description: string;
     featured: boolean;
+    /** Kartu tampil tapi belum bisa diklik (badge "Coming Soon"). */
+    comingSoon?: boolean;
 }
 
 // Menu grid di halaman /home. Hanya fitur yang sudah aktif yang ditampilkan;
@@ -422,6 +424,9 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     { id: 'tank-level', label: 'Tank Level', description: 'Monitoring level tangki DEMIN, RCW & Solar', icon: 'tank', path: '/tank-level', roles: 'all', featured: true },
     { id: 'input-laporan', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-laporan', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'], featured: true },
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
+    // Viewer berbasis Google Sheets (input tetap di spreadsheet). Masih trial —
+    // hapus comingSoon saat siap rilis (halaman bisa diakses via URL langsung).
+    { id: 'critical-maintenance', label: 'Critical Maintenance', description: 'Daftar critical equipment & riwayat maintenance', icon: 'warning', path: '/critical-maintenance', roles: 'all', featured: true, comingSoon: true },
 ];
 
 // Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah

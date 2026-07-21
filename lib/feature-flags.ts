@@ -18,7 +18,8 @@ export type DisabledFeatureKey = keyof typeof DISABLED_FEATURES;
 export function isPathDisabled(path: string): boolean {
     if (path.startsWith('/dashboard')) return DISABLED_FEATURES.dashboard;
     if (path.startsWith('/history')) return DISABLED_FEATURES.history;
-    if (path.startsWith('/critical')) return DISABLED_FEATURES.critical;
+    // '/critical-maintenance' (viewer berbasis Sheets) BUKAN bagian fitur critical lama
+    if (path === '/critical' || path.startsWith('/critical/')) return DISABLED_FEATURES.critical;
     if (path.startsWith('/kanban')) return DISABLED_FEATURES.kanban;
     if (path.startsWith('/totaliser')) return DISABLED_FEATURES.totaliser;
     return false;

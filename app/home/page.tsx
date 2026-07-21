@@ -27,6 +27,7 @@ const CARD_THEMES: Record<string, { iconBg: string; iconText: string; hoverBorde
     'admin-wa-hub': { iconBg: 'bg-teal-50', iconText: 'text-teal-500', hoverBorder: 'hover:border-teal-200' },
     'admin-sync-sheets': { iconBg: 'bg-blue-50', iconText: 'text-blue-500', hoverBorder: 'hover:border-blue-200' },
     'admin-users': { iconBg: 'bg-amber-50', iconText: 'text-amber-500', hoverBorder: 'hover:border-amber-200' },
+    'critical-maintenance': { iconBg: 'bg-rose-50', iconText: 'text-rose-500', hoverBorder: 'hover:border-rose-200' },
 };
 
 const DEFAULT_THEME = { iconBg: 'bg-slate-50', iconText: 'text-slate-500', hoverBorder: 'hover:border-slate-300' };
@@ -46,6 +47,32 @@ const pad = (n: number) => String(n).padStart(2, '0');
 function MenuCard({ item, delayMs }: { item: HomeMenuItem; delayMs: number }) {
     const openNewTab = item.id === 'history';
     const theme = CARD_THEMES[item.id] || DEFAULT_THEME;
+
+    // Kartu "Coming Soon": tampil tapi belum bisa diklik.
+    if (item.comingSoon) {
+        return (
+            <div
+                style={{ animationDelay: `${delayMs}ms` }}
+                className="relative p-5 rounded-2xl border border-slate-200 bg-white shadow-sm home-fade-up
+                    opacity-70 cursor-default select-none"
+                aria-disabled="true"
+            >
+                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                    Coming Soon
+                </span>
+                <div className="flex items-start justify-between">
+                    <div className={`w-11 h-11 rounded-xl ${theme.iconBg} flex items-center justify-center`}>
+                        <span aria-hidden="true" className={`material-symbols-outlined text-xl ${theme.iconText}`}>
+                            {ICON_MAP[item.icon] || 'circle'}
+                        </span>
+                    </div>
+                </div>
+                <p className="font-bold text-slate-800 mt-4">{item.label}</p>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed line-clamp-2">{item.description}</p>
+            </div>
+        );
+    }
+
     return (
         <Link
             href={item.path}

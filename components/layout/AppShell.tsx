@@ -29,7 +29,7 @@ export default function AppShell({ children }: AppShellProps) {
     const hasOwnMenuButton = pathname.startsWith('/input-laporan');
 
     // Don't show shell on login page, home menu, fullscreen preview, or history data page
-    if (pathname === '/' || pathname === '/home' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname === '/tank-level' || pathname === '/history' || pathname.startsWith('/history/')) {
+    if (pathname === '/' || pathname === '/home' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname.startsWith('/critical-maintenance') || pathname === '/tank-level' || pathname === '/history' || pathname.startsWith('/history/')) {
         return <>{children}</>;
     }
 

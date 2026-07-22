@@ -388,7 +388,7 @@ function InputShiftPageInner() {
     const boilerShutdownSince = useBoilerShutdownHistory(selectedDate, shiftMap[selectedShift], !shiftGate && (!station || isBoilerStation));
     // inherit status boiler/turbin/feeder: hanya relevan untuk station panel & form penuh.
     const latestBoilerStatus = useLatestBoilerStatus(selectedDate, shiftMap[selectedShift], !shiftGate && (!station || isPanelStation));
-    const { operator, operators } = useOperator();
+    const { operator, operators, loading: operatorLoading } = useOperator();
     const isAdmin = operator?.role === 'admin';
 
     // Auto-kalkulasi grup dari pola jadwal shift
@@ -536,6 +536,21 @@ function InputShiftPageInner() {
         const needsPicker = !station && !qReview && !qDate && !qShift;
         setStationPickerOpen(needsPicker);
     }, [mounted, operator, station, searchParams]);
+
+    // Auth guard: /input-laporan tidak boleh diakses tanpa login. Beda dgn halaman
+    // lain (yg semuanya redirect ke '/' saat !operator), dulu halaman ini TIDAK
+    // punya guard → modal "Pilih Laporan" hanya terbuka kalau `operator` ada
+    // (efek picker return dini saat operator null). Akibatnya, buka link reminder
+    // WA LAMA dari in-app browser WhatsApp (localStorage terpisah / belum login)
+    // menampilkan form kosong tanpa modal & tanpa jalan ke login. Arahkan ke
+    // halaman login sambil membawa `next` (path + query) supaya setelah pilih
+    // operator kembali ke sini dan modal auto-terbuka.
+    useEffect(() => {
+        if (!mounted || operatorLoading || operator) return;
+        const qs = searchParams?.toString();
+        const next = `/input-laporan${qs ? `?${qs}` : ''}`;
+        router.replace(`/?next=${encodeURIComponent(next)}`);
+    }, [mounted, operatorLoading, operator, searchParams, router]);
 
     // Buka dialog "Ganti Laporan" (manual).
     const openChangeReport = useCallback(() => { setPickerManual(true); setStationPickerOpen(true); }, []);

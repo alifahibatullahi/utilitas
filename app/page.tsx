@@ -29,9 +29,19 @@ export default function LoginPage() {
   const { operator, operators, loading, login } = useOperator();
   const router = useRouter();
 
+  // Tujuan setelah login. Halaman yg butuh auth (mis. /input-laporan dari link
+  // reminder WA) mengarahkan ke '/?next=<path>' saat belum login → kembalikan ke
+  // sana setelah pilih operator. Hanya path internal (diawali '/') yg diterima
+  // supaya tidak jadi open-redirect ke domain luar.
+  const resolveNext = (): string => {
+    if (typeof window === 'undefined') return '/home';
+    const next = new URLSearchParams(window.location.search).get('next');
+    return next && next.startsWith('/') ? next : '/home';
+  };
+
   useEffect(() => {
     if (!loading && operator) {
-      router.replace('/home');
+      router.replace(resolveNext());
     }
   }, [loading, operator, router]);
 
@@ -53,7 +63,7 @@ export default function LoginPage() {
   const handleLogin = () => {
     if (!selectedOp) return;
     login(selectedOp);
-    router.push('/home');
+    router.push(resolveNext());
   };
 
   const handleBack = () => {

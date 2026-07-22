@@ -1,23 +1,36 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import CriticalSheetList from './CriticalSheetList';
-import MaintenanceSheetList from './MaintenanceSheetList';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import ItemList from './ItemList';
+import ItemDetail from './ItemDetail';
+import type { SheetItem } from './types';
 
 /**
- * Viewer Critical Maintenance — data & input tinggal di Google Sheets, halaman ini
- * hanya menampilkan (plus upload foto). Data di-cache server 60 detik; tombol
- * "Perbarui data" memaksa baca ulang dari sheet.
+ * Viewer Critical Maintenance — item-centric. Data & input tinggal di Google Sheets;
+ * halaman ini menampilkan riwayat critical/maintenance/foto + spesifikasi per item.
+ * Item aktif disimpan di query `?item=<key>` supaya tombol back browser & deep-link jalan.
  */
 export default function CriticalSheetPage() {
     const router = useRouter();
-    const [tab, setTab] = useState<'critical' | 'maintenance'>('critical');
+    const searchParams = useSearchParams();
+    const activeKey = searchParams.get('item');
+
     const [reloadKey, setReloadKey] = useState(0);
     const [fetchedAt, setFetchedAt] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
     const onMeta = useCallback((at: string) => setFetchedAt(at), []);
+
+    // Reset stempel waktu saat pindah antara list ↔ detail (masing-masing punya fetchedAt sendiri).
+    useEffect(() => { setFetchedAt(null); }, [activeKey]);
+
+    function selectItem(item: SheetItem) {
+        router.push(`/critical-maintenance?item=${encodeURIComponent(item.key)}`);
+    }
+    function back() {
+        router.push('/critical-maintenance');
+    }
 
     async function handleRefresh() {
         setRefreshing(true);
@@ -42,12 +55,12 @@ export default function CriticalSheetPage() {
                         className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center cursor-pointer transition-colors shrink-0"
                         aria-label="Kembali ke menu"
                     >
-                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>home</span>
                     </button>
                     <div className="min-w-0 flex-1">
                         <h1 className="text-lg font-bold text-slate-800 leading-tight">Critical Maintenance</h1>
                         <p className="text-[11px] text-slate-400 font-medium">
-                            Sumber data: Google Sheets · input tetap di spreadsheet
+                            Riwayat & spesifikasi per item · sumber data Google Sheets
                             {stamp && <span> · data per {stamp}</span>}
                         </p>
                     </div>
@@ -62,28 +75,9 @@ export default function CriticalSheetPage() {
                     </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex rounded-xl bg-slate-200/60 p-1 mb-4">
-                    {([
-                        { id: 'critical', label: 'Critical', icon: 'warning' },
-                        { id: 'maintenance', label: 'Riwayat Maintenance', icon: 'build' },
-                    ] as const).map(t => (
-                        <button
-                            key={t.id}
-                            onClick={() => setTab(t.id)}
-                            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                tab === t.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{t.icon}</span>
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
-
-                {tab === 'critical'
-                    ? <CriticalSheetList reloadKey={reloadKey} onMeta={onMeta} />
-                    : <MaintenanceSheetList reloadKey={reloadKey} onMeta={onMeta} />}
+                {activeKey
+                    ? <ItemDetail itemKey={activeKey} reloadKey={reloadKey} onBack={back} />
+                    : <ItemList reloadKey={reloadKey} onSelect={selectItem} onMeta={onMeta} />}
             </div>
         </div>
     );

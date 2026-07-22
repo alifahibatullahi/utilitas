@@ -68,8 +68,6 @@ export interface MaintenanceRow {
     notifikasi: string;
     foreman: string;
     gabungan: string;
-    refNo: number | null;          // dari kolom "Ref Critical" ("123 - uraian" → 123)
-    refRaw: string;
 }
 
 export interface CriticalSheetData {
@@ -99,14 +97,6 @@ function parseSheetDate(raw: string): string | null {
     if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
     return null;
-}
-
-/** "123 - Trafo A1 ..." atau "123" → 123 (relasi maintenance → critical). */
-export function parseRefCritical(cellValue: string): number | null {
-    const m = (cellValue ?? '').match(/^\s*(\d+)\s*[-–—]/);
-    if (m) return parseInt(m[1], 10);
-    const plain = (cellValue ?? '').trim();
-    return /^\d+$/.test(plain) ? parseInt(plain, 10) : null;
 }
 
 function parseNo(cellValue: string): number | null {
@@ -188,7 +178,6 @@ export function parseMaintenanceTab(rows: string[][]): ParsedTab<MaintenanceRow>
         // Sama seperti tab critical: saring baris kosong/sisa (kolom A tab ini terisi
         // formula sampai puluhan ribu baris di bawah data asli).
         if ((!item && !uraian) || (!uraian && !tanggalRaw)) continue;
-        const refRaw = cell(r, map['ref critical']);
         out.push({
             uid: cell(r, UID_COL_INDEX),
             rowIndex: i + 1,
@@ -204,8 +193,6 @@ export function parseMaintenanceTab(rows: string[][]): ParsedTab<MaintenanceRow>
             notifikasi: cell(r, map['notifikasi']),
             foreman: cell(r, map['foreman']),
             gabungan: cell(r, map['gabungan']),
-            refNo: parseRefCritical(refRaw),
-            refRaw,
         });
     }
     return { headerRowIndex: rowIdx + 1, rows: out };
@@ -380,4 +367,127 @@ export async function loadCriticalSheet(force = false): Promise<CriticalSheetDat
 /** Status selesai = "OK" (case-insensitive). Selain itu dianggap masih aktif. */
 export function isStatusDone(status: string): boolean {
     return status.trim().toLowerCase() === 'ok';
+}
+
+// ─── Lapisan item (item-centric) ─────────────────────────────────────────────
+
+export interface ItemIndexEntry {
+    key: string;              // normalisasi(item)|normalisasi(varian)
+    itemName: string;         // display (kolom D asli)
+    variant: string;          // kolom E asli
+    code: string;             // kode item mis. K-08.17 (bila terdeteksi)
+    criticalCount: number;
+    maintenanceCount: number;
+    lastDate: string | null;  // ISO tanggal terakhir ada aktivitas
+}
+
+export interface ItemDetail {
+    key: string;
+    itemName: string;
+    variant: string;
+    code: string;
+    criticals: CriticalRow[];
+    maintenances: MaintenanceRow[];
+}
+
+function normItem(item: string): string {
+    return (item ?? '').replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+/**
+ * Pecah kolom Varian yang sering diketik gabungan/kotor menjadi token varian
+ * tunggal. Satu record bisa menyangkut >1 varian dan diperlakukan satu-per-satu:
+ *   "DEF" / "D/E/F" / "D E F" / "D , F" / "A&C" / "D/E./F" → ['D','E','F'] dst.
+ * Pemisah: / , & + . - dan spasi. Chunk semua-huruf (≤6, rentang varian A–F umum)
+ * dipecah per huruf. Varian kosong → [] (item tanpa varian, satu halaman sendiri).
+ */
+export function variantTokens(varian: string): string[] {
+    const cleaned = (varian ?? '').toUpperCase().replace(/[/,&+.\-]/g, ' ');
+    const chunks = cleaned.split(/\s+/).map(c => c.trim()).filter(Boolean);
+    const tokens: string[] = [];
+    for (const ch of chunks) {
+        if (/^[A-Z]+$/.test(ch) && ch.length <= 6) {
+            for (const letter of ch) tokens.push(letter);
+        } else {
+            tokens.push(ch);
+        }
+    }
+    return Array.from(new Set(tokens));
+}
+
+/** Key satu halaman item = normalisasi(item) + '|' + token varian (kosong → tanpa suffix). */
+export function itemKeyOf(item: string, variantToken: string): string {
+    const nItem = normItem(item);
+    const nVar = (variantToken ?? '').trim().toUpperCase();
+    return nVar ? `${nItem}|${nVar}` : nItem;
+}
+
+/** Semua key halaman item yang dimiliki satu record (satu per token varian). */
+export function recordItemKeys(item: string, varian: string): string[] {
+    const tokens = variantTokens(varian);
+    if (tokens.length === 0) return [itemKeyOf(item, '')];
+    return tokens.map(t => itemKeyOf(item, t));
+}
+
+/** Ekstrak kode equipment (mis. "B-02.01", "K-08.17") dari nama item. */
+export function extractCode(item: string): string {
+    const m = (item ?? '').match(/([A-Za-z]{1,5}-\d{2}\.\d{2})/);
+    return m ? m[1].toUpperCase() : '';
+}
+
+/** Bangun daftar item unik dgn agregat count & tanggal terakhir. Record multi-varian
+ *  dihitung di TIAP halaman varian (D/E/F muncul di halaman D, E, dan F). */
+export function buildItemIndex(data: CriticalSheetData): ItemIndexEntry[] {
+    const map = new Map<string, ItemIndexEntry>();
+    const touch = (item: string, varian: string, tanggal: string | null, kind: 'critical' | 'maintenance') => {
+        const tokens = variantTokens(varian);
+        const list = tokens.length ? tokens : ['']; // '' = halaman tanpa varian
+        for (const tok of list) {
+            const key = itemKeyOf(item, tok);
+            if (!key) continue;
+            let e = map.get(key);
+            if (!e) {
+                e = {
+                    key,
+                    itemName: (item ?? '').replace(/\s+/g, ' ').trim(),
+                    variant: tok,
+                    code: extractCode(item),
+                    criticalCount: 0,
+                    maintenanceCount: 0,
+                    lastDate: null,
+                };
+                map.set(key, e);
+            }
+            if (kind === 'critical') e.criticalCount++; else e.maintenanceCount++;
+            if (tanggal && (!e.lastDate || tanggal > e.lastDate)) e.lastDate = tanggal;
+        }
+    };
+    for (const c of data.criticals) touch(c.item, c.varian, c.tanggal, 'critical');
+    for (const m of data.maintenances) touch(m.item, m.varian, m.tanggal, 'maintenance');
+    // Urut: aktivitas terakhir terbaru dulu, lalu nama + varian.
+    return Array.from(map.values()).sort((a, b) => {
+        if (a.lastDate && b.lastDate && a.lastDate !== b.lastDate) return b.lastDate.localeCompare(a.lastDate);
+        if (a.lastDate && !b.lastDate) return -1;
+        if (!a.lastDate && b.lastDate) return 1;
+        return a.itemName.localeCompare(b.itemName) || a.variant.localeCompare(b.variant);
+    });
+}
+
+/** Ambil semua record critical & maintenance untuk satu item key (data sudah terbaru-dulu).
+ *  Record multi-varian (mis. "DEF") ikut muncul di tiap halaman varian penyusunnya. */
+export function getItemDetail(data: CriticalSheetData, key: string): ItemDetail | null {
+    const criticals = data.criticals.filter(c => recordItemKeys(c.item, c.varian).includes(key));
+    const maintenances = data.maintenances.filter(m => recordItemKeys(m.item, m.varian).includes(key));
+    if (criticals.length === 0 && maintenances.length === 0) return null;
+    const sample = criticals[0] ?? maintenances[0];
+    const barIdx = key.lastIndexOf('|');
+    const variant = barIdx >= 0 ? key.slice(barIdx + 1) : '';
+    return {
+        key,
+        itemName: (sample.item ?? '').replace(/\s+/g, ' ').trim(),
+        variant,
+        code: extractCode(sample.item),
+        criticals,
+        maintenances,
+    };
 }

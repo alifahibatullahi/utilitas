@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
 import CriticalSheetPage from '@/components/critical-sheet/CriticalSheetPage';
@@ -20,5 +20,10 @@ export default function CriticalMaintenanceRoute() {
             </div>
         );
     }
-    return <CriticalSheetPage />;
+    // CriticalSheetPage pakai useSearchParams → butuh Suspense boundary.
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+            <CriticalSheetPage />
+        </Suspense>
+    );
 }

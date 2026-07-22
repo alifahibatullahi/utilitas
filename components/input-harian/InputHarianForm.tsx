@@ -609,19 +609,26 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             const isSdA = turbineMisc.status_boiler_a === 'shutdown';
             const isSdB = turbineMisc.status_boiler_b === 'shutdown';
             const isTurbinSd = turbineMisc.status_turbin === 'shutdown';
+            // Validasi HANYA untuk tab milik scope aktif (form penuh = semua tab;
+            // station = tab station tsb). Tanpa gate ini, simpan dari station panel_turbin
+            // ikut memicu peringatan CR Boiler A/B (tab yang bukan urusannya).
+            const ownsTab = (tabId: HarianTabId) => !station || !!harianStationTabs?.includes(tabId);
             const warnings: string[] = [];
-            const wA = checkConsumptionRate('Boiler A', coalTotalA, steamProdA, isSdA); if (wA) warnings.push(wA);
-            const wB = checkConsumptionRate('Boiler B', coalTotalB, steamProdB, isSdB); if (wB) warnings.push(wB);
-            const mwFields: [string, number | string | null | undefined][] = [
-                ['Load STG', isTurbinSd ? 0 : power.gen_00],
-                ['Σ P PLN (GI)', turbineMisc.gi_sum_p],
-                ['Internal UBB', power.power_ubb],
-                ['Pabrik 2', power.power_pabrik2],
-                ['Pabrik 3A', power.power_pabrik3a],
-                ['Pabrik 3B', power.power_revamping],
-                ['PIU', power.power_pie],
-            ];
-            for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
+            if (ownsTab('Boiler A')) { const wA = checkConsumptionRate('Boiler A', coalTotalA, steamProdA, isSdA); if (wA) warnings.push(wA); }
+            if (ownsTab('Boiler B')) { const wB = checkConsumptionRate('Boiler B', coalTotalB, steamProdB, isSdB); if (wB) warnings.push(wB); }
+            if (ownsTab('Power')) {
+                const mwFields: [string, number | string | null | undefined][] = [
+                    ['Load STG', isTurbinSd ? 0 : power.gen_00],
+                    ['Σ P PLN (GI)', turbineMisc.gi_sum_p],
+                    ['Internal UBB', power.power_ubb],
+                    ['Pabrik 2', power.power_pabrik2],
+                    ['Pabrik 3A', power.power_pabrik3a],
+                    ['Pabrik 3B', power.power_revamping],
+                ];
+                for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
+            }
+            // PIU dimiliki station lapangan_turbin (tab terpisah), bukan panel_turbin.
+            if (ownsTab('PIU')) { const w = checkMaxMW('PIU', power.power_pie); if (w) warnings.push(w); }
             if (warnings.length > 0) {
                 const ok = await confirmWarnings(warnings);
                 if (!ok) return;

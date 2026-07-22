@@ -68,7 +68,7 @@ export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailPro
                 className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer transition-colors"
             >
                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
-                Daftar item
+                Kembali
             </button>
 
             {loading && !data ? (

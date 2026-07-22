@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import ItemList from './ItemList';
+import ItemBrowser from './ItemBrowser';
 import ItemDetail from './ItemDetail';
-import type { SheetItem } from './types';
 
 /**
  * Viewer Critical Maintenance — item-centric. Data & input tinggal di Google Sheets;
@@ -25,8 +24,8 @@ export default function CriticalSheetPage() {
     // Reset stempel waktu saat pindah antara list ↔ detail (masing-masing punya fetchedAt sendiri).
     useEffect(() => { setFetchedAt(null); }, [activeKey]);
 
-    function selectItem(item: SheetItem) {
-        router.push(`/critical-maintenance?item=${encodeURIComponent(item.key)}`);
+    function selectItem(key: string) {
+        router.push(`/critical-maintenance?item=${encodeURIComponent(key)}`);
     }
     function back() {
         router.push('/critical-maintenance');
@@ -77,7 +76,7 @@ export default function CriticalSheetPage() {
 
                 {activeKey
                     ? <ItemDetail itemKey={activeKey} reloadKey={reloadKey} onBack={back} />
-                    : <ItemList reloadKey={reloadKey} onSelect={selectItem} onMeta={onMeta} />}
+                    : <ItemBrowser reloadKey={reloadKey} onSelect={selectItem} onMeta={onMeta} />}
             </div>
         </div>
     );

@@ -491,3 +491,56 @@ export function getItemDetail(data: CriticalSheetData, key: string): ItemDetail 
         maintenances,
     };
 }
+
+// ─── Feed aktivitas terbaru ──────────────────────────────────────────────────
+
+export interface RecentEntry {
+    uid: string;
+    kind: 'critical' | 'maintenance';
+    tanggal: string | null;
+    tanggalRaw: string;
+    itemName: string;
+    variant: string;         // varian mentah (kolom E) — bisa gabungan
+    code: string;
+    uraian: string;
+    status: string;
+    scope: string;
+    itemKey: string;         // target navigasi ke halaman item (token varian pertama)
+}
+
+/**
+ * Gabungkan record critical + maintenance jadi satu feed terurut tanggal terbaru dulu.
+ * `itemKey` = halaman item tujuan saat record diklik (token varian pertama; record
+ * multi-varian tetap dapat ditemukan di halaman varian lain lewat pencarian item).
+ */
+export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical' | 'maintenance'): RecentEntry[] {
+    const out: RecentEntry[] = [];
+    if (kind !== 'maintenance') {
+        for (const c of data.criticals) {
+            out.push({
+                uid: c.uid, kind: 'critical', tanggal: c.tanggal, tanggalRaw: c.tanggalRaw,
+                itemName: (c.item ?? '').replace(/\s+/g, ' ').trim(), variant: c.varian,
+                code: extractCode(c.item), uraian: c.uraian, status: c.status, scope: c.scope,
+                itemKey: recordItemKeys(c.item, c.varian)[0],
+            });
+        }
+    }
+    if (kind !== 'critical') {
+        for (const m of data.maintenances) {
+            out.push({
+                uid: m.uid, kind: 'maintenance', tanggal: m.tanggal, tanggalRaw: m.tanggalRaw,
+                itemName: (m.item ?? '').replace(/\s+/g, ' ').trim(), variant: m.varian,
+                code: extractCode(m.item), uraian: m.uraian, status: m.status, scope: m.scope,
+                itemKey: recordItemKeys(m.item, m.varian)[0],
+            });
+        }
+    }
+    // Tanggal terbaru dulu; tanpa tanggal ditaruh paling akhir.
+    out.sort((a, b) => {
+        if (a.tanggal && b.tanggal) return a.tanggal === b.tanggal ? 0 : b.tanggal.localeCompare(a.tanggal);
+        if (a.tanggal && !b.tanggal) return -1;
+        if (!a.tanggal && b.tanggal) return 1;
+        return 0;
+    });
+    return out;
+}

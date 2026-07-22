@@ -90,6 +90,29 @@ export interface ItemListResponse {
     error?: string;
 }
 
+export interface RecentEntry {
+    uid: string;
+    kind: 'critical' | 'maintenance';
+    tanggal: string | null;
+    tanggalRaw: string;
+    itemName: string;
+    variant: string;
+    code: string;
+    uraian: string;
+    status: string;
+    scope: string;
+    itemKey: string;
+}
+
+export interface RecentResponse {
+    items: RecentEntry[];
+    total: number;
+    page: number;
+    pageSize: number;
+    fetchedAt: string;
+    error?: string;
+}
+
 // ─── Fetch helpers ───────────────────────────────────────────────────────────
 
 export async function fetchItems(params: { q?: string; page?: number; pageSize?: number }): Promise<ItemListResponse> {
@@ -101,6 +124,17 @@ export async function fetchItems(params: { q?: string; page?: number; pageSize?:
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Gagal memuat daftar item');
     return json as ItemListResponse;
+}
+
+export async function fetchRecent(params: { kind?: 'all' | 'critical' | 'maintenance'; page?: number; pageSize?: number }): Promise<RecentResponse> {
+    const qs = new URLSearchParams();
+    if (params.kind) qs.set('kind', params.kind);
+    qs.set('page', String(params.page ?? 1));
+    qs.set('pageSize', String(params.pageSize ?? 20));
+    const res = await fetch(`/api/critical-maintenance/recent?${qs.toString()}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? 'Gagal memuat aktivitas terbaru');
+    return json as RecentResponse;
 }
 
 export async function fetchItemDetail(key: string): Promise<ItemDetailResponse> {

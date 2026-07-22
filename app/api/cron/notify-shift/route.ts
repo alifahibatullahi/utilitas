@@ -14,6 +14,7 @@ import {
 } from '@/lib/whatsapp';
 import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
 import { autofillShutdownShift, autofillShutdownDaily } from '@/lib/shutdown-autofill';
+import { autopublishPastDeadline } from '@/lib/auto-publish';
 
 // Pesan lanjutan yang dikirim SETELAH reminder pribadi (grup A–C, mode personal):
 // minta penerima meneruskan reminder ke grup WA-nya supaya operator lain ikut mengisi.
@@ -104,7 +105,17 @@ export async function GET(req: NextRequest) {
         results.push(await runJob(supabase, job));
     }
 
-    return NextResponse.json({ now: nowWIB(), jobs: results });
+    // Auto-publish laporan yang sudah lewat deadline submit tapi belum di-publish —
+    // tandai status 'approved' saja (tanpa broadcast WA/PDF). Idempotent & tidak
+    // bergantung pada jadwal reminder, jadi dijalankan tiap tick.
+    let autopublish: unknown;
+    try {
+        autopublish = await autopublishPastDeadline(supabase);
+    } catch (e) {
+        autopublish = { error: e instanceof Error ? e.message : String(e) };
+    }
+
+    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish });
 }
 
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {

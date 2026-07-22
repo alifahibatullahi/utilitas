@@ -8,16 +8,16 @@
  */
 
 const STATUS_STYLE: Record<string, { label: string; cls: string; icon: string }> = {
-    ok: { label: 'SELESAI', cls: 'bg-white border border-slate-300 text-slate-600', icon: 'check_circle' },
-    ip: { label: 'IN PROGRESS', cls: 'bg-white border border-amber-300 text-amber-500', icon: 'pending' },
-    open: { label: 'OPEN', cls: 'bg-white border border-rose-300 text-rose-500', icon: 'error' },
+    ok: { label: 'SELESAI', cls: 'bg-neutral-100 border border-neutral-300 text-neutral-600', icon: 'check_circle' },
+    ip: { label: 'IN PROGRESS', cls: 'bg-amber-50 border border-amber-300 text-amber-600', icon: 'pending' },
+    open: { label: 'OPEN', cls: 'bg-red-50 border border-red-300 text-red-700', icon: 'error' },
 };
 
 export function SheetStatusBadge({ status, className = '' }: { status: string; className?: string }) {
     const key = status.trim().toLowerCase() || 'open';
     const cfg = STATUS_STYLE[key] ?? {
         label: status.trim().toUpperCase(),
-        cls: 'bg-white border border-slate-300 text-slate-500',
+        cls: 'bg-neutral-100 border border-neutral-300 text-neutral-600',
         icon: 'radio_button_checked',
     };
     return (

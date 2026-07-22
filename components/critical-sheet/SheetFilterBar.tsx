@@ -59,14 +59,14 @@ export function SheetPagination({ page, total, pageSize, onPage }: {
     if (totalPages <= 1) return null;
     return (
         <div className="flex items-center justify-between pt-1">
-            <p className="text-[11px] font-semibold text-slate-400">
+            <p className="text-[11px] font-semibold text-neutral-400">
                 {total} data · hal {page}/{totalPages}
             </p>
             <div className="flex gap-1">
                 <button
                     onClick={() => onPage(page - 1)}
                     disabled={page <= 1}
-                    className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 flex items-center justify-center cursor-pointer disabled:cursor-default"
+                    className="w-8 h-8 rounded-lg border border-neutral-300 bg-white text-neutral-500 hover:bg-neutral-50 disabled:opacity-40 flex items-center justify-center cursor-pointer disabled:cursor-default"
                     aria-label="Sebelumnya"
                 >
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
@@ -74,7 +74,7 @@ export function SheetPagination({ page, total, pageSize, onPage }: {
                 <button
                     onClick={() => onPage(page + 1)}
                     disabled={page >= totalPages}
-                    className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 flex items-center justify-center cursor-pointer disabled:cursor-default"
+                    className="w-8 h-8 rounded-lg border border-neutral-300 bg-white text-neutral-500 hover:bg-neutral-50 disabled:opacity-40 flex items-center justify-center cursor-pointer disabled:cursor-default"
                     aria-label="Berikutnya"
                 >
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>

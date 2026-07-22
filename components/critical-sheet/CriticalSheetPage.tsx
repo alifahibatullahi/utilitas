@@ -45,20 +45,20 @@ export default function CriticalSheetPage() {
         : null;
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        <div className="min-h-screen bg-neutral-50">
+            <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
                     <button
                         onClick={() => router.push('/home')}
-                        className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center cursor-pointer transition-colors shrink-0"
+                        className="w-9 h-9 rounded-xl bg-white border border-neutral-300 text-neutral-500 hover:bg-neutral-100 flex items-center justify-center cursor-pointer transition-colors shrink-0"
                         aria-label="Kembali ke menu"
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 20 }}>home</span>
                     </button>
                     <div className="min-w-0 flex-1">
-                        <h1 className="text-lg font-bold text-slate-800 leading-tight">Critical Maintenance</h1>
-                        <p className="text-[11px] text-slate-400 font-medium">
+                        <h1 className="text-xl font-bold text-neutral-900 leading-tight">Critical Maintenance</h1>
+                        <p className="text-[11px] text-neutral-400 font-medium">
                             Riwayat & spesifikasi per item · sumber data Google Sheets
                             {stamp && <span> · data per {stamp}</span>}
                         </p>
@@ -66,7 +66,7 @@ export default function CriticalSheetPage() {
                     <button
                         onClick={handleRefresh}
                         disabled={refreshing}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50 cursor-pointer transition-colors shrink-0"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-neutral-300 text-xs font-bold text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 cursor-pointer transition-colors shrink-0"
                         title="Baca ulang data dari spreadsheet"
                     >
                         <span className={`material-symbols-outlined ${refreshing ? 'animate-spin' : ''}`} style={{ fontSize: 16 }}>refresh</span>

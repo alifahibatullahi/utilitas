@@ -15,14 +15,14 @@ export default function CriticalMaintenanceRoute() {
 
     if (loading || !operator) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <p className="text-sm text-slate-400 font-medium">Memuat…</p>
+            <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+                <p className="text-sm text-neutral-400 font-medium">Memuat…</p>
             </div>
         );
     }
     // CriticalSheetPage pakai useSearchParams → butuh Suspense boundary.
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+        <Suspense fallback={<div className="min-h-screen bg-neutral-50" />}>
             <CriticalSheetPage />
         </Suspense>
     );

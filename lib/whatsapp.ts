@@ -36,6 +36,8 @@ const PUBLISH_KINDS = new Set([
     // (notify-ready & notify-ready-daily memanggil notifySupervisorPersonal dengan
     // account 'publish') — tanpa entri ini, resend dari log admin nyasar ke Wablas.
     'report_ready_shift_supervisor', 'report_ready_daily_supervisor',
+    // Update ash silo harian dikirim ke grup yang cuma beranggotakan device Fonnte.
+    'ash_silo_update',
 ]);
 
 /** Tentukan akun dari kind notification_log (untuk resend). Default 'notif'. */

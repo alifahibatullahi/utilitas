@@ -1,13 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendWaGroup, logNotification, formatTanggalIndo, nowWIB } from '@/lib/whatsapp';
+import { sendWaText, logNotification, formatTanggalIndo, nowWIB } from '@/lib/whatsapp';
 
 // Kirim "UPDATE SILO UBB" ke grup WA tiap hari sekitar 07:00 WIB. Dipanggil dari
 // endpoint cron notify-shift (di-ping scheduler eksternal ~15 mnt sekali); fungsi
 // ini yang menentukan kapan benar-benar kirim (window jam) + dedup 1×/hari.
 
-// JID grup Wablas format "modern" = angka telanjang TANPA @g.us (lihat
-// isGroupTarget di lib/whatsapp.ts). isGroupTarget auto-tambah isGroup=true.
-const ASH_SILO_GROUP = '120363025310720659';
+// Grup ini hanya beranggotakan device FONNTE (ID diperoleh dari Fonnte), jadi
+// kirim lewat akun 'publish' (Fonnte) dengan target format "...@g.us" — BUKAN via
+// Wablas. Fonnte deteksi grup dari sufiks @g.us.
+const ASH_SILO_GROUP = '120363025310720659@g.us';
 const SEND_HOUR = 7; // 07:00 WIB
 const KIND = 'ash_silo_update';
 
@@ -82,8 +83,9 @@ export async function notifyAshSiloDaily(supabase: SupabaseClient) {
     // 5. Susun pesan sesuai format yang diminta.
     const message = `UPDATE SILO UBB\n${formatTanggalIndo(date)}\n\nSILO A ${fmt(a)}\nSILO B ${fmt(b)}`;
 
-    // 6. Kirim ke grup (Wablas, akun default 'notif').
-    const res = await sendWaGroup(ASH_SILO_GROUP, message);
+    // 6. Kirim ke grup via akun 'publish' (Fonnte) — device Fonnte yang jadi
+    //    anggota grup ini.
+    const res = await sendWaText(ASH_SILO_GROUP, message, 'publish');
 
     // 7. Log hanya bila sukses → kalau gagal, tick berikutnya (masih dalam window
     //    07:00) mencoba lagi. Pola retry yang sama seperti reminder.

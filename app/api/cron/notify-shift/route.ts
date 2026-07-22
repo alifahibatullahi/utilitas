@@ -15,6 +15,7 @@ import {
 import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
 import { autofillShutdownShift, autofillShutdownDaily } from '@/lib/shutdown-autofill';
 import { autopublishPastDeadline } from '@/lib/auto-publish';
+import { notifyAshSiloDaily } from '@/lib/ash-silo-notify';
 
 // Pesan lanjutan yang dikirim SETELAH reminder pribadi (grup A–C, mode personal):
 // minta penerima meneruskan reminder ke grup WA-nya supaya operator lain ikut mengisi.
@@ -115,7 +116,16 @@ export async function GET(req: NextRequest) {
         autopublish = { error: e instanceof Error ? e.message : String(e) };
     }
 
-    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish });
+    // Update level ash silo ke grup WA tiap ~07:00 WIB. Idempotent & ter-guard jam
+    // + dedup harian sendiri, jadi aman dipanggil tiap tick cron.
+    let ashSilo: unknown;
+    try {
+        ashSilo = await notifyAshSiloDaily(supabase);
+    } catch (e) {
+        ashSilo = { error: e instanceof Error ? e.message : String(e) };
+    }
+
+    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish, ashSilo });
 }
 
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {

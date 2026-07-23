@@ -1384,50 +1384,50 @@ export function useShiftReport(
         // (spreadsheet berbeda, independen): blocking tail = max(A,B), bukan A+B.
         const syncShiftRow = async (): Promise<string | undefined> => {
             let warning: string | undefined;
-            for (let sheetAttempt = 1; sheetAttempt <= 2; sheetAttempt++) {
-                try {
-                    const res = await fetch('/api/sheets/write', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            type: 'shift_report',
-                            data: {
-                                shift,
-                                date,
-                                group_name: reportData.group_name,
-                                turbin: scopeSection('shift_turbin', reportData.turbin),
-                                steamDist: scopeSection('shift_steam_dist', reportData.steamDist),
-                                generatorGi: scopeSection('shift_generator_gi', reportData.generatorGi),
-                                powerDist: scopeSection('shift_power_dist', reportData.powerDist),
-                                espHandling: scopePartial('shift_esp_handling', reportData.espHandling as Record<string, unknown> | undefined),
-                                tankyard: scopeSection('shift_tankyard', reportData.tankyard),
-                                // Personnel (grup/foreman/kasi): station panel kirim subset kolom miliknya
-                                // (turbin_* vs boiler_*) — sama dgn DB. Mapper menulis sel boiler dari
-                                // boiler_* dgn fallback turbin_*, jadi grup+karu+kasi tetap masuk Sheets
-                                // walau submit dari station view.
-                                personnel: scopePartial('shift_personnel', reportData.personnel as Record<string, unknown> | undefined),
-                                boilerA: sheetsBoilerA,
-                                boilerB: sheetsBoilerB,
-                                coalBunker: scopePartial('shift_coal_bunker', reportData.coalBunker as Record<string, unknown> | undefined),
-                                waterQuality: scopeSection('shift_water_quality', reportData.waterQuality),
-                                prevBoilerA: reportData.prevBoilerA,
-                                prevBoilerB: reportData.prevBoilerB,
-                            },
-                        }),
-                    });
-                    if (!res.ok) {
-                        warning = `Google Sheets HTTP ${res.status}`;
-                    } else {
-                        const result = await res.json();
-                        warning = result.warning ? String(result.warning) : undefined; // undefined = sukses
-                    }
-                } catch (sheetsErr) {
-                    warning = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
+            // SEKALI POST (tanpa retry loop klien). Server sudah retry transient Sheets 3x
+            // (withRetry); mengulang seluruh request dari klien hanya menjalankan-ulang kerja
+            // mahal server (baca DB + panggilan Sheets) & melipatgandakan waktu tunggu saat
+            // Google rewel. Gagal → sheetsWarning ke operator (blocking tetap dipertahankan).
+            try {
+                const res = await fetch('/api/sheets/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'shift_report',
+                        data: {
+                            shift,
+                            date,
+                            group_name: reportData.group_name,
+                            turbin: scopeSection('shift_turbin', reportData.turbin),
+                            steamDist: scopeSection('shift_steam_dist', reportData.steamDist),
+                            generatorGi: scopeSection('shift_generator_gi', reportData.generatorGi),
+                            powerDist: scopeSection('shift_power_dist', reportData.powerDist),
+                            espHandling: scopePartial('shift_esp_handling', reportData.espHandling as Record<string, unknown> | undefined),
+                            tankyard: scopeSection('shift_tankyard', reportData.tankyard),
+                            // Personnel (grup/foreman/kasi): station panel kirim subset kolom miliknya
+                            // (turbin_* vs boiler_*) — sama dgn DB. Mapper menulis sel boiler dari
+                            // boiler_* dgn fallback turbin_*, jadi grup+karu+kasi tetap masuk Sheets
+                            // walau submit dari station view.
+                            personnel: scopePartial('shift_personnel', reportData.personnel as Record<string, unknown> | undefined),
+                            boilerA: sheetsBoilerA,
+                            boilerB: sheetsBoilerB,
+                            coalBunker: scopePartial('shift_coal_bunker', reportData.coalBunker as Record<string, unknown> | undefined),
+                            waterQuality: scopeSection('shift_water_quality', reportData.waterQuality),
+                            prevBoilerA: reportData.prevBoilerA,
+                            prevBoilerB: reportData.prevBoilerB,
+                        },
+                    }),
+                });
+                if (!res.ok) {
+                    warning = `Google Sheets HTTP ${res.status}`;
+                } else {
+                    const result = await res.json();
+                    warning = result.warning ? String(result.warning) : undefined; // undefined = sukses
                 }
-                if (!warning) break; // terkirim → stop retry
-                if (sheetAttempt < 2) await new Promise(r => setTimeout(r, 600 * sheetAttempt));
+            } catch (sheetsErr) {
+                warning = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
             }
-            if (warning) console.warn('[submitReport] Sheets sync gagal setelah 2x:', warning);
+            if (warning) console.warn('[submitReport] Sheets sync gagal:', warning);
             else console.log('[submitReport] Sheets sync OK');
             return warning;
         };

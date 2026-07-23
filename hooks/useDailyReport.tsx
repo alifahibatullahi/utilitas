@@ -563,30 +563,29 @@ export function useDailyReport(date: string, station: string | null = null) {
 
         if (childErrors.length > 0) return { error: childErrors.join('; '), reportId };
 
-        // Sync ke Google Sheets — retry (hingga 2x): PASTIKAN data benar-benar terkirim
-        // saat user simpan. Server sudah retry transient 3x (withRetry), jadi 2x di sini
-        // cukup untuk gagal jaringan POST-nya sendiri. Sukses → stop.
+        // Sync ke Google Sheets — SEKALI POST (tanpa retry loop di klien). Server sudah
+        // retry transient Sheets 3x (withRetry), jadi mengulang seluruh request dari klien
+        // hanya menjalankan-ulang kerja mahal server (baca DB penuh + panggilan Sheets) dan
+        // melipatgandakan waktu tunggu saat Google rewel. Gagal → operator dapat
+        // sheetsWarning (blocking tetap dipertahankan) dan simpan ulang manual.
         let sheetsSyncResult: { ok: boolean; warning?: string } = { ok: false, warning: 'belum tersinkron' };
-        for (let attempt = 1; attempt <= 2; attempt++) {
-            try {
-                const res = await fetch('/api/sheets/write', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'daily_report', data: { date } }),
-                });
-                if (!res.ok) {
-                    sheetsSyncResult = { ok: false, warning: `Google Sheets HTTP ${res.status}` };
-                } else {
-                    const result = await res.json();
-                    if (result.warning) sheetsSyncResult = { ok: false, warning: result.warning };
-                    else { sheetsSyncResult = { ok: true }; break; }
-                }
-            } catch (sheetsErr) {
-                sheetsSyncResult = { ok: false, warning: String(sheetsErr) };
+        try {
+            const res = await fetch('/api/sheets/write', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'daily_report', data: { date } }),
+            });
+            if (!res.ok) {
+                sheetsSyncResult = { ok: false, warning: `Google Sheets HTTP ${res.status}` };
+            } else {
+                const result = await res.json();
+                if (result.warning) sheetsSyncResult = { ok: false, warning: result.warning };
+                else sheetsSyncResult = { ok: true };
             }
-            if (attempt < 2) await new Promise(r => setTimeout(r, 600 * attempt));
+        } catch (sheetsErr) {
+            sheetsSyncResult = { ok: false, warning: String(sheetsErr) };
         }
-        if (!sheetsSyncResult.ok) console.warn('[submitDailyReport] Sheets sync gagal setelah 2x:', sheetsSyncResult.warning);
+        if (!sheetsSyncResult.ok) console.warn('[submitDailyReport] Sheets sync gagal:', sheetsSyncResult.warning);
 
         return { error: null, reportId, sheetsWarning: sheetsSyncResult.ok ? undefined : sheetsSyncResult.warning };
     }, [date]);

@@ -1,13 +1,14 @@
 /**
- * GET /api/critical-maintenance/recent — feed aktivitas terbaru (critical + maintenance
- * gabung, terurut tanggal terbaru dulu). Tampilan awal viewer.
+ * GET /api/critical-maintenance/recent — daftar record critical + maintenance (gabung,
+ * terurut tanggal terbaru dulu). Satu-satunya daftar di viewer.
  *   ?kind=all|critical|maintenance
+ *   ?q=<kata kunci>   cocok di nama item / kode / uraian / notifikasi
  *   ?page=1&pageSize=20
  * Tiap entri punya itemKey untuk navigasi ke halaman item saat diklik.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { loadCriticalSheet, buildRecentFeed } from '@/lib/critical-sheet';
+import { loadCriticalSheet, buildRecentFeed, filterRecentFeed } from '@/lib/critical-sheet';
 
 const MAX_PAGE_SIZE = 50;
 
@@ -16,11 +17,12 @@ export async function GET(req: NextRequest) {
         const params = req.nextUrl.searchParams;
         const kindParam = params.get('kind');
         const kind = kindParam === 'critical' || kindParam === 'maintenance' ? kindParam : 'all';
+        const q = (params.get('q') ?? '').trim();
         const page = Math.max(1, parseInt(params.get('page') ?? '1', 10) || 1);
         const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(params.get('pageSize') ?? '20', 10) || 20));
 
         const data = await loadCriticalSheet();
-        const feed = buildRecentFeed(data, kind);
+        const feed = filterRecentFeed(buildRecentFeed(data, kind), q);
 
         const total = feed.length;
         const start = (page - 1) * pageSize;

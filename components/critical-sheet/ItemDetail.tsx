@@ -7,6 +7,7 @@ import { SheetStatusBadge, SheetScopeBadge } from './SheetBadges';
 import ItemSpecSection from './ItemSpecSection';
 import ItemPhotoGallery, { type PhotoRecordSource } from './ItemPhotoGallery';
 import RecordPhotoModal, { type PhotoRecordTarget } from './RecordPhotoModal';
+import PhotoButton from './PhotoButton';
 
 interface ItemDetailProps {
     itemKey: string;
@@ -213,27 +214,6 @@ interface RecordRow {
     extra: string;
 }
 
-/** Pintu masuk foto satu record — jalur upload satu-satunya. */
-function PhotoButton({ count, onClick }: { count: number; onClick: () => void }) {
-    const has = count > 0;
-    return (
-        <button
-            onClick={onClick}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
-                has
-                    ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                    : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600'
-            }`}
-            title={has ? `Lihat ${count} foto record ini` : 'Tambahkan foto untuk record ini'}
-        >
-            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
-                {has ? 'photo_camera' : 'add_a_photo'}
-            </span>
-            {has ? count : 'Foto'}
-        </button>
-    );
-}
-
 /** Riwayat record: tabel di layar lebar, kartu di HP. */
 function RecordList({ rows, photoCounts, onOpenPhoto, emptyText }: {
     rows: RecordRow[];
@@ -271,7 +251,7 @@ function RecordList({ rows, photoCounts, onOpenPhoto, emptyText }: {
                                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                                         {r.meta && <span className="text-[10px] text-neutral-400 font-semibold">{r.meta}</span>}
                                         {r.extra && <span className="text-[10px] text-neutral-400 font-semibold">{r.extra}</span>}
-                                        <PhotoButton count={photoCounts[r.uid] ?? 0} onClick={() => onOpenPhoto(r.uid)} />
+                                        <PhotoButton count={photoCounts[r.uid] ?? 0} onClick={() => onOpenPhoto(r.uid)} compact />
                                     </div>
                                 </td>
                             </tr>
@@ -290,7 +270,7 @@ function RecordList({ rows, photoCounts, onOpenPhoto, emptyText }: {
                             <SheetScopeBadge scope={r.scope} />
                             {r.meta && <span className="text-[10px] text-neutral-400 font-semibold">{r.meta}</span>}
                             {r.extra && <span className="text-[10px] text-neutral-400 font-semibold">{r.extra}</span>}
-                            <PhotoButton count={photoCounts[r.uid] ?? 0} onClick={() => onOpenPhoto(r.uid)} />
+                            <PhotoButton count={photoCounts[r.uid] ?? 0} onClick={() => onOpenPhoto(r.uid)} compact />
                         </div>
                         <p className="text-sm text-neutral-700 mt-1">{r.uraian}</p>
                     </div>

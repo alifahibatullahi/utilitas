@@ -38,16 +38,6 @@ export interface SheetMaintenance {
     linkFoto: string;
 }
 
-export interface SheetItem {
-    key: string;
-    itemName: string;
-    variant: string;
-    code: string;
-    criticalCount: number;
-    maintenanceCount: number;
-    lastDate: string | null;
-}
-
 export interface ItemDetailResponse {
     key: string;
     itemName: string;
@@ -95,26 +85,22 @@ export function photoProxySrc(id: string): string {
     return `/api/sheet-photos/${id}/file`;
 }
 
-export interface ItemListResponse {
-    items: SheetItem[];
-    total: number;
-    page: number;
-    pageSize: number;
-    fetchedAt: string;
-    error?: string;
-}
-
+/** Satu baris daftar record. Kolom khas satu tab diisi '' di tab lainnya
+ *  (shift → maintenance, tanggalOk → critical). */
 export interface RecentEntry {
     uid: string;
     kind: 'critical' | 'maintenance';
     tanggal: string | null;
     tanggalRaw: string;
+    shift: string;
     itemName: string;
     variant: string;
     code: string;
     uraian: string;
-    status: string;
+    notifikasi: string;
     scope: string;
+    status: string;
+    tanggalOkRaw: string;
     itemKey: string;
 }
 
@@ -129,20 +115,10 @@ export interface RecentResponse {
 
 // ─── Fetch helpers ───────────────────────────────────────────────────────────
 
-export async function fetchItems(params: { q?: string; page?: number; pageSize?: number }): Promise<ItemListResponse> {
-    const qs = new URLSearchParams();
-    if (params.q) qs.set('q', params.q);
-    qs.set('page', String(params.page ?? 1));
-    qs.set('pageSize', String(params.pageSize ?? 20));
-    const res = await fetch(`/api/critical-maintenance/items?${qs.toString()}`);
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error ?? 'Gagal memuat daftar item');
-    return json as ItemListResponse;
-}
-
-export async function fetchRecent(params: { kind?: 'all' | 'critical' | 'maintenance'; page?: number; pageSize?: number }): Promise<RecentResponse> {
+export async function fetchRecent(params: { kind?: 'all' | 'critical' | 'maintenance'; q?: string; page?: number; pageSize?: number }): Promise<RecentResponse> {
     const qs = new URLSearchParams();
     if (params.kind) qs.set('kind', params.kind);
+    if (params.q) qs.set('q', params.q);
     qs.set('page', String(params.page ?? 1));
     qs.set('pageSize', String(params.pageSize ?? 20));
     const res = await fetch(`/api/critical-maintenance/recent?${qs.toString()}`);

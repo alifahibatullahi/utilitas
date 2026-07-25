@@ -7,6 +7,51 @@
  * yang ingin dihindari di halaman ini.
  */
 
+/**
+ * Aksen jenis record — satu sumber warna untuk chip, rail baris, dan tombol filter
+ * supaya critical (merah) vs maintenance (sky) langsung terbaca sekilas. Merah/sky
+ * dipilih karena status badge memakai red/amber/neutral dan scope badge cuma outline,
+ * jadi tidak saling menutupi.
+ */
+export type SheetKind = 'critical' | 'maintenance';
+
+const KIND_STYLE: Record<SheetKind, { label: string; icon: string; chip: string; rail: string; active: string }> = {
+    critical: {
+        label: 'Critical',
+        icon: 'warning',
+        chip: 'bg-red-50 text-red-700 border border-red-200',
+        rail: 'bg-red-500',
+        active: 'bg-red-600 text-white',
+    },
+    maintenance: {
+        label: 'Maintenance',
+        icon: 'build',
+        chip: 'bg-sky-50 text-sky-700 border border-sky-200',
+        rail: 'bg-sky-500',
+        active: 'bg-sky-600 text-white',
+    },
+};
+
+export function SheetKindBadge({ kind, className = '' }: { kind: SheetKind; className?: string }) {
+    const cfg = KIND_STYLE[kind];
+    return (
+        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${cfg.chip} ${className}`}>
+            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{cfg.icon}</span>
+            {cfg.label}
+        </span>
+    );
+}
+
+/** Warna rail penanda jenis (garis tipis di sisi kiri baris tabel / kartu). */
+export function kindRailClass(kind: SheetKind): string {
+    return KIND_STYLE[kind].rail;
+}
+
+/** Warna tombol filter jenis saat aktif. */
+export function kindActiveClass(kind: SheetKind): string {
+    return KIND_STYLE[kind].active;
+}
+
 const STATUS_STYLE: Record<string, { label: string; cls: string; icon: string }> = {
     ok: { label: 'SELESAI', cls: 'bg-neutral-100 border border-neutral-300 text-neutral-600', icon: 'check_circle' },
     ip: { label: 'IN PROGRESS', cls: 'bg-amber-50 border border-amber-300 text-amber-600', icon: 'pending' },

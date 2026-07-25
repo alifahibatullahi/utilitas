@@ -2,20 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import ItemBrowser from './ItemBrowser';
+import RecordBrowser from './RecordBrowser';
 import ItemDetail from './ItemDetail';
 
 /**
- * Viewer Critical Maintenance — item-centric. Data & input tinggal di Google Sheets;
- * halaman ini menampilkan riwayat critical/maintenance/foto + spesifikasi per item.
- * Item aktif disimpan di query `?item=<key>` supaya tombol back browser & deep-link jalan.
+ * Viewer Critical Maintenance. Data & input tinggal di Google Sheets; halaman ini
+ * mendarat di daftar record critical + maintenance (tabel berkolom seperti sheet),
+ * dan halaman item (riwayat + spesifikasi + galeri foto) ada di balik `?item=<key>`
+ * supaya tombol back browser & deep-link jalan.
  */
 export default function CriticalSheetPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const activeKey = searchParams.get('item');
     const focusUid = searchParams.get('foto');
-    const wantsRecent = searchParams.get('tab') === 'recent';
     const wantsRefresh = searchParams.get('refresh') === '1';
 
     const [reloadKey, setReloadKey] = useState(0);
@@ -42,7 +42,9 @@ export default function CriticalSheetPage() {
      * belum tentu ada di cache loader (TTL 60 detik), dan web_uid-nya belum di-backfill.
      * Dijalankan sekali lalu paramnya dibuang dari URL supaya reload tidak memicu lagi.
      * Server tetap punya rem sendiri (MIN_FORCE_INTERVAL_MS) bila banyak operator
-     * membuka menu bersamaan.
+     * membuka menu bersamaan. `tab` ikut dibuang: link lama dari spreadsheet masih
+     * membawa `?tab=recent` yang sekarang tidak berarti apa-apa (daftar record sudah
+     * jadi tampilan awal).
      */
     const refreshHandled = useRef(false);
     useEffect(() => {
@@ -54,7 +56,7 @@ export default function CriticalSheetPage() {
             .finally(() => {
                 setRefreshing(false);
                 setReloadKey(k => k + 1);
-                stripParams(['refresh']);
+                stripParams(['refresh', 'tab']);
             });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [wantsRefresh]);
@@ -81,7 +83,9 @@ export default function CriticalSheetPage() {
 
     return (
         <div className="min-h-screen bg-neutral-50">
-            <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+            {/* Daftar record butuh ruang lebih lebar (tabel berkolom); halaman item tetap
+                5xl supaya proporsi 2 kolom + panjang baris uraiannya enak dibaca. */}
+            <div className={`${activeKey ? 'max-w-5xl' : 'max-w-7xl'} mx-auto px-3 sm:px-6 py-4 sm:py-6`}>
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
                     <button
@@ -94,7 +98,7 @@ export default function CriticalSheetPage() {
                     <div className="min-w-0 flex-1">
                         <h1 className="text-xl font-bold text-neutral-900 leading-tight">Critical Maintenance</h1>
                         <p className="text-[11px] text-neutral-400 font-medium">
-                            Riwayat & spesifikasi per item · sumber data Google Sheets
+                            Daftar critical & maintenance · sumber data Google Sheets
                             {stamp && <span> · data per {stamp}</span>}
                         </p>
                     </div>
@@ -117,11 +121,10 @@ export default function CriticalSheetPage() {
                         focusUid={focusUid}
                         onFocusHandled={handleFocusHandled}
                     />
-                    : <ItemBrowser
+                    : <RecordBrowser
                         reloadKey={reloadKey}
                         onSelect={selectItem}
                         onMeta={onMeta}
-                        initialView={wantsRecent ? 'recent' : 'items'}
                     />}
             </div>
         </div>

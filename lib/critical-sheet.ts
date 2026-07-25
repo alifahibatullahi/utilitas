@@ -481,16 +481,6 @@ export function isStatusDone(status: string): boolean {
 
 // ─── Lapisan item (item-centric) ─────────────────────────────────────────────
 
-export interface ItemIndexEntry {
-    key: string;              // normalisasi(item)|normalisasi(varian)
-    itemName: string;         // display (kolom D asli)
-    variant: string;          // kolom E asli
-    code: string;             // kode item mis. K-08.17 (bila terdeteksi)
-    criticalCount: number;
-    maintenanceCount: number;
-    lastDate: string | null;  // ISO tanggal terakhir ada aktivitas
-}
-
 export interface ItemDetail {
     key: string;
     itemName: string;
@@ -545,44 +535,6 @@ export function extractCode(item: string): string {
     return m ? m[1].toUpperCase() : '';
 }
 
-/** Bangun daftar item unik dgn agregat count & tanggal terakhir. Record multi-varian
- *  dihitung di TIAP halaman varian (D/E/F muncul di halaman D, E, dan F). */
-export function buildItemIndex(data: CriticalSheetData): ItemIndexEntry[] {
-    const map = new Map<string, ItemIndexEntry>();
-    const touch = (item: string, varian: string, tanggal: string | null, kind: 'critical' | 'maintenance') => {
-        const tokens = variantTokens(varian);
-        const list = tokens.length ? tokens : ['']; // '' = halaman tanpa varian
-        for (const tok of list) {
-            const key = itemKeyOf(item, tok);
-            if (!key) continue;
-            let e = map.get(key);
-            if (!e) {
-                e = {
-                    key,
-                    itemName: (item ?? '').replace(/\s+/g, ' ').trim(),
-                    variant: tok,
-                    code: extractCode(item),
-                    criticalCount: 0,
-                    maintenanceCount: 0,
-                    lastDate: null,
-                };
-                map.set(key, e);
-            }
-            if (kind === 'critical') e.criticalCount++; else e.maintenanceCount++;
-            if (tanggal && (!e.lastDate || tanggal > e.lastDate)) e.lastDate = tanggal;
-        }
-    };
-    for (const c of data.criticals) touch(c.item, c.varian, c.tanggal, 'critical');
-    for (const m of data.maintenances) touch(m.item, m.varian, m.tanggal, 'maintenance');
-    // Urut: aktivitas terakhir terbaru dulu, lalu nama + varian.
-    return Array.from(map.values()).sort((a, b) => {
-        if (a.lastDate && b.lastDate && a.lastDate !== b.lastDate) return b.lastDate.localeCompare(a.lastDate);
-        if (a.lastDate && !b.lastDate) return -1;
-        if (!a.lastDate && b.lastDate) return 1;
-        return a.itemName.localeCompare(b.itemName) || a.variant.localeCompare(b.variant);
-    });
-}
-
 /** Ambil semua record critical & maintenance untuk satu item key (data sudah terbaru-dulu).
  *  Record multi-varian (mis. "DEF") ikut muncul di tiap halaman varian penyusunnya. */
 export function getItemDetail(data: CriticalSheetData, key: string): ItemDetail | null {
@@ -604,17 +556,25 @@ export function getItemDetail(data: CriticalSheetData, key: string): ItemDetail 
 
 // ─── Feed aktivitas terbaru ──────────────────────────────────────────────────
 
+/**
+ * Satu baris di daftar record. Kolom yang hanya ada di salah satu tab diisi ''
+ * untuk tab lainnya (shift → maintenance, tanggalOk → critical) supaya konsumen
+ * tidak perlu narrowing per kind.
+ */
 export interface RecentEntry {
     uid: string;
     kind: 'critical' | 'maintenance';
     tanggal: string | null;
     tanggalRaw: string;
+    shift: string;           // maintenance saja
     itemName: string;
     variant: string;         // varian mentah (kolom E) — bisa gabungan
     code: string;
     uraian: string;
-    status: string;
+    notifikasi: string;      // "Notif" (critical) & "Notifikasi" (maintenance) = hal yang sama
     scope: string;
+    status: string;
+    tanggalOkRaw: string;    // critical saja
     itemKey: string;         // target navigasi ke halaman item (token varian pertama)
 }
 
@@ -629,8 +589,9 @@ export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical
         for (const c of data.criticals) {
             out.push({
                 uid: c.uid, kind: 'critical', tanggal: c.tanggal, tanggalRaw: c.tanggalRaw,
-                itemName: (c.item ?? '').replace(/\s+/g, ' ').trim(), variant: c.varian,
-                code: extractCode(c.item), uraian: c.uraian, status: c.status, scope: c.scope,
+                shift: '', itemName: (c.item ?? '').replace(/\s+/g, ' ').trim(), variant: c.varian,
+                code: extractCode(c.item), uraian: c.uraian, notifikasi: c.notif,
+                scope: c.scope, status: c.status, tanggalOkRaw: c.tanggalOkRaw,
                 itemKey: recordItemKeys(c.item, c.varian)[0],
             });
         }
@@ -639,8 +600,9 @@ export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical
         for (const m of data.maintenances) {
             out.push({
                 uid: m.uid, kind: 'maintenance', tanggal: m.tanggal, tanggalRaw: m.tanggalRaw,
-                itemName: (m.item ?? '').replace(/\s+/g, ' ').trim(), variant: m.varian,
-                code: extractCode(m.item), uraian: m.uraian, status: m.status, scope: m.scope,
+                shift: m.shift, itemName: (m.item ?? '').replace(/\s+/g, ' ').trim(), variant: m.varian,
+                code: extractCode(m.item), uraian: m.uraian, notifikasi: m.notifikasi,
+                scope: m.scope, status: m.status, tanggalOkRaw: '',
                 itemKey: recordItemKeys(m.item, m.varian)[0],
             });
         }
@@ -653,6 +615,26 @@ export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical
         return 0;
     });
     return out;
+}
+
+/** Normalisasi teks untuk pencocokan pencarian: lowercase, spasi dirapatkan. */
+function normSearch(v: string): string {
+    return (v ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Filter feed dengan kata kunci bebas: cocok bila SEMUA kata kunci muncul di
+ * gabungan nama item + kode + uraian + notifikasi ("B-02 bearing" ikut ketemu).
+ * Dipisah dari buildRecentFeed karena `code` baru ada setelah tahap build, dan
+ * dipanggil sebelum paginasi supaya `total` di respons mengikuti hasil filter.
+ */
+export function filterRecentFeed(entries: RecentEntry[], q: string): RecentEntry[] {
+    const tokens = normSearch(q).split(' ').filter(Boolean);
+    if (tokens.length === 0) return entries;
+    return entries.filter(e => {
+        const hay = normSearch(`${e.itemName} ${e.code} ${e.uraian} ${e.notifikasi}`);
+        return tokens.every(t => hay.includes(t));
+    });
 }
 
 // ─── Kolom "Link Foto" ───────────────────────────────────────────────────────

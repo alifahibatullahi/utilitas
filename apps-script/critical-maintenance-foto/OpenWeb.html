@@ -21,7 +21,11 @@
   <div id="content"></div>
 
   <script>
-    // <?!= ?> dipakai supaya tanda kutip di dalam JSON tidak ikut di-escape.
+    // Scriptlet force-print (tanda seru) dipakai supaya tanda kutip di dalam JSON tidak
+    // ikut di-escape. JANGAN menulis contoh scriptlet di komentar mana pun pada file ini:
+    // mesin template Apps Script memindai seluruh berkas, bukan hanya bagian non-komentar,
+    // sehingga scriptlet kosong di dalam komentar pun ikut dievaluasi dan bikin
+    // "SyntaxError: Unexpected token ';'".
     var ctx = JSON.parse(<?!= JSON.stringify(ctx) ?>);
 
     var html = '';

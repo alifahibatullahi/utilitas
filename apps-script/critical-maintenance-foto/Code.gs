@@ -54,7 +54,8 @@ function openUploadPage() {
   var target = buildTarget_(cfg);
 
   var tpl = HtmlService.createTemplateFromFile('OpenWeb');
-  // <?!= ?> — <?= ?> akan meng-escape tanda kutip di dalam JSON.
+  // OpenWeb.html membacanya lewat scriptlet force-print supaya tanda kutip di dalam
+  // JSON tidak ikut di-escape (scriptlet biasa akan merusaknya).
   tpl.ctx = JSON.stringify(target);
   var html = tpl.evaluate().setWidth(420).setHeight(260);
   ui.showModalDialog(html, '📷 Upload Foto');

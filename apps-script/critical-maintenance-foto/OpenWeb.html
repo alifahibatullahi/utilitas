@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: 'Google Sans', Roboto, Arial, sans-serif; margin: 0; padding: 18px; color: #202124; }
+    .row { border: 1px solid #dadce0; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; background: #f8f9fa; }
+    .kind { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 5px; background: #202124; color: #fff; }
+    .kind.critical { background: #d93025; }
+    .date { font-size: 12px; color: #5f6368; margin-left: 6px; }
+    .uraian { font-size: 13px; font-weight: 600; margin: 6px 0 2px; }
+    .item { font-size: 11px; color: #5f6368; }
+    .note { font-size: 12px; color: #5f6368; line-height: 1.45; margin-bottom: 14px; }
+    button { font-size: 14px; font-weight: 600; padding: 10px 16px; border: 0; border-radius: 8px; background: #1a73e8; color: #fff; cursor: pointer; width: 100%; }
+    button:hover { background: #1765cc; }
+    .hint { font-size: 11px; color: #5f6368; margin-top: 12px; line-height: 1.45; }
+    a { color: #1a73e8; word-break: break-all; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div id="content"></div>
+
+  <script>
+    // <?!= ?> dipakai supaya tanda kutip di dalam JSON tidak ikut di-escape.
+    var ctx = JSON.parse(<?!= JSON.stringify(ctx) ?>);
+
+    var html = '';
+    if (ctx.mode === 'record') {
+      html += '<div class="row">';
+      html += '<span class="kind ' + (ctx.kindLabel === 'Critical' ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
+      if (ctx.tanggal) html += '<span class="date">' + escapeHtml(ctx.tanggal) + '</span>';
+      html += '<div class="uraian">' + escapeHtml(ctx.uraian || '(tanpa uraian)') + '</div>';
+      if (ctx.item) html += '<div class="item">' + escapeHtml(ctx.item) + '</div>';
+      html += '</div>';
+      html += '<div class="note">Foto diunggah lewat web. Halaman akan langsung terbuka di record ini.</div>';
+    } else {
+      html += '<div class="note">' + escapeHtml(ctx.note || '') + '</div>';
+    }
+    html += '<button onclick="go()">Buka web &amp; upload foto</button>';
+    html += '<div class="hint">Tidak terbuka otomatis? Klik tautan ini:<br><a href="' + escapeAttr(ctx.url) + '" target="_blank" rel="noopener">' + escapeHtml(ctx.url) + '</a></div>';
+    document.getElementById('content').innerHTML = html;
+
+    function go() {
+      window.open(ctx.url, '_blank', 'noopener');
+      google.script.host.close();
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function escapeAttr(s) {
+      return escapeHtml(s).replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { RecentEntry, SheetItem } from './types';
-import { fetchItems, fetchRecent } from './types';
+import { fetchItems, fetchRecent, fetchSheetPhotos } from './types';
 import { SheetStatusBadge, SheetScopeBadge } from './SheetBadges';
 import { SheetPagination } from './SheetFilterBar';
+import RecordPhotoModal, { type PhotoRecordTarget } from './RecordPhotoModal';
 
 const PAGE_SIZE = 20;
 
@@ -14,6 +15,8 @@ interface ItemBrowserProps {
     reloadKey: number;
     onSelect: (key: string) => void;
     onMeta?: (fetchedAt: string) => void;
+    /** Mode awal — menu di spreadsheet mengarah ke `?tab=recent`. */
+    initialView?: View;
 }
 
 /**
@@ -23,8 +26,8 @@ interface ItemBrowserProps {
  *  - "Aktivitas Terbaru": feed record critical + maintenance terbaru (all/critical/maintenance).
  * Klik record/item → halaman item.
  */
-export default function ItemBrowser({ reloadKey, onSelect, onMeta }: ItemBrowserProps) {
-    const [view, setView] = useState<View>('items');
+export default function ItemBrowser({ reloadKey, onSelect, onMeta, initialView = 'items' }: ItemBrowserProps) {
+    const [view, setView] = useState<View>(initialView);
     const [q, setQ] = useState('');
     const [debouncedQ, setDebouncedQ] = useState('');
     const [kind, setKind] = useState<'all' | 'critical' | 'maintenance'>('all');
@@ -35,6 +38,8 @@ export default function ItemBrowser({ reloadKey, onSelect, onMeta }: ItemBrowser
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
+    const [openRecord, setOpenRecord] = useState<PhotoRecordTarget | null>(null);
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedQ(q.trim()), 400);
@@ -61,6 +66,39 @@ export default function ItemBrowser({ reloadKey, onSelect, onMeta }: ItemBrowser
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [view, debouncedQ, kind, page, reloadKey]);
+
+    // Hitungan foto hanya untuk baris feed yang sedang tampil (≤ PAGE_SIZE uid),
+    // bukan seluruh sheet — satu query per halaman.
+    useEffect(() => {
+        if (view !== 'recent') return;
+        const uids = recent.map(e => e.uid).filter(Boolean);
+        if (uids.length === 0) { setPhotoCounts({}); return; }
+        let cancelled = false;
+        fetchSheetPhotos(uids)
+            .then(photos => {
+                if (cancelled) return;
+                const counts: Record<string, number> = {};
+                for (const p of photos) counts[p.row_uid] = (counts[p.row_uid] ?? 0) + 1;
+                setPhotoCounts(counts);
+            })
+            .catch(() => { /* tombol foto tetap tampil dengan hitungan 0 */ });
+        return () => { cancelled = true; };
+    }, [view, recent]);
+
+    const handleCountChange = useCallback((uid: string, count: number) => {
+        setPhotoCounts(prev => ({ ...prev, [uid]: count }));
+    }, []);
+
+    const openPhotoFor = useCallback((entry: RecentEntry) => {
+        setOpenRecord({
+            uid: entry.uid,
+            kind: entry.kind,
+            itemKey: entry.itemKey,
+            itemName: entry.itemName,
+            tanggalRaw: entry.tanggalRaw,
+            uraian: entry.uraian,
+        });
+    }, []);
 
     return (
         <div className="space-y-3">
@@ -125,10 +163,25 @@ export default function ItemBrowser({ reloadKey, onSelect, onMeta }: ItemBrowser
             ) : view === 'items' ? (
                 <ItemTable items={items} loading={loading} onSelect={onSelect} />
             ) : (
-                <RecentResults entries={recent} loading={loading} onSelect={onSelect} />
+                <RecentResults
+                    entries={recent}
+                    loading={loading}
+                    onSelect={onSelect}
+                    photoCounts={photoCounts}
+                    onOpenPhoto={openPhotoFor}
+                />
             )}
 
             <SheetPagination page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
+
+            {openRecord && (
+                <RecordPhotoModal
+                    key={openRecord.uid}
+                    record={openRecord}
+                    onClose={() => setOpenRecord(null)}
+                    onCountChange={handleCountChange}
+                />
+            )}
         </div>
     );
 }
@@ -231,38 +284,78 @@ function ActivityCounts({ critical, maintenance }: { critical: number; maintenan
     );
 }
 
-function RecentResults({ entries, loading, onSelect }: {
-    entries: RecentEntry[]; loading: boolean; onSelect: (key: string) => void;
+/**
+ * Feed aktivitas terbaru — ini titik pendaratan operator dari menu spreadsheet:
+ * dia mencari baris yang baru diisi, lalu menekan tombol foto di baris itu.
+ * Kartu bukan satu <button> besar karena di dalamnya ada tombol foto sendiri.
+ */
+function RecentResults({ entries, loading, onSelect, photoCounts, onOpenPhoto }: {
+    entries: RecentEntry[];
+    loading: boolean;
+    onSelect: (key: string) => void;
+    photoCounts: Record<string, number>;
+    onOpenPhoto: (entry: RecentEntry) => void;
 }) {
     if (entries.length === 0) {
         return <div className="py-12 text-center text-sm text-neutral-400 font-medium">Belum ada aktivitas.</div>;
     }
     return (
         <div className={`space-y-2 transition-opacity ${loading ? 'opacity-50' : ''}`}>
-            {entries.map((e, idx) => (
-                <button
-                    key={e.uid || `${e.kind}-${idx}`}
-                    onClick={() => onSelect(e.itemKey)}
-                    className="w-full text-left border border-neutral-200 rounded-xl px-4 py-3 bg-white hover:border-neutral-300 hover:shadow-sm transition-all cursor-pointer"
-                >
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                            e.kind === 'critical' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-300'
-                        }`}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{e.kind === 'critical' ? 'warning' : 'build'}</span>
-                            {e.kind === 'critical' ? 'Critical' : 'Maintenance'}
-                        </span>
-                        <span className="text-[11px] font-semibold text-neutral-500">{e.tanggalRaw || '—'}</span>
-                        <SheetStatusBadge status={e.status} />
-                        <SheetScopeBadge scope={e.scope} />
+            {entries.map((e, idx) => {
+                const count = photoCounts[e.uid] ?? 0;
+                return (
+                    <div
+                        key={e.uid || `${e.kind}-${idx}`}
+                        className="border border-neutral-200 rounded-xl px-4 py-3 bg-white hover:border-neutral-300 hover:shadow-sm transition-all"
+                    >
+                        <button onClick={() => onSelect(e.itemKey)} className="w-full text-left cursor-pointer">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                    e.kind === 'critical' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-300'
+                                }`}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{e.kind === 'critical' ? 'warning' : 'build'}</span>
+                                    {e.kind === 'critical' ? 'Critical' : 'Maintenance'}
+                                </span>
+                                <span className="text-[11px] font-semibold text-neutral-500">{e.tanggalRaw || '—'}</span>
+                                <SheetStatusBadge status={e.status} />
+                                <SheetScopeBadge scope={e.scope} />
+                            </div>
+                            <p className="text-sm font-bold text-neutral-800 mt-1">
+                                {e.itemName}
+                                {e.variant ? <span className="font-semibold text-neutral-500"> — {e.variant}</span> : null}
+                            </p>
+                            <p className="text-sm text-neutral-600">{e.uraian}</p>
+                        </button>
+
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-neutral-100">
+                            <button
+                                onClick={() => onOpenPhoto(e)}
+                                disabled={!e.uid}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
+                                    count > 0
+                                        ? 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600'
+                                }`}
+                                title={e.uid
+                                    ? (count > 0 ? `Lihat ${count} foto` : 'Tambahkan foto untuk record ini')
+                                    : 'Baris ini belum punya web_uid — muat ulang data dulu'}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                                    {count > 0 ? 'photo_camera' : 'add_a_photo'}
+                                </span>
+                                {count > 0 ? `${count} foto` : 'Tambah foto'}
+                            </button>
+                            <button
+                                onClick={() => onSelect(e.itemKey)}
+                                className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-neutral-400 hover:text-neutral-700 cursor-pointer transition-colors"
+                            >
+                                Riwayat item
+                                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>chevron_right</span>
+                            </button>
+                        </div>
                     </div>
-                    <p className="text-sm font-bold text-neutral-800 mt-1">
-                        {e.itemName}
-                        {e.variant ? <span className="font-semibold text-neutral-500"> — {e.variant}</span> : null}
-                    </p>
-                    <p className="text-sm text-neutral-600">{e.uraian}</p>
-                </button>
-            ))}
+                );
+            })}
         </div>
     );
 }

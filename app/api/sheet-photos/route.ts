@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToR2, deleteFromR2, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
+import { syncPhotoCell } from '@/lib/sheet-photo-sync';
 
 /**
  * Foto fitur Critical Maintenance berbasis Sheets (/critical-maintenance).
@@ -87,6 +88,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: dbErr.message }, { status: 500 });
         }
 
+        // Cermin ke kolom "Link Foto" di spreadsheet. Menelan errornya sendiri.
+        await syncPhotoCell(rowUid);
+
         return NextResponse.json({ photo: data }, { status: 201 });
     } catch (err) {
         console.error('[sheet-photos/POST]', err);
@@ -107,7 +111,9 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await getAdmin()
         .from('sheet_photos')
-        .select('id, parent_kind, row_uid, filename, caption, uploaded_by, created_at')
+        // `url` ikut supaya <img> bisa memuat langsung dari R2 (proxy /file hanya fallback,
+        // menekan invocation Vercel saat galeri berisi banyak foto).
+        .select('id, parent_kind, row_uid, url, filename, caption, uploaded_by, created_at')
         .in('row_uid', uids)
         .order('created_at', { ascending: true });
 

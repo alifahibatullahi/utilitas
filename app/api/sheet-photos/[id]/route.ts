@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { deleteFromR2, keyFromUrl } from '@/lib/r2';
+import { syncPhotoCell } from '@/lib/sheet-photo-sync';
 
 /** DELETE: hapus foto sheet_photos (objek R2 + row). PATCH: ubah caption. */
 
@@ -23,7 +24,7 @@ export async function DELETE(
 
     const { data: photo, error: findErr } = await supabase
         .from('sheet_photos')
-        .select('id, url')
+        .select('id, url, row_uid')
         .eq('id', id)
         .single();
     if (findErr || !photo) {
@@ -36,6 +37,10 @@ export async function DELETE(
     if (delErr) {
         return NextResponse.json({ error: delErr.message }, { status: 500 });
     }
+
+    // Turunkan hitungan di sel "Link Foto" (dikosongkan bila foto terakhir dihapus).
+    await syncPhotoCell((photo as { row_uid: string }).row_uid);
+
     return NextResponse.json({ ok: true });
 }
 

@@ -1,26 +1,32 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ItemDetailResponse, SheetPhoto } from './types';
 import { fetchItemDetail, fetchSheetPhotos } from './types';
 import { SheetStatusBadge, SheetScopeBadge } from './SheetBadges';
 import ItemSpecSection from './ItemSpecSection';
 import ItemPhotoGallery, { type PhotoRecordSource } from './ItemPhotoGallery';
+import RecordPhotoModal, { type PhotoRecordTarget } from './RecordPhotoModal';
 
 interface ItemDetailProps {
     itemKey: string;
     reloadKey: number;
     onBack: () => void;
+    /** row_uid dari deep-link `?foto=` (link di sel spreadsheet) — modalnya dibuka otomatis. */
+    focusUid?: string | null;
+    /** Dipanggil setelah focusUid dipakai, supaya param tidak menempel di URL. */
+    onFocusHandled?: () => void;
 }
 
 /** Halaman detail satu item (layout 2-kolom): kolom utama = riwayat critical/maintenance
  *  (tab), kolom kanan = spesifikasi (Tech Specs) + galeri foto agregat. */
-export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailProps) {
+export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFocusHandled }: ItemDetailProps) {
     const [data, setData] = useState<ItemDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [tab, setTab] = useState<'critical' | 'maintenance'>('critical');
     const [photos, setPhotos] = useState<SheetPhoto[]>([]);
+    const [openUid, setOpenUid] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -57,11 +63,43 @@ export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailPro
         return () => { cancelled = true; };
     }, [allUids]);
 
+    const [countOverride, setCountOverride] = useState<Record<string, number>>({});
+
     const photoCounts = useMemo(() => {
         const c: Record<string, number> = {};
         for (const p of photos) c[p.row_uid] = (c[p.row_uid] ?? 0) + 1;
-        return c;
-    }, [photos]);
+        // Modal record adalah sumber terbaru untuk baris yang baru saja diubah.
+        return { ...c, ...countOverride };
+    }, [photos, countOverride]);
+
+    // Deep-link dari sel spreadsheet: buka modal record begitu datanya siap.
+    useEffect(() => {
+        if (!focusUid || !data) return;
+        const exists = records.some(r => r.uid === focusUid);
+        if (exists) setOpenUid(focusUid);
+        onFocusHandled?.();
+    }, [focusUid, data, records, onFocusHandled]);
+
+    // Record yang sedang dibuka modalnya, lengkap dengan konteks item untuk link & judul.
+    const openRecord = useMemo<PhotoRecordTarget | null>(() => {
+        if (!openUid || !data) return null;
+        const src = records.find(r => r.uid === openUid);
+        if (!src) return null;
+        return {
+            uid: src.uid,
+            kind: src.kind,
+            itemKey: data.key,
+            itemName: data.itemName,
+            tanggalRaw: src.tanggalRaw,
+            uraian: src.uraian,
+        };
+    }, [openUid, data, records]);
+
+    const handleCountChange = useCallback((uid: string, count: number) => {
+        setCountOverride(prev => ({ ...prev, [uid]: count }));
+        // Galeri agregat ikut disegarkan supaya foto baru langsung muncul di sidebar.
+        fetchSheetPhotos(records.map(r => r.uid)).then(setPhotos).catch(() => { /* biarkan tampilan lama */ });
+    }, [records]);
 
     return (
         <div className="space-y-4">
@@ -121,6 +159,7 @@ export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailPro
                                         extra: c.status && c.tanggalOkRaw ? `OK: ${c.tanggalOkRaw}` : '',
                                     }))}
                                     photoCounts={photoCounts}
+                                    onOpenPhoto={setOpenUid}
                                     emptyText="Belum ada riwayat critical untuk item ini."
                                 />
                             ) : (
@@ -131,6 +170,7 @@ export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailPro
                                         extra: '',
                                     }))}
                                     photoCounts={photoCounts}
+                                    onOpenPhoto={setOpenUid}
                                     emptyText="Belum ada riwayat maintenance untuk item ini."
                                 />
                             )}
@@ -144,10 +184,19 @@ export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailPro
                                     <span className="material-symbols-outlined text-neutral-400" style={{ fontSize: 16 }}>photo_library</span>
                                     Foto
                                 </h3>
-                                <ItemPhotoGallery initialPhotos={photos} records={records} onPhotosChange={setPhotos} />
+                                <ItemPhotoGallery photos={photos} records={records} onOpenRecord={setOpenUid} />
                             </div>
                         </div>
                     </div>
+
+                    {openRecord && (
+                        <RecordPhotoModal
+                            key={openRecord.uid}
+                            record={openRecord}
+                            onClose={() => setOpenUid(null)}
+                            onCountChange={handleCountChange}
+                        />
+                    )}
                 </>
             )}
         </div>
@@ -164,20 +213,32 @@ interface RecordRow {
     extra: string;
 }
 
-function PhotoBadge({ count }: { count: number }) {
-    if (!count) return null;
+/** Pintu masuk foto satu record — jalur upload satu-satunya. */
+function PhotoButton({ count, onClick }: { count: number; onClick: () => void }) {
+    const has = count > 0;
     return (
-        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-neutral-500">
-            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>photo_camera</span>
-            {count}
-        </span>
+        <button
+            onClick={onClick}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                has
+                    ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                    : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600'
+            }`}
+            title={has ? `Lihat ${count} foto record ini` : 'Tambahkan foto untuk record ini'}
+        >
+            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+                {has ? 'photo_camera' : 'add_a_photo'}
+            </span>
+            {has ? count : 'Foto'}
+        </button>
     );
 }
 
 /** Riwayat record: tabel di layar lebar, kartu di HP. */
-function RecordList({ rows, photoCounts, emptyText }: {
+function RecordList({ rows, photoCounts, onOpenPhoto, emptyText }: {
     rows: RecordRow[];
     photoCounts: Record<string, number>;
+    onOpenPhoto: (uid: string) => void;
     emptyText: string;
 }) {
     if (rows.length === 0) {
@@ -210,7 +271,7 @@ function RecordList({ rows, photoCounts, emptyText }: {
                                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                                         {r.meta && <span className="text-[10px] text-neutral-400 font-semibold">{r.meta}</span>}
                                         {r.extra && <span className="text-[10px] text-neutral-400 font-semibold">{r.extra}</span>}
-                                        <PhotoBadge count={photoCounts[r.uid]} />
+                                        <PhotoButton count={photoCounts[r.uid] ?? 0} onClick={() => onOpenPhoto(r.uid)} />
                                     </div>
                                 </td>
                             </tr>
@@ -229,7 +290,7 @@ function RecordList({ rows, photoCounts, emptyText }: {
                             <SheetScopeBadge scope={r.scope} />
                             {r.meta && <span className="text-[10px] text-neutral-400 font-semibold">{r.meta}</span>}
                             {r.extra && <span className="text-[10px] text-neutral-400 font-semibold">{r.extra}</span>}
-                            <PhotoBadge count={photoCounts[r.uid]} />
+                            <PhotoButton count={photoCounts[r.uid] ?? 0} onClick={() => onOpenPhoto(r.uid)} />
                         </div>
                         <p className="text-sm text-neutral-700 mt-1">{r.uraian}</p>
                     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ItemBrowser from './ItemBrowser';
 import ItemDetail from './ItemDetail';
@@ -14,6 +14,9 @@ export default function CriticalSheetPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const activeKey = searchParams.get('item');
+    const focusUid = searchParams.get('foto');
+    const wantsRecent = searchParams.get('tab') === 'recent';
+    const wantsRefresh = searchParams.get('refresh') === '1';
 
     const [reloadKey, setReloadKey] = useState(0);
     const [fetchedAt, setFetchedAt] = useState<string | null>(null);
@@ -23,6 +26,38 @@ export default function CriticalSheetPage() {
 
     // Reset stempel waktu saat pindah antara list ↔ detail (masing-masing punya fetchedAt sendiri).
     useEffect(() => { setFetchedAt(null); }, [activeKey]);
+
+    /** Buang param sekali-pakai dari URL tanpa menambah entri history. */
+    const stripParams = useCallback((names: string[]) => {
+        const next = new URLSearchParams(Array.from(searchParams.entries()));
+        for (const n of names) next.delete(n);
+        const qs = next.toString();
+        router.replace(qs ? `/critical-maintenance?${qs}` : '/critical-maintenance', { scroll: false });
+    }, [router, searchParams]);
+
+    const handleFocusHandled = useCallback(() => stripParams(['foto']), [stripParams]);
+
+    /**
+     * `?refresh=1` datang dari menu di spreadsheet: baris yang BARU diketik operator
+     * belum tentu ada di cache loader (TTL 60 detik), dan web_uid-nya belum di-backfill.
+     * Dijalankan sekali lalu paramnya dibuang dari URL supaya reload tidak memicu lagi.
+     * Server tetap punya rem sendiri (MIN_FORCE_INTERVAL_MS) bila banyak operator
+     * membuka menu bersamaan.
+     */
+    const refreshHandled = useRef(false);
+    useEffect(() => {
+        if (!wantsRefresh || refreshHandled.current) return;
+        refreshHandled.current = true;
+        setRefreshing(true);
+        fetch('/api/critical-maintenance/refresh', { method: 'POST' })
+            .catch(() => { /* daftar akan menampilkan errornya sendiri */ })
+            .finally(() => {
+                setRefreshing(false);
+                setReloadKey(k => k + 1);
+                stripParams(['refresh']);
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [wantsRefresh]);
 
     function selectItem(key: string) {
         router.push(`/critical-maintenance?item=${encodeURIComponent(key)}`);
@@ -75,8 +110,19 @@ export default function CriticalSheetPage() {
                 </div>
 
                 {activeKey
-                    ? <ItemDetail itemKey={activeKey} reloadKey={reloadKey} onBack={back} />
-                    : <ItemBrowser reloadKey={reloadKey} onSelect={selectItem} onMeta={onMeta} />}
+                    ? <ItemDetail
+                        itemKey={activeKey}
+                        reloadKey={reloadKey}
+                        onBack={back}
+                        focusUid={focusUid}
+                        onFocusHandled={handleFocusHandled}
+                    />
+                    : <ItemBrowser
+                        reloadKey={reloadKey}
+                        onSelect={selectItem}
+                        onMeta={onMeta}
+                        initialView={wantsRecent ? 'recent' : 'items'}
+                    />}
             </div>
         </div>
     );

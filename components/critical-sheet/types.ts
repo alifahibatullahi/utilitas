@@ -17,6 +17,7 @@ export interface SheetCritical {
     tanggalOkRaw: string;
     pengOk: string;
     gabungan: string;
+    linkFoto: string;
 }
 
 export interface SheetMaintenance {
@@ -34,6 +35,7 @@ export interface SheetMaintenance {
     notifikasi: string;
     foreman: string;
     gabungan: string;
+    linkFoto: string;
 }
 
 export interface SheetItem {
@@ -75,10 +77,22 @@ export interface SheetPhoto {
     id: string;
     parent_kind: 'critical' | 'maintenance';
     row_uid: string;
+    /** URL publik R2 — dipakai langsung oleh <img>; proxy /file jadi fallback. */
+    url: string;
     filename: string;
     caption: string | null;
     uploaded_by: string | null;
     created_at: string;
+}
+
+/** Sumber gambar: R2 langsung, dengan proxy backend sebagai cadangan.
+ *  Proxy tetap diperlukan untuk jaringan yang memblokir domain `*.r2.dev`. */
+export function photoSrc(photo: SheetPhoto): string {
+    return photo.url || photoProxySrc(photo.id);
+}
+
+export function photoProxySrc(id: string): string {
+    return `/api/sheet-photos/${id}/file`;
 }
 
 export interface ItemListResponse {

@@ -92,11 +92,25 @@ async function main() {
 
     let problems = 0;
 
+    /** Kolom web_uid ganda = jejak deployment lama yang menulis uid di kolom lain. */
+    const duplicateUidCols = (rows: string[][]): number[] => {
+        const scan = Math.min(rows.length, 30);
+        for (let i = 0; i < scan; i++) {
+            const hit = (rows[i] ?? [])
+                .map((c, idx) => ({ name: (c ?? '').toLowerCase().replace(/["'.:]/g, '').replace(/\s+/g, ' ').trim(), idx }))
+                .filter(x => x.name.startsWith('web_uid'))
+                .map(x => x.idx);
+            if (hit.length) return hit;
+        }
+        return [];
+    };
+
     const report = (
         label: string,
         tabTitle: string,
         gid: number,
         columnCount: number,
+        allRows: string[][],
         parsed: {
             headerRowIndex: number;
             uidColIndex: number;
@@ -115,6 +129,15 @@ async function main() {
         console.log(`  baris tanpa uid : ${missingUid}`);
         console.log(`  sel Link Foto terisi: ${withPhoto}`);
 
+        const uidCols = duplicateUidCols(allRows);
+        if (uidCols.length > 1) {
+            problems++;
+            console.log(`  ⛔ KOLOM web_uid GANDA: ${uidCols.map(colLetter).join(', ')}`);
+            console.log('      App memakai yang paling kiri, jadi sebagian data akan menunjuk uid yang salah.');
+            console.log('      Biasanya jejak deployment lama yang masih meng-hardcode posisi kolom.');
+            console.log('      Hapus kolom duplikatnya, sisakan satu.');
+        }
+
         if (missingUid > 0) {
             problems++;
             console.log(`  ⚠️  ${missingUid} baris akan DIISI UID BARU saat web dimuat.`);
@@ -129,9 +152,9 @@ async function main() {
     };
 
     report('CRITICAL', criticalTab.title!, criticalGid,
-        criticalTab.gridProperties?.columnCount ?? 0, parseCriticalTab(criticalRows ?? []));
+        criticalTab.gridProperties?.columnCount ?? 0, criticalRows ?? [], parseCriticalTab(criticalRows ?? []));
     report('MAINTENANCE', maintenanceTab.title!, maintenanceGid,
-        maintenanceTab.gridProperties?.columnCount ?? 0, parseMaintenanceTab(maintenanceRows ?? []));
+        maintenanceTab.gridProperties?.columnCount ?? 0, maintenanceRows ?? [], parseMaintenanceTab(maintenanceRows ?? []));
 
     console.log(problems === 0
         ? '✅ Semua kolom yang dikelola app terdeteksi.'

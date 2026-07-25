@@ -186,8 +186,20 @@ function findColByPrefix(map: HeaderMap, prefix: string): number | undefined {
 
 /** Kolom yang dikelola app di satu tab. Kolom foto opsional (null = belum dibuat). */
 function resolveManagedCols(map: HeaderMap): { uidColIndex: number; photoColIndex: number | null } {
+    // Kolom web_uid ganda = tanda ada versi kode lain yang menulis uid di kolom berbeda
+    // (mis. deployment lama yang masih meng-hardcode posisi kolom). Jangan diam:
+    // separuh datanya akan menunjuk uid yang salah.
+    const uidCols = Object.entries(map)
+        .filter(([name]) => name.startsWith(UID_HEADER_PREFIX))
+        .map(([, idx]) => idx);
+    if (uidCols.length > 1) {
+        console.error(
+            `[critical-sheet] ADA ${uidCols.length} kolom web_uid (${uidCols.map(colLetter).join(', ')}). ` +
+            `Memakai ${colLetter(uidCols[0])}. Hapus kolom duplikatnya — kemungkinan ditulis deployment versi lama.`,
+        );
+    }
     return {
-        uidColIndex: findColByPrefix(map, UID_HEADER_PREFIX) ?? UID_COL_FALLBACK,
+        uidColIndex: uidCols[0] ?? UID_COL_FALLBACK,
         photoColIndex: map[PHOTO_HEADER] ?? null,
     };
 }
@@ -290,6 +302,22 @@ async function ensureRowUids(
 ): Promise<void> {
     const needy = parsed.rows.filter(r => !r.uid);
     if (needy.length === 0) return;
+
+    // ── Rem darurat ──────────────────────────────────────────────────────────
+    // Baris baru datang beberapa per hari. Kalau tiba-tiba SEBAGIAN BESAR baris di tab
+    // yang sudah besar kehilangan uid, itu bukan baris baru — itu kolom uid yang salah
+    // dibaca (kolom bergeser karena penyisipan, kolom uid ganda, atau header berubah).
+    // Menulis ulang puluhan ribu UUID akan memutus SELURUH relasi foto, jadi lebih baik
+    // batal mengisi dan berteriak di log; membaca tetap jalan.
+    if (parsed.rows.length > 200 && needy.length > parsed.rows.length / 2) {
+        console.error(
+            `[critical-sheet] BACKFILL DIBATALKAN di tab ${tab.title}: ${needy.length} dari ` +
+            `${parsed.rows.length} baris tidak punya uid di kolom ${colLetter(parsed.uidColIndex)}. ` +
+            `Ini pola "kolom salah", bukan baris baru. Periksa posisi kolom web_uid ` +
+            `(npx tsx scripts/check-critical-sheet.ts) sebelum melanjutkan.`,
+        );
+        return;
+    }
 
     const uidColIndex = parsed.uidColIndex;
 

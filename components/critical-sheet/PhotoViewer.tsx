@@ -38,10 +38,12 @@ export const PHOTO_KIND = {
  */
 export function PhotoImg({ photo, className }: { photo: SheetPhoto; className?: string }) {
     const [src, setSrc] = useState(() => photoSrc(photo));
+    const [loaded, setLoaded] = useState(false);
     const swapped = useRef(false);
 
     useEffect(() => {
         swapped.current = false;
+        setLoaded(false);
         setSrc(photoSrc(photo));
     }, [photo]);
 
@@ -57,12 +59,17 @@ export function PhotoImg({ photo, className }: { photo: SheetPhoto; className?: 
         <img
             src={src}
             alt={photo.caption || photo.filename}
-            className={className}
+            // Sebelum gambarnya sampai: kotak abu berdenyut, lalu muncul perlahan.
+            // Di jaringan lapangan yang lambat ini penanda paling murah bahwa foto
+            // memang sedang dimuat, bukan gagal.
+            className={`${className ?? ''} transition-opacity duration-300 ${
+                loaded ? 'opacity-100' : 'opacity-0 bg-neutral-200 animate-pulse'
+            }`}
             loading="lazy"
             referrerPolicy="no-referrer"
             // Drag bawaan browser mengganggu geser-saat-zoom di lightbox.
             draggable={false}
-            onLoad={() => { swapped.current = true; }}
+            onLoad={() => { swapped.current = true; setLoaded(true); }}
             onError={toFallback}
         />
     );

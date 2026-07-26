@@ -39,6 +39,10 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
     const [copied, setCopied] = useState(false);
     const [dragging, setDragging] = useState(false);
     const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+    /** Berapa berkas yang masih mengantre diupload — dirender jadi ubin berdenyut. */
+    const [pending, setPending] = useState(0);
+    /** Foto yang sedang dihapus: ubinnya diredupkan sampai server menjawab. */
+    const [deleting, setDeleting] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const kind = PHOTO_KIND[record.kind];
@@ -66,6 +70,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         if (list.length === 0) return;
         setError(null);
         setUploading(true);
+        setPending(list.length);
         let next = photos;
         for (const file of list) {
             const compressed = await compressImage(file).catch(() => file);
@@ -80,25 +85,37 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                 if (!res.ok) { setError(json.error ?? 'Upload gagal'); break; }
                 next = [...next, json.photo as SheetPhoto];
                 update(next);
+                setPending(p => Math.max(0, p - 1));
             } catch {
                 setError('Gagal terhubung ke server');
                 break;
             }
         }
         setUploading(false);
+        setPending(0);
         if (fileInputRef.current) fileInputRef.current.value = '';
     }, [photos, record.kind, record.uid, operator?.name, update]);
 
     const pickFiles = useCallback(() => fileInputRef.current?.click(), []);
 
     const handleDelete = useCallback(async (id: string) => {
-        const res = await fetch(`/api/sheet-photos/${id}`, { method: 'DELETE' });
-        if (!res.ok) { setError('Gagal menghapus foto'); return; }
+        setDeleting(prev => [...prev, id]);
+        let ok = false;
+        try {
+            const res = await fetch(`/api/sheet-photos/${id}`, { method: 'DELETE' });
+            ok = res.ok;
+        } catch { /* ok tetap false */ }
+        if (!ok) {
+            setError('Gagal menghapus foto');
+            setDeleting(prev => prev.filter(x => x !== id));
+            return;
+        }
         setPhotos(prev => {
             const next = prev.filter(p => p.id !== id);
             onCountChange?.(record.uid, next.length);
             return next;
         });
+        setDeleting(prev => prev.filter(x => x !== id));
         setLightboxIdx(null);
     }, [onCountChange, record.uid]);
 
@@ -224,8 +241,14 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                 {/* Grid foto */}
                 <div className="px-4 sm:px-5 py-4">
                     {loading ? (
-                        <p className="py-8 text-center text-sm text-neutral-400 font-medium">Memuat foto…</p>
-                    ) : photos.length === 0 ? (
+                        // Kerangka seukuran thumbnail — lebih jelas "sedang dimuat"
+                        // daripada satu baris teks, dan tata letaknya tidak melompat.
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" aria-busy="true">
+                            {[0, 1, 2].map(i => (
+                                <div key={i} className="aspect-square rounded-xl bg-neutral-200 animate-pulse" />
+                            ))}
+                        </div>
+                    ) : photos.length === 0 && pending === 0 ? (
                         // Kotak kosong ini sekaligus tombolnya — tidak ada lagi "mau klik apa".
                         <button
                             onClick={pickFiles}
@@ -241,22 +264,45 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                         </button>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                            {photos.map((photo, idx) => (
-                                <div key={photo.id} className="relative group aspect-square">
-                                    <button
-                                        onClick={() => setLightboxIdx(idx)}
-                                        className={`block w-full h-full rounded-xl overflow-hidden border-2 ${kind.frame} hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 bg-neutral-100 cursor-pointer`}
-                                        title={photo.caption || photo.filename}
-                                    >
-                                        <PhotoImg photo={photo} className="w-full h-full object-cover" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(photo.id)}
-                                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 scale-90 group-hover:scale-100 transition-all hover:bg-red-600 cursor-pointer"
-                                        title="Hapus foto"
-                                    >
-                                        <span className="material-symbols-outlined font-bold" style={{ fontSize: 14 }}>close</span>
-                                    </button>
+                            {photos.map((photo, idx) => {
+                                const isDeleting = deleting.includes(photo.id);
+                                return (
+                                    <div key={photo.id} className="relative group aspect-square">
+                                        <button
+                                            onClick={() => setLightboxIdx(idx)}
+                                            disabled={isDeleting}
+                                            className={`block w-full h-full rounded-xl overflow-hidden border-2 ${kind.frame} hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 bg-neutral-100 cursor-pointer ${
+                                                isDeleting ? 'opacity-40' : ''
+                                            }`}
+                                            title={photo.caption || photo.filename}
+                                        >
+                                            <PhotoImg photo={photo} className="w-full h-full object-cover" />
+                                        </button>
+                                        {isDeleting ? (
+                                            // Menghapus perlu jalan bolak-balik ke server + tulis ulang sel
+                                            // spreadsheet; tanpa penanda, foto terlihat "tidak bereaksi".
+                                            <div className="absolute inset-0 rounded-xl bg-white/50 flex items-center justify-center pointer-events-none">
+                                                <span className="material-symbols-outlined animate-spin text-red-600" style={{ fontSize: 26 }}>progress_activity</span>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleDelete(photo.id)}
+                                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 scale-90 group-hover:scale-100 transition-all hover:bg-red-600 cursor-pointer"
+                                                title="Hapus foto"
+                                            >
+                                                <span className="material-symbols-outlined font-bold" style={{ fontSize: 14 }}>close</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+
+                            {/* Ubin untuk berkas yang sedang diupload — foto barunya nanti
+                                muncul menggantikan ubin ini satu per satu. */}
+                            {Array.from({ length: pending }).map((_, i) => (
+                                <div key={`pending-${i}`} className="aspect-square rounded-xl bg-neutral-200 animate-pulse flex flex-col items-center justify-center gap-1 text-neutral-500">
+                                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 24 }}>progress_activity</span>
+                                    <span className="text-[10px] font-bold">Mengupload…</span>
                                 </div>
                             ))}
                             {/* Kotak tambah di ujung grid: sejajar dengan foto lain, mudah dituju. */}

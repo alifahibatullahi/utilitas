@@ -274,9 +274,11 @@ const C: Record<string, RecordColumn> = {
     },
 };
 
+/** Kolom "Jenis" ikut tampil di mode terfilter juga: nilainya memang seragam, tapi
+ *  warnanya yang menandai daftar ini isinya apa saat filter tidak terlihat di layar. */
 function columnsFor(kind: RecordKind): RecordColumn[] {
-    if (kind === 'critical') return [C.tanggal, C.item, C.uraian, C.notifikasi, C.scope, C.status, C.tanggalOk, C.aksi];
-    if (kind === 'maintenance') return [C.tanggal, C.shift, C.item, C.uraian, C.notifikasi, C.scope, C.status, C.aksi];
+    if (kind === 'critical') return [C.jenis, C.tanggal, C.item, C.uraian, C.notifikasi, C.scope, C.status, C.tanggalOk, C.aksi];
+    if (kind === 'maintenance') return [C.jenis, C.tanggal, C.shift, C.item, C.uraian, C.notifikasi, C.scope, C.status, C.aksi];
     return [C.jenis, C.tanggalPlusShift, C.item, C.uraian, C.notifikasi, C.scope, C.statusPlusOk, C.aksi];
 }
 

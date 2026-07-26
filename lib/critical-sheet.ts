@@ -682,6 +682,10 @@ export function photoPageUrl(itemKey: string, uid: string): string {
 /** Isi sel "Link Foto": kosong bila belum ada foto, HYPERLINK bila sudah. */
 export function photoCellFormula(count: number, url: string): string {
     if (count <= 0) return '';
+    // Pemisah argumen di sini SENGAJA koma, bukan titik koma. Sheets API selalu mem-parse
+    // formula USER_ENTERED dengan konvensi US; spreadsheet-nya (locale in_ID) yang menyimpan
+    // dan menampilkan ulang sebagai `=HYPERLINK("…";"…")`. Menulis titik koma dari sini
+    // justru membuat formulanya gagal di-parse — jangan "diperbaiki".
     // Tanda kutip ganda di dalam formula HYPERLINK di-escape dengan menggandakannya.
     const safeUrl = url.replace(/"/g, '""');
     return `=HYPERLINK("${safeUrl}","📷 Foto (${count})")`;

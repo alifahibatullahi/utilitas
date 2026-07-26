@@ -9,7 +9,7 @@
 
 /**
  * Aksen jenis record — satu sumber warna untuk chip, rail baris, dan tombol filter
- * supaya critical (merah) vs maintenance (sky) langsung terbaca sekilas. Merah/sky
+ * supaya critical (merah) vs maintenance (hijau) langsung terbaca sekilas. Merah/hijau
  * dipilih karena status badge memakai red/amber/neutral dan scope badge cuma outline,
  * jadi tidak saling menutupi.
  */
@@ -26,9 +26,9 @@ const KIND_STYLE: Record<SheetKind, { label: string; icon: string; chip: string;
     maintenance: {
         label: 'Maintenance',
         icon: 'build',
-        chip: 'bg-sky-50 text-sky-700 border border-sky-200',
-        rail: 'bg-sky-500',
-        active: 'bg-sky-600 text-white',
+        chip: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        rail: 'bg-emerald-500',
+        active: 'bg-emerald-600 text-white',
     },
 };
 

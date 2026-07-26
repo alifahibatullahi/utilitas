@@ -112,7 +112,9 @@ export function SheetScopeBadge({ scope, className = '' }: { scope: string; clas
         cls = SCOPE_FALLBACK[hash % SCOPE_FALLBACK.length];
     }
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${cls} ${className}`}>
+        // Tanpa whitespace-nowrap: scope gabungan ("Mekanik, Las") boleh turun baris
+        // supaya kolomnya tidak memaksa tabel melebar.
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cls} ${className}`}>
             {s}
         </span>
     );

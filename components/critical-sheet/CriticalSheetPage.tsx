@@ -95,8 +95,19 @@ export default function CriticalSheetPage() {
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 20 }}>home</span>
                     </button>
+                    {/* Logo perusahaan — pola sama dengan header /critical (CriticalPage).
+                        Danantara disembunyikan di layar sempit supaya judul tetap kebagian ruang. */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/logo/Danantara_Indonesia_(no_SW).png" alt="Danantara" className="h-7 w-auto object-contain hidden lg:block" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/logo/Logo_Pupuk_Indonesia__Persero_-removebg-preview.png" alt="Pupuk Indonesia" className="h-7 w-auto object-contain hidden sm:block" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/logo/logo-PG-agro-trans-small-removebg-preview.png" alt="Petrokimia Gresik" className="h-7 w-auto object-contain" />
+                    </div>
+                    <div className="hidden sm:block h-8 w-px bg-neutral-200 shrink-0" />
                     <div className="min-w-0 flex-1">
-                        <h1 className="text-xl font-bold text-neutral-900 leading-tight">Critical Maintenance</h1>
+                        <h1 className="text-base sm:text-xl font-bold text-neutral-900 leading-tight">Critical Maintenance Utilitas Batubara</h1>
                         <p className="text-[11px] text-neutral-400 font-medium">
                             Daftar critical & maintenance · sumber data Google Sheets
                             {stamp && <span> · data per {stamp}</span>}

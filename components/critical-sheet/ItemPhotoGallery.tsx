@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PhotoImg } from './RecordPhotoModal';
 import type { RecentEntry, SheetPhoto } from './types';
-import { statusLabel } from './SheetBadges';
+import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
 
 interface ItemPhotoGalleryProps {
     /** Semua foto item (gabungan seluruh record) — sudah di-batch fetch oleh parent. */
@@ -12,9 +12,9 @@ interface ItemPhotoGalleryProps {
     records: RecentEntry[];
 }
 
-const KIND_CHIP: Record<'critical' | 'maintenance', { label: string; cls: string; icon: string }> = {
-    critical: { label: 'Critical', cls: 'bg-red-600/90 text-white', icon: 'warning' },
-    maintenance: { label: 'Maintenance', cls: 'bg-emerald-600/90 text-white', icon: 'build' },
+const KIND_CHIP: Record<'critical' | 'maintenance', { label: string; cls: string; icon: string; frame: string }> = {
+    critical: { label: 'Critical', cls: 'bg-red-600/90 text-white', icon: 'warning', frame: 'border-red-300 hover:border-red-500' },
+    maintenance: { label: 'Maintenance', cls: 'bg-emerald-600/90 text-white', icon: 'build', frame: 'border-emerald-300 hover:border-emerald-500' },
 };
 
 const PREVIEW_COUNT = 6;
@@ -75,7 +75,8 @@ export default function ItemPhotoGallery({ photos, records }: ItemPhotoGalleryPr
                         <button
                             key={photo.id}
                             onClick={() => setLightboxIdx(idx)}
-                            className="relative aspect-square rounded-xl overflow-hidden border border-neutral-200 hover:border-neutral-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-neutral-400 bg-neutral-100 cursor-pointer"
+                            // Bingkai ikut warna jenis record: asal foto terbaca tanpa membaca chip.
+                            className={`relative aspect-square rounded-xl overflow-hidden border-2 ${chip.frame} hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 bg-neutral-100 cursor-pointer`}
                             title={photo.caption || photo.filename}
                         >
                             <PhotoImg photo={photo} className="w-full h-full object-cover" />
@@ -169,13 +170,6 @@ function LightboxFooter({ photo, source }: {
     source?: RecentEntry;
 }) {
     const chip = KIND_CHIP[source?.kind ?? photo.parent_kind];
-    // Chip terang di atas latar gelap lightbox — badge biasa terlalu redup di sini.
-    const info = [
-        source?.pelapor && `Pelapor: ${source.pelapor}`,
-        source?.scope?.trim() && `Scope: ${source.scope.trim()}`,
-        // Status selalu ditampilkan: sel kosong pun punya arti (OPEN), sama seperti badge di tabel.
-        source && `Status: ${statusLabel(source.status)}`,
-    ].filter(Boolean) as string[];
     return (
         <div className="w-full max-w-3xl space-y-2">
             <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -184,14 +178,23 @@ function LightboxFooter({ photo, source }: {
                     {chip.label}
                     {source?.tanggalRaw && <span className="opacity-80">· {source.tanggalRaw}</span>}
                 </span>
-                {info.map(t => (
-                    <span key={t} className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold bg-white/10 text-white/90">
-                        {t}
+                {/* Badge yang sama dengan tabel — sudah berwarna, jadi status & scope
+                    terbaca sekilas walau di atas latar gelap. */}
+                {source && <SheetStatusBadge status={source.status} />}
+                {source?.scope?.trim() && <SheetScopeBadge scope={source.scope} />}
+                {source?.pelapor && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold bg-white/10 text-white/90">
+                        Pelapor: {source.pelapor}
                     </span>
-                ))}
+                )}
             </div>
-            {source?.uraian && <p className="text-center text-xs text-white/70 line-clamp-2">{source.uraian}</p>}
-            {photo.caption && <p className="text-center text-sm text-white/90 font-medium">{photo.caption}</p>}
+            {/* Uraian = alasan foto ini ada, jadi diperlakukan sebagai teks utama. */}
+            {source?.uraian && (
+                <p className="text-center text-sm sm:text-base font-semibold text-white bg-white/10 rounded-xl px-4 py-2.5 line-clamp-3">
+                    {source.uraian}
+                </p>
+            )}
+            {photo.caption && <p className="text-center text-sm text-white/80">{photo.caption}</p>}
         </div>
     );
 }

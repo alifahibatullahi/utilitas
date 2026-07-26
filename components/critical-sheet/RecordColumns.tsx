@@ -46,13 +46,10 @@ function metaOf(e: RecentEntry): string {
 
 export const C: Record<string, RecordColumn> = {
     jenis: {
-        key: 'jenis', label: 'Jenis', cellClass: 'w-24',
-        render: e => (
-            <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-8 rounded-full shrink-0 ${kindRailClass(e.kind)}`} />
-                <SheetKindBadge kind={e.kind} />
-            </div>
-        ),
+        // Tanpa rail: badge-nya sudah berwarna sendiri, dan 20px yang dihemat di sini
+        // dipakai kolom lain supaya tabel tetap muat tanpa scroll horizontal.
+        key: 'jenis', label: 'Jenis', cellClass: 'w-20',
+        render: e => <SheetKindBadge kind={e.kind} />,
     },
     tanggal: {
         key: 'tanggal', label: 'Tanggal', cellClass: 'w-28 whitespace-nowrap font-mono text-xs text-neutral-600',
@@ -78,11 +75,11 @@ export const C: Record<string, RecordColumn> = {
         render: e => <div className="text-sm font-bold text-neutral-800">{itemLabel(e.itemName, e.variant) || dash}</div>,
     },
     uraian: {
-        key: 'uraian', label: 'Uraian', cellClass: 'min-w-[200px]',
+        key: 'uraian', label: 'Uraian', cellClass: 'min-w-[180px]',
         render: e => <p className="text-sm text-neutral-700 line-clamp-3" title={e.uraian}>{e.uraian || dash}</p>,
     },
     uraianPlusMeta: {
-        key: 'uraian', label: 'Uraian', cellClass: 'min-w-[200px]',
+        key: 'uraian', label: 'Uraian', cellClass: 'min-w-[180px]',
         render: e => {
             const meta = metaOf(e);
             return (
@@ -94,7 +91,7 @@ export const C: Record<string, RecordColumn> = {
         },
     },
     notifikasi: {
-        key: 'notifikasi', label: 'Notifikasi', cellClass: 'w-28 whitespace-nowrap font-mono text-xs text-neutral-600',
+        key: 'notifikasi', label: 'Notif', cellClass: 'w-28 whitespace-nowrap font-mono text-xs text-neutral-600',
         render: e => e.notifikasi || dash,
     },
     scope: {

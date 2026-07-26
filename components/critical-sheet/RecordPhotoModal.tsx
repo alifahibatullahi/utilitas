@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { compressImage } from '@/lib/image-compression';
-import { fetchSheetPhotos, itemLabel, photoProxySrc, photoSrc, type SheetPhoto } from './types';
+import { fetchSheetPhotos, itemLabel, photoDirectSrc, photoSrc, type SheetPhoto } from './types';
 import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
 
 /** Record (satu baris sheet) yang jadi pemilik foto. */
@@ -279,10 +279,30 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
     );
 }
 
-/** <img> yang memuat langsung dari R2 dan jatuh ke proxy backend kalau domain R2 diblokir. */
+/**
+ * <img> foto record: memuat lewat proxy backend (satu origin dengan aplikasi), dan
+ * pindah ke URL R2 langsung HANYA bila proxy benar-benar gagal.
+ *
+ * Sengaja tanpa batas waktu "kalau lambat pindah": cadangannya justru `pub-*.r2.dev`
+ * yang di jaringan kantor diblokir. Proxy yang lambat berarti jaringannya lambat —
+ * berpindah ke domain yang lebih mungkin diblokir cuma memperburuk.
+ */
 export function PhotoImg({ photo, className }: { photo: SheetPhoto; className?: string }) {
     const [src, setSrc] = useState(() => photoSrc(photo));
-    useEffect(() => { setSrc(photoSrc(photo)); }, [photo]);
+    const swapped = useRef(false);
+
+    useEffect(() => {
+        swapped.current = false;
+        setSrc(photoSrc(photo));
+    }, [photo]);
+
+    const toFallback = useCallback(() => {
+        if (swapped.current) return;
+        swapped.current = true;
+        const direct = photoDirectSrc(photo);
+        setSrc(prev => (direct && direct !== prev ? direct : prev));
+    }, [photo]);
+
     return (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -291,7 +311,8 @@ export function PhotoImg({ photo, className }: { photo: SheetPhoto; className?: 
             className={className}
             loading="lazy"
             referrerPolicy="no-referrer"
-            onError={() => setSrc(prev => (prev === photoProxySrc(photo.id) ? prev : photoProxySrc(photo.id)))}
+            onLoad={() => { swapped.current = true; }}
+            onError={toFallback}
         />
     );
 }

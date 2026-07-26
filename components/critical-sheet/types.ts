@@ -67,7 +67,8 @@ export interface SheetPhoto {
     id: string;
     parent_kind: 'critical' | 'maintenance';
     row_uid: string;
-    /** URL publik R2 — dipakai langsung oleh <img>; proxy /file jadi fallback. */
+    /** URL publik R2 (`pub-*.r2.dev`). Disimpan apa adanya, tapi BUKAN sumber utama
+     *  <img> — lihat photoSrc(). Dipakai sebagai cadangan bila proxy gagal. */
     url: string;
     filename: string;
     caption: string | null;
@@ -75,9 +76,26 @@ export interface SheetPhoto {
     created_at: string;
 }
 
-/** Sumber gambar: R2 langsung, dengan proxy backend sebagai cadangan.
- *  Proxy tetap diperlukan untuk jaringan yang memblokir domain `*.r2.dev`. */
+/**
+ * Sumber gambar: PROXY backend dulu (satu origin dengan aplikasi), R2 langsung cuma
+ * cadangan — kebalikan dari sebelumnya.
+ *
+ * `pub-*.r2.dev` adalah endpoint development Cloudflare dan lazim diblokir/di-throttle
+ * proxy perusahaan; di jaringan kantor operator, halaman & API lancar (lewat domain
+ * aplikasi) tapi foto menggantung lama karena jaringan MEMBUANG paket ke r2.dev tanpa
+ * menolaknya, sehingga `onError` di <img> baru menyala setelah TCP timeout. Fitur
+ * critical yang lama sudah lebih dulu memakai proxy dengan alasan yang sama
+ * (components/critical/PhotoGallery.tsx).
+ *
+ * Ongkosnya kecil: respons proxy immutable + ter-cache CDN Vercel, jadi hanya
+ * permintaan pertama per foto yang membangunkan fungsi.
+ */
 export function photoSrc(photo: SheetPhoto): string {
+    return photoProxySrc(photo.id);
+}
+
+/** Cadangan bila proxy gagal: URL R2 langsung (kalau memang tersimpan). */
+export function photoDirectSrc(photo: SheetPhoto): string {
     return photo.url || photoProxySrc(photo.id);
 }
 

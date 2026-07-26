@@ -27,6 +27,10 @@ export async function uploadToR2(
     Key:         key,
     Body:        body,
     ContentType: contentType,
+    // Key foto unik & isinya tidak pernah berubah → boleh di-cache selamanya.
+    // Tanpa header ini objek R2 dikirim tanpa Cache-Control sama sekali, sehingga
+    // byte yang sama ditarik ulang terus (mahal di jaringan lapangan yang lambat).
+    CacheControl: 'public, max-age=31536000, immutable',
   }));
   return `${R2_BASE_URL}/${key}`;
 }

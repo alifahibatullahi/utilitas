@@ -6,8 +6,9 @@ import { syncPhotoCell } from '@/lib/sheet-photo-sync';
 /**
  * Foto fitur Critical Maintenance berbasis Sheets (/critical-maintenance).
  * POST: upload foto → R2 + insert row `sheet_photos` (parent = row_uid baris sheet).
- * GET ?uids=a,b,c → daftar foto untuk kumpulan row_uid (hanya baris yang tampil
- * di halaman aktif — jaga beban Supabase free tier tetap kecil).
+ * Untuk MEMBACA foto sekumpulan baris: POST /api/sheet-photos/query. Dulu ada GET
+ * ?uids=a,b,c di sini, tapi daftar uid satu item bisa ribuan — tidak muat di URL dan
+ * batas 100 uid-nya diam-diam menyembunyikan foto record lama.
  */
 
 function getAdmin() {
@@ -97,28 +98,4 @@ export async function POST(req: NextRequest) {
         const message = err instanceof Error ? err.message : String(err);
         return NextResponse.json({ error: message || 'Internal server error' }, { status: 500 });
     }
-}
-
-export async function GET(req: NextRequest) {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        return NextResponse.json({ error: 'Server tidak terkonfigurasi' }, { status: 500 });
-    }
-    const uidsParam = req.nextUrl.searchParams.get('uids') ?? '';
-    const uids = uidsParam.split(',').map(s => s.trim()).filter(Boolean).slice(0, 100);
-    if (uids.length === 0) {
-        return NextResponse.json({ photos: [] });
-    }
-
-    const { data, error } = await getAdmin()
-        .from('sheet_photos')
-        // `url` ikut supaya <img> bisa memuat langsung dari R2 (proxy /file hanya fallback,
-        // menekan invocation Vercel saat galeri berisi banyak foto).
-        .select('id, parent_kind, row_uid, url, filename, caption, uploaded_by, created_at')
-        .in('row_uid', uids)
-        .order('created_at', { ascending: true });
-
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ photos: data ?? [] });
 }

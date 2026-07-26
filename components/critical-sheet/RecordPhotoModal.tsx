@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { compressImage } from '@/lib/image-compression';
 import { fetchSheetPhotos, photoProxySrc, photoSrc, type SheetPhoto } from './types';
+import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
 
 /** Record (satu baris sheet) yang jadi pemilik foto. */
 export interface PhotoRecordTarget {
@@ -11,8 +12,14 @@ export interface PhotoRecordTarget {
     kind: 'critical' | 'maintenance';
     itemKey: string;
     itemName: string;
+    /** Varian mentah baris itu (kolom "Varian") — bisa gabungan seperti "DEF". */
+    variant: string;
     tanggalRaw: string;
     uraian: string;
+    /** "Yang Melaporkan" — hanya ada di tab critical. */
+    pelapor: string;
+    scope: string;
+    status: string;
 }
 
 interface RecordPhotoModalProps {
@@ -22,9 +29,10 @@ interface RecordPhotoModalProps {
     onCountChange?: (uid: string, count: number) => void;
 }
 
+// Versi solid dari aksen jenis (KIND_STYLE di SheetBadges) — dipakai di header modal.
 const KIND_CHIP: Record<'critical' | 'maintenance', { label: string; cls: string; icon: string }> = {
     critical: { label: 'Critical', cls: 'bg-red-600 text-white', icon: 'warning' },
-    maintenance: { label: 'Maintenance', cls: 'bg-neutral-800 text-white', icon: 'build' },
+    maintenance: { label: 'Maintenance', cls: 'bg-emerald-600 text-white', icon: 'build' },
 };
 
 /**
@@ -159,8 +167,22 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                             </div>
                             <p className="text-sm font-bold text-neutral-900 mt-1 leading-snug">{record.uraian || '(tanpa uraian)'}</p>
                             {record.itemName && (
-                                <p className="text-[11px] text-neutral-400 font-medium mt-0.5 truncate">{record.itemName}</p>
+                                <p className="text-[11px] text-neutral-500 font-semibold mt-0.5">
+                                    {record.itemName}
+                                    {record.variant && <span className="text-neutral-400"> · Varian {record.variant}</span>}
+                                </p>
                             )}
+                            {/* Konteks record: cukup untuk tahu foto ini milik pekerjaan apa
+                                tanpa harus kembali ke daftar / spreadsheet. */}
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                                <SheetStatusBadge status={record.status} />
+                                <SheetScopeBadge scope={record.scope} />
+                                {record.pelapor && (
+                                    <span className="text-[10px] font-semibold text-neutral-500">
+                                        Pelapor: {record.pelapor}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         <button
                             onClick={onClose}

@@ -100,6 +100,7 @@ export interface RecentEntry {
     notifikasi: string;
     scope: string;
     status: string;
+    pelapor: string;
     tanggalOkRaw: string;
     itemKey: string;
 }
@@ -155,11 +156,18 @@ export async function saveItemSpec(payload: {
     return json.spec as ItemSpec;
 }
 
-/** Ambil foto untuk sekumpulan row_uid (dipanggil per halaman/item yang tampil saja). */
+/**
+ * Ambil foto untuk sekumpulan row_uid. POST karena satu item bisa punya ratusan sampai
+ * ribuan record — daftar uid sepanjang itu tidak muat di query string.
+ */
 export async function fetchSheetPhotos(uids: string[]): Promise<SheetPhoto[]> {
     const clean = uids.filter(Boolean);
     if (clean.length === 0) return [];
-    const res = await fetch(`/api/sheet-photos?uids=${encodeURIComponent(clean.join(','))}`);
+    const res = await fetch('/api/sheet-photos/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uids: clean }),
+    });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Gagal memuat foto');
     return (json.photos ?? []) as SheetPhoto[];

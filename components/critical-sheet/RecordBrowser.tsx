@@ -86,8 +86,12 @@ export default function RecordBrowser({ reloadKey, onSelect, onMeta }: RecordBro
             kind: entry.kind,
             itemKey: entry.itemKey,
             itemName: entry.itemName,
+            variant: entry.variant,
             tanggalRaw: entry.tanggalRaw,
             uraian: entry.uraian,
+            pelapor: entry.pelapor,
+            scope: entry.scope,
+            status: entry.status,
         });
     }, []);
 

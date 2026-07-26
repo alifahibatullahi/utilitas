@@ -10,6 +10,10 @@ export interface PhotoRecordSource {
     kind: 'critical' | 'maintenance';
     tanggalRaw: string;
     uraian: string;
+    variant: string;
+    pelapor: string;
+    scope: string;
+    status: string;
 }
 
 interface ItemPhotoGalleryProps {
@@ -23,7 +27,7 @@ interface ItemPhotoGalleryProps {
 
 const KIND_CHIP: Record<'critical' | 'maintenance', { label: string; cls: string; icon: string }> = {
     critical: { label: 'Critical', cls: 'bg-red-600/90 text-white', icon: 'warning' },
-    maintenance: { label: 'Maintenance', cls: 'bg-neutral-800/90 text-white', icon: 'build' },
+    maintenance: { label: 'Maintenance', cls: 'bg-emerald-600/90 text-white', icon: 'build' },
 };
 
 const PREVIEW_COUNT = 6;
@@ -188,10 +192,11 @@ function LightboxFooter({ photo, source, onOpenRecord }: {
                 {onOpenRecord && (
                     <button
                         onClick={() => onOpenRecord(photo.row_uid)}
+                        title="Buka galeri baris ini: semua fotonya, plus tombol upload, hapus, dan keterangan"
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-white/10 text-white/90 hover:bg-white/20 cursor-pointer transition-colors"
                     >
-                        <span className="material-symbols-outlined" style={{ fontSize: 13 }}>open_in_new</span>
-                        Buka record
+                        <span className="material-symbols-outlined" style={{ fontSize: 13 }}>photo_library</span>
+                        Kelola foto record ini
                     </button>
                 )}
             </div>

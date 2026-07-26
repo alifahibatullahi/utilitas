@@ -109,6 +109,8 @@ export interface CriticalSheetData {
     criticals: CriticalRow[];
     maintenances: MaintenanceRow[];
     tabs: { critical: TabRef; maintenance: TabRef };
+    /** Pemisah argumen formula sesuai locale spreadsheet (lihat argSeparatorForLocale). */
+    argSeparator: ArgSeparator;
     fetchedAt: string;
 }
 
@@ -138,6 +140,26 @@ function parseSheetDate(raw: string): string | null {
 function parseNo(cellValue: string): number | null {
     const s = (cellValue ?? '').trim();
     return /^\d+$/.test(s) ? parseInt(s, 10) : null;
+}
+
+export type ArgSeparator = ';' | ',';
+
+/**
+ * Pemisah argumen formula mengikuti LOCALE spreadsheet, bukan konvensi US.
+ * Sheets API mem-parse nilai `USER_ENTERED` persis seperti operator mengetiknya di UI,
+ * jadi di sheet berlokal in_ID (desimal koma) `=HYPERLINK("…","…")` menjadi sel
+ * #ERROR! "Formula parse error" — yang benar `=HYPERLINK("…";"…")`.
+ * Locale dari API berformat "in_ID"/"en_US"; Intl menerimanya setelah _ jadi -.
+ */
+export function argSeparatorForLocale(locale: string): ArgSeparator {
+    const tag = (locale || '').trim().replace(/_/g, '-');
+    if (!tag) return ',';
+    try {
+        // Desimal koma (1,5) ⇒ koma sudah dipakai angka, pemisah argumen jadi titik koma.
+        return Intl.NumberFormat(tag).format(1.5).includes(',') ? ';' : ',';
+    } catch {
+        return ',';
+    }
 }
 
 type HeaderMap = Record<string, number>;
@@ -391,7 +413,7 @@ async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
     // Resolve kedua tab by gid tiap load (murah; sekaligus tahan rename tab).
     const meta = await withRetry(() => sheets.spreadsheets.get({
         spreadsheetId: sheetId(),
-        fields: 'sheets.properties(sheetId,title,gridProperties.columnCount)',
+        fields: 'properties.locale,sheets.properties(sheetId,title,gridProperties.columnCount)',
     }), 'get critical spreadsheet meta');
     const findTab = (gid: number): TabInfo => {
         const t = meta.data.sheets?.find(s => s.properties?.sheetId === gid);
@@ -439,6 +461,7 @@ async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
             critical: toRef('critical', criticalTab, criticalParsed),
             maintenance: toRef('maintenance', maintenanceTab, maintenanceParsed),
         },
+        argSeparator: argSeparatorForLocale(meta.data.properties?.locale ?? ''),
         fetchedAt: new Date().toISOString(),
     };
 }
@@ -574,6 +597,7 @@ export interface RecentEntry {
     notifikasi: string;      // "Notif" (critical) & "Notifikasi" (maintenance) = hal yang sama
     scope: string;
     status: string;
+    pelapor: string;         // critical saja ("Yang Melaporkan")
     tanggalOkRaw: string;    // critical saja
     itemKey: string;         // target navigasi ke halaman item (token varian pertama)
 }
@@ -591,7 +615,7 @@ export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical
                 uid: c.uid, kind: 'critical', tanggal: c.tanggal, tanggalRaw: c.tanggalRaw,
                 shift: '', itemName: (c.item ?? '').replace(/\s+/g, ' ').trim(), variant: c.varian,
                 code: extractCode(c.item), uraian: c.uraian, notifikasi: c.notif,
-                scope: c.scope, status: c.status, tanggalOkRaw: c.tanggalOkRaw,
+                scope: c.scope, status: c.status, pelapor: c.pelapor, tanggalOkRaw: c.tanggalOkRaw,
                 itemKey: recordItemKeys(c.item, c.varian)[0],
             });
         }
@@ -602,7 +626,7 @@ export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical
                 uid: m.uid, kind: 'maintenance', tanggal: m.tanggal, tanggalRaw: m.tanggalRaw,
                 shift: m.shift, itemName: (m.item ?? '').replace(/\s+/g, ' ').trim(), variant: m.varian,
                 code: extractCode(m.item), uraian: m.uraian, notifikasi: m.notifikasi,
-                scope: m.scope, status: m.status, tanggalOkRaw: '',
+                scope: m.scope, status: m.status, pelapor: '', tanggalOkRaw: '',
                 itemKey: recordItemKeys(m.item, m.varian)[0],
             });
         }
@@ -679,16 +703,16 @@ export function photoPageUrl(itemKey: string, uid: string): string {
     return `${base}/critical-maintenance?item=${encodeURIComponent(itemKey)}&foto=${encodeURIComponent(uid)}`;
 }
 
-/** Isi sel "Link Foto": kosong bila belum ada foto, HYPERLINK bila sudah. */
-export function photoCellFormula(count: number, url: string): string {
+/**
+ * Isi sel "Link Foto": kosong bila belum ada foto, HYPERLINK bila sudah.
+ * `sep` WAJIB dari locale spreadsheet (lihat argSeparatorForLocale) — memakai pemisah
+ * yang salah membuat selnya jadi #ERROR! alih-alih tautan.
+ */
+export function photoCellFormula(count: number, url: string, sep: ArgSeparator): string {
     if (count <= 0) return '';
-    // Pemisah argumen di sini SENGAJA koma, bukan titik koma. Sheets API selalu mem-parse
-    // formula USER_ENTERED dengan konvensi US; spreadsheet-nya (locale in_ID) yang menyimpan
-    // dan menampilkan ulang sebagai `=HYPERLINK("…";"…")`. Menulis titik koma dari sini
-    // justru membuat formulanya gagal di-parse — jangan "diperbaiki".
     // Tanda kutip ganda di dalam formula HYPERLINK di-escape dengan menggandakannya.
     const safeUrl = url.replace(/"/g, '""');
-    return `=HYPERLINK("${safeUrl}","📷 Foto (${count})")`;
+    return `=HYPERLINK("${safeUrl}"${sep}"📷 Foto (${count})")`;
 }
 
 /**
@@ -709,7 +733,7 @@ export async function writePhotoCell(uid: string, count: number): Promise<boolea
     if (!loc || loc.photoColIndex === null) return false;
 
     const col = colLetter(loc.photoColIndex);
-    const value = photoCellFormula(count, photoPageUrl(loc.itemKey, uid));
+    const value = photoCellFormula(count, photoPageUrl(loc.itemKey, uid), data.argSeparator);
     await withRetry(() => getSheetsClient().spreadsheets.values.update({
         spreadsheetId: sheetId(),
         range: `${quoteTab(loc!.tabTitle)}!${col}${loc!.rowIndex}`,

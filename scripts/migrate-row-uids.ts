@@ -56,7 +56,7 @@ async function main() {
     const { google } = await import('googleapis');
     const { createClient } = await import('@supabase/supabase-js');
     const {
-        parseCriticalTab, parseMaintenanceTab, buildRowUid, uidPrefixFor,
+        parseCriticalTab, parseMaintenanceTab, buildRowUid, uidPrefixFor, rowItemLabel,
         photoCellFormula, photoPageUrl, argSeparatorForLocale, recordItemKeys,
     } = await import('../lib/critical-sheet');
 
@@ -210,7 +210,7 @@ async function main() {
                 spreadsheetId,
                 range: `${quoteTab(title)}!${col}${r.rowIndex}`,
                 valueInputOption: 'USER_ENTERED',
-                requestBody: { values: [[photoCellFormula(count ?? 0, photoPageUrl(itemKey, baru), sep)]] },
+                requestBody: { values: [[photoCellFormula(count ?? 0, photoPageUrl(itemKey, baru), sep, rowItemLabel(r.item, r.varian))]] },
             });
             console.log(`✓ Link Foto ${title}!${col}${r.rowIndex} disegarkan`);
         }

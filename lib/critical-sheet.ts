@@ -643,6 +643,17 @@ export function uidPrefixFor(item: string, varian: string): string {
     return v ? `${base}-${v}` : base;
 }
 
+/**
+ * Label baris untuk dibaca manusia: "P-02.10 D". Sama isinya dengan prefix uid, hanya
+ * dipisah spasi — jangan diturunkan dari uidPrefixFor dengan mengganti semua tanda
+ * hubung, karena tanda hubung di dalam kode equipment ("P-02.10") ikut rusak.
+ */
+export function rowItemLabel(item: string, varian: string): string {
+    const base = extractCode(item) || itemSlug(item) || '';
+    const v = (varian ?? '').toUpperCase().replace(/[^A-Z0-9]+/g, '');
+    return v ? `${base} ${v}` : base;
+}
+
 /** UID baru untuk satu baris. `taken` menjamin tidak ada yang kembar di spreadsheet. */
 export function buildRowUid(item: string, varian: string, taken: Set<string>): string {
     const prefix = uidPrefixFor(item, varian);
@@ -779,6 +790,8 @@ export interface RowLocation {
     rowIndex: number;             // 1-based
     photoColIndex: number | null;
     itemKey: string;              // halaman item tujuan link
+    /** Kode + varian baris itu — dipakai sebagai label sel Link Foto. */
+    itemLabel: string;
 }
 
 export function findRowByUid(data: CriticalSheetData, uid: string): RowLocation | null {
@@ -791,6 +804,7 @@ export function findRowByUid(data: CriticalSheetData, uid: string): RowLocation 
             rowIndex: critical.rowIndex,
             photoColIndex: data.tabs.critical.photoColIndex,
             itemKey: recordItemKeys(critical.item, critical.varian)[0],
+            itemLabel: rowItemLabel(critical.item, critical.varian),
         };
     }
     const maintenance = data.maintenances.find(m => m.uid === uid);
@@ -801,6 +815,7 @@ export function findRowByUid(data: CriticalSheetData, uid: string): RowLocation 
             rowIndex: maintenance.rowIndex,
             photoColIndex: data.tabs.maintenance.photoColIndex,
             itemKey: recordItemKeys(maintenance.item, maintenance.varian)[0],
+            itemLabel: rowItemLabel(maintenance.item, maintenance.varian),
         };
     }
     return null;
@@ -814,14 +829,23 @@ export function photoPageUrl(itemKey: string, uid: string): string {
 
 /**
  * Isi sel "Link Foto": kosong bila belum ada foto, HYPERLINK bila sudah.
+ *
+ * Labelnya menyebut ITEM baris itu ("📷 Foto P-02.10 D (3)"), bukan sekadar "Foto (3)",
+ * dengan alasan yang sama seperti kode item di dalam web_uid: sel yang menyebut miliknya
+ * sendiri membuat pergeseran baris terlihat mata. Kalau sel di baris Coal Feeder
+ * berbunyi "Foto P-02.10 D", ada yang salah dan operator bisa langsung melihatnya.
+ *
  * `sep` WAJIB dari locale spreadsheet (lihat argSeparatorForLocale) — memakai pemisah
  * yang salah membuat selnya jadi #ERROR! alih-alih tautan.
  */
-export function photoCellFormula(count: number, url: string, sep: ArgSeparator): string {
+export function photoCellFormula(count: number, url: string, sep: ArgSeparator, itemLabel = ''): string {
     if (count <= 0) return '';
     // Tanda kutip ganda di dalam formula HYPERLINK di-escape dengan menggandakannya.
     const safeUrl = url.replace(/"/g, '""');
-    return `=HYPERLINK("${safeUrl}"${sep}"📷 Foto (${count})")`;
+    const label = itemLabel.trim()
+        ? `📷 Foto ${itemLabel.trim().replace(/"/g, '""')} (${count})`
+        : `📷 Foto (${count})`;
+    return `=HYPERLINK("${safeUrl}"${sep}"${label}")`;
 }
 
 /**
@@ -842,7 +866,7 @@ export async function writePhotoCell(uid: string, count: number): Promise<boolea
     if (!loc || loc.photoColIndex === null) return false;
 
     const col = colLetter(loc.photoColIndex);
-    const value = photoCellFormula(count, photoPageUrl(loc.itemKey, uid), data.argSeparator);
+    const value = photoCellFormula(count, photoPageUrl(loc.itemKey, uid), data.argSeparator, loc.itemLabel);
     await withRetry(() => getSheetsClient().spreadsheets.values.update({
         spreadsheetId: sheetId(),
         range: `${quoteTab(loc!.tabTitle)}!${col}${loc!.rowIndex}`,

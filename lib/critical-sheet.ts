@@ -598,6 +598,7 @@ export interface RecentEntry {
     scope: string;
     status: string;
     pelapor: string;         // critical saja ("Yang Melaporkan")
+    foreman: string;         // maintenance saja
     tanggalOkRaw: string;    // critical saja
     itemKey: string;         // target navigasi ke halaman item (token varian pertama)
 }
@@ -615,7 +616,7 @@ export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical
                 uid: c.uid, kind: 'critical', tanggal: c.tanggal, tanggalRaw: c.tanggalRaw,
                 shift: '', itemName: (c.item ?? '').replace(/\s+/g, ' ').trim(), variant: c.varian,
                 code: extractCode(c.item), uraian: c.uraian, notifikasi: c.notif,
-                scope: c.scope, status: c.status, pelapor: c.pelapor, tanggalOkRaw: c.tanggalOkRaw,
+                scope: c.scope, status: c.status, pelapor: c.pelapor, foreman: '', tanggalOkRaw: c.tanggalOkRaw,
                 itemKey: recordItemKeys(c.item, c.varian)[0],
             });
         }
@@ -626,7 +627,7 @@ export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical
                 uid: m.uid, kind: 'maintenance', tanggal: m.tanggal, tanggalRaw: m.tanggalRaw,
                 shift: m.shift, itemName: (m.item ?? '').replace(/\s+/g, ' ').trim(), variant: m.varian,
                 code: extractCode(m.item), uraian: m.uraian, notifikasi: m.notifikasi,
-                scope: m.scope, status: m.status, pelapor: '', tanggalOkRaw: '',
+                scope: m.scope, status: m.status, pelapor: '', foreman: m.foreman, tanggalOkRaw: '',
                 itemKey: recordItemKeys(m.item, m.varian)[0],
             });
         }

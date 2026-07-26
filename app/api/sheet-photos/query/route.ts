@@ -24,9 +24,11 @@ export async function POST(req: NextRequest) {
     let uids: string[];
     try {
         const body = await req.json();
-        const raw = Array.isArray(body?.uids) ? body.uids : [];
-        uids = Array.from(new Set(raw.filter((u: unknown): u is string => typeof u === 'string' && u.trim() !== '')
-            .map((u: string) => u.trim()))).slice(0, MAX_UIDS);
+        const raw: unknown[] = Array.isArray(body?.uids) ? body.uids : [];
+        const clean = raw
+            .filter((u): u is string => typeof u === 'string' && u.trim() !== '')
+            .map(u => u.trim());
+        uids = Array.from(new Set<string>(clean)).slice(0, MAX_UIDS);
     } catch {
         return NextResponse.json({ error: 'Body harus JSON { uids: string[] }' }, { status: 400 });
     }

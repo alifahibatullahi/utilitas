@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { compressImage } from '@/lib/image-compression';
-import { fetchSheetPhotos, photoProxySrc, photoSrc, type SheetPhoto } from './types';
+import { fetchSheetPhotos, itemLabel, photoProxySrc, photoSrc, type SheetPhoto } from './types';
 import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
 
 /** Record (satu baris sheet) yang jadi pemilik foto. */
@@ -168,8 +168,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                             <p className="text-sm font-bold text-neutral-900 mt-1 leading-snug">{record.uraian || '(tanpa uraian)'}</p>
                             {record.itemName && (
                                 <p className="text-[11px] text-neutral-500 font-semibold mt-0.5">
-                                    {record.itemName}
-                                    {record.variant && <span className="text-neutral-400"> · Varian {record.variant}</span>}
+                                    {itemLabel(record.itemName, record.variant)}
                                 </p>
                             )}
                             {/* Konteks record: cukup untuk tahu foto ini milik pekerjaan apa

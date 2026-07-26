@@ -101,8 +101,20 @@ export interface RecentEntry {
     scope: string;
     status: string;
     pelapor: string;
+    foreman: string;
     tanggalOkRaw: string;
     itemKey: string;
+}
+
+/**
+ * Nama item sebagaimana ditulis operator: varian menempel di belakang nama, bukan
+ * chip terpisah — "20 P-02.10 Phosphat Pump" + varian "D" → "20 P-02.10 Phosphat Pump D".
+ * Varian dipakai apa adanya, jadi record gabungan tampil "… DEF" seperti di sheet.
+ */
+export function itemLabel(itemName: string, variant: string): string {
+    const name = (itemName ?? '').replace(/\s+/g, ' ').trim();
+    const v = (variant ?? '').replace(/\s+/g, ' ').trim();
+    return v ? `${name} ${v}` : name;
 }
 
 export interface RecentResponse {

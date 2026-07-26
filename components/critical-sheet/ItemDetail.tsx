@@ -1,26 +1,32 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ItemDetailResponse, SheetPhoto } from './types';
-import { fetchItemDetail, fetchSheetPhotos } from './types';
-import { SheetStatusBadge, SheetScopeBadge, SheetKindBadge, kindRailClass } from './SheetBadges';
+import type { ItemDetailResponse, RecentEntry, SheetPhoto } from './types';
+import { fetchItemDetail, fetchSheetPhotos, itemLabel } from './types';
 import ItemSpecSection from './ItemSpecSection';
-import ItemPhotoGallery, { type PhotoRecordSource } from './ItemPhotoGallery';
+import ItemPhotoGallery from './ItemPhotoGallery';
 import RecordPhotoModal, { type PhotoRecordTarget } from './RecordPhotoModal';
-import PhotoButton from './PhotoButton';
+import { C, RecordCards, RecordTable, type RowActions } from './RecordColumns';
+
+/**
+ * Kolom riwayat item = kolom daftar awal dikurangi "Nama & Nomor Item" (sudah jadi judul
+ * halaman) dan tombol "Detail" (sudah di halaman itemnya). Notifikasi/Scope/Status berdiri
+ * sendiri persis seperti di daftar awal; pelapor/foreman/tanggal OK menempel di uraian.
+ */
+const ITEM_COLS = [C.jenis, C.tanggalPlusShift, C.uraianPlusMeta, C.notifikasi, C.scope, C.status, C.foto];
 
 interface ItemDetailProps {
     itemKey: string;
     reloadKey: number;
     onBack: () => void;
-    /** row_uid dari deep-link `?foto=` (link di sel spreadsheet) — modalnya dibuka otomatis. */
+    /** row_uid dari deep-link `?foto=` (link di sel spreadsheet) — modalnya dibuka otomatis. */
     focusUid?: string | null;
     /** Dipanggil setelah focusUid dipakai, supaya param tidak menempel di URL. */
     onFocusHandled?: () => void;
 }
 
-/** Halaman detail satu item (layout 2-kolom): kolom utama = riwayat critical/maintenance
- *  (tab), kolom kanan = spesifikasi (Tech Specs) + galeri foto agregat. */
+/** Halaman detail satu item (layout 2-kolom): kolom utama = SATU tabel riwayat gabungan
+ *  critical + maintenance, kolom kanan = spesifikasi (Tech Specs) + galeri foto agregat. */
 export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFocusHandled }: ItemDetailProps) {
     const [data, setData] = useState<ItemDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -44,21 +50,25 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
      * Dipakai sekaligus sebagai sumber label galeri foto dan target upload, supaya
      * tabel dan galeri tidak pernah berbeda isi.
      */
-    const records = useMemo<ItemRecord[]>(() => {
+    const records = useMemo<RecentEntry[]>(() => {
         if (!data) return [];
-        const merged: ItemRecord[] = [
+        // Bentuknya sengaja RecentEntry — sama persis dengan daftar awal, supaya kedua
+        // halaman bisa memakai satu peta kolom (RecordColumns) dan tidak melenceng.
+        const shared = { itemName: data.itemName, code: data.code, itemKey: data.key };
+        const merged: RecentEntry[] = [
             ...data.criticals.map(c => ({
+                ...shared,
                 uid: c.uid, kind: 'critical' as const, tanggal: c.tanggal, tanggalRaw: c.tanggalRaw,
-                uraian: c.uraian, variant: c.varian, pelapor: c.pelapor, scope: c.scope, status: c.status,
-                meta: [c.pelapor ? `Pelapor: ${c.pelapor}` : '', c.notif ? `Notif ${c.notif}` : ''].filter(Boolean).join(' · '),
-                extra: c.tanggalOkRaw ? `OK: ${c.tanggalOkRaw}` : '',
+                shift: '', variant: c.varian, uraian: c.uraian, notifikasi: c.notif,
+                scope: c.scope, status: c.status, pelapor: c.pelapor, foreman: '',
+                tanggalOkRaw: c.tanggalOkRaw,
             })),
             ...data.maintenances.map(m => ({
+                ...shared,
                 uid: m.uid, kind: 'maintenance' as const, tanggal: m.tanggal, tanggalRaw: m.tanggalRaw,
-                uraian: m.uraian, variant: m.varian, pelapor: '', scope: m.scope, status: m.status,
-                meta: [m.shift ? `Shift ${m.shift}` : '', m.foreman ? `Foreman: ${m.foreman}` : '',
-                    m.notifikasi ? `Notif ${m.notifikasi}` : ''].filter(Boolean).join(' · '),
-                extra: '',
+                shift: m.shift, variant: m.varian, uraian: m.uraian, notifikasi: m.notifikasi,
+                scope: m.scope, status: m.status, pelapor: '', foreman: m.foreman,
+                tanggalOkRaw: '',
             })),
         ].filter(r => r.uid);
         // Terbaru dulu; baris tanpa tanggal yang bisa dibaca ditaruh paling akhir.
@@ -124,6 +134,12 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
         fetchSheetPhotos(records.map(r => r.uid)).then(setPhotos).catch(() => { /* biarkan tampilan lama */ });
     }, [records]);
 
+    // Tanpa onSelect: tombol "Detail" tidak ada gunanya, halaman itemnya sudah di sini.
+    const rowActionsFor = useCallback((e: RecentEntry): RowActions => ({
+        photoCount: photoCounts[e.uid] ?? 0,
+        onOpenPhoto: () => setOpenUid(e.uid),
+    }), [photoCounts]);
+
     return (
         <div className="space-y-4">
             <button
@@ -146,11 +162,9 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
                             <span>Item</span>
                             <span className="material-symbols-outlined" style={{ fontSize: 13 }}>chevron_right</span>
                             {data.code && <span className="font-mono font-bold text-neutral-500">{data.code}</span>}
-                            {data.variant && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-600">Varian {data.variant}</span>
-                            )}
                         </div>
-                        <h2 className="text-xl font-bold text-neutral-900 leading-tight mt-0.5">{data.itemName}</h2>
+                        {/* Varian menempel di nama, sama seperti kolom item di daftar awal. */}
+                        <h2 className="text-xl font-bold text-neutral-900 leading-tight mt-0.5">{itemLabel(data.itemName, data.variant)}</h2>
                     </div>
 
                     <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
@@ -170,23 +184,33 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
                                 </span>
                             </div>
 
-                            <RecordList
-                                rows={records}
-                                photoCounts={photoCounts}
-                                onOpenPhoto={setOpenUid}
-                                emptyText="Belum ada riwayat critical maupun maintenance untuk item ini."
-                            />
+                            {records.length === 0 ? (
+                                <div className="py-8 text-center text-sm text-neutral-400 font-medium">
+                                    Belum ada riwayat critical maupun maintenance untuk item ini.
+                                </div>
+                            ) : (
+                                <>
+                                    <RecordTable
+                                        entries={records}
+                                        cols={ITEM_COLS}
+                                        rowActionsFor={rowActionsFor}
+                                        minWidthClass="min-w-[720px]"
+                                    />
+                                    <RecordCards entries={records} rowActionsFor={rowActionsFor} showItem={false} />
+                                </>
+                            )}
                         </div>
 
-                        {/* Sidebar kanan: spesifikasi + foto */}
-                        <div className="w-full lg:w-80 xl:w-96 shrink-0 space-y-4">
+                        {/* Sidebar kanan: spesifikasi + foto. Sengaja lebih ramping dari
+                            sebelumnya  tabel riwayat di kirinya butuh ruang 7 kolom. */}
+                        <div className="w-full lg:w-72 xl:w-80 shrink-0 space-y-4">
                             <ItemSpecSection itemKey={data.key} itemName={data.itemName} variant={data.variant} code={data.code} />
                             <div className="rounded-2xl border border-neutral-200 bg-white p-4">
                                 <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-500 flex items-center gap-1.5 mb-3">
                                     <span className="material-symbols-outlined text-neutral-400" style={{ fontSize: 16 }}>photo_library</span>
                                     Foto
                                 </h3>
-                                <ItemPhotoGallery photos={photos} records={records} onOpenRecord={setOpenUid} />
+                                <ItemPhotoGallery photos={photos} records={records} />
                             </div>
                         </div>
                     </div>
@@ -205,100 +229,3 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
     );
 }
 
-/** Satu baris riwayat item — critical dan maintenance memakai bentuk yang sama supaya
- *  bisa tampil dalam satu tabel; kolom khas tiap tab dilebur ke `meta`/`extra`. */
-interface ItemRecord extends PhotoRecordSource {
-    tanggal: string | null;
-    meta: string;
-    extra: string;
-}
-
-/** Riwayat gabungan: tabel di layar lebar, kartu di HP. Kolom Foto berdiri sendiri
- *  supaya tombolnya sejajar dan mudah dituju, tidak lagi menyelip di bawah uraian. */
-function RecordList({ rows, photoCounts, onOpenPhoto, emptyText }: {
-    rows: ItemRecord[];
-    photoCounts: Record<string, number>;
-    onOpenPhoto: (uid: string) => void;
-    emptyText: string;
-}) {
-    if (rows.length === 0) {
-        return <div className="py-8 text-center text-sm text-neutral-400 font-medium">{emptyText}</div>;
-    }
-    return (
-        <>
-            {/* Desktop tabel */}
-            <div className="hidden md:block bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-neutral-50 border-b border-neutral-200">
-                                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-neutral-500 w-32">Jenis</th>
-                                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-neutral-500 w-28">Tanggal</th>
-                                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-neutral-500 w-36">Status</th>
-                                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-neutral-500">Uraian &amp; Catatan</th>
-                                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-neutral-500 w-24 text-right">Foto</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100">
-                            {rows.map((r, idx) => (
-                                <tr key={r.uid || idx} className="hover:bg-neutral-50 transition-colors align-top">
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`w-1.5 h-8 rounded-full shrink-0 ${kindRailClass(r.kind)}`} />
-                                            <SheetKindBadge kind={r.kind} />
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 font-mono text-xs text-neutral-600 whitespace-nowrap">{r.tanggalRaw || '—'}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex flex-col items-start gap-1.5">
-                                            <SheetStatusBadge status={r.status} />
-                                            <SheetScopeBadge scope={r.scope} />
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <p className="text-sm text-neutral-700">{r.uraian}</p>
-                                        <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                            {r.meta && <span className="text-[10px] text-neutral-400 font-semibold">{r.meta}</span>}
-                                            {r.extra && <span className="text-[10px] text-neutral-400 font-semibold">{r.extra}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex justify-end">
-                                            <PhotoButton count={photoCounts[r.uid] ?? 0} onClick={() => onOpenPhoto(r.uid)} compact />
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Mobile kartu */}
-            <div className="md:hidden space-y-2">
-                {rows.map((r, idx) => (
-                    <div key={r.uid || idx} className="flex items-stretch gap-3 border border-neutral-200 rounded-xl bg-white pl-2 pr-3 py-3">
-                        <div className={`w-1.5 rounded-full shrink-0 ${kindRailClass(r.kind)}`} />
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <SheetKindBadge kind={r.kind} />
-                                <span className="text-[11px] font-semibold text-neutral-500">{r.tanggalRaw || '—'}</span>
-                                <SheetStatusBadge status={r.status} />
-                                <SheetScopeBadge scope={r.scope} />
-                            </div>
-                            <p className="text-sm text-neutral-700 mt-1">{r.uraian}</p>
-                            {(r.meta || r.extra) && (
-                                <p className="text-[10px] text-neutral-400 font-semibold mt-0.5">
-                                    {[r.meta, r.extra].filter(Boolean).join(' · ')}
-                                </p>
-                            )}
-                            <div className="flex items-center mt-2 pt-2 border-t border-neutral-100">
-                                <PhotoButton count={photoCounts[r.uid] ?? 0} onClick={() => onOpenPhoto(r.uid)} />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </>
-    );
-}

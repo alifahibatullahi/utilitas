@@ -58,13 +58,24 @@ const STATUS_STYLE: Record<string, { label: string; cls: string; icon: string }>
     open: { label: 'OPEN', cls: 'bg-red-50 border border-red-300 text-red-700', icon: 'error' },
 };
 
-export function SheetStatusBadge({ status, className = '' }: { status: string; className?: string }) {
+function statusStyle(status: string) {
+    // Sel status kosong di sheet berarti pekerjaannya belum ditutup → OPEN.
     const key = status.trim().toLowerCase() || 'open';
-    const cfg = STATUS_STYLE[key] ?? {
+    return STATUS_STYLE[key] ?? {
         label: status.trim().toUpperCase(),
         cls: 'bg-neutral-100 border border-neutral-300 text-neutral-600',
         icon: 'radio_button_checked',
     };
+}
+
+/** Teks status seperti yang tampil di badge — supaya tempat lain (mis. keterangan foto
+ *  di lightbox) tidak menuliskan aturan "kosong = OPEN" sendiri lalu ikut melenceng. */
+export function statusLabel(status: string): string {
+    return statusStyle(status).label;
+}
+
+export function SheetStatusBadge({ status, className = '' }: { status: string; className?: string }) {
+    const cfg = statusStyle(status);
     return (
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${cfg.cls} ${className}`}>
             <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{cfg.icon}</span>

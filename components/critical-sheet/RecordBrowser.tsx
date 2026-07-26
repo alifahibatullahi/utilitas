@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { RecentEntry } from './types';
 import { fetchRecent, fetchSheetPhotos } from './types';
-import { SheetStatusBadge, SheetScopeBadge, SheetKindBadge, kindRailClass, kindActiveClass } from './SheetBadges';
+import { kindActiveClass } from './SheetBadges';
 import { SheetPagination } from './SheetFilterBar';
-import PhotoButton from './PhotoButton';
+import { C, RecordCards, RecordTable, type RecordColumn, type RowActions } from './RecordColumns';
 import RecordPhotoModal, { type PhotoRecordTarget } from './RecordPhotoModal';
 
 const PAGE_SIZE = 20;
@@ -20,7 +20,7 @@ interface RecordBrowserProps {
 
 /**
  * Tampilan awal viewer: satu daftar record critical + maintenance (terbaru dulu),
- * berbentuk tabel berkolom mengikuti kolom spreadsheet — tabel di layar lebar,
+ * berbentuk tabel berkolom mengikuti kolom spreadsheet — tabel di layar lebar,
  * kartu di HP. Tiap baris punya tombol Foto (upload/lihat foto record itu) dan
  * Detail (buka halaman item). Filter jenis + pencarian bebas di atas daftar.
  */
@@ -60,7 +60,7 @@ export default function RecordBrowser({ reloadKey, onSelect, onMeta }: RecordBro
     }, [debouncedQ, kind, page, reloadKey]);
 
     // Hitungan foto hanya untuk baris yang sedang tampil (≤ PAGE_SIZE uid),
-    // bukan seluruh sheet — satu query per halaman.
+    // bukan seluruh sheet — satu query per halaman.
     useEffect(() => {
         const uids = recent.map(e => e.uid).filter(Boolean);
         if (uids.length === 0) { setPhotoCounts({}); return; }
@@ -168,213 +168,10 @@ export default function RecordBrowser({ reloadKey, onSelect, onMeta }: RecordBro
     );
 }
 
-// ─── Kolom ───────────────────────────────────────────────────────────────────
-
-interface RowActions {
-    photoCount: number;
-    onOpenPhoto: () => void;
-    onSelect: () => void;
-}
-
-interface RecordColumn {
-    key: string;
-    label: string;
-    /** Kelas tambahan; dipakai di <th> DAN <td> supaya lebar/alignment konsisten. */
-    cellClass?: string;
-    render: (e: RecentEntry, a: RowActions) => ReactNode;
-}
-
-const dash = <span className="text-neutral-300">—</span>;
-
-/**
- * Deskriptor kolom (bukan tiga tabel tulis tangan). Kolom khas satu tab punya dua
- * varian: kolom sendiri di mode Critical/Maintenance, dan baris kecil menempel di
- * sel Tanggal/Status di mode Semua — supaya tidak ada kolom yang separuh kosong.
- */
-const C: Record<string, RecordColumn> = {
-    jenis: {
-        key: 'jenis', label: 'Jenis', cellClass: 'w-32',
-        render: e => (
-            <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-8 rounded-full shrink-0 ${kindRailClass(e.kind)}`} />
-                <SheetKindBadge kind={e.kind} />
-            </div>
-        ),
-    },
-    tanggal: {
-        key: 'tanggal', label: 'Tanggal', cellClass: 'w-28 whitespace-nowrap font-mono text-xs text-neutral-600',
-        render: e => e.tanggalRaw || dash,
-    },
-    tanggalPlusShift: {
-        key: 'tanggal', label: 'Tanggal', cellClass: 'w-28 whitespace-nowrap font-mono text-xs text-neutral-600',
-        render: e => (
-            <>
-                {e.tanggalRaw || dash}
-                {e.shift && <div className="font-sans text-[10px] font-semibold text-neutral-400">Shift {e.shift}</div>}
-            </>
-        ),
-    },
-    shift: {
-        key: 'shift', label: 'Shift', cellClass: 'w-20 whitespace-nowrap text-xs font-semibold text-neutral-600',
-        render: e => e.shift || dash,
-    },
-    item: {
-        key: 'item', label: 'Nama & Nomor Item', cellClass: 'min-w-[200px]',
-        render: e => (
-            <>
-                <div className="flex items-center gap-2">
-                    {e.code && <span className="font-mono text-[11px] font-bold text-neutral-400">{e.code}</span>}
-                    {e.variant && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-600">Varian {e.variant}</span>
-                    )}
-                </div>
-                <div className="text-sm font-bold text-neutral-800">{e.itemName || dash}</div>
-            </>
-        ),
-    },
-    uraian: {
-        key: 'uraian', label: 'Uraian', cellClass: 'min-w-[240px]',
-        render: e => <p className="text-sm text-neutral-700 line-clamp-3" title={e.uraian}>{e.uraian || dash}</p>,
-    },
-    notifikasi: {
-        key: 'notifikasi', label: 'Notifikasi', cellClass: 'w-32 whitespace-nowrap font-mono text-xs text-neutral-600',
-        render: e => e.notifikasi || dash,
-    },
-    scope: {
-        key: 'scope', label: 'Scope', cellClass: 'w-28',
-        render: e => e.scope.trim() ? <SheetScopeBadge scope={e.scope} /> : dash,
-    },
-    status: {
-        key: 'status', label: 'Status', cellClass: 'w-32',
-        render: e => <SheetStatusBadge status={e.status} />,
-    },
-    statusPlusOk: {
-        key: 'status', label: 'Status', cellClass: 'w-32',
-        render: e => (
-            <>
-                <SheetStatusBadge status={e.status} />
-                {e.tanggalOkRaw && <div className="text-[10px] font-semibold text-neutral-400 mt-0.5">OK {e.tanggalOkRaw}</div>}
-            </>
-        ),
-    },
-    tanggalOk: {
-        key: 'tanggalOk', label: 'Tanggal di OK', cellClass: 'w-28 whitespace-nowrap font-mono text-xs text-neutral-600',
-        render: e => e.tanggalOkRaw || dash,
-    },
-    aksi: {
-        key: 'aksi', label: 'Aksi', cellClass: 'w-32 text-right',
-        render: (e, a) => (
-            <div className="flex items-center justify-end gap-1.5">
-                <PhotoButton count={a.photoCount} onClick={a.onOpenPhoto} disabled={!e.uid} compact />
-                <button
-                    onClick={a.onSelect}
-                    className="px-2.5 py-1 rounded-lg bg-neutral-800 text-white text-[11px] font-bold hover:bg-neutral-900 active:scale-95 transition-all cursor-pointer"
-                    title="Buka halaman item (riwayat, spesifikasi, semua foto)"
-                >
-                    Detail
-                </button>
-            </div>
-        ),
-    },
-};
-
 /** Kolom "Jenis" ikut tampil di mode terfilter juga: nilainya memang seragam, tapi
  *  warnanya yang menandai daftar ini isinya apa saat filter tidak terlihat di layar. */
 function columnsFor(kind: RecordKind): RecordColumn[] {
     if (kind === 'critical') return [C.jenis, C.tanggal, C.item, C.uraian, C.notifikasi, C.scope, C.status, C.tanggalOk, C.aksi];
     if (kind === 'maintenance') return [C.jenis, C.tanggal, C.shift, C.item, C.uraian, C.notifikasi, C.scope, C.status, C.aksi];
     return [C.jenis, C.tanggalPlusShift, C.item, C.uraian, C.notifikasi, C.scope, C.statusPlusOk, C.aksi];
-}
-
-// ─── Penyaji ─────────────────────────────────────────────────────────────────
-
-/** Tabel record (md+). Shell rounded + overflow-hidden supaya sudut tetap terpotong
- *  saat isinya digeser horizontal di layar sempit. */
-function RecordTable({ entries, cols, rowActionsFor }: {
-    entries: RecentEntry[];
-    cols: RecordColumn[];
-    rowActionsFor: (e: RecentEntry) => RowActions;
-}) {
-    return (
-        <div className="hidden md:block bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full min-w-[1060px] text-left border-collapse">
-                    <thead>
-                        <tr className="bg-neutral-50 border-b border-neutral-200">
-                            {cols.map(c => (
-                                <th key={c.key} className={`px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-neutral-500 ${c.cellClass ?? ''}`}>
-                                    {c.label}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100">
-                        {entries.map((e, idx) => {
-                            const actions = rowActionsFor(e);
-                            return (
-                                <tr key={e.uid || `${e.kind}-${idx}`} className="hover:bg-neutral-50 transition-colors align-top">
-                                    {cols.map(c => (
-                                        <td key={c.key} className={`px-4 py-3 ${c.cellClass ?? ''}`}>{c.render(e, actions)}</td>
-                                    ))}
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-}
-
-/** Kartu record (HP). Rail warna di kiri = penanda jenis yang sama dengan tabel. */
-function RecordCards({ entries, rowActionsFor }: {
-    entries: RecentEntry[];
-    rowActionsFor: (e: RecentEntry) => RowActions;
-}) {
-    return (
-        <div className="md:hidden space-y-2">
-            {entries.map((e, idx) => {
-                const actions = rowActionsFor(e);
-                const meta = [
-                    e.notifikasi && `Notif ${e.notifikasi}`,
-                    e.shift && `Shift ${e.shift}`,
-                    e.tanggalOkRaw && `OK ${e.tanggalOkRaw}`,
-                ].filter(Boolean).join(' · ');
-                return (
-                    <div
-                        key={e.uid || `${e.kind}-${idx}`}
-                        className="flex items-stretch gap-3 border border-neutral-200 rounded-xl pl-2 pr-3 py-3 bg-white"
-                    >
-                        <div className={`w-1.5 rounded-full shrink-0 ${kindRailClass(e.kind)}`} />
-                        <div className="min-w-0 flex-1">
-                            <button onClick={actions.onSelect} className="w-full text-left cursor-pointer">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <SheetKindBadge kind={e.kind} />
-                                    <span className="text-[11px] font-semibold text-neutral-500">{e.tanggalRaw || '—'}</span>
-                                    <SheetStatusBadge status={e.status} />
-                                    <SheetScopeBadge scope={e.scope} />
-                                </div>
-                                <p className="text-sm font-bold text-neutral-800 mt-1">
-                                    {e.itemName}
-                                    {e.variant ? <span className="font-semibold text-neutral-500"> — {e.variant}</span> : null}
-                                </p>
-                                <p className="text-sm text-neutral-600">{e.uraian}</p>
-                                {meta && <p className="text-[10px] font-semibold text-neutral-400 mt-0.5">{meta}</p>}
-                            </button>
-
-                            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-neutral-100">
-                                <PhotoButton count={actions.photoCount} onClick={actions.onOpenPhoto} disabled={!e.uid} />
-                                <button
-                                    onClick={actions.onSelect}
-                                    className="ml-auto px-2.5 py-1 rounded-lg bg-neutral-800 text-white text-[11px] font-bold hover:bg-neutral-900 active:scale-95 transition-all cursor-pointer"
-                                >
-                                    Detail
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
 }

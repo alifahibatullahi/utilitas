@@ -2,27 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PhotoImg } from './RecordPhotoModal';
-import type { SheetPhoto } from './types';
-
-/** Satu record (critical/maintenance) sebagai sumber foto. */
-export interface PhotoRecordSource {
-    uid: string;
-    kind: 'critical' | 'maintenance';
-    tanggalRaw: string;
-    uraian: string;
-    variant: string;
-    pelapor: string;
-    scope: string;
-    status: string;
-}
+import type { RecentEntry, SheetPhoto } from './types';
+import { statusLabel } from './SheetBadges';
 
 interface ItemPhotoGalleryProps {
     /** Semua foto item (gabungan seluruh record) — sudah di-batch fetch oleh parent. */
     photos: SheetPhoto[];
     /** Record item untuk melabeli sumber tiap foto. */
-    records: PhotoRecordSource[];
-    /** Buka galeri record asal foto (satu-satunya jalur upload/hapus). */
-    onOpenRecord?: (uid: string) => void;
+    records: RecentEntry[];
 }
 
 const KIND_CHIP: Record<'critical' | 'maintenance', { label: string; cls: string; icon: string }> = {
@@ -36,17 +23,18 @@ const PREVIEW_COUNT = 6;
  * Galeri LENGKAP satu item: seluruh foto dari semua record critical + maintenance item
  * itu dalam satu grid, tiap foto berlabel sumbernya.
  *
- * View-only — upload & hapus dilakukan di RecordPhotoModal (per record), supaya foto
- * selalu punya pemilik baris yang jelas dan tidak ada dua jalur upload. Awalnya hanya
- * PREVIEW_COUNT thumbnail yang dimuat; sisanya menyusul saat "Lihat semua" ditekan.
+ * View-only — upload & hapus dilakukan di RecordPhotoModal, yang dibuka lewat tombol Foto
+ * di tabel riwayat. Sengaja tidak ada jalan pintas dari sini supaya jelas foto itu milik
+ * baris yang mana. Awalnya hanya PREVIEW_COUNT thumbnail yang dimuat; sisanya menyusul
+ * saat "Lihat semua" ditekan.
  */
-export default function ItemPhotoGallery({ photos, records, onOpenRecord }: ItemPhotoGalleryProps) {
+export default function ItemPhotoGallery({ photos, records }: ItemPhotoGalleryProps) {
     const [expanded, setExpanded] = useState(false);
     const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
     const touchStartX = useRef<number | null>(null);
 
     const sourceOf = useMemo(() => {
-        const m = new Map<string, PhotoRecordSource>();
+        const m = new Map<string, RecentEntry>();
         for (const r of records) if (r.uid) m.set(r.uid, r);
         return m;
     }, [records]);
@@ -166,7 +154,6 @@ export default function ItemPhotoGallery({ photos, records, onOpenRecord }: Item
                         <LightboxFooter
                             photo={photos[lightboxIdx]}
                             source={sourceOf.get(photos[lightboxIdx].row_uid)}
-                            onOpenRecord={onOpenRecord}
                         />
                     </div>
                 </div>
@@ -175,12 +162,20 @@ export default function ItemPhotoGallery({ photos, records, onOpenRecord }: Item
     );
 }
 
-function LightboxFooter({ photo, source, onOpenRecord }: {
+/** Keterangan record pemilik foto. Tanpa tombol aksi: mengelola foto hanya lewat tombol
+ *  Foto di tabel riwayat, supaya cuma ada satu jalan masuk. */
+function LightboxFooter({ photo, source }: {
     photo: SheetPhoto;
-    source?: PhotoRecordSource;
-    onOpenRecord?: (uid: string) => void;
+    source?: RecentEntry;
 }) {
     const chip = KIND_CHIP[source?.kind ?? photo.parent_kind];
+    // Chip terang di atas latar gelap lightbox — badge biasa terlalu redup di sini.
+    const info = [
+        source?.pelapor && `Pelapor: ${source.pelapor}`,
+        source?.scope?.trim() && `Scope: ${source.scope.trim()}`,
+        // Status selalu ditampilkan: sel kosong pun punya arti (OPEN), sama seperti badge di tabel.
+        source && `Status: ${statusLabel(source.status)}`,
+    ].filter(Boolean) as string[];
     return (
         <div className="w-full max-w-3xl space-y-2">
             <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -189,16 +184,11 @@ function LightboxFooter({ photo, source, onOpenRecord }: {
                     {chip.label}
                     {source?.tanggalRaw && <span className="opacity-80">· {source.tanggalRaw}</span>}
                 </span>
-                {onOpenRecord && (
-                    <button
-                        onClick={() => onOpenRecord(photo.row_uid)}
-                        title="Buka galeri baris ini: semua fotonya, plus tombol upload, hapus, dan keterangan"
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-white/10 text-white/90 hover:bg-white/20 cursor-pointer transition-colors"
-                    >
-                        <span className="material-symbols-outlined" style={{ fontSize: 13 }}>photo_library</span>
-                        Kelola foto record ini
-                    </button>
-                )}
+                {info.map(t => (
+                    <span key={t} className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold bg-white/10 text-white/90">
+                        {t}
+                    </span>
+                ))}
             </div>
             {source?.uraian && <p className="text-center text-xs text-white/70 line-clamp-2">{source.uraian}</p>}
             {photo.caption && <p className="text-center text-sm text-white/90 font-medium">{photo.caption}</p>}

@@ -83,9 +83,9 @@ export default function CriticalSheetPage() {
 
     return (
         <div className="min-h-screen bg-neutral-50">
-            {/* Daftar record butuh ruang lebih lebar (tabel berkolom); halaman item tetap
-                5xl supaya proporsi 2 kolom + panjang baris uraiannya enak dibaca. */}
-            <div className={`${activeKey ? 'max-w-5xl' : 'max-w-7xl'} mx-auto px-3 sm:px-6 py-4 sm:py-6`}>
+            {/* Kedua tampilan sama-sama tabel berkolom; halaman item malah harus berbagi
+                baris dengan sidebar spesifikasi, jadi lebarnya tidak boleh disempitkan. */}
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
                     <button

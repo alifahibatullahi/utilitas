@@ -320,7 +320,9 @@ interface TabInfo { gid: number; title: string; columnCount: number }
 async function ensureRowUids(
     sheets: ReturnType<typeof getSheetsClient>,
     tab: TabInfo,
-    parsed: { headerRowIndex: number; uidColIndex: number; rows: { uid: string; rowIndex: number }[] },
+    parsed: { headerRowIndex: number; uidColIndex: number; rows: { uid: string; rowIndex: number; item: string; varian: string }[] },
+    /** Seluruh uid yang sudah terpakai di spreadsheet — penjaga agar tidak ada yang kembar. */
+    taken: Set<string>,
 ): Promise<void> {
     const needy = parsed.rows.filter(r => !r.uid);
     if (needy.length === 0) return;
@@ -374,8 +376,8 @@ async function ensureRowUids(
     }
     for (const row of needy) {
         const existing = freshAt(row.rowIndex);
-        if (existing) { row.uid = existing; continue; }
-        row.uid = randomUUID();
+        if (existing) { row.uid = existing; taken.add(existing); continue; }
+        row.uid = buildRowUid(row.item, row.varian, taken);
         toWrite.push({ rowIndex: row.rowIndex, value: row.uid });
     }
     if (toWrite.length === 0) return;
@@ -403,6 +405,43 @@ async function ensureRowUids(
         requestBody: { valueInputOption: 'RAW', data },
     }), `backfill ${toWrite.length} uid (${data.length} blok) ${tab.title}`);
     console.log(`[critical-sheet] backfill ${toWrite.length} web_uid di tab ${tab.title}`);
+}
+
+/**
+ * Dua kerusakan yang dulu tidak pernah ketahuan, sekarang dilaporkan tiap kali sheet
+ * dibaca penuh. Sengaja HANYA melapor — uid tidak pernah diperbaiki otomatis, karena
+ * mengganti uid berarti memutus foto yang menempel padanya, dan ketidakcocokan bisa
+ * saja berasal dari koreksi nama item yang sah.
+ */
+function reportUidAnomalies(label: string, rows: { uid: string; rowIndex: number; item: string; varian: string }[]): void {
+    const seen = new Map<string, number>();
+    const duplicates: string[] = [];
+    const mismatched: string[] = [];
+
+    for (const r of rows) {
+        if (!r.uid) continue;
+        const before = seen.get(r.uid);
+        if (before !== undefined) duplicates.push(`baris ${before} & ${r.rowIndex} → ${r.uid}`);
+        else seen.set(r.uid, r.rowIndex);
+
+        if (!uidMatchesRow(r.uid, r.item, r.varian)) {
+            mismatched.push(`baris ${r.rowIndex}: uid ${r.uid} vs item "${r.item}"${r.varian ? ` varian ${r.varian}` : ''}`);
+        }
+    }
+
+    if (duplicates.length) {
+        console.error(
+            `[critical-sheet] ${label}: ${duplicates.length} web_uid KEMBAR — foto akan tampil di baris yang salah. ` +
+            duplicates.slice(0, 5).join('; '),
+        );
+    }
+    if (mismatched.length) {
+        console.error(
+            `[critical-sheet] ${label}: ${mismatched.length} baris uid-nya TIDAK COCOK dengan itemnya — ` +
+            `biasanya tanda isi baris tergeser (sortir tanpa ikut kolom uid). ` +
+            mismatched.slice(0, 5).join('; '),
+        );
+    }
 }
 
 // ─── Loader (in-memory cache, TTL 60s) ───────────────────────────────────────
@@ -438,8 +477,16 @@ async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
     const criticalParsed = parseCriticalTab(criticalRows ?? []);
     const maintenanceParsed = parseMaintenanceTab(maintenanceRows ?? []);
 
-    await ensureRowUids(sheets, criticalTab, criticalParsed);
-    await ensureRowUids(sheets, maintenanceTab, maintenanceParsed);
+    // Satu himpunan uid untuk KEDUA tab: foto dicari lintas tab lewat uid, jadi kembar
+    // antar-tab pun berbahaya.
+    const taken = new Set<string>();
+    for (const r of [...criticalParsed.rows, ...maintenanceParsed.rows]) if (r.uid) taken.add(r.uid);
+
+    await ensureRowUids(sheets, criticalTab, criticalParsed, taken);
+    await ensureRowUids(sheets, maintenanceTab, maintenanceParsed, taken);
+
+    reportUidAnomalies('Critical Equipment', criticalParsed.rows);
+    reportUidAnomalies('Maintenance', maintenanceParsed.rows);
 
     // Terbaru dulu (urutan input sheet = kronologis).
     criticalParsed.rows.reverse();
@@ -556,6 +603,67 @@ export function recordItemKeys(item: string, varian: string): string[] {
 export function extractCode(item: string): string {
     const m = (item ?? '').match(/([A-Za-z]{1,5}-\d{2}\.\d{2})/);
     return m ? m[1].toUpperCase() : '';
+}
+
+// ─── Format web_uid ──────────────────────────────────────────────────────────
+//
+// UID = <kode item>-<varian>-<acak6>, mis. "P-02.10-D-7f3a91".
+//
+// Bagian acaknya yang menjamin tiap baris beda; bagian kode item yang membuat UID
+// BISA DIPERIKSA: kalau `L-08.12-A-7f3a91` duduk di baris "M-08.15 Coal Feeder",
+// itu tanda isi barisnya tergeser (mis. sortir kolom data tanpa ikut kolom uid) —
+// pergeseran yang, dengan UUID acak murni, mustahil dideteksi manusia maupun mesin.
+//
+// Kode equipment dipilih, bukan nama item, karena 4% baris memang tidak punya kode
+// (dipakai slug nama) DAN karena satu kode kerap punya beberapa ejaan nama
+// ("P-02.22 CEDIMENT PUMP" vs "… PUMP B") — kode selamat dari koreksi ejaan.
+
+const UID_RANDOM_LEN = 6;
+const UID_RANDOM_RE = new RegExp(`-[0-9a-f]{${UID_RANDOM_LEN}}$`);
+/** UUID v4 = format lama sebelum migrasi. Tidak bisa dicek kecocokannya. */
+const LEGACY_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Nama item tanpa kode → slug pendek, mis. "03 UBB" → "03-UBB". */
+function itemSlug(item: string): string {
+    return (item ?? '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 16)
+        .replace(/-+$/, '');
+}
+
+/**
+ * Bagian UID yang menyebut barisnya milik apa: kode equipment (atau slug nama bila
+ * tidak berkode) + varian. Inilah yang dibandingkan dengan isi baris saat memeriksa.
+ */
+export function uidPrefixFor(item: string, varian: string): string {
+    const base = extractCode(item) || itemSlug(item) || 'ITEM';
+    const v = (varian ?? '').toUpperCase().replace(/[^A-Z0-9]+/g, '');
+    return v ? `${base}-${v}` : base;
+}
+
+/** UID baru untuk satu baris. `taken` menjamin tidak ada yang kembar di spreadsheet. */
+export function buildRowUid(item: string, varian: string, taken: Set<string>): string {
+    const prefix = uidPrefixFor(item, varian);
+    for (let attempt = 0; attempt < 50; attempt++) {
+        const uid = `${prefix}-${randomUUID().replace(/-/g, '').slice(0, UID_RANDOM_LEN)}`;
+        if (!taken.has(uid)) { taken.add(uid); return uid; }
+    }
+    // Praktis mustahil; tetap disediakan supaya tidak pernah mengembalikan uid kembar.
+    const uid = `${prefix}-${randomUUID()}`;
+    taken.add(uid);
+    return uid;
+}
+
+/**
+ * Apakah UID ini masih cocok dengan isi barisnya?
+ * UUID lama (sebelum migrasi) selalu dianggap cocok — tidak ada yang bisa diperiksa.
+ */
+export function uidMatchesRow(uid: string, item: string, varian: string): boolean {
+    if (!uid || LEGACY_UUID_RE.test(uid)) return true;
+    const prefix = uid.replace(UID_RANDOM_RE, '');
+    return prefix === uidPrefixFor(item, varian);
 }
 
 /** Ambil semua record critical & maintenance untuk satu item key (data sudah terbaru-dulu).

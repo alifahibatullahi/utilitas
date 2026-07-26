@@ -52,10 +52,12 @@ export function kindActiveClass(kind: SheetKind): string {
     return KIND_STYLE[kind].active;
 }
 
+// Warna solid: status adalah hal pertama yang dicari operator saat memindai tabel,
+// dan versi pucat sebelumnya kalah menonjol dari badge lain di baris yang sama.
 const STATUS_STYLE: Record<string, { label: string; cls: string; icon: string }> = {
-    ok: { label: 'SELESAI', cls: 'bg-neutral-100 border border-neutral-300 text-neutral-600', icon: 'check_circle' },
-    ip: { label: 'IN PROGRESS', cls: 'bg-amber-50 border border-amber-300 text-amber-600', icon: 'pending' },
-    open: { label: 'OPEN', cls: 'bg-red-50 border border-red-300 text-red-700', icon: 'error' },
+    ok: { label: 'SELESAI', cls: 'bg-neutral-500 text-white', icon: 'check_circle' },
+    ip: { label: 'IN PROGRESS', cls: 'bg-amber-500 text-white', icon: 'pending' },
+    open: { label: 'OPEN', cls: 'bg-red-600 text-white', icon: 'error' },
 };
 
 function statusStyle(status: string) {
@@ -63,7 +65,7 @@ function statusStyle(status: string) {
     const key = status.trim().toLowerCase() || 'open';
     return STATUS_STYLE[key] ?? {
         label: status.trim().toUpperCase(),
-        cls: 'bg-neutral-100 border border-neutral-300 text-neutral-600',
+        cls: 'bg-neutral-500 text-white',
         icon: 'radio_button_checked',
     };
 }

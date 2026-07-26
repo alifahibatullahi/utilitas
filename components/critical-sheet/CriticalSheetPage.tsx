@@ -88,13 +88,6 @@ export default function CriticalSheetPage() {
             <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
-                    <button
-                        onClick={() => router.push('/home')}
-                        className="w-9 h-9 rounded-xl bg-white border border-neutral-300 text-neutral-500 hover:bg-neutral-100 flex items-center justify-center cursor-pointer transition-colors shrink-0"
-                        aria-label="Kembali ke menu"
-                    >
-                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>home</span>
-                    </button>
                     {/* Logo perusahaan — pola sama dengan header /critical (CriticalPage).
                         Danantara disembunyikan di layar sempit supaya judul tetap kebagian ruang. */}
                     <div className="flex items-center gap-2 shrink-0">
@@ -121,6 +114,14 @@ export default function CriticalSheetPage() {
                     >
                         <span className={`material-symbols-outlined ${refreshing ? 'animate-spin' : ''}`} style={{ fontSize: 16 }}>refresh</span>
                         <span className="hidden sm:inline">{refreshing ? 'Memuat…' : 'Perbarui data'}</span>
+                    </button>
+                    <button
+                        onClick={() => router.push('/home')}
+                        className="w-9 h-9 rounded-xl bg-white border border-neutral-300 text-neutral-500 hover:bg-neutral-100 flex items-center justify-center cursor-pointer transition-colors shrink-0"
+                        aria-label="Kembali ke menu"
+                        title="Kembali ke menu"
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>home</span>
                     </button>
                 </div>
 

@@ -3,23 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { compressImage } from '@/lib/image-compression';
-import { fetchSheetPhotos, itemLabel, photoDirectSrc, photoSrc, type SheetPhoto } from './types';
+import { fetchSheetPhotos, itemLabel, type SheetPhoto } from './types';
 import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
+import { PhotoImg, PhotoLightbox, PHOTO_KIND, type PhotoRecordInfo } from './PhotoViewer';
 
 /** Record (satu baris sheet) yang jadi pemilik foto. */
-export interface PhotoRecordTarget {
+export interface PhotoRecordTarget extends PhotoRecordInfo {
     uid: string;
-    kind: 'critical' | 'maintenance';
     itemKey: string;
     itemName: string;
     /** Varian mentah baris itu (kolom "Varian") — bisa gabungan seperti "DEF". */
     variant: string;
-    tanggalRaw: string;
-    uraian: string;
-    /** "Yang Melaporkan" — hanya ada di tab critical. */
-    pelapor: string;
-    scope: string;
-    status: string;
 }
 
 interface RecordPhotoModalProps {
@@ -29,18 +23,12 @@ interface RecordPhotoModalProps {
     onCountChange?: (uid: string, count: number) => void;
 }
 
-// Versi solid dari aksen jenis (KIND_STYLE di SheetBadges) — dipakai di header modal.
-const KIND_CHIP: Record<'critical' | 'maintenance', { label: string; cls: string; icon: string }> = {
-    critical: { label: 'Critical', cls: 'bg-red-600 text-white', icon: 'warning' },
-    maintenance: { label: 'Maintenance', cls: 'bg-emerald-600 text-white', icon: 'build' },
-};
-
 /**
  * Galeri + upload foto untuk SATU record critical/maintenance.
  *
- * Ini jalur upload satu-satunya: operator sampai ke sini dari menu di spreadsheet
- * (lewat feed "Aktivitas Terbaru" atau deep-link `?foto=<uid>`). Setelah upload, API
- * menulis balik kolom "Link Foto" baris tersebut di spreadsheet.
+ * Ini jalur upload satu-satunya: operator sampai ke sini dari tombol Foto di tabel
+ * atau deep-link `?foto=<uid>` dari sel spreadsheet. Setelah upload, API menulis balik
+ * kolom "Link Foto" baris tersebut di spreadsheet.
  */
 export default function RecordPhotoModal({ record, onClose, onCountChange }: RecordPhotoModalProps) {
     const { operator } = useOperator();
@@ -49,10 +37,11 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [dragging, setDragging] = useState(false);
     const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const chip = KIND_CHIP[record.kind];
+    const kind = PHOTO_KIND[record.kind];
 
     // Foto baru diambil saat modal dibuka — bukan saat daftar dirender — supaya
     // membuka halaman daftar tidak menarik seluruh foto sekaligus.
@@ -72,12 +61,13 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         onCountChange?.(record.uid, next.length);
     }, [onCountChange, record.uid]);
 
-    async function handleFiles(files: FileList | null) {
-        if (!files || files.length === 0) return;
+    const handleFiles = useCallback(async (files: FileList | File[] | null) => {
+        const list = files ? Array.from(files).filter(f => f.type.startsWith('image/')) : [];
+        if (list.length === 0) return;
         setError(null);
         setUploading(true);
         let next = photos;
-        for (const file of Array.from(files)) {
+        for (const file of list) {
             const compressed = await compressImage(file).catch(() => file);
             const form = new FormData();
             form.append('file', compressed);
@@ -97,7 +87,9 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         }
         setUploading(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    }, [photos, record.kind, record.uid, operator?.name, update]);
+
+    const pickFiles = useCallback(() => fileInputRef.current?.click(), []);
 
     const handleDelete = useCallback(async (id: string) => {
         const res = await fetch(`/api/sheet-photos/${id}`, { method: 'DELETE' });
@@ -110,17 +102,6 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         setLightboxIdx(null);
     }, [onCountChange, record.uid]);
 
-    const handleCaption = useCallback(async (id: string, caption: string) => {
-        const res = await fetch(`/api/sheet-photos/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ caption }),
-        });
-        if (res.ok) {
-            setPhotos(prev => prev.map(p => (p.id === id ? { ...p, caption: caption || null } : p)));
-        }
-    }, []);
-
     async function copyLink() {
         const url = `${window.location.origin}/critical-maintenance?item=${encodeURIComponent(record.itemKey)}&foto=${encodeURIComponent(record.uid)}`;
         try {
@@ -132,53 +113,66 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         }
     }
 
-    // Esc menutup lightbox dulu, baru modal.
+    // Esc menutup modal. Saat lightbox terbuka, dialah yang menangani Esc-nya sendiri.
     useEffect(() => {
         function onKey(e: KeyboardEvent) {
-            if (e.key === 'Escape') {
-                if (lightboxIdx != null) setLightboxIdx(null);
-                else onClose();
-            } else if (lightboxIdx != null && e.key === 'ArrowLeft') {
-                setLightboxIdx(i => (i == null ? i : (i - 1 + photos.length) % photos.length));
-            } else if (lightboxIdx != null && e.key === 'ArrowRight') {
-                setLightboxIdx(i => (i == null ? i : (i + 1) % photos.length));
-            }
+            if (e.key === 'Escape' && lightboxIdx == null) onClose();
         }
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [lightboxIdx, photos.length, onClose]);
+    }, [lightboxIdx, onClose]);
+
+    /** Seluruh isi modal jadi area jatuh (drop zone) — operator tidak perlu membidik kotak kecil. */
+    function onDrop(e: React.DragEvent) {
+        e.preventDefault();
+        setDragging(false);
+        handleFiles(e.dataTransfer?.files ?? null);
+    }
+
+    const infoFor = useCallback(() => record as PhotoRecordInfo, [record]);
 
     return (
         <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
             <div
-                className="w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl"
+                className={`relative w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl transition-shadow ${
+                    dragging ? 'ring-4 ring-blue-500 ring-offset-2' : ''
+                }`}
                 onClick={e => e.stopPropagation()}
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={e => { if (e.currentTarget === e.target) setDragging(false); }}
+                onDrop={onDrop}
             >
-                {/* Header record */}
+                {/* Header record — informasinya sengaja ditonjolkan: operator sampai di sini
+                    lewat deep-link dari spreadsheet dan perlu yakin ini baris yang benar. */}
                 <div className="sticky top-0 z-10 bg-white border-b border-neutral-200 px-4 sm:px-5 py-3">
                     <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${chip.cls}`}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{chip.icon}</span>
-                                    {chip.label}
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold ${kind.chip}`}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{kind.icon}</span>
+                                    {kind.label}
                                 </span>
-                                <span className="text-[11px] font-semibold text-neutral-500">{record.tanggalRaw || '—'}</span>
-                            </div>
-                            <p className="text-sm font-bold text-neutral-900 mt-1 leading-snug">{record.uraian || '(tanpa uraian)'}</p>
-                            {record.itemName && (
-                                <p className="text-[11px] text-neutral-500 font-semibold mt-0.5">
-                                    {itemLabel(record.itemName, record.variant)}
-                                </p>
-                            )}
-                            {/* Konteks record: cukup untuk tahu foto ini milik pekerjaan apa
-                                tanpa harus kembali ke daftar / spreadsheet. */}
-                            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                                <span className="text-xs font-bold text-neutral-600">{record.tanggalRaw || '—'}</span>
                                 <SheetStatusBadge status={record.status} />
                                 <SheetScopeBadge scope={record.scope} />
+                            </div>
+
+                            {/* Uraian = pekerjaannya, jadi paling besar. */}
+                            <p className="text-base font-bold text-neutral-900 mt-2 leading-snug">
+                                {record.uraian || '(tanpa uraian)'}
+                            </p>
+
+                            <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-1.5 text-[11px] font-semibold">
+                                {record.itemName && (
+                                    <span className="inline-flex items-center gap-1 text-neutral-600">
+                                        <span className="material-symbols-outlined text-neutral-400" style={{ fontSize: 14 }}>precision_manufacturing</span>
+                                        {itemLabel(record.itemName, record.variant)}
+                                    </span>
+                                )}
                                 {record.pelapor && (
-                                    <span className="text-[10px] font-semibold text-neutral-500">
-                                        Pelapor: {record.pelapor}
+                                    <span className="inline-flex items-center gap-1 text-neutral-600">
+                                        <span className="material-symbols-outlined text-neutral-400" style={{ fontSize: 14 }}>person</span>
+                                        {record.pelapor}
                                     </span>
                                 )}
                             </div>
@@ -198,16 +192,17 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                             type="file"
                             accept="image/*"
                             multiple
-                            capture="environment"
                             className="hidden"
                             onChange={e => handleFiles(e.target.files)}
                         />
                         <button
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={pickFiles}
                             disabled={uploading}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50 cursor-pointer transition-colors"
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shadow-sm active:scale-95 cursor-pointer transition-all"
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{uploading ? 'more_horiz' : 'add_a_photo'}</span>
+                            <span className={`material-symbols-outlined ${uploading ? 'animate-spin' : ''}`} style={{ fontSize: 18 }}>
+                                {uploading ? 'progress_activity' : 'add_a_photo'}
+                            </span>
                             {uploading ? 'Mengupload…' : 'Upload foto'}
                         </button>
                         {photos.length > 0 && (
@@ -219,10 +214,10 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                                 {copied ? 'Tersalin' : 'Salin link'}
                             </button>
                         )}
-                        <span className="text-[10px] font-semibold text-neutral-400">
+                        <span className="text-[11px] font-bold text-neutral-400">
                             {loading ? 'Memuat…' : `${photos.length} foto`}
                         </span>
-                        {error && <span className="text-[10px] text-red-600 font-medium">{error}</span>}
+                        {error && <span className="text-[11px] text-red-600 font-semibold">{error}</span>}
                     </div>
                 </div>
 
@@ -231,20 +226,26 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                     {loading ? (
                         <p className="py-8 text-center text-sm text-neutral-400 font-medium">Memuat foto…</p>
                     ) : photos.length === 0 ? (
-                        <div className="py-8 text-center">
-                            <span className="material-symbols-outlined text-neutral-300" style={{ fontSize: 40 }}>photo_camera</span>
-                            <p className="text-sm text-neutral-400 font-medium mt-1">Belum ada foto untuk record ini.</p>
-                            <p className="text-[11px] text-neutral-400 mt-0.5">
+                        // Kotak kosong ini sekaligus tombolnya — tidak ada lagi "mau klik apa".
+                        <button
+                            onClick={pickFiles}
+                            disabled={uploading}
+                            className="w-full py-10 rounded-2xl border-2 border-dashed border-neutral-300 text-center hover:border-blue-400 hover:bg-blue-50/50 disabled:opacity-50 cursor-pointer transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-neutral-300" style={{ fontSize: 44 }}>add_a_photo</span>
+                            <p className="text-sm font-bold text-neutral-600 mt-1">Klik untuk pilih foto</p>
+                            <p className="text-[11px] text-neutral-400 mt-0.5">atau seret berkasnya ke sini</p>
+                            <p className="text-[11px] text-neutral-400 mt-2">
                                 Setelah upload, kolom <span className="font-semibold">Link Foto</span> di spreadsheet terisi otomatis.
                             </p>
-                        </div>
+                        </button>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                             {photos.map((photo, idx) => (
                                 <div key={photo.id} className="relative group aspect-square">
                                     <button
                                         onClick={() => setLightboxIdx(idx)}
-                                        className="block w-full h-full rounded-xl overflow-hidden border border-neutral-200 hover:border-neutral-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-neutral-400 bg-neutral-100 cursor-pointer"
+                                        className={`block w-full h-full rounded-xl overflow-hidden border-2 ${kind.frame} hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 bg-neutral-100 cursor-pointer`}
                                         title={photo.caption || photo.filename}
                                     >
                                         <PhotoImg photo={photo} className="w-full h-full object-cover" />
@@ -258,135 +259,37 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                                     </button>
                                 </div>
                             ))}
+                            {/* Kotak tambah di ujung grid: sejajar dengan foto lain, mudah dituju. */}
+                            <button
+                                onClick={pickFiles}
+                                disabled={uploading}
+                                className="aspect-square rounded-xl border-2 border-dashed border-neutral-300 flex flex-col items-center justify-center gap-1 text-neutral-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 disabled:opacity-50 cursor-pointer transition-colors"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 28 }}>add_a_photo</span>
+                                <span className="text-[11px] font-bold">Tambah</span>
+                            </button>
                         </div>
                     )}
                 </div>
+
+                {/* Petunjuk saat berkas diseret ke atas modal. */}
+                {dragging && (
+                    <div className="absolute inset-0 z-20 rounded-t-2xl sm:rounded-2xl bg-blue-50/90 border-2 border-dashed border-blue-500 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="material-symbols-outlined text-blue-600" style={{ fontSize: 48 }}>upload</span>
+                        <p className="text-sm font-bold text-blue-700 mt-1">Lepaskan untuk mengupload</p>
+                    </div>
+                )}
             </div>
 
             {lightboxIdx != null && photos[lightboxIdx] && (
-                <Lightbox
-                    key={photos[lightboxIdx].id}
-                    photo={photos[lightboxIdx]}
+                <PhotoLightbox
+                    photos={photos}
                     index={lightboxIdx}
-                    count={photos.length}
+                    onIndexChange={setLightboxIdx}
                     onClose={() => setLightboxIdx(null)}
-                    onPrev={() => setLightboxIdx(i => (i == null ? i : (i - 1 + photos.length) % photos.length))}
-                    onNext={() => setLightboxIdx(i => (i == null ? i : (i + 1) % photos.length))}
-                    onCaption={handleCaption}
+                    infoFor={infoFor}
                 />
             )}
-        </div>
-    );
-}
-
-/**
- * <img> foto record: memuat lewat proxy backend (satu origin dengan aplikasi), dan
- * pindah ke URL R2 langsung HANYA bila proxy benar-benar gagal.
- *
- * Sengaja tanpa batas waktu "kalau lambat pindah": cadangannya justru `pub-*.r2.dev`
- * yang di jaringan kantor diblokir. Proxy yang lambat berarti jaringannya lambat —
- * berpindah ke domain yang lebih mungkin diblokir cuma memperburuk.
- */
-export function PhotoImg({ photo, className }: { photo: SheetPhoto; className?: string }) {
-    const [src, setSrc] = useState(() => photoSrc(photo));
-    const swapped = useRef(false);
-
-    useEffect(() => {
-        swapped.current = false;
-        setSrc(photoSrc(photo));
-    }, [photo]);
-
-    const toFallback = useCallback(() => {
-        if (swapped.current) return;
-        swapped.current = true;
-        const direct = photoDirectSrc(photo);
-        setSrc(prev => (direct && direct !== prev ? direct : prev));
-    }, [photo]);
-
-    return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-            src={src}
-            alt={photo.caption || photo.filename}
-            className={className}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            onLoad={() => { swapped.current = true; }}
-            onError={toFallback}
-        />
-    );
-}
-
-function Lightbox({ photo, index, count, onClose, onPrev, onNext, onCaption }: {
-    photo: SheetPhoto;
-    index: number;
-    count: number;
-    onClose: () => void;
-    onPrev: () => void;
-    onNext: () => void;
-    onCaption: (id: string, caption: string) => void;
-}) {
-    // Di-remount lewat key={photo.id} saat foto berganti, jadi draft cukup dari state awal.
-    const [draft, setDraft] = useState(photo.caption ?? '');
-    const touchStartX = useRef<number | null>(null);
-
-    return (
-        <div
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
-            onClick={onClose}
-            onTouchStart={e => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
-            onTouchEnd={e => {
-                if (touchStartX.current == null) return;
-                const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current;
-                touchStartX.current = null;
-                if (Math.abs(dx) < 40) return;
-                if (dx > 0) onPrev(); else onNext();
-            }}
-        >
-            <div className="absolute top-4 left-4 z-10 px-2.5 py-1 rounded-full bg-black/40 text-white/90 text-xs font-semibold">
-                {index + 1} / {count}
-            </div>
-            <button
-                onClick={e => { e.stopPropagation(); onClose(); }}
-                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/40 hover:bg-red-500 text-white/90 flex items-center justify-center cursor-pointer transition-all"
-                aria-label="Tutup"
-            >
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
-            </button>
-            {count > 1 && (
-                <>
-                    <button
-                        onClick={e => { e.stopPropagation(); onPrev(); }}
-                        className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 text-white/90 flex items-center justify-center cursor-pointer transition-all"
-                        aria-label="Sebelumnya"
-                    >
-                        <span className="material-symbols-outlined" style={{ fontSize: 26 }}>chevron_left</span>
-                    </button>
-                    <button
-                        onClick={e => { e.stopPropagation(); onNext(); }}
-                        className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 text-white/90 flex items-center justify-center cursor-pointer transition-all"
-                        aria-label="Berikutnya"
-                    >
-                        <span className="material-symbols-outlined" style={{ fontSize: 26 }}>chevron_right</span>
-                    </button>
-                </>
-            )}
-            <div className="relative flex flex-col items-center gap-3 w-full max-w-4xl max-h-[92vh]" onClick={e => e.stopPropagation()}>
-                <div className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black/40 flex items-center justify-center w-full" style={{ height: 'min(70vh, calc(92vh - 160px))' }}>
-                    <PhotoImg photo={photo} className="max-w-full max-h-full object-contain" />
-                </div>
-                <div className="w-full max-w-3xl bg-neutral-950/60 border border-neutral-800/80 rounded-xl shadow-xl px-4 py-3">
-                    <textarea
-                        value={draft}
-                        onChange={e => setDraft(e.target.value)}
-                        onBlur={() => { const v = draft.trim(); if (v !== (photo.caption ?? '').trim()) onCaption(photo.id, v); }}
-                        placeholder="Tambahkan keterangan foto…"
-                        rows={2}
-                        className="w-full resize-none text-sm font-medium text-white placeholder-neutral-400 outline-none bg-transparent border-0 focus:ring-0"
-                        aria-label="Keterangan foto"
-                    />
-                </div>
-            </div>
         </div>
     );
 }

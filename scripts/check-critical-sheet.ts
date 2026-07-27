@@ -5,8 +5,8 @@
  * apakah semua kolom yang dikelola app terdeteksi dengan benar?"
  *
  * Dipakai di dua momen:
- *   1. Sebelum/sesudah menyisipkan kolom "Link Foto" — memastikan kolom web_uid masih
- *      terbaca di posisi barunya, sehingga backfill TIDAK menulis ulang UID massal.
+ *   1. Sebelum/sesudah menyisipkan atau memindah kolom — memastikan kolom "ID" masih
+ *      terbaca di posisi barunya, sehingga backfill TIDAK menulis ulang ID massal.
  *   2. Saat migrasi ke spreadsheet produksi — memastikan tab, baris header, dan kolom
  *      terdeteksi sebelum app pertama kali menyentuhnya.
  *
@@ -16,7 +16,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { google } from 'googleapis';
-import { parseCriticalTab, parseMaintenanceTab } from '../lib/critical-sheet';
+import { parseCriticalTab, parseMaintenanceTab, isUidHeader } from '../lib/critical-sheet';
 
 // ─── Env (.env.local, format sama seperti scripts/fetch-headers.ts) ──────────
 const envPath = path.resolve(__dirname, '..', '.env.local');
@@ -92,13 +92,13 @@ async function main() {
 
     let problems = 0;
 
-    /** Kolom web_uid ganda = jejak deployment lama yang menulis uid di kolom lain. */
+    /** Kolom ID ganda = jejak kolom "web_uid" lama yang belum dihapus. */
     const duplicateUidCols = (rows: string[][]): number[] => {
         const scan = Math.min(rows.length, 30);
         for (let i = 0; i < scan; i++) {
             const hit = (rows[i] ?? [])
                 .map((c, idx) => ({ name: (c ?? '').toLowerCase().replace(/["'.:]/g, '').replace(/\s+/g, ' ').trim(), idx }))
-                .filter(x => x.name.startsWith('web_uid'))
+                .filter(x => isUidHeader(x.name))
                 .map(x => x.idx);
             if (hit.length) return hit;
         }
@@ -113,7 +113,7 @@ async function main() {
         allRows: string[][],
         parsed: {
             headerRowIndex: number;
-            uidColIndex: number;
+            uidColIndex: number | null;
             photoColIndex: number | null;
             rows: { uid: string; linkFoto: string }[];
         },
@@ -124,25 +124,29 @@ async function main() {
         console.log(`=== ${label} — "${tabTitle}" (gid ${gid}, ${columnCount} kolom) ===`);
         console.log(`  baris header    : ${parsed.headerRowIndex}`);
         console.log(`  baris data valid: ${parsed.rows.length}`);
-        console.log(`  kolom web_uid   : ${colLetter(parsed.uidColIndex)} (index ${parsed.uidColIndex})`);
+        console.log(`  kolom ID        : ${parsed.uidColIndex === null ? '— TIDAK DITEMUKAN —' : `${colLetter(parsed.uidColIndex)} (index ${parsed.uidColIndex})`}`);
         console.log(`  kolom Link Foto : ${parsed.photoColIndex === null ? '— BELUM ADA —' : `${colLetter(parsed.photoColIndex)} (index ${parsed.photoColIndex})`}`);
-        console.log(`  baris tanpa uid : ${missingUid}`);
+        console.log(`  baris tanpa ID  : ${missingUid}`);
         console.log(`  sel Link Foto terisi: ${withPhoto}`);
 
         const uidCols = duplicateUidCols(allRows);
         if (uidCols.length > 1) {
             problems++;
-            console.log(`  ⛔ KOLOM web_uid GANDA: ${uidCols.map(colLetter).join(', ')}`);
-            console.log('      App memakai yang paling kiri, jadi sebagian data akan menunjuk uid yang salah.');
-            console.log('      Biasanya jejak deployment lama yang masih meng-hardcode posisi kolom.');
+            console.log(`  ⛔ KOLOM ID GANDA: ${uidCols.map(colLetter).join(', ')}`);
+            console.log('      App memakai yang paling kiri, jadi sebagian data akan menunjuk ID yang salah.');
+            console.log('      Biasanya kolom "web_uid" lama yang belum dihapus setelah ID pindah ke B.');
             console.log('      Hapus kolom duplikatnya, sisakan satu.');
         }
 
-        if (missingUid > 0) {
+        if (parsed.uidColIndex === null) {
             problems++;
-            console.log(`  ⚠️  ${missingUid} baris akan DIISI UID BARU saat web dimuat.`);
+            console.log('  ⛔ Kolom "ID" TIDAK ADA di baris header.');
+            console.log('      App tidak akan menebak posisinya — fitur foto mati sampai kolomnya ada.');
+        } else if (missingUid > 0) {
+            problems++;
+            console.log(`  ⚠️  ${missingUid} baris akan DIISI ID BARU saat web dimuat.`);
             console.log('      Wajar hanya untuk baris yang memang baru. Kalau angkanya mendekati');
-            console.log('      jumlah baris data, berarti kolom web_uid TIDAK terdeteksi — hentikan');
+            console.log('      jumlah baris data, berarti kolom ID TIDAK terdeteksi — hentikan');
             console.log('      dan periksa nama header sebelum membuka web.');
         }
         if (parsed.photoColIndex === null) {

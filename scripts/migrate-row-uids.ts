@@ -1,10 +1,15 @@
 /**
- * Migrasi web_uid: UUID acak lama → format ber-item `KODE-VARIAN-acak6`.
+ * Tulis ulang SELURUH kolom "ID" dengan format terbaru `KODE-VARIAN-acak`
+ * (mis. `L-08.12-A-a1`), lalu pindahkan foto yang menempel ke ID barunya.
  *
- * Kenapa: UUID acak tidak menyimpan jejak barisnya milik apa, sehingga isi baris yang
- * tergeser (mis. operator menyortir kolom data TANPA ikut kolom uid) memasangkan foto
- * ke pekerjaan yang salah tanpa bisa dideteksi siapa pun. Dengan kode item tertanam,
- * pergeseran itu langsung terlihat — lihat uidMatchesRow() di lib/critical-sheet.ts.
+ * Dipakai tiap kali format ID berubah:
+ *   - UUID acak      → format ber-item (Jul 2026)
+ *   - sufiks 6 hex   → sufiks 2 karakter (ID diringkas, Jul 2026)
+ *
+ * Kenapa formatnya ber-item: UUID acak tidak menyimpan jejak barisnya milik apa, sehingga
+ * isi baris yang tergeser (mis. operator menyortir kolom data TANPA ikut kolom ID)
+ * memasangkan foto ke pekerjaan yang salah tanpa bisa dideteksi siapa pun. Dengan kode
+ * item tertanam, pergeseran itu langsung terlihat — lihat uidMatchesRow() di lib/critical-sheet.ts.
  *
  * BAWAANNYA UJI-KERING: tanpa argumen, skrip ini TIDAK menulis apa pun, hanya melaporkan
  * apa yang akan berubah. Tambahkan --apply untuk benar-benar menulis.
@@ -106,6 +111,9 @@ async function main() {
     const rencana: { title: string; uidCol: string; tulis: { rowIndex: number; value: string }[] }[] = [];
 
     for (const { title, parsed } of tabs) {
+        if (parsed.uidColIndex === null) {
+            throw new Error(`Tab "${title}": kolom "ID" tidak ada di baris header — migrasi dibatalkan.`);
+        }
         const rows = parsed.rows as unknown as Baris[];
         const uidCol = colLetter(parsed.uidColIndex);
         const tulis: { rowIndex: number; value: string }[] = [];

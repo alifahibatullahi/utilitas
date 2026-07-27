@@ -1,6 +1,6 @@
 -- Foto untuk fitur Critical Maintenance berbasis Google Sheets (/critical-maintenance).
 -- Data teks tinggal di spreadsheet; foto di-upload via web (R2) dan menempel ke baris
--- sheet lewat row_uid = kolom web_uid yang ditulis app di sheet (lib/critical-sheet.ts).
+-- sheet lewat row_uid = kolom "ID" yang ditulis app di sheet (lib/critical-sheet.ts).
 -- Terpisah dari tabel `photos` (fitur critical lama, Supabase-based, nonaktif) supaya
 -- skema lama tidak disentuh.
 

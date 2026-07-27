@@ -7,8 +7,8 @@
  *   2. Maintenance        : No | Tanggal Dilaporkan | Shift | Nama dan Nomor Item | Varian |
  *                           Uraian | Scope | Status | Notifikasi | Foreman | gabungan | (Ref Critical)
  * Posisi header TIDAK di-hardcode — dideteksi dari isi sel (tahan sisip baris/kolom).
- * Input data tetap di spreadsheet; app hanya MENULIS kolom web_uid (ID stabil untuk
- * relasi foto) dan tidak pernah menyentuh kolom isian operator.
+ * Input data tetap di spreadsheet; app hanya MENULIS kolom "ID" (identitas baris yang
+ * dipakai relasi foto) dan tidak pernah menyentuh kolom isian operator.
  *
  * Skala (trial, Jul 2026): ±4.5rb baris critical + ±23rb baris maintenance. Terlalu
  * besar untuk unstable_cache (limit entry ±2MB), jadi cache di memori module dengan
@@ -16,7 +16,7 @@
  * cold start baca ulang. Kuota Sheets (300 read/menit) tetap aman.
  */
 
-import { randomUUID } from 'crypto';
+import { randomInt } from 'crypto';
 import { getSheetsClient, withRetry, fromIndonesianDate } from './google-sheets';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -42,12 +42,10 @@ function tabGid(envName: string): number {
 
 // Kolom yang dikelola app dicari BY NAMA HEADER, bukan posisi — supaya tahan sisip kolom
 // dan supaya spreadsheet produksi (urutan kolomnya bisa beda) tidak perlu ubah kode.
-const UID_HEADER = 'web_uid (jangan diubah)';
-const UID_HEADER_PREFIX = 'web_uid';       // sudah dinormalisasi (lihat normHeader)
+const UID_HEADER = 'ID';
+const UID_HEADER_NAME = 'id';                 // sudah dinormalisasi (lihat normHeader)
+const UID_HEADER_LEGACY_PREFIX = 'web_uid';   // nama lama, sebelum kolom dipindah ke B
 const PHOTO_HEADER = 'link foto';
-// Dipakai HANYA bila kolom web_uid belum ada sama sekali (sheet yang belum pernah
-// di-backfill). Kolom A–M data operator, N/P/R sisa formula, T–Z daftar master.
-const UID_COL_FALLBACK = 27; // 0-based → kolom 'AB'
 
 const CACHE_TTL_MS = 60_000;
 // Tombol "Perbarui data" & menu di spreadsheet memanggil force-load. Satu load penuh =
@@ -101,7 +99,7 @@ export interface TabRef {
     gid: number;
     title: string;
     headerRowIndex: number;         // 1-based
-    uidColIndex: number;            // 0-based
+    uidColIndex: number | null;     // 0-based; null = kolom "ID" tidak ada di baris header
     photoColIndex: number | null;   // null = kolom "Link Foto" belum dibuat di sheet
 }
 
@@ -187,41 +185,44 @@ function findHeader(rows: string[][], required: string[]): { rowIdx: number; map
 }
 
 interface ParsedTab<T> {
-    headerRowIndex: number; // 1-based
-    uidColIndex: number;    // 0-based, hasil deteksi header (fallback AB)
+    headerRowIndex: number;       // 1-based
+    uidColIndex: number | null;   // 0-based; null = kolom "ID" tidak ada di baris header
     photoColIndex: number | null;
     rows: T[];
 }
 
 /**
- * Cari index kolom dari nama header yang sudah dinormalisasi. Cocok bila nama header
- * DIAWALI `prefix` — header uid ditulis "web_uid (jangan diubah)", jadi teks dalam
- * kurung boleh berubah tanpa memutus deteksi. Object.entries mengikuti urutan sisip =
- * urutan kolom, jadi kecocokan pertama = kolom paling kiri.
+ * Kolom ID dikenali dari header "ID" (nama sekarang, kolom B) maupun "web_uid …"
+ * (nama lama sebelum kolomnya dipindah) — sheet lama tetap terbaca tanpa diubah dulu.
  */
-function findColByPrefix(map: HeaderMap, prefix: string): number | undefined {
-    for (const [name, idx] of Object.entries(map)) {
-        if (name.startsWith(prefix)) return idx;
-    }
-    return undefined;
+export function isUidHeader(normalizedName: string): boolean {
+    return normalizedName === UID_HEADER_NAME || normalizedName.startsWith(UID_HEADER_LEGACY_PREFIX);
 }
 
 /** Kolom yang dikelola app di satu tab. Kolom foto opsional (null = belum dibuat). */
-function resolveManagedCols(map: HeaderMap): { uidColIndex: number; photoColIndex: number | null } {
-    // Kolom web_uid ganda = tanda ada versi kode lain yang menulis uid di kolom berbeda
-    // (mis. deployment lama yang masih meng-hardcode posisi kolom). Jangan diam:
-    // separuh datanya akan menunjuk uid yang salah.
-    const uidCols = Object.entries(map)
-        .filter(([name]) => name.startsWith(UID_HEADER_PREFIX))
-        .map(([, idx]) => idx);
+function resolveManagedCols(map: HeaderMap): { uidColIndex: number | null; photoColIndex: number | null } {
+    // Object.entries mengikuti urutan sisip = urutan kolom, jadi yang pertama = paling kiri.
+    // Kolom ID ganda = tanda ada versi kode/sheet lain yang menulis ID di kolom berbeda.
+    // Jangan diam: separuh datanya akan menunjuk ID yang salah.
+    const uidCols = Object.entries(map).filter(([name]) => isUidHeader(name)).map(([, idx]) => idx);
     if (uidCols.length > 1) {
         console.error(
-            `[critical-sheet] ADA ${uidCols.length} kolom web_uid (${uidCols.map(colLetter).join(', ')}). ` +
-            `Memakai ${colLetter(uidCols[0])}. Hapus kolom duplikatnya — kemungkinan ditulis deployment versi lama.`,
+            `[critical-sheet] ADA ${uidCols.length} kolom ID (${uidCols.map(colLetter).join(', ')}). ` +
+            `Memakai ${colLetter(uidCols[0])}. Hapus kolom duplikatnya — biasanya sisa kolom "web_uid" lama.`,
+        );
+    }
+    // Tidak ada tebakan posisi di sini. Dulu ada fallback ke kolom AB, dan itu berbahaya
+    // sekarang: kolom ID hidup di B, di tengah data operator. Salah tebak = menimpa isian
+    // operator ATAU mengisi ID baru di kolom kosong sehingga SELURUH relasi foto putus.
+    // Lebih baik berhenti mengelola ID (baca tetap jalan) dan berteriak di log.
+    if (uidCols.length === 0) {
+        console.error(
+            `[critical-sheet] Kolom "${UID_HEADER}" TIDAK DITEMUKAN di baris header. Foto tidak bisa ` +
+            `dikaitkan ke baris sampai kolomnya ada. Periksa: npx tsx scripts/check-critical-sheet.ts`,
         );
     }
     return {
-        uidColIndex: uidCols[0] ?? UID_COL_FALLBACK,
+        uidColIndex: uidCols[0] ?? null,
         photoColIndex: map[PHOTO_HEADER] ?? null,
     };
 }
@@ -240,7 +241,7 @@ export function parseCriticalTab(rows: string[][]): ParsedTab<CriticalRow> {
         if ((!item && !uraian) || (!uraian && !tanggalRaw)) continue;
         const tanggalOkRaw = cell(r, map['tanggal di ok']);
         out.push({
-            uid: cell(r, uidColIndex),
+            uid: uidColIndex === null ? '' : cell(r, uidColIndex),
             rowIndex: i + 1,
             no: parseNo(cell(r, map['no'])),
             tanggal: parseSheetDate(tanggalRaw),
@@ -275,7 +276,7 @@ export function parseMaintenanceTab(rows: string[][]): ParsedTab<MaintenanceRow>
         // formula sampai puluhan ribu baris di bawah data asli).
         if ((!item && !uraian) || (!uraian && !tanggalRaw)) continue;
         out.push({
-            uid: cell(r, uidColIndex),
+            uid: uidColIndex === null ? '' : cell(r, uidColIndex),
             rowIndex: i + 1,
             no: parseNo(cell(r, map['no'])),
             tanggal: parseSheetDate(tanggalRaw),
@@ -311,33 +312,36 @@ function colLetter(index0: number): string {
 interface TabInfo { gid: number; title: string; columnCount: number }
 
 /**
- * Isi UID untuk baris yang belum punya di satu tab, tulis balik HANYA kolom AB.
+ * Isi ID untuk baris yang belum punya di satu tab, tulis balik HANYA kolom ID.
  * Backfill pertama bisa puluhan ribu baris → tulis per BLOK KONTIGU (bukan per sel)
- * supaya payload batchUpdate kecil. Re-read kolom AB fresh sebelum menulis untuk
+ * supaya payload batchUpdate kecil. Re-read kolom ID fresh sebelum menulis untuk
  * mempersempit race antar instance (sel yang keburu terisi tidak ditimpa; sisa race
  * last-writer-wins dan tidak berbahaya).
  */
 async function ensureRowUids(
     sheets: ReturnType<typeof getSheetsClient>,
     tab: TabInfo,
-    parsed: { headerRowIndex: number; uidColIndex: number; rows: { uid: string; rowIndex: number; item: string; varian: string }[] },
-    /** Seluruh uid yang sudah terpakai di spreadsheet — penjaga agar tidak ada yang kembar. */
+    parsed: { headerRowIndex: number; uidColIndex: number | null; rows: { uid: string; rowIndex: number; item: string; varian: string }[] },
+    /** Seluruh ID yang sudah terpakai di spreadsheet — penjaga agar tidak ada yang kembar. */
     taken: Set<string>,
 ): Promise<void> {
+    // Kolom ID tidak ada → tidak ada tempat yang aman untuk menulis (sudah dilaporkan
+    // di resolveManagedCols). Membaca sheet tetap jalan, hanya foto yang nonaktif.
+    if (parsed.uidColIndex === null) return;
     const needy = parsed.rows.filter(r => !r.uid);
     if (needy.length === 0) return;
 
     // ── Rem darurat ──────────────────────────────────────────────────────────
     // Baris baru datang beberapa per hari. Kalau tiba-tiba SEBAGIAN BESAR baris di tab
-    // yang sudah besar kehilangan uid, itu bukan baris baru — itu kolom uid yang salah
-    // dibaca (kolom bergeser karena penyisipan, kolom uid ganda, atau header berubah).
-    // Menulis ulang puluhan ribu UUID akan memutus SELURUH relasi foto, jadi lebih baik
+    // yang sudah besar kehilangan ID, itu bukan baris baru — itu kolom ID yang salah
+    // dibaca (kolom bergeser karena penyisipan, kolom ID ganda, atau header berubah).
+    // Menulis ulang puluhan ribu ID akan memutus SELURUH relasi foto, jadi lebih baik
     // batal mengisi dan berteriak di log; membaca tetap jalan.
     if (parsed.rows.length > 200 && needy.length > parsed.rows.length / 2) {
         console.error(
             `[critical-sheet] BACKFILL DIBATALKAN di tab ${tab.title}: ${needy.length} dari ` +
-            `${parsed.rows.length} baris tidak punya uid di kolom ${colLetter(parsed.uidColIndex)}. ` +
-            `Ini pola "kolom salah", bukan baris baru. Periksa posisi kolom web_uid ` +
+            `${parsed.rows.length} baris tidak punya ID di kolom ${colLetter(parsed.uidColIndex)}. ` +
+            `Ini pola "kolom salah", bukan baris baru. Periksa posisi kolom ID ` +
             `(npx tsx scripts/check-critical-sheet.ts) sebelum melanjutkan.`,
         );
         return;
@@ -403,14 +407,14 @@ async function ensureRowUids(
     await withRetry(() => sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: sheetId(),
         requestBody: { valueInputOption: 'RAW', data },
-    }), `backfill ${toWrite.length} uid (${data.length} blok) ${tab.title}`);
-    console.log(`[critical-sheet] backfill ${toWrite.length} web_uid di tab ${tab.title}`);
+    }), `backfill ${toWrite.length} ID (${data.length} blok) ${tab.title}`);
+    console.log(`[critical-sheet] backfill ${toWrite.length} ID di tab ${tab.title}`);
 }
 
 /**
  * Dua kerusakan yang dulu tidak pernah ketahuan, sekarang dilaporkan tiap kali sheet
- * dibaca penuh. Sengaja HANYA melapor — uid tidak pernah diperbaiki otomatis, karena
- * mengganti uid berarti memutus foto yang menempel padanya, dan ketidakcocokan bisa
+ * dibaca penuh. Sengaja HANYA melapor — ID tidak pernah diperbaiki otomatis, karena
+ * mengganti ID berarti memutus foto yang menempel padanya, dan ketidakcocokan bisa
  * saja berasal dari koreksi nama item yang sah.
  */
 function reportUidAnomalies(label: string, rows: { uid: string; rowIndex: number; item: string; varian: string }[]): void {
@@ -425,19 +429,19 @@ function reportUidAnomalies(label: string, rows: { uid: string; rowIndex: number
         else seen.set(r.uid, r.rowIndex);
 
         if (!uidMatchesRow(r.uid, r.item, r.varian)) {
-            mismatched.push(`baris ${r.rowIndex}: uid ${r.uid} vs item "${r.item}"${r.varian ? ` varian ${r.varian}` : ''}`);
+            mismatched.push(`baris ${r.rowIndex}: ID ${r.uid} vs item "${r.item}"${r.varian ? ` varian ${r.varian}` : ''}`);
         }
     }
 
     if (duplicates.length) {
         console.error(
-            `[critical-sheet] ${label}: ${duplicates.length} web_uid KEMBAR — foto akan tampil di baris yang salah. ` +
+            `[critical-sheet] ${label}: ${duplicates.length} ID KEMBAR — foto akan tampil di baris yang salah. ` +
             duplicates.slice(0, 5).join('; '),
         );
     }
     if (mismatched.length) {
         console.error(
-            `[critical-sheet] ${label}: ${mismatched.length} baris uid-nya TIDAK COCOK dengan itemnya — ` +
+            `[critical-sheet] ${label}: ${mismatched.length} baris ID-nya TIDAK COCOK dengan itemnya — ` +
             `biasanya tanda isi baris tergeser (sortir tanpa ikut kolom uid). ` +
             mismatched.slice(0, 5).join('; '),
         );
@@ -462,8 +466,8 @@ async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
     const criticalTab = findTab(tabGid('GOOGLE_SHEETS_CRITICAL_GID'));
     const maintenanceTab = findTab(tabGid('GOOGLE_SHEETS_MAINTENANCE_GID'));
 
-    // Satu batchGet untuk kedua tab. A:AE = data operator + kolom Link Foto + kolom uid,
-    // dengan sisa ruang setelah kolom uid bergeser akibat penyisipan kolom.
+    // Satu batchGet untuk kedua tab. A:AE = kolom ID + data operator + kolom Link Foto,
+    // dengan sisa ruang bila kolomnya bergeser akibat penyisipan kolom baru.
     const res = await withRetry(() => sheets.spreadsheets.values.batchGet({
         spreadsheetId: sheetId(),
         ranges: [
@@ -477,7 +481,7 @@ async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
     const criticalParsed = parseCriticalTab(criticalRows ?? []);
     const maintenanceParsed = parseMaintenanceTab(maintenanceRows ?? []);
 
-    // Satu himpunan uid untuk KEDUA tab: foto dicari lintas tab lewat uid, jadi kembar
+    // Satu himpunan ID untuk KEDUA tab: foto dicari lintas tab lewat ID, jadi kembar
     // antar-tab pun berbahaya.
     const taken = new Set<string>();
     for (const r of [...criticalParsed.rows, ...maintenanceParsed.rows]) if (r.uid) taken.add(r.uid);
@@ -605,22 +609,34 @@ export function extractCode(item: string): string {
     return m ? m[1].toUpperCase() : '';
 }
 
-// ─── Format web_uid ──────────────────────────────────────────────────────────
+// ─── Format ID baris ─────────────────────────────────────────────────────────
 //
-// UID = <kode item>-<varian>-<acak6>, mis. "P-02.10-D-7f3a91".
+// ID = <kode item>-<varian>-<acak>, mis. "L-08.12-A-a1". Ditulis di kolom B ("ID").
 //
-// Bagian acaknya yang menjamin tiap baris beda; bagian kode item yang membuat UID
-// BISA DIPERIKSA: kalau `L-08.12-A-7f3a91` duduk di baris "M-08.15 Coal Feeder",
-// itu tanda isi barisnya tergeser (mis. sortir kolom data tanpa ikut kolom uid) —
+// Bagian acaknya yang menjamin tiap baris beda; bagian kode item yang membuat ID
+// BISA DIPERIKSA: kalau `L-08.12-A-a1` duduk di baris "M-08.15 Coal Feeder",
+// itu tanda isi barisnya tergeser (mis. sortir kolom data tanpa ikut kolom ID) —
 // pergeseran yang, dengan UUID acak murni, mustahil dideteksi manusia maupun mesin.
 //
 // Kode equipment dipilih, bukan nama item, karena 4% baris memang tidak punya kode
 // (dipakai slug nama) DAN karena satu kode kerap punya beberapa ejaan nama
 // ("P-02.22 CEDIMENT PUMP" vs "… PUMP B") — kode selamat dari koreksi ejaan.
+//
+// Sufiks acaknya sependek mungkin (2 karakter) karena kolom ID ada di antara data yang
+// dibaca operator: yang perlu dijamin cuma "beda dari baris lain PADA ITEM YANG SAMA",
+// bukan unik sedunia. 2 karakter = 1.296 kemungkinan per item; kalau satu item sampai
+// sesak, panjangnya baru bertambah sendiri per baris — bukan serentak.
 
-const UID_RANDOM_LEN = 6;
-const UID_RANDOM_RE = new RegExp(`-[0-9a-f]{${UID_RANDOM_LEN}}$`);
-/** UUID v4 = format lama sebelum migrasi. Tidak bisa dicek kecocokannya. */
+const UID_SUFFIX_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
+const UID_SUFFIX_MIN_LEN = 2;
+const UID_SUFFIX_MAX_LEN = 4;
+/**
+ * Sufiks di ujung ID: 2–4 karakter basis-36 (format sekarang) atau 6 hex (format
+ * sebelum ID diringkas). Sengaja HURUF KECIL saja — varian selalu huruf besar, jadi
+ * "L-08.12-AB" tidak akan salah dikira sufiks saat prefiksnya dipotong.
+ */
+const UID_RANDOM_RE = /-[0-9a-z]{2,8}$/;
+/** UUID v4 = format paling lama (sebelum ID ber-item). Tidak bisa dicek kecocokannya. */
 const LEGACY_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Nama item tanpa kode → slug pendek, mis. "03 UBB" → "03-UBB". */
@@ -654,22 +670,33 @@ export function rowItemLabel(item: string, varian: string): string {
     return v ? `${base} ${v}` : base;
 }
 
-/** UID baru untuk satu baris. `taken` menjamin tidak ada yang kembar di spreadsheet. */
+function randomSuffix(len: number): string {
+    let s = '';
+    for (let i = 0; i < len; i++) s += UID_SUFFIX_ALPHABET[randomInt(UID_SUFFIX_ALPHABET.length)];
+    return s;
+}
+
+/** ID baru untuk satu baris. `taken` menjamin tidak ada yang kembar di spreadsheet. */
 export function buildRowUid(item: string, varian: string, taken: Set<string>): string {
     const prefix = uidPrefixFor(item, varian);
-    for (let attempt = 0; attempt < 50; attempt++) {
-        const uid = `${prefix}-${randomUUID().replace(/-/g, '').slice(0, UID_RANDOM_LEN)}`;
-        if (!taken.has(uid)) { taken.add(uid); return uid; }
+    // Mulai dari sufiks terpendek; baru memanjang kalau ruang selebar itu memang penuh
+    // (item dengan ratusan catatan), dan hanya untuk baris yang kebetulan bentrok.
+    for (let len = UID_SUFFIX_MIN_LEN; len <= UID_SUFFIX_MAX_LEN; len++) {
+        for (let attempt = 0; attempt < 40; attempt++) {
+            const uid = `${prefix}-${randomSuffix(len)}`;
+            if (!taken.has(uid)) { taken.add(uid); return uid; }
+        }
     }
-    // Praktis mustahil; tetap disediakan supaya tidak pernah mengembalikan uid kembar.
-    const uid = `${prefix}-${randomUUID()}`;
+    // Praktis mustahil (butuh jutaan baris pada satu item); tetap disediakan supaya
+    // fungsi ini tidak pernah mengembalikan ID kembar.
+    const uid = `${prefix}-${Date.now().toString(36)}`;
     taken.add(uid);
     return uid;
 }
 
 /**
- * Apakah UID ini masih cocok dengan isi barisnya?
- * UUID lama (sebelum migrasi) selalu dianggap cocok — tidak ada yang bisa diperiksa.
+ * Apakah ID ini masih cocok dengan isi barisnya?
+ * UUID lama (sebelum ID ber-item) selalu dianggap cocok — tidak ada yang bisa diperiksa.
  */
 export function uidMatchesRow(uid: string, item: string, varian: string): boolean {
     if (!uid || LEGACY_UUID_RE.test(uid)) return true;

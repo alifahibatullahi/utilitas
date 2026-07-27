@@ -8,7 +8,7 @@
  *   4. kolom "Link Foto" baris itu terisi otomatis oleh web
  *
  * Script ini TIDAK mengunggah apa pun dan tidak menulis kolom Link Foto — itu tugas web
- * (satu penulis saja). Yang ditulis di sini hanya `web_uid` bila barisnya belum punya,
+ * (satu penulis saja). Yang ditulis di sini hanya kolom `ID` bila barisnya belum punya,
  * supaya tautannya bisa langsung menunjuk record yang tepat.
  *
  * Pasang: Extensions → Apps Script → tempel Code.gs + OpenWeb.html, lalu isi Script
@@ -106,9 +106,9 @@ function buildTarget_(cfg) {
     return fallback('Baris yang dipilih masih kosong — web dibuka di daftar aktivitas terbaru.');
   }
 
-  var uid = ensureRowUid_(sheet, headers, hr.row, row);
+  var uid = ensureRowUid_(cfg, sheet, headers, row, item, varian);
   if (!uid) {
-    return fallback('Kolom web_uid tidak ditemukan — web dibuka di daftar aktivitas terbaru.');
+    return fallback('Kolom ID tidak ditemukan — web dibuka di daftar aktivitas terbaru.');
   }
 
   var itemKey = itemKeyOf_(item, varian);
@@ -141,11 +141,14 @@ function findHeaderIndex_(headers, names) {
   return -1;
 }
 
-/** Kolom web_uid dicari by AWALAN nama, sama seperti loader web (teks dalam kurung boleh berubah). */
+/**
+ * Kolom ID dicari sama persis seperti loader web (isUidHeader di lib/critical-sheet.ts):
+ * header "ID" (nama sekarang, kolom B) atau "web_uid …" (nama lama).
+ */
 function findUidIndex_(headers) {
   var norm = headers.map(normHeader_);
   for (var i = 0; i < norm.length; i++) {
-    if (norm[i].indexOf('web_uid') === 0) return i;
+    if (norm[i] === 'id' || norm[i].indexOf('web_uid') === 0) return i;
   }
   return -1;
 }
@@ -171,20 +174,87 @@ function findHeaderRow_(sheet, cfg) {
 }
 
 /**
- * Ambil web_uid baris; kalau masih kosong, isi UUID baru supaya tautan bisa langsung
- * menunjuk record ini tanpa menunggu web melakukan backfill.
- * Aman terhadap balapan: backfill di web membaca ulang kolom uid sebelum menulis, jadi
+ * Ambil ID baris; kalau masih kosong, isi ID baru supaya tautan bisa langsung menunjuk
+ * record ini tanpa menunggu web melakukan backfill.
+ * Aman terhadap balapan: backfill di web membaca ulang kolom ID sebelum menulis, jadi
  * nilai yang sudah ada di sini tidak akan ditimpa.
  */
-function ensureRowUid_(sheet, headers, headerRow, row) {
+function ensureRowUid_(cfg, sheet, headers, row, item, varian) {
   var idx = findUidIndex_(headers);
   if (idx < 0) return '';
   var cell = sheet.getRange(row, idx + 1);
   var existing = String(cell.getValue() || '').trim();
   if (existing) return existing;
-  var uid = Utilities.getUuid();
+  var uid = buildRowUid_(cfg, uidPrefixFor_(item, varian));
   cell.setValue(uid);
   return uid;
+}
+
+// ─── Format ID (harus identik dengan lib/critical-sheet.ts) ──────────────────
+// ID = <kode item>-<varian>-<acak2>, mis. "L-08.12-A-a1". Kode item di dalamnya yang
+// membuat ID bisa diperiksa: ID yang tidak cocok dengan isi barisnya = baris tergeser.
+
+function extractCode_(item) {
+  var m = String(item == null ? '' : item).match(/([A-Za-z]{1,5}-\d{2}\.\d{2})/);
+  return m ? m[1].toUpperCase() : '';
+}
+
+/** Nama item tanpa kode → slug pendek, mis. "03 UBB" → "03-UBB". */
+function itemSlug_(item) {
+  return String(item == null ? '' : item).toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 16)
+    .replace(/-+$/, '');
+}
+
+function uidPrefixFor_(item, varian) {
+  var base = extractCode_(item) || itemSlug_(item) || 'ITEM';
+  var v = String(varian == null ? '' : varian).toUpperCase().replace(/[^A-Z0-9]+/g, '');
+  return v ? base + '-' + v : base;
+}
+
+/**
+ * Kumpulkan seluruh ID yang sudah terpakai di KEDUA tab. Dibaca sekali dan hanya saat
+ * benar-benar perlu membuat ID baru (baris yang belum punya ID), jadi pembacaan ±28rb
+ * sel ini tidak terjadi pada pemakaian normal.
+ */
+function takenUids_(cfg) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var taken = {};
+  var sheets = ss.getSheets();
+  for (var s = 0; s < sheets.length; s++) {
+    var sh = sheets[s];
+    var gid = sh.getSheetId();
+    if (gid !== cfg.criticalGid && gid !== cfg.maintenanceGid) continue;
+    var hr = findHeaderRow_(sh, cfg);
+    if (!hr) continue;
+    var idx = findUidIndex_(hr.headers);
+    if (idx < 0) continue;
+    var last = sh.getLastRow();
+    if (last <= hr.row) continue;
+    var vals = sh.getRange(hr.row + 1, idx + 1, last - hr.row, 1).getDisplayValues();
+    for (var i = 0; i < vals.length; i++) {
+      var v = String(vals[i][0] || '').trim();
+      if (v) taken[v] = true;
+    }
+  }
+  return taken;
+}
+
+/** ID baru: sufiks 2 karakter dulu, memanjang hanya kalau ruangnya sudah sesak. */
+function buildRowUid_(cfg, prefix) {
+  var abc = '0123456789abcdefghijklmnopqrstuvwxyz';
+  var taken = takenUids_(cfg);
+  for (var len = 2; len <= 4; len++) {
+    for (var attempt = 0; attempt < 40; attempt++) {
+      var s = '';
+      for (var i = 0; i < len; i++) s += abc.charAt(Math.floor(Math.random() * abc.length));
+      var uid = prefix + '-' + s;
+      if (!taken[uid]) return uid;
+    }
+  }
+  return prefix + '-' + Date.now().toString(36);
 }
 
 // ─── Item key (harus identik dengan lib/critical-sheet.ts) ───────────────────

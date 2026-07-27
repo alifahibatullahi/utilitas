@@ -49,15 +49,16 @@ produksi cukup tempel ulang kedua file dan isi ketiga properti itu.
 
 ## Prasyarat di spreadsheet
 
-- Kolom **`Link Foto`** sudah ada di kedua tab (Critical: kolom M, Maintenance: kolom K).
+- Kolom **`Link Foto`** sudah ada di kedua tab (Critical: kolom N, Maintenance: kolom L).
   Web yang mengisi & mengosongkan selnya; script ini tidak pernah menulisnya.
-- Kolom **`web_uid`** harus tetap ada dan jangan diubah — itu identitas baris yang
-  menghubungkannya ke foto. Boleh **disembunyikan** agar tidak mengganggu.
-  Kalau baris yang dipilih belum punya `web_uid`, script mengisikannya sekali
-  (`Utilities.getUuid()`) supaya tautannya bisa langsung menunjuk record itu.
+- Kolom **`ID`** (kolom B) harus tetap ada dan isinya jangan diubah — itu identitas baris
+  yang menghubungkannya ke foto. Bentuknya `KODE-VARIAN-acak`, mis. `L-08.12-A-a1`.
+  Kalau baris yang dipilih belum punya ID, script mengisikannya sekali dengan format yang
+  sama supaya tautannya bisa langsung menunjuk record itu.
+  Header lama `web_uid …` masih dikenali, jadi sheet yang belum diganti tetap jalan.
 
 Cek kapan saja dengan `npx tsx scripts/check-critical-sheet.ts` di repo web — script itu
-read-only dan melaporkan tab, baris header, serta posisi kolom `web_uid` & `Link Foto`.
+read-only dan melaporkan tab, baris header, serta posisi kolom `ID` & `Link Foto`.
 
 ## Catatan
 

@@ -21,7 +21,7 @@ function GuardedPage() {
 
     /**
      * Belum login → ke halaman pilih operator, TAPI tujuannya dititipkan di `?next=`.
-     * Link dari spreadsheet (menu 📷 Foto & sel "Link Foto") membawa `?item=…&foto=…`
+     * Link dari spreadsheet (menu 📷 Upload Foto & sel "Link Foto") membawa `?item=…&foto=…`
      * yang gunanya membuka modal record itu begitu halaman siap; kalau paramnya dibuang
      * saat redirect, operator mendarat di menu dan harus mencari sendiri recordnya.
      * Pola yang sama dipakai /input-laporan untuk link reminder WA.

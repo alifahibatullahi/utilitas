@@ -47,7 +47,12 @@ const UID_HEADER_NAME = 'id';                 // sudah dinormalisasi (lihat norm
 const UID_HEADER_LEGACY_PREFIX = 'web_uid';   // nama lama, sebelum kolom dipindah ke B
 const PHOTO_HEADER = 'link foto';
 
-const CACHE_TTL_MS = 60_000;
+// Satu pembacaan penuh = 4,5 MB dari Sheets + parsing 27rb baris, dan tiap instance
+// serverless punya cache sendiri (cold start = baca lagi). Isian sheet berubah beberapa
+// kali per HARI, bukan per menit, jadi TTL 5 menit memangkas pembacaan penuh sampai ~80%
+// dibanding 60 detik tanpa terasa basi. Yang butuh data detik-ini tetap terlayani:
+// tombol "Perbarui data" dan link `?refresh=1` dari spreadsheet memaksa baca ulang.
+const CACHE_TTL_MS = 300_000;
 // Tombol "Perbarui data" & menu di spreadsheet memanggil force-load. Satu load penuh =
 // ~84rb baris dua tab, jadi force yang datang beruntun (banyak operator klik bersamaan)
 // tetap dilayani dari cache selama masih lebih baru dari ambang ini.
@@ -448,7 +453,7 @@ function reportUidAnomalies(label: string, rows: { uid: string; rowIndex: number
     }
 }
 
-// ─── Loader (in-memory cache, TTL 60s) ───────────────────────────────────────
+// ─── Loader (in-memory cache, TTL 5 menit) ───────────────────────────────────
 
 async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
     const sheets = getSheetsClient();
@@ -521,7 +526,7 @@ let cache: { data: CriticalSheetData; at: number } | null = null;
 let inflight: Promise<CriticalSheetData> | null = null;
 
 /**
- * Loader ter-cache in-memory (TTL 60 detik) dengan dedup request paralel:
+ * Loader ter-cache in-memory (TTL 5 menit) dengan dedup request paralel:
  * viewer serentak berbagi satu fetch. `force` (tombol "Perbarui data" & menu di
  * spreadsheet) memangkas TTL menjadi MIN_FORCE_INTERVAL_MS — bukan mengabaikannya sama
  * sekali — supaya klik beruntun dari banyak operator tidak menjadi belasan pembacaan

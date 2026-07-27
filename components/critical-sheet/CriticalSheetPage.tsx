@@ -39,7 +39,7 @@ export default function CriticalSheetPage() {
 
     /**
      * `?refresh=1` datang dari menu di spreadsheet: baris yang BARU diketik operator
-     * belum tentu ada di cache loader (TTL 60 detik), dan ID-nya belum di-backfill.
+     * belum tentu ada di cache loader (TTL 5 menit), dan ID-nya belum di-backfill.
      * Dijalankan sekali lalu paramnya dibuang dari URL supaya reload tidak memicu lagi.
      * Server tetap punya rem sendiri (MIN_FORCE_INTERVAL_MS) bila banyak operator
      * membuka menu bersamaan. `tab` ikut dibuang: link lama dari spreadsheet masih

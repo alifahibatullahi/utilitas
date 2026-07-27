@@ -1,9 +1,9 @@
 /**
- * Menu "📷 Foto" — jembatan dari spreadsheet ke Web Utilitas Batubara.
+ * Menu "📷 Upload Foto" — jembatan dari spreadsheet ke Web Utilitas Batubara.
  *
  * Alur operator:
  *   1. isi baris critical/maintenance di spreadsheet seperti biasa
- *   2. pilih barisnya → menu 📷 Foto → "Upload foto (buka web)"
+ *   2. pilih barisnya → menu 📷 Upload Foto → "Upload foto baris terpilih"
  *   3. web terbuka di record itu → upload foto dari sana (jalan juga di HP)
  *   4. kolom "Link Foto" baris itu terisi otomatis oleh web
  *
@@ -36,10 +36,13 @@ function getConfig_() {
 
 // ─── Menu ────────────────────────────────────────────────────────────────────
 
+// Nama menu = ikon kamera + "Upload Foto" supaya tujuannya terbaca langsung dari bilah
+// menu, tanpa operator perlu membukanya dulu. Item di dalamnya menyebut "baris terpilih"
+// karena itu satu-satunya syarat yang sering terlewat.
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('📷 Foto')
-    .addItem('Upload foto (buka web)', 'openUploadPage')
+    .createMenu('📷 Upload Foto')
+    .addItem('Upload foto baris terpilih', 'openUploadPage')
     .addToUi();
 }
 

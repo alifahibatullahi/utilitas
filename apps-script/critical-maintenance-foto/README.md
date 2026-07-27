@@ -1,6 +1,6 @@
 # Menu Foto Critical/Maintenance — Apps Script (di dalam Spreadsheet)
 
-Menu **📷 Foto** di spreadsheet yang membuka **Web Utilitas Batubara** pada record yang
+Menu **📷 Upload Foto** di spreadsheet yang membuka **Web Utilitas Batubara** pada record yang
 sedang dipilih, tempat operator meng-upload fotonya. Script ini sendiri **tidak
 mengunggah apa pun** dan tidak butuh izin Google Drive.
 
@@ -8,7 +8,7 @@ mengunggah apa pun** dan tidak butuh izin Google Drive.
 
 1. Isi baris critical/maintenance di spreadsheet seperti biasa. Kolom **Link Foto**
    masih kosong.
-2. Klik salah satu sel di baris itu → menu **📷 Foto → Upload foto (buka web)**.
+2. Klik salah satu sel di baris itu → menu **📷 Upload Foto → Upload foto baris terpilih**.
 3. Dialog muncul berisi ringkasan baris → **Buka web & upload foto**.
 4. Web terbuka langsung di record tersebut → pilih/ambil foto → upload.
    Ini jalan di HP juga, karena upload-nya di web, bukan di dialog Apps Script.
@@ -42,7 +42,7 @@ di spreadsheet (container-bound):
    | `maintenanceGid` | gid tab Maintenance |
 
 5. **Save**, jalankan `onOpen` sekali (▶) untuk memicu otorisasi (hanya izin
-   Spreadsheet), lalu **reload spreadsheet** → menu **📷 Foto** muncul.
+   Spreadsheet), lalu **reload spreadsheet** → menu **📷 Upload Foto** muncul.
 
 Konfigurasi ada di Script Properties, bukan di kode — jadi saat pindah ke spreadsheet
 produksi cukup tempel ulang kedua file dan isi ketiga properti itu.

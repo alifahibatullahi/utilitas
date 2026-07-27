@@ -31,7 +31,13 @@ export async function GET(
     }
 
     try {
-        const upstream = await fetch((photo as { url: string }).url, { cache: 'no-store' });
+        // Batas waktu WAJIB: kalau R2 tak terjangkau, jaringan yang memblokirnya biasanya
+        // menggantung alih-alih menolak. Tanpa ini, permintaan foto tidak pernah selesai —
+        // di browser ubinnya berdenyut selamanya, di Vercel durasi fungsinya ikut terbakar.
+        const upstream = await fetch((photo as { url: string }).url, {
+            cache: 'no-store',
+            signal: AbortSignal.timeout(15_000),
+        });
         if (!upstream.ok || !upstream.body) {
             return NextResponse.json({
                 error: `Upstream R2 gagal (status ${upstream.status})`,

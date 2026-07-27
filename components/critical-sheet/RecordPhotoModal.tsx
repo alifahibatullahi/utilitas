@@ -174,8 +174,11 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                                 <SheetScopeBadge scope={record.scope} />
                             </div>
 
-                            {/* Uraian = pekerjaannya, jadi paling besar. */}
+                            {/* Uraian = pekerjaannya, jadi paling besar. Diberi label karena
+                                di sekelilingnya ada tanggal, item, dan pelapor — tanpa label,
+                                teks terbesar ini tidak menyebut dirinya kolom yang mana. */}
                             <p className="text-base font-bold text-neutral-900 mt-2 leading-snug">
+                                <span className="text-neutral-400 font-bold">Uraian : </span>
                                 {record.uraian || '(tanpa uraian)'}
                             </p>
 
@@ -276,7 +279,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                                             }`}
                                             title={photo.caption || photo.filename}
                                         >
-                                            <PhotoImg photo={photo} className="w-full h-full object-cover" />
+                                            <PhotoImg photo={photo} className="w-full h-full object-cover" eager />
                                         </button>
                                         {isDeleting ? (
                                             // Menghapus perlu jalan bolak-balik ke server + tulis ulang sel

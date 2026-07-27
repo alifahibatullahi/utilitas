@@ -35,42 +35,107 @@ export const PHOTO_KIND = {
  * Sengaja tanpa batas waktu "kalau lambat pindah": cadangannya justru `pub-*.r2.dev`
  * yang di jaringan kantor diblokir. Proxy yang lambat berarti jaringannya lambat —
  * berpindah ke domain yang lebih mungkin diblokir cuma memperburuk.
+ *
+ * Tiga keadaan, TIGA tampilan berbeda. Dulu hanya ada dua (belum-selesai vs selesai),
+ * sehingga foto yang GAGAL dimuat berdenyut selamanya dan terlihat seperti "loading
+ * yang tidak pernah kelar" — operator tidak punya cara tahu bedanya, apalagi mencoba lagi.
+ *
+ * @param eager muat langsung tanpa menunggu masuk viewport. Dipakai di pop-up record yang
+ *        fotonya sedikit dan langsung terlihat; galeri item tetap lazy karena bisa puluhan.
  */
-export function PhotoImg({ photo, className }: { photo: SheetPhoto; className?: string }) {
+export function PhotoImg({ photo, className, eager = false }: {
+    photo: SheetPhoto;
+    className?: string;
+    eager?: boolean;
+}) {
     const [src, setSrc] = useState(() => photoSrc(photo));
-    const [loaded, setLoaded] = useState(false);
+    const [state, setState] = useState<'loading' | 'loaded' | 'error'>('loading');
     const swapped = useRef(false);
+    const imgRef = useRef<HTMLImageElement>(null);
 
+    // Sengaja bergantung pada ISI foto (id + url), bukan identitas objeknya: daftar foto
+    // sering dibangun ulang saat induknya render, dan kalau objek baru dianggap foto baru,
+    // state kembali ke 'loading' padahal <img>-nya tidak memuat ulang → berdenyut selamanya.
     useEffect(() => {
         swapped.current = false;
-        setLoaded(false);
+        setState('loading');
         setSrc(photoSrc(photo));
+        clearFallbackTimer();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [photo.id, photo.url]);
+
+    // Gambar yang sudah ada di cache browser bisa selesai SEBELUM React sempat memasang
+    // onLoad — tanpa pemeriksaan ini, <img> yang sebenarnya sudah lengkap tetap berdenyut.
+    useEffect(() => {
+        const el = imgRef.current;
+        if (el?.complete && el.naturalWidth > 0) setState('loaded');
+    });
+
+    // Cadangan `pub-*.r2.dev` boleh dicoba, tapi TIDAK boleh ditunggu selamanya: di
+    // jaringan kantor domain itu diblokir dengan cara menggantung — tanpa batas waktu,
+    // permintaannya tidak pernah selesai maupun gagal, dan ubinnya berdenyut terus.
+    const FALLBACK_TIMEOUT_MS = 8000;
+    const fallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const clearFallbackTimer = useCallback(() => {
+        if (fallbackTimer.current) { clearTimeout(fallbackTimer.current); fallbackTimer.current = null; }
+    }, []);
+    useEffect(() => clearFallbackTimer, [clearFallbackTimer]);
+
+    const onError = useCallback(() => {
+        const direct = photoDirectSrc(photo);
+        if (!swapped.current && direct && direct !== src) {
+            swapped.current = true;
+            setSrc(direct);
+            clearFallbackTimer();
+            fallbackTimer.current = setTimeout(() => setState('error'), FALLBACK_TIMEOUT_MS);
+            return;
+        }
+        clearFallbackTimer();
+        setState('error');
+    }, [photo, src, clearFallbackTimer]);
+
+    const retry = useCallback(() => {
+        swapped.current = false;
+        clearFallbackTimer();
+        setState('loading');
+        // Query penanda waktu memaksa browser mencoba lagi, bukan memakai kegagalan
+        // yang sudah terlanjur di-cache.
+        setSrc(`${photoSrc(photo)}${photoSrc(photo).includes('?') ? '&' : '?'}coba=${Date.now()}`);
     }, [photo]);
 
-    const toFallback = useCallback(() => {
-        if (swapped.current) return;
-        swapped.current = true;
-        const direct = photoDirectSrc(photo);
-        setSrc(prev => (direct && direct !== prev ? direct : prev));
-    }, [photo]);
+    if (state === 'error') {
+        return (
+            <div
+                className={`${className ?? ''} flex flex-col items-center justify-center gap-0.5 bg-neutral-100 text-neutral-400 cursor-pointer`}
+                onClick={e => { e.preventDefault(); e.stopPropagation(); retry(); }}
+                title="Foto gagal dimuat — klik untuk mencoba lagi"
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>broken_image</span>
+                <span className="text-[10px] font-bold leading-tight">Gagal dimuat</span>
+                <span className="text-[10px] font-bold text-blue-600 leading-tight">Coba lagi</span>
+            </div>
+        );
+    }
 
     return (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+            ref={imgRef}
             src={src}
             alt={photo.caption || photo.filename}
             // Sebelum gambarnya sampai: kotak abu berdenyut, lalu muncul perlahan.
             // Di jaringan lapangan yang lambat ini penanda paling murah bahwa foto
             // memang sedang dimuat, bukan gagal.
             className={`${className ?? ''} transition-opacity duration-300 ${
-                loaded ? 'opacity-100' : 'opacity-0 bg-neutral-200 animate-pulse'
+                state === 'loaded' ? 'opacity-100' : 'opacity-0 bg-neutral-200 animate-pulse'
             }`}
-            loading="lazy"
+            loading={eager ? 'eager' : 'lazy'}
+            decoding="async"
             referrerPolicy="no-referrer"
             // Drag bawaan browser mengganggu geser-saat-zoom di lightbox.
             draggable={false}
-            onLoad={() => { swapped.current = true; setLoaded(true); }}
-            onError={toFallback}
+            onLoad={() => { swapped.current = true; clearFallbackTimer(); setState('loaded'); }}
+            onError={onError}
         />
     );
 }
@@ -261,7 +326,7 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                             transition: dragFrom.current ? 'none' : 'transform 120ms ease-out',
                         }}
                     >
-                        <PhotoImg photo={photo} className="max-w-full max-h-full object-contain select-none" />
+                        <PhotoImg photo={photo} className="max-w-full max-h-full object-contain select-none" eager />
                     </div>
                 </div>
 
@@ -281,9 +346,11 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                             </span>
                         )}
                     </div>
-                    {/* Uraian = alasan foto ini ada, jadi diperlakukan sebagai teks utama. */}
+                    {/* Uraian = alasan foto ini ada, jadi diperlakukan sebagai teks utama.
+                        Berlabel sama seperti di pop-up record supaya bacaannya konsisten. */}
                     {info?.uraian && (
                         <p className="text-center text-sm sm:text-base font-semibold text-white bg-white/10 rounded-xl px-4 py-2.5 line-clamp-3">
+                            <span className="text-white/60">Uraian : </span>
                             {info.uraian}
                         </p>
                     )}

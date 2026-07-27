@@ -174,11 +174,12 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                                 <SheetScopeBadge scope={record.scope} />
                             </div>
 
-                            {/* Uraian = pekerjaannya, jadi paling besar. Diberi label karena
-                                di sekelilingnya ada tanggal, item, dan pelapor — tanpa label,
-                                teks terbesar ini tidak menyebut dirinya kolom yang mana. */}
+                            {/* Uraian = pekerjaannya, jadi paling besar. Labelnya memakai JENIS
+                                record ("Critical: …" / "Maintenance: …") — sama seperti sel Link
+                                Foto di spreadsheet, supaya yang dibaca operator di kedua tempat
+                                berbunyi sama. */}
                             <p className="text-base font-bold text-neutral-900 mt-2 leading-snug">
-                                <span className="text-neutral-400 font-bold">Uraian : </span>
+                                <span className="text-neutral-400 font-bold">{kind.label}: </span>
                                 {record.uraian || '(tanpa uraian)'}
                             </p>
 

@@ -859,24 +859,37 @@ export function photoPageUrl(itemKey: string, uid: string): string {
     return `${base}/critical-maintenance?item=${encodeURIComponent(itemKey)}&foto=${encodeURIComponent(uid)}`;
 }
 
+/** Nama jenis record untuk dibaca manusia (sel spreadsheet & label di web). */
+export function recordKindLabel(kind: 'critical' | 'maintenance'): string {
+    return kind === 'critical' ? 'Critical' : 'Maintenance';
+}
+
 /**
  * Isi sel "Link Foto": kosong bila belum ada foto, HYPERLINK bila sudah.
  *
- * Labelnya menyebut ITEM baris itu ("📷 Foto P-02.10 D (3)"), bukan sekadar "Foto (3)",
- * dengan alasan yang sama seperti kode item di dalam web_uid: sel yang menyebut miliknya
- * sendiri membuat pergeseran baris terlihat mata. Kalau sel di baris Coal Feeder
- * berbunyi "Foto P-02.10 D", ada yang salah dan operator bisa langsung melihatnya.
+ * Labelnya menyebut JENIS + ITEM baris itu ("📷 Critical P-02.10 D (3)"), bukan sekadar
+ * "Foto (3)", dengan alasan yang sama seperti kode item di dalam ID: sel yang menyebut
+ * miliknya sendiri membuat pergeseran baris terlihat mata. Kalau sel di baris Coal Feeder
+ * berbunyi "Critical P-02.10 D", ada yang salah dan operator langsung melihatnya.
  *
  * `sep` WAJIB dari locale spreadsheet (lihat argSeparatorForLocale) — memakai pemisah
  * yang salah membuat selnya jadi #ERROR! alih-alih tautan.
  */
-export function photoCellFormula(count: number, url: string, sep: ArgSeparator, itemLabel = ''): string {
+export function photoCellFormula(
+    count: number,
+    url: string,
+    sep: ArgSeparator,
+    itemLabel = '',
+    kindLabel = '',
+): string {
     if (count <= 0) return '';
     // Tanda kutip ganda di dalam formula HYPERLINK di-escape dengan menggandakannya.
     const safeUrl = url.replace(/"/g, '""');
-    const label = itemLabel.trim()
-        ? `📷 Foto ${itemLabel.trim().replace(/"/g, '""')} (${count})`
-        : `📷 Foto (${count})`;
+    const escape = (v: string) => v.trim().replace(/"/g, '""');
+    // Ikon kamera sudah menyatakan "ini foto", jadi bagian teksnya dipakai untuk yang
+    // tidak bisa ditebak: jenis recordnya dan item mana.
+    const bagian = [escape(kindLabel), escape(itemLabel)].filter(Boolean).join(' ');
+    const label = bagian ? `📷 ${bagian} (${count})` : `📷 Foto (${count})`;
     return `=HYPERLINK("${safeUrl}"${sep}"${label}")`;
 }
 
@@ -898,7 +911,9 @@ export async function writePhotoCell(uid: string, count: number): Promise<boolea
     if (!loc || loc.photoColIndex === null) return false;
 
     const col = colLetter(loc.photoColIndex);
-    const value = photoCellFormula(count, photoPageUrl(loc.itemKey, uid), data.argSeparator, loc.itemLabel);
+    const value = photoCellFormula(
+        count, photoPageUrl(loc.itemKey, uid), data.argSeparator, loc.itemLabel, recordKindLabel(loc.kind),
+    );
     await withRetry(() => getSheetsClient().spreadsheets.values.update({
         spreadsheetId: sheetId(),
         range: `${quoteTab(loc!.tabTitle)}!${col}${loc!.rowIndex}`,

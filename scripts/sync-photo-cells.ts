@@ -27,7 +27,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-    photoCellFormula, photoPageUrl, recordItemKeys, rowItemLabel, uidMatchesRow,
+    photoCellFormula, photoPageUrl, recordItemKeys, rowItemLabel, uidMatchesRow, recordKindLabel,
     type ArgSeparator,
 } from '../lib/critical-sheet';
 
@@ -90,8 +90,9 @@ export function rencanakanSel(opts: {
     jumlahFoto: Map<string, number>;            // ID → jumlah foto di database
     hitunganUid: Map<string, number>;           // ID → berapa baris memakainya di sheet
     sep: ArgSeparator;
+    kind: 'critical' | 'maintenance';           // jenis tab — ikut jadi label sel
 }): RencanaSel {
-    const { headerRowIndex, rows, isiAt, jumlahFoto, hitunganUid, sep } = opts;
+    const { headerRowIndex, rows, isiAt, jumlahFoto, hitunganUid, sep, kind } = opts;
     const barisData = new Map<number, Baris>();
     for (const r of rows) barisData.set(r.rowIndex, r);
 
@@ -123,6 +124,7 @@ export function rencanakanSel(opts: {
                 photoPageUrl(recordItemKeys(baris.item, baris.varian)[0], baris.uid),
                 sep,
                 rowItemLabel(baris.item, baris.varian),
+                recordKindLabel(kind),
             )
             : '';
 
@@ -177,8 +179,8 @@ async function main() {
     const [criticalRows, maintenanceRows] = (values.data.valueRanges ?? []).map(v => (v.values ?? []) as string[][]);
 
     const tabs = [
-        { title: criticalTitle, parsed: parseCriticalTab(criticalRows ?? []) },
-        { title: maintenanceTitle, parsed: parseMaintenanceTab(maintenanceRows ?? []) },
+        { title: criticalTitle, kind: 'critical' as const, parsed: parseCriticalTab(criticalRows ?? []) },
+        { title: maintenanceTitle, kind: 'maintenance' as const, parsed: parseMaintenanceTab(maintenanceRows ?? []) },
     ];
 
     // ── Jumlah foto per ID ───────────────────────────────────────────────────
@@ -210,7 +212,7 @@ async function main() {
     let totalUbah = 0;
     const rencana: { title: string; col: string; tulis: { rowIndex: number; value: string }[] }[] = [];
 
-    for (const { title, parsed } of tabs) {
+    for (const { title, kind, parsed } of tabs) {
         console.log(`\n=== ${title} ===`);
         if (parsed.photoColIndex === null) {
             console.log('  kolom "Link Foto" belum ada — dilewati');
@@ -237,6 +239,7 @@ async function main() {
             jumlahFoto,
             hitunganUid,
             sep,
+            kind,
         });
 
         console.log(`  kolom Link Foto : ${col}`);

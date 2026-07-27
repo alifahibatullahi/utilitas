@@ -347,10 +347,10 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                         )}
                     </div>
                     {/* Uraian = alasan foto ini ada, jadi diperlakukan sebagai teks utama.
-                        Berlabel sama seperti di pop-up record supaya bacaannya konsisten. */}
+                        Berlabel jenis record, sama seperti pop-up record & sel Link Foto. */}
                     {info?.uraian && (
                         <p className="text-center text-sm sm:text-base font-semibold text-white bg-white/10 rounded-xl px-4 py-2.5 line-clamp-3">
-                            <span className="text-white/60">Uraian : </span>
+                            <span className="text-white/60">{kind.label}: </span>
                             {info.uraian}
                         </p>
                     )}

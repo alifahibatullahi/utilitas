@@ -62,7 +62,7 @@ async function main() {
     const { createClient } = await import('@supabase/supabase-js');
     const {
         parseCriticalTab, parseMaintenanceTab, buildRowUid, uidPrefixFor, rowItemLabel,
-        photoCellFormula, photoPageUrl, argSeparatorForLocale, recordItemKeys,
+        photoCellFormula, photoPageUrl, argSeparatorForLocale, recordItemKeys, recordKindLabel,
     } = await import('../lib/critical-sheet');
 
     const spreadsheetId = process.env.GOOGLE_SHEETS_CRITICAL_ID!;
@@ -101,8 +101,8 @@ async function main() {
     const [criticalRows, maintenanceRows] = (values.data.valueRanges ?? []).map(v => (v.values ?? []) as string[][]);
 
     const tabs = [
-        { title: criticalTitle, parsed: parseCriticalTab(criticalRows ?? []) },
-        { title: maintenanceTitle, parsed: parseMaintenanceTab(maintenanceRows ?? []) },
+        { title: criticalTitle, kind: 'critical' as const, parsed: parseCriticalTab(criticalRows ?? []) },
+        { title: maintenanceTitle, kind: 'maintenance' as const, parsed: parseMaintenanceTab(maintenanceRows ?? []) },
     ];
 
     // ── Susun peta uid lama → baru ───────────────────────────────────────────
@@ -205,7 +205,7 @@ async function main() {
     }
 
     // ── 4. Tulis ulang sel Link Foto ─────────────────────────────────────────
-    for (const { title, parsed } of tabs) {
+    for (const { title, kind, parsed } of tabs) {
         if (parsed.photoColIndex === null) continue;
         const col = colLetter(parsed.photoColIndex);
         const rows = parsed.rows as unknown as Baris[];
@@ -218,7 +218,9 @@ async function main() {
                 spreadsheetId,
                 range: `${quoteTab(title)}!${col}${r.rowIndex}`,
                 valueInputOption: 'USER_ENTERED',
-                requestBody: { values: [[photoCellFormula(count ?? 0, photoPageUrl(itemKey, baru), sep, rowItemLabel(r.item, r.varian))]] },
+                requestBody: { values: [[photoCellFormula(
+                    count ?? 0, photoPageUrl(itemKey, baru), sep, rowItemLabel(r.item, r.varian), recordKindLabel(kind),
+                )]] },
             });
             console.log(`✓ Link Foto ${title}!${col}${r.rowIndex} disegarkan`);
         }

@@ -15,6 +15,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
     extractCode,
     photoCellFormula,
+    totalMedia,
+    type MediaCount,
     photoCellLabel,
     photoPageUrl,
     recordItemKeys,
@@ -409,7 +411,7 @@ export function ringkasBaris(r: DbRow) {
  * tersimpan di R2 + Supabase dan spreadsheet hanyalah cermin.
  * Return false bila baris atau kolom Dokumentasi tidak ditemukan.
  */
-export async function writePhotoCell(uid: string, count: number, hint?: RowHint | null): Promise<boolean> {
+export async function writePhotoCell(uid: string, count: MediaCount, hint?: RowHint | null): Promise<boolean> {
     const meta = await queryTabsMeta();
     if (!meta) {
         console.warn('[critical-sheet-db] metadata tab belum ada — jalankan sync penuh dulu');
@@ -423,6 +425,7 @@ export async function writePhotoCell(uid: string, count: number, hint?: RowHint 
         count, photoPageUrl(loc.itemKey, uid), meta.argSeparator, loc.itemLabel, kindLabel,
     );
     await updatePhotoCell(loc.tabTitle, loc.photoColIndex, loc.rowIndex, value);
+    const ada = totalMedia(count) > 0;
 
     // Sel di sheet sudah berubah; samakan cerminnya sekarang juga. Tanpa ini foto pertama
     // sebuah baris terlihat "belum tersimpan" sampai sync berikutnya berjalan.
@@ -430,8 +433,8 @@ export async function writePhotoCell(uid: string, count: number, hint?: RowHint 
     await createAdmin()
         .from('critical_sheet_rows')
         .update({
-            uid: count > 0 ? uid : '',
-            link_foto: count > 0 ? photoCellLabel(count, loc.itemLabel, kindLabel) : '',
+            uid: ada ? uid : '',
+            link_foto: ada ? photoCellLabel(count, loc.itemLabel, kindLabel) : '',
         })
         .eq('kind', loc.kind)
         .eq('row_index', loc.rowIndex);

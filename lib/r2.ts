@@ -48,12 +48,16 @@ export function keyFromUrl(url: string): string {
   return url.replace(`${R2_BASE_URL}/`, '');
 }
 
-export const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/heic',
-];
-
-export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+// Batas & daftar tipe hidup di lib/upload-limits.ts (tanpa impor apa pun) supaya komponen
+// browser bisa memakainya tanpa ikut menyeret @aws-sdk/client-s3 ke dalam bundle.
+// Diteruskan kembali di sini agar impor lama dari '@/lib/r2' tetap jalan.
+export {
+  ALLOWED_IMAGE_MIME_TYPES,
+  ALLOWED_VIDEO_MIME_TYPES,
+  ALLOWED_MIME_TYPES,
+  MAX_UPLOAD_BYTES,
+  MAX_SERVER_FETCH_BYTES,
+  mediaKindOf,
+  formatBytes,
+  type MediaKind,
+} from './upload-limits';

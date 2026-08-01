@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOperator } from '@/hooks/useOperator';
-import { compressImage } from '@/lib/image-compression';
-import { fetchSheetPhotos, itemLabel, type SheetPhoto } from './types';
+import { compressImageToFit } from '@/lib/image-compression';
+import { MAX_UPLOAD_BYTES, mediaKindOf, formatBytes } from '@/lib/upload-limits';
+import { fetchSheetPhotos, itemLabel, mediaSummary, type SheetPhoto } from './types';
 import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
-import { PhotoImg, PhotoLightbox, PHOTO_KIND, type PhotoRecordInfo } from './PhotoViewer';
+import { MediaThumb, PhotoLightbox, PHOTO_KIND, type PhotoRecordInfo } from './PhotoViewer';
 
 /** Record (satu baris sheet) yang jadi pemilik foto. */
 export interface PhotoRecordTarget extends PhotoRecordInfo {
@@ -79,7 +80,9 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
     }, [onCountChange, uid]);
 
     const handleFiles = useCallback(async (files: FileList | File[] | null) => {
-        const list = files ? Array.from(files).filter(f => f.type.startsWith('image/')) : [];
+        // Foto DAN video sama-sama diterima; yang tipenya di luar keduanya diabaikan diam-diam
+        // (mis. operator tak sengaja menjatuhkan PDF ke area unggah).
+        const list = files ? Array.from(files).filter(f => mediaKindOf(f.type) !== null) : [];
         if (list.length === 0) return;
         setError(null);
         setUploading(true);
@@ -87,9 +90,23 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         let next = photos;
         let uidSaatIni = uid;
         for (const file of list) {
-            const compressed = await compressImage(file).catch(() => file);
+            // Foto dikecilkan sampai muat; video tidak bisa di-transcode di browser, jadi
+            // ia lewat apa adanya dan hanya bisa ditolak kalau kebesaran.
+            const siap = await compressImageToFit(file, MAX_UPLOAD_BYTES).catch(() => file);
+            if (siap.size > MAX_UPLOAD_BYTES) {
+                // Dihentikan DI SINI, bukan dibiarkan ke server: Vercel menolak body di atas
+                // 4,5 MB sebelum kode server berjalan, jadi operator hanya akan melihat
+                // kegagalan tanpa sebab. Pesannya menyebut ukuran nyata dan jalan keluarnya.
+                setError(
+                    mediaKindOf(file.type) === 'video'
+                        ? `Video "${file.name}" ${formatBytes(siap.size)} — maksimal ${formatBytes(MAX_UPLOAD_BYTES)}. `
+                          + 'Rekam lebih pendek (±15 detik) atau turunkan resolusi kamera ke 720p.'
+                        : `Foto "${file.name}" tetap ${formatBytes(siap.size)} setelah dikecilkan — maksimal ${formatBytes(MAX_UPLOAD_BYTES)}.`,
+                );
+                break;
+            }
             const form = new FormData();
-            form.append('file', compressed);
+            form.append('file', siap);
             form.append('parent_kind', record.kind);
             // Sudah punya uid → pakai itu. Belum → tunjukkan barisnya lewat nomor baris +
             // sidik jari isinya, dan server yang menerbitkan uid-nya.
@@ -238,7 +255,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept="image/*"
+                            accept="image/*,video/*"
                             multiple
                             className="hidden"
                             onChange={e => handleFiles(e.target.files)}
@@ -251,7 +268,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                             <span className={`material-symbols-outlined ${uploading ? 'animate-spin' : ''}`} style={{ fontSize: 18 }}>
                                 {uploading ? 'progress_activity' : 'add_a_photo'}
                             </span>
-                            {uploading ? 'Mengupload…' : 'Upload foto'}
+                            {uploading ? 'Mengupload…' : 'Upload foto / video'}
                         </button>
                         {photos.length > 0 && (
                             <button
@@ -263,7 +280,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                             </button>
                         )}
                         <span className="text-[11px] font-bold text-neutral-400">
-                            {loading ? 'Memuat…' : `${photos.length} foto`}
+                            {loading ? 'Memuat…' : (mediaSummary(photos) || 'Belum ada')}
                         </span>
                         {error && <span className="text-[11px] text-red-600 font-semibold">{error}</span>}
                     </div>
@@ -307,7 +324,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                                             }`}
                                             title={photo.caption || photo.filename}
                                         >
-                                            <PhotoImg photo={photo} className="w-full h-full object-cover" eager />
+                                            <MediaThumb photo={photo} className="w-full h-full object-cover" eager />
                                         </button>
                                         {isDeleting ? (
                                             // Menghapus perlu jalan bolak-balik ke server + tulis ulang sel

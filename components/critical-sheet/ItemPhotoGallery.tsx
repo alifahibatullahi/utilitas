@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type { RecentEntry, SheetPhoto } from './types';
-import { PhotoImg, PhotoLightbox, PHOTO_KIND } from './PhotoViewer';
+import { MediaThumb, PhotoLightbox, PHOTO_KIND } from './PhotoViewer';
 
 interface ItemPhotoGalleryProps {
     /** Semua foto item (gabungan seluruh record) — sudah di-batch fetch oleh parent. */
@@ -60,7 +60,7 @@ export default function ItemPhotoGallery({ photos, records }: ItemPhotoGalleryPr
                             className={`relative aspect-square rounded-xl overflow-hidden border-2 ${kind.frame} hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 bg-neutral-100 cursor-pointer`}
                             title={photo.caption || photo.filename}
                         >
-                            <PhotoImg photo={photo} className="w-full h-full object-cover" />
+                            <MediaThumb photo={photo} className="w-full h-full object-cover" />
                             <span className={`absolute top-1.5 left-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold backdrop-blur-sm ${kind.chip}`}>
                                 <span className="material-symbols-outlined" style={{ fontSize: 11 }}>{kind.icon}</span>
                                 {kind.label}

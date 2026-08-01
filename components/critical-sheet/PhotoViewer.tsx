@@ -140,6 +140,63 @@ export function PhotoImg({ photo, className, eager = false }: {
     );
 }
 
+/**
+ * Pemutar video record. Sumbernya SELALU proxy aplikasi — sama seperti foto, karena
+ * jaringan kantor membuang paket ke `*.r2.dev`. Bedanya, video tidak punya cadangan
+ * "coba langsung ke R2": kalau proxy gagal, gagal saja dengan jujur.
+ */
+export function VideoPlayer({ photo, className, autoPlay = false }: {
+    photo: SheetPhoto;
+    className?: string;
+    autoPlay?: boolean;
+}) {
+    const [gagal, setGagal] = useState(false);
+
+    if (gagal) {
+        return (
+            <div className={`${className ?? ''} flex flex-col items-center justify-center gap-1 bg-neutral-900 text-neutral-400`}>
+                <span className="material-symbols-outlined" style={{ fontSize: 26 }}>videocam_off</span>
+                <span className="text-[11px] font-bold">Video gagal dimuat</span>
+            </div>
+        );
+    }
+
+    return (
+        <video
+            key={photo.id}
+            src={photoSrc(photo)}
+            className={className}
+            controls
+            playsInline
+            autoPlay={autoPlay}
+            // metadata saja: jangan tarik seluruh berkas sebelum operator menekan play,
+            // kuota data lapangan mahal dan bandwidth Vercel terbatas.
+            preload="metadata"
+            onError={() => setGagal(true)}
+        />
+    );
+}
+
+/** Ubin galeri: foto tampil apa adanya, video tampil gelap dengan lencana putar. */
+export function MediaThumb({ photo, className, eager = false }: {
+    photo: SheetPhoto;
+    className?: string;
+    eager?: boolean;
+}) {
+    if (photo.media_kind !== 'video') {
+        return <PhotoImg photo={photo} className={className} eager={eager} />;
+    }
+    // Sengaja BUKAN <video> — memuat metadata puluhan video sekaligus di halaman item
+    // membuat jaringan lapangan tersendat. Ubinnya statis; berkasnya baru disentuh saat
+    // operator membukanya.
+    return (
+        <div className={`${className ?? ''} flex flex-col items-center justify-center gap-1 bg-neutral-800 text-white/80`}>
+            <span className="material-symbols-outlined" style={{ fontSize: 30 }}>play_circle</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide">Video</span>
+        </div>
+    );
+}
+
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 1.4;
@@ -168,6 +225,7 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
     const dragFrom = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
     const pinchFrom = useRef<{ dist: number; zoom: number } | null>(null);
     const photo = photos[index];
+    const isVideo = photo?.media_kind === 'video';
 
     const resetZoom = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
@@ -243,8 +301,10 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                 <span className="px-2.5 py-1 rounded-full bg-black/40 text-white/90 text-xs font-semibold">
                     {index + 1} / {photos.length}
                 </span>
-                {/* Kontrol zoom: tetap terlihat supaya operator tahu fiturnya ada. */}
-                <div className="flex items-center rounded-full bg-black/40 overflow-hidden" onClick={e => e.stopPropagation()}>
+                {/* Kontrol zoom: tetap terlihat supaya operator tahu fiturnya ada.
+                    Disembunyikan untuk video — tombol yang tidak melakukan apa-apa lebih
+                    membingungkan daripada tidak ada tombol sama sekali. */}
+                <div className={`flex items-center rounded-full bg-black/40 overflow-hidden ${isVideo ? 'hidden' : ''}`} onClick={e => e.stopPropagation()}>
                     <button
                         onClick={() => zoomBy(1 / ZOOM_STEP)}
                         disabled={zoom <= ZOOM_MIN}
@@ -296,6 +356,17 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                 </>
             )}
             <div className="relative flex flex-col items-center gap-3 w-full max-w-4xl max-h-[92vh]" onClick={e => e.stopPropagation()}>
+                {isVideo ? (
+                    // Video tidak ikut zoom/pan: gerakan jari di sini milik kontrol pemutar
+                    // (geser posisi, volume). Memasang handler zoom di atasnya membuat
+                    // kontrolnya susah dipakai di HP tanpa memberi manfaat apa pun.
+                    <div
+                        className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black flex items-center justify-center w-full"
+                        style={{ height: 'min(70vh, calc(92vh - 160px))' }}
+                    >
+                        <VideoPlayer photo={photo} className="max-w-full max-h-full" />
+                    </div>
+                ) : (
                 <div
                     className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black/40 flex items-center justify-center w-full touch-none"
                     style={{ height: 'min(70vh, calc(92vh - 160px))', cursor: zoom > 1 ? (dragFrom.current ? 'grabbing' : 'grab') : 'zoom-in' }}
@@ -329,6 +400,7 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                         <PhotoImg photo={photo} className="max-w-full max-h-full object-contain select-none" eager />
                     </div>
                 </div>
+                )}
 
                 {/* Label konteks: jenis + tanggal, lalu status/scope/pelapor, lalu uraian. */}
                 <div className="w-full max-w-3xl space-y-2">

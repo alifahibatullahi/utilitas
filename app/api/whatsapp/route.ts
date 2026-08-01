@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadToR2, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
+import { uploadToR2, MAX_SERVER_FETCH_BYTES } from '@/lib/r2';
 import { createAdminClient, sendFonnteText } from '@/lib/whatsapp';
 
 // ─── POST — Fonnte webhook (incoming message) ───
@@ -93,8 +93,8 @@ async function processMessage(body: FonnteWebhookBody, supabaseAdmin: any) {
   }
 
   // ── Validasi ukuran ──
-  if (imageBuffer.length > MAX_FILE_SIZE_BYTES) {
-    await sendFonnteText(sender, '❌ Ukuran foto terlalu besar (max 10MB).');
+  if (imageBuffer.length > MAX_SERVER_FETCH_BYTES) {
+    await sendFonnteText(sender, `❌ Ukuran foto terlalu besar (max ${MAX_SERVER_FETCH_BYTES / 1024 / 1024}MB).`);
     return;
   }
 

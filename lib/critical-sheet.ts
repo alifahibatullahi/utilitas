@@ -952,13 +952,13 @@ export function recordKindLabel(kind: 'critical' | 'maintenance'): string {
  * yang salah membuat selnya jadi #ERROR! alih-alih tautan.
  */
 export function photoCellFormula(
-    count: number,
+    count: number | MediaCount,
     url: string,
     sep: ArgSeparator,
     itemLabel = '',
     kindLabel = '',
 ): string {
-    if (count <= 0) return '';
+    if (totalMedia(count) <= 0) return '';
     // Tanda kutip ganda di dalam formula HYPERLINK di-escape dengan menggandakannya.
     const safeUrl = url.replace(/"/g, '""');
     return `=HYPERLINK("${safeUrl}"${sep}"${photoCellLabel(count, itemLabel, kindLabel)}")`;
@@ -968,12 +968,29 @@ export function photoCellFormula(
  * Teks yang TERLIHAT di sel Dokumentasi — juga yang tersimpan di cermin Postgres, karena
  * dari sheet yang terbaca memang tampilannya (FORMATTED_VALUE), bukan formulanya.
  */
-export function photoCellLabel(count: number, itemLabel = '', kindLabel = ''): string {
+export function photoCellLabel(count: number | MediaCount, itemLabel = '', kindLabel = ''): string {
     const escape = (v: string) => v.trim().replace(/"/g, '""');
-    // Ikon kamera sudah menyatakan "ini foto", jadi bagian teksnya dipakai untuk yang
-    // tidak bisa ditebak: jenis recordnya dan item mana.
+    const c = normalizeMediaCount(count);
+    // Angkanya TOTAL media, tanpa kata "foto"/"video" — selnya duduk di antara kolom yang
+    // dibaca cepat, jadi ia harus sependek mungkin. Jenisnya disampaikan lewat ikon saja:
+    // record berisi video jangan berikon kamera foto, operator akan salah menduga isinya.
+    const ikon = c.video > 0 ? (c.foto > 0 ? '📷🎬' : '🎬') : '📷';
+    const total = c.foto + c.video;
     const bagian = [escape(kindLabel), escape(itemLabel)].filter(Boolean).join(' ');
-    return bagian ? `📷 ${bagian} (${count})` : `📷 Foto (${count})`;
+    return bagian ? `${ikon} ${bagian} (${total})` : `${ikon} Dokumentasi (${total})`;
+}
+
+/** Jumlah media satu baris, dipisah per jenis — sel Dokumentasi menyebut keduanya. */
+export interface MediaCount { foto: number; video: number }
+
+/** Angka telanjang = jumlah foto (bentuk lama, dari sebelum video ada). */
+function normalizeMediaCount(c: number | MediaCount): MediaCount {
+    return typeof c === 'number' ? { foto: c, video: 0 } : c;
+}
+
+export function totalMedia(c: number | MediaCount): number {
+    const n = normalizeMediaCount(c);
+    return n.foto + n.video;
 }
 
 /**

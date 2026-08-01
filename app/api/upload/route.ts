@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { uploadToR2, deleteFromR2, keyFromUrl, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
+import { uploadToR2, deleteFromR2, keyFromUrl, ALLOWED_MIME_TYPES, MAX_UPLOAD_BYTES } from '@/lib/r2';
 
 export async function POST(req: NextRequest) {
   // ── Early env validation: surface missing config dengan pesan yang jelas ──
@@ -47,9 +47,9 @@ export async function POST(req: NextRequest) {
         { status: 415 },
       );
     }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
-        { error: `Ukuran file terlalu besar. Maksimal ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB` },
+        { error: `Ukuran file terlalu besar. Maksimal ${MAX_UPLOAD_BYTES / 1024 / 1024}MB` },
         { status: 413 },
       );
     }

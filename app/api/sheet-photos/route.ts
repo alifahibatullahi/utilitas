@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { uploadToR2, deleteFromR2, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
+import { uploadToR2, deleteFromR2, MAX_UPLOAD_BYTES, mediaKindOf, formatBytes } from '@/lib/r2';
 import { syncPhotoCell } from '@/lib/sheet-photo-sync';
 import { resolveRowForUpload, ringkasBaris, uidsTerpakai } from '@/lib/critical-sheet-db';
 import { buildRowUid } from '@/lib/critical-sheet';
@@ -78,20 +78,23 @@ export async function POST(req: NextRequest) {
             }
             rowUid = buildRowUid(barisBaru.row.item, barisBaru.row.varian, await uidsTerpakai());
         }
-        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+        const mediaKind = mediaKindOf(file.type);
+        if (mediaKind === null) {
             return NextResponse.json(
-                { error: 'Tipe file tidak didukung. Gunakan: JPEG, PNG, WebP, atau GIF' },
+                { error: 'Tipe file tidak didukung. Foto: JPEG, PNG, WebP, GIF. Video: MP4, WebM, MOV.' },
                 { status: 415 },
             );
         }
-        if (file.size > MAX_FILE_SIZE_BYTES) {
+        if (file.size > MAX_UPLOAD_BYTES) {
+            // Jarang tercapai: klien sudah menyaringnya lebih dulu, dan body di atas 4,5 MB
+            // malah ditolak Vercel sebelum sampai sini. Tetap dijaga karena API ini publik.
             return NextResponse.json(
-                { error: `Ukuran file terlalu besar. Maksimal ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB` },
+                { error: `Ukuran file terlalu besar (${formatBytes(file.size)}). Maksimal ${formatBytes(MAX_UPLOAD_BYTES)}.` },
                 { status: 413 },
             );
         }
 
-        const ext        = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+        const ext        = file.name.split('.').pop()?.toLowerCase() ?? (mediaKind === 'video' ? 'mp4' : 'jpg');
         const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const r2Key      = `photos/sheet-${parentKind}/${rowUid}/${uniqueName}`;
 
@@ -117,6 +120,8 @@ export async function POST(req: NextRequest) {
                 row_uid:     rowUid,
                 url:         publicUrl,
                 filename:    file.name,
+                media_kind:  mediaKind,
+                mime_type:   file.type,
                 caption:     caption?.trim() || null,
                 uploaded_via: 'app',
                 uploaded_by: uploadedBy ?? null,

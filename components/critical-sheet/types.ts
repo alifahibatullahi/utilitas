@@ -77,9 +77,25 @@ export interface SheetPhoto {
      *  <img> — lihat photoSrc(). Dipakai sebagai cadangan bila proxy gagal. */
     url: string;
     filename: string;
+    /** Satu record bisa berisi foto DAN video. Baris lama (sebelum video ada) = 'photo'. */
+    media_kind: 'photo' | 'video';
+    /** MIME asli — menentukan <source type> saat memutar video. Bisa null di baris lama. */
+    mime_type: string | null;
     caption: string | null;
     uploaded_by: string | null;
     created_at: string;
+}
+
+/** Baris lama bisa belum punya media_kind; anggap foto. */
+export function isVideo(p: SheetPhoto): boolean {
+    return p.media_kind === 'video';
+}
+
+/** "3 foto" / "1 video" / "3 foto, 1 video" — kosong bila tidak ada apa-apa. */
+export function mediaSummary(items: SheetPhoto[]): string {
+    const video = items.filter(isVideo).length;
+    const foto = items.length - video;
+    return [foto ? `${foto} foto` : '', video ? `${video} video` : ''].filter(Boolean).join(', ');
 }
 
 /**

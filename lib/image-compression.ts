@@ -13,6 +13,12 @@ export interface CompressOptions {
     quality?: number;
     /** Force output format. Default 'image/jpeg'. */
     mimeType?: string;
+    /**
+     * Lewati jalan pintas "sudah kecil" dan "GIF dibiarkan". Dipakai compressImageToFit,
+     * yang justru dipanggil ketika berkasnya TERLALU BESAR — di situ mempertahankan
+     * animasi GIF kalah penting dibanding upload yang berhasil sama sekali.
+     */
+    paksa?: boolean;
 }
 
 /**
@@ -24,13 +30,14 @@ export async function compressImage(file: File, opts: CompressOptions = {}): Pro
         maxDimension = 1600,
         quality = 0.8,
         mimeType = 'image/jpeg',
+        paksa = false,
     } = opts;
 
     // Skip kalau bukan image atau sudah sangat kecil
     if (!file.type.startsWith('image/')) return file;
-    if (file.size <= 200 * 1024) return file;
+    if (!paksa && file.size <= 200 * 1024) return file;
     // GIF: skip (compression akan hilangkan animasi)
-    if (file.type === 'image/gif') return file;
+    if (!paksa && file.type === 'image/gif') return file;
 
     try {
         const bitmap = await loadBitmap(file);
@@ -68,6 +75,43 @@ export async function compressImage(file: File, opts: CompressOptions = {}): Pro
         // Fallback ke original kalau compression error
         return file;
     }
+}
+
+/**
+ * Kompres sampai benar-benar MUAT di bawah `maxBytes`, bukan sekadar "dikecilkan".
+ *
+ * compressImage() saja tidak cukup karena tiga jalan keluarnya mengembalikan berkas ASLI
+ * apa adanya, dan semuanya berakhir sebagai 413 mentah dari Vercel yang tak bisa dibaca
+ * operator:
+ *   - HEIC (foto bawaan iPhone) tidak bisa di-decode Chrome/Firefox → masuk `catch`;
+ *   - GIF sengaja dilewati agar animasinya tidak hilang;
+ *   - hasil kompresi yang ternyata lebih besar dari aslinya.
+ *
+ * Di sini setiap percobaan diperiksa ukurannya, dan mutunya diturunkan bertahap sampai
+ * muat. Yang gagal total dikembalikan apa adanya — pemanggil yang memutuskan menolaknya
+ * dengan pesan yang jelas, karena hanya dia yang tahu konteksnya.
+ */
+export async function compressImageToFit(file: File, maxBytes: number): Promise<File> {
+    if (file.size <= maxBytes && file.type !== 'image/heic') return file;
+    if (!file.type.startsWith('image/')) return file;   // video tidak di-transcode di browser
+
+    // Turun bertahap: jaga mutu selama masih muat, baru korbankan kalau perlu.
+    const tahap: CompressOptions[] = [
+        { maxDimension: 1600, quality: 0.8 },
+        { maxDimension: 1280, quality: 0.7 },
+        { maxDimension: 1024, quality: 0.6 },
+        { maxDimension: 800,  quality: 0.5 },
+    ];
+
+    let terkecil = file;
+    for (const opts of tahap) {
+        // paksaKompresi: lewati jalan pintas "sudah kecil"/"GIF" di compressImage —
+        // di sini justru berkas besar itulah yang harus ditangani.
+        const hasil = await compressImage(file, { ...opts, paksa: true }).catch(() => file);
+        if (hasil.size < terkecil.size) terkecil = hasil;
+        if (hasil.size <= maxBytes) return hasil;
+    }
+    return terkecil;
 }
 
 interface BitmapLike {

@@ -21,11 +21,15 @@ export async function syncPhotoCell(rowUid: string): Promise<void> {
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!,
         );
-        const { count, error } = await supabase
+        // Dihitung per JENIS, bukan satu angka: sel Dokumentasi menyebut "3 foto, 1 video",
+        // dan record yang isinya video saja tidak boleh berikon kamera foto.
+        const { data: media, error } = await supabase
             .from('sheet_photos')
-            .select('id', { count: 'exact', head: true })
+            .select('media_kind')
             .eq('row_uid', rowUid);
         if (error) throw error;
+        const video = (media ?? []).filter(m => m.media_kind === 'video').length;
+        const count = { foto: (media?.length ?? 0) - video, video };
 
         // Sidik jari baris ikut diambil: untuk foto PERTAMA sebuah baris, sel Dokumentasi
         // masih kosong, jadi uid-nya belum bisa dipakai mencari barisnya. Sidik jari
@@ -48,7 +52,7 @@ export async function syncPhotoCell(rowUid: string): Promise<void> {
             }
             : null;
 
-        const written = await writePhotoCell(rowUid, count ?? 0, hint);
+        const written = await writePhotoCell(rowUid, count, hint);
         if (!written) {
             console.warn(`[sheet-photo-sync] baris ${rowUid} atau kolom "Dokumentasi" tidak ditemukan — sel dilewati`);
         }

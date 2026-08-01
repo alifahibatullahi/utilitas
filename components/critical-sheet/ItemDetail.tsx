@@ -6,7 +6,7 @@ import { fetchItemDetail, fetchSheetPhotos, itemLabel } from './types';
 import ItemSpecSection from './ItemSpecSection';
 import ItemPhotoGallery from './ItemPhotoGallery';
 import RecordPhotoModal, { type PhotoRecordTarget } from './RecordPhotoModal';
-import { C, RecordCards, RecordTable, type RowActions } from './RecordColumns';
+import { C, RecordCards, RecordTable, rowKey, type RowActions } from './RecordColumns';
 
 /**
  * Kolom riwayat item = kolom daftar awal dikurangi "Nama & Nomor Item" (sudah jadi judul
@@ -32,13 +32,14 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [photos, setPhotos] = useState<SheetPhoto[]>([]);
+    /** Kunci baris yang modalnya terbuka: `kind:rowIndex`, atau uid bila datang dari deep-link. */
     const [openUid, setOpenUid] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
         setError(null);
-        fetchItemDetail(itemKey)
+        fetchItemDetail(itemKey, reloadKey || undefined)
             .then(d => { if (!cancelled) setData(d); })
             .catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'Gagal memuat'); })
             .finally(() => { if (!cancelled) setLoading(false); });
@@ -58,19 +59,24 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
         const merged: RecentEntry[] = [
             ...data.criticals.map(c => ({
                 ...shared,
-                uid: c.uid, kind: 'critical' as const, tanggal: c.tanggal, tanggalRaw: c.tanggalRaw,
+                uid: c.uid, rowIndex: c.rowIndex, sig: c.sig ?? '',
+                kind: 'critical' as const, tanggal: c.tanggal, tanggalRaw: c.tanggalRaw,
                 shift: '', variant: c.varian, uraian: c.uraian, notifikasi: c.notif,
                 scope: c.scope, status: c.status, pelapor: c.pelapor, foreman: '',
                 tanggalOkRaw: c.tanggalOkRaw,
             })),
             ...data.maintenances.map(m => ({
                 ...shared,
-                uid: m.uid, kind: 'maintenance' as const, tanggal: m.tanggal, tanggalRaw: m.tanggalRaw,
+                uid: m.uid, rowIndex: m.rowIndex, sig: m.sig ?? '',
+                kind: 'maintenance' as const, tanggal: m.tanggal, tanggalRaw: m.tanggalRaw,
                 shift: m.shift, variant: m.varian, uraian: m.uraian, notifikasi: m.notifikasi,
                 scope: m.scope, status: m.status, pelapor: '', foreman: m.foreman,
                 tanggalOkRaw: '',
             })),
-        ].filter(r => r.uid);
+        ];
+        // Dulu di sini ada `.filter(r => r.uid)`. Tidak berdampak selama SEMUA baris punya
+        // ID, tapi sekarang uid hanya dimiliki baris yang sudah berfoto — filter itu akan
+        // menyembunyikan hampir seluruh riwayat item. Riwayat ditampilkan apa adanya.
         // Terbaru dulu; baris tanpa tanggal yang bisa dibaca ditaruh paling akhir.
         merged.sort((a, b) => {
             if (a.tanggal && b.tanggal) return b.tanggal.localeCompare(a.tanggal);
@@ -81,7 +87,8 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
         return merged;
     }, [data]);
 
-    const allUids = useMemo(() => records.map(r => r.uid), [records]);
+    // Hanya baris yang sudah punya uid yang bisa punya foto — sisanya tak perlu ditanyakan.
+    const allUids = useMemo(() => records.map(r => r.uid).filter(Boolean), [records]);
 
     useEffect(() => {
         if (allUids.length === 0) { setPhotos([]); return; }
@@ -110,12 +117,16 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
     }, [focusUid, data, records, onFocusHandled]);
 
     // Record yang sedang dibuka modalnya, lengkap dengan konteks item untuk link & judul.
+    // Dicari lewat kunci baris (`kind:rowIndex`), bukan uid: baris yang belum berfoto
+    // belum punya uid, dan justru baris itulah yang paling sering perlu ditambahi foto.
     const openRecord = useMemo<PhotoRecordTarget | null>(() => {
         if (!openUid || !data) return null;
-        const src = records.find(r => r.uid === openUid);
+        const src = records.find(r => rowKey(r) === openUid || (r.uid && r.uid === openUid));
         if (!src) return null;
         return {
             uid: src.uid,
+            rowIndex: src.rowIndex,
+            sig: src.sig,
             kind: src.kind,
             itemKey: data.key,
             itemName: data.itemName,
@@ -137,7 +148,7 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
     // Tanpa onSelect: tombol "Detail" tidak ada gunanya, halaman itemnya sudah di sini.
     const rowActionsFor = useCallback((e: RecentEntry): RowActions => ({
         photoCount: photoCounts[e.uid] ?? 0,
-        onOpenPhoto: () => setOpenUid(e.uid),
+        onOpenPhoto: () => setOpenUid(rowKey(e)),
     }), [photoCounts]);
 
     return (
@@ -217,7 +228,7 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
 
                     {openRecord && (
                         <RecordPhotoModal
-                            key={openRecord.uid}
+                            key={openRecord.uid || `${openRecord.kind}:${openRecord.rowIndex}`}
                             record={openRecord}
                             onClose={() => setOpenUid(null)}
                             onCountChange={handleCountChange}

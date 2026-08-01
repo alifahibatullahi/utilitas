@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToR2, deleteFromR2, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '@/lib/r2';
 import { syncPhotoCell } from '@/lib/sheet-photo-sync';
+import { resolveRowForUpload, ringkasBaris, uidsTerpakai } from '@/lib/critical-sheet-db';
+import { buildRowUid } from '@/lib/critical-sheet';
 
 /**
  * Foto fitur Critical Maintenance berbasis Sheets (/critical-maintenance).
@@ -37,9 +39,11 @@ export async function POST(req: NextRequest) {
         const formData   = await req.formData();
         const file       = formData.get('file')        as File   | null;
         const parentKind = formData.get('parent_kind') as string | null;
-        const rowUid     = formData.get('row_uid')     as string | null;
         const caption    = formData.get('caption')     as string | null;
         const uploadedBy = formData.get('uploaded_by') as string | null;
+        const rowIndex   = parseInt((formData.get('row_index') as string) ?? '', 10);
+        const sig        = ((formData.get('sig') as string) ?? '').trim();
+        let   rowUid     = ((formData.get('row_uid') as string) ?? '').trim();
 
         if (!file) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -47,8 +51,32 @@ export async function POST(req: NextRequest) {
         if (parentKind !== 'critical' && parentKind !== 'maintenance') {
             return NextResponse.json({ error: 'parent_kind harus critical atau maintenance' }, { status: 400 });
         }
+
+        // ── Baris yang belum pernah difoto ───────────────────────────────────
+        // Identitas baris lahir DI SINI, bukan saat sheet dibaca: app tidak lagi menulis
+        // ID ke 27rb baris hanya supaya segelintir di antaranya bisa dilampiri foto.
+        let barisBaru: Awaited<ReturnType<typeof resolveRowForUpload>> = null;
         if (!rowUid) {
-            return NextResponse.json({ error: 'row_uid required' }, { status: 400 });
+            if (!Number.isFinite(rowIndex) || !sig) {
+                return NextResponse.json(
+                    { error: 'row_uid, atau row_index + sig, wajib diisi' },
+                    { status: 400 },
+                );
+            }
+            barisBaru = await resolveRowForUpload(parentKind, rowIndex, sig);
+            if (!barisBaru) {
+                return NextResponse.json({
+                    error: 'Baris tidak ditemukan lagi di spreadsheet — mungkin sudah diubah atau dihapus. '
+                         + 'Tekan "Perbarui data" lalu coba lagi.',
+                }, { status: 404 });
+            }
+            if ('ambigu' in barisBaru) {
+                return NextResponse.json({
+                    error: 'Ada beberapa baris dengan isi yang sama persis — pilih barisnya lewat spreadsheet.',
+                    kandidat: barisBaru.kandidat.map(ringkasBaris),
+                }, { status: 409 });
+            }
+            rowUid = buildRowUid(barisBaru.row.item, barisBaru.row.varian, await uidsTerpakai());
         }
         if (!ALLOWED_MIME_TYPES.includes(file.type)) {
             return NextResponse.json(
@@ -70,6 +98,18 @@ export async function POST(req: NextRequest) {
         const buffer    = Buffer.from(await file.arrayBuffer());
         const publicUrl = await uploadToR2(r2Key, buffer, file.type);
 
+        // Sidik jari isi baris ikut disimpan: kalau kelak sel Dokumentasi terhapus atau
+        // tergeser, inilah satu-satunya cara mengetahui foto ini milik baris yang mana.
+        const sidikJari = barisBaru && !('ambigu' in barisBaru)
+            ? {
+                row_index:   barisBaru.row.row_index,
+                row_item:    barisBaru.row.item,
+                row_varian:  barisBaru.row.varian,
+                row_uraian:  barisBaru.row.uraian,
+                row_tanggal: barisBaru.row.tanggal_raw,
+            }
+            : {};
+
         const { data, error: dbErr } = await getAdmin()
             .from('sheet_photos')
             .insert({
@@ -80,6 +120,7 @@ export async function POST(req: NextRequest) {
                 caption:     caption?.trim() || null,
                 uploaded_via: 'app',
                 uploaded_by: uploadedBy ?? null,
+                ...sidikJari,
             })
             .select()
             .single();
@@ -89,10 +130,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: dbErr.message }, { status: 500 });
         }
 
-        // Cermin ke kolom "Link Foto" di spreadsheet. Menelan errornya sendiri.
+        // Cermin ke kolom "Dokumentasi" di spreadsheet. Menelan errornya sendiri.
         await syncPhotoCell(rowUid);
 
-        return NextResponse.json({ photo: data }, { status: 201 });
+        // `rowUid` dikembalikan supaya klien tahu uid yang baru saja lahir untuk baris
+        // yang tadinya belum punya — foto berikutnya di baris itu langsung memakainya.
+        return NextResponse.json({ photo: data, rowUid }, { status: 201 });
     } catch (err) {
         console.error('[sheet-photos/POST]', err);
         const message = err instanceof Error ? err.message : String(err);

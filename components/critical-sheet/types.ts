@@ -1,7 +1,12 @@
 /** Tipe client untuk viewer /critical-maintenance (item-centric; mirror payload API). */
 
+/**
+ * `uid` KOSONG untuk baris yang belum pernah difoto — identitasnya baru lahir saat foto
+ * pertama tersimpan. Sampai saat itu barisnya dikenali lewat `rowIndex` + `sig`.
+ */
 export interface SheetCritical {
     uid: string;
+    sig?: string;
     rowIndex: number;
     no: number | null;
     tanggal: string | null;
@@ -15,13 +20,14 @@ export interface SheetCritical {
     status: string;
     tanggalOk: string | null;
     tanggalOkRaw: string;
+    gabungan?: string;
+    linkFoto?: string;
     pengOk: string;
-    gabungan: string;
-    linkFoto: string;
 }
 
 export interface SheetMaintenance {
     uid: string;
+    sig?: string;
     rowIndex: number;
     no: number | null;
     tanggal: string | null;
@@ -34,8 +40,8 @@ export interface SheetMaintenance {
     status: string;
     notifikasi: string;
     foreman: string;
-    gabungan: string;
-    linkFoto: string;
+    gabungan?: string;
+    linkFoto?: string;
 }
 
 export interface ItemDetailResponse {
@@ -106,8 +112,12 @@ export function photoProxySrc(id: string): string {
 /** Satu baris daftar record. Kolom khas satu tab diisi '' di tab lainnya
  *  (shift → maintenance, tanggalOk → critical). */
 export interface RecentEntry {
+    /** '' selama baris itu belum berfoto. Jangan dipakai sebagai React key — lihat rowKey(). */
     uid: string;
     kind: 'critical' | 'maintenance';
+    /** Baris sheet 1-based + sidik jari isinya: identitas baris yang belum punya uid. */
+    rowIndex: number;
+    sig: string;
     tanggal: string | null;
     tanggalRaw: string;
     shift: string;
@@ -146,20 +156,34 @@ export interface RecentResponse {
 
 // ─── Fetch helpers ───────────────────────────────────────────────────────────
 
-export async function fetchRecent(params: { kind?: 'all' | 'critical' | 'maintenance'; q?: string; page?: number; pageSize?: number }): Promise<RecentResponse> {
+/**
+ * `bust` diisi HANYA setelah "Perbarui data" (atau `?refresh=1` dari spreadsheet).
+ *
+ * Kenapa perlu: respons daftar dan detail dilayani CDN dengan
+ * `s-maxage=30, stale-while-revalidate=120`. Tanpa parameter yang berubah, fetch ulang
+ * setelah refresh memakai URL yang sama persis, jadi yang menjawab adalah CDN — data
+ * lama, dan tombolnya terasa tidak mempan. Dengan `t` yang berbeda, permintaannya jadi
+ * URL baru dan route membalas `no-store`.
+ */
+export async function fetchRecent(params: {
+    kind?: 'all' | 'critical' | 'maintenance'; q?: string; page?: number; pageSize?: number; bust?: number;
+}): Promise<RecentResponse> {
     const qs = new URLSearchParams();
     if (params.kind) qs.set('kind', params.kind);
     if (params.q) qs.set('q', params.q);
     qs.set('page', String(params.page ?? 1));
     qs.set('pageSize', String(params.pageSize ?? 20));
+    if (params.bust) qs.set('t', String(params.bust));
     const res = await fetch(`/api/critical-maintenance/recent?${qs.toString()}`);
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Gagal memuat aktivitas terbaru');
     return json as RecentResponse;
 }
 
-export async function fetchItemDetail(key: string): Promise<ItemDetailResponse> {
-    const res = await fetch(`/api/critical-maintenance/item?key=${encodeURIComponent(key)}`);
+export async function fetchItemDetail(key: string, bust?: number): Promise<ItemDetailResponse> {
+    const qs = new URLSearchParams({ key });
+    if (bust) qs.set('t', String(bust));
+    const res = await fetch(`/api/critical-maintenance/item?${qs.toString()}`);
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Gagal memuat detail item');
     return json as ItemDetailResponse;

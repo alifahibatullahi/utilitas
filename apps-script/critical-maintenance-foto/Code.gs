@@ -7,9 +7,13 @@
  *   3. web terbuka di record itu → upload foto dari sana (jalan juga di HP)
  *   4. kolom "Link Foto" baris itu terisi otomatis oleh web
  *
- * Script ini TIDAK mengunggah apa pun dan tidak menulis kolom Link Foto — itu tugas web
- * (satu penulis saja). Yang ditulis di sini hanya kolom `ID` bila barisnya belum punya,
- * supaya tautannya bisa langsung menunjuk record yang tepat.
+ * Script ini TIDAK MENULIS APA PUN ke spreadsheet — hanya membaca baris terpilih lalu
+ * membuka web. Kolom "Dokumentasi" ditulis web (satu penulis saja), dan kolom "ID" sudah
+ * tidak dipakai lagi sebagai identitas.
+ *
+ * Baris yang sudah punya foto membawa uid-nya di dalam formula sel Dokumentasi. Baris
+ * yang belum ditunjuk lewat nomor baris + sidik jari isinya; uid-nya baru diterbitkan
+ * web saat foto pertama tersimpan.
  *
  * Pasang: Extensions → Apps Script → tempel Code.gs + OpenWeb.html, lalu isi Script
  * Properties (lihat README). Tidak perlu izin Drive.
@@ -109,15 +113,21 @@ function buildTarget_(cfg) {
     return fallback('Baris yang dipilih masih kosong — web dibuka di daftar aktivitas terbaru.');
   }
 
-  var uid = ensureRowUid_(cfg, sheet, headers, row, item, varian);
-  if (!uid) {
-    return fallback('Kolom ID tidak ditemukan — web dibuka di daftar aktivitas terbaru.');
+  // Baris yang SUDAH punya foto membawa uid-nya di dalam formula sel "Dokumentasi".
+  // Yang belum, dikenali lewat nomor baris + sidik jari isinya; uid-nya baru diterbitkan
+  // web saat foto pertama tersimpan. Script ini tidak menulis apa pun ke spreadsheet.
+  var uid = readPhotoUid_(sheet, headers, row);
+  var url = cfg.appUrl + '/critical-maintenance?item=' + encodeURIComponent(itemKeyOf_(item, varian));
+  if (uid) {
+    url += '&foto=' + encodeURIComponent(uid);
+  } else {
+    url += '&kind=' + encodeURIComponent(kind)
+         + '&row=' + row
+         + '&sig=' + encodeURIComponent(rowFingerprint_(item, varian, uraian, tanggal));
   }
 
-  var itemKey = itemKeyOf_(item, varian);
   return {
-    url: cfg.appUrl + '/critical-maintenance?item=' + encodeURIComponent(itemKey)
-       + '&foto=' + encodeURIComponent(uid) + '&refresh=1',
+    url: url + '&refresh=1',
     mode: 'record',
     note: '',
     kindLabel: kind === 'critical' ? 'Critical' : 'Maintenance',
@@ -125,6 +135,18 @@ function buildTarget_(cfg) {
     uraian: uraian.length > 120 ? uraian.slice(0, 120) + '…' : uraian,
     tanggal: tanggal,
   };
+}
+
+/**
+ * uid baris dari sel "Dokumentasi" — diambil dari URL di dalam formula HYPERLINK-nya,
+ * bukan dari teks yang terlihat. '' bila baris itu belum punya foto.
+ */
+function readPhotoUid_(sheet, headers, row) {
+  var idx = findHeaderIndex_(headers, ['dokumentasi', 'link foto']);
+  if (idx < 0) return '';
+  var formula = String(sheet.getRange(row, idx + 1).getFormula() || '');
+  var m = /[?&]foto=([^"&\s]+)/.exec(formula);
+  return m ? decodeURIComponent(m[1]) : '';
 }
 
 // ─── Header / kolom helpers ──────────────────────────────────────────────────
@@ -140,18 +162,6 @@ function findHeaderIndex_(headers, names) {
   for (var i = 0; i < names.length; i++) {
     var idx = norm.indexOf(normHeader_(names[i]));
     if (idx >= 0) return idx;
-  }
-  return -1;
-}
-
-/**
- * Kolom ID dicari sama persis seperti loader web (isUidHeader di lib/critical-sheet.ts):
- * header "ID" (nama sekarang, kolom B) atau "web_uid …" (nama lama).
- */
-function findUidIndex_(headers) {
-  var norm = headers.map(normHeader_);
-  for (var i = 0; i < norm.length; i++) {
-    if (norm[i] === 'id' || norm[i].indexOf('web_uid') === 0) return i;
   }
   return -1;
 }
@@ -176,88 +186,36 @@ function findHeaderRow_(sheet, cfg) {
   return null;
 }
 
-/**
- * Ambil ID baris; kalau masih kosong, isi ID baru supaya tautan bisa langsung menunjuk
- * record ini tanpa menunggu web melakukan backfill.
- * Aman terhadap balapan: backfill di web membaca ulang kolom ID sebelum menulis, jadi
- * nilai yang sudah ada di sini tidak akan ditimpa.
- */
-function ensureRowUid_(cfg, sheet, headers, row, item, varian) {
-  var idx = findUidIndex_(headers);
-  if (idx < 0) return '';
-  var cell = sheet.getRange(row, idx + 1);
-  var existing = String(cell.getValue() || '').trim();
-  if (existing) return existing;
-  var uid = buildRowUid_(cfg, uidPrefixFor_(item, varian));
-  cell.setValue(uid);
-  return uid;
+// ─── Sidik jari baris (HARUS identik dengan rowFingerprint di lib/critical-sheet.ts) ──
+//
+// Dipakai untuk menunjuk baris yang BELUM punya foto, karena baris seperti itu belum
+// punya uid sama sekali. Nomor baris saja tidak cukup: baris bisa bergeser oleh
+// penyisipan di atasnya antara saat menu diklik dan saat foto diunggah — sidik jari inilah
+// yang membuat web menolak menempelkan foto ke baris yang keliru.
+//
+// Kalau rumusnya diubah di satu sisi tanpa sisi lain, upload dari menu ini akan selalu
+// gagal dengan "Baris tidak ditemukan lagi".
+
+function normFingerprintPart_(v) {
+  return String(v == null ? '' : v).toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-// ─── Format ID (harus identik dengan lib/critical-sheet.ts) ──────────────────
-// ID = <kode item>-<varian>-<acak2>, mis. "L-08.12-A-a1". Kode item di dalamnya yang
-// membuat ID bisa diperiksa: ID yang tidak cocok dengan isi barisnya = baris tergeser.
-
-function extractCode_(item) {
-  var m = String(item == null ? '' : item).match(/([A-Za-z]{1,5}-\d{2}\.\d{2})/);
-  return m ? m[1].toUpperCase() : '';
-}
-
-/** Nama item tanpa kode → slug pendek, mis. "03 UBB" → "03-UBB". */
-function itemSlug_(item) {
-  return String(item == null ? '' : item).toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 16)
-    .replace(/-+$/, '');
-}
-
-function uidPrefixFor_(item, varian) {
-  var base = extractCode_(item) || itemSlug_(item) || 'ITEM';
-  var v = String(varian == null ? '' : varian).toUpperCase().replace(/[^A-Z0-9]+/g, '');
-  return v ? base + '-' + v : base;
-}
-
-/**
- * Kumpulkan seluruh ID yang sudah terpakai di KEDUA tab. Dibaca sekali dan hanya saat
- * benar-benar perlu membuat ID baru (baris yang belum punya ID), jadi pembacaan ±28rb
- * sel ini tidak terjadi pada pemakaian normal.
- */
-function takenUids_(cfg) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var taken = {};
-  var sheets = ss.getSheets();
-  for (var s = 0; s < sheets.length; s++) {
-    var sh = sheets[s];
-    var gid = sh.getSheetId();
-    if (gid !== cfg.criticalGid && gid !== cfg.maintenanceGid) continue;
-    var hr = findHeaderRow_(sh, cfg);
-    if (!hr) continue;
-    var idx = findUidIndex_(hr.headers);
-    if (idx < 0) continue;
-    var last = sh.getLastRow();
-    if (last <= hr.row) continue;
-    var vals = sh.getRange(hr.row + 1, idx + 1, last - hr.row, 1).getDisplayValues();
-    for (var i = 0; i < vals.length; i++) {
-      var v = String(vals[i][0] || '').trim();
-      if (v) taken[v] = true;
-    }
+function rowFingerprint_(item, varian, uraian, tanggalRaw) {
+  var bahan = [
+    normFingerprintPart_(item),
+    normFingerprintPart_(varian),
+    normFingerprintPart_(uraian),
+    normFingerprintPart_(tanggalRaw)
+  ].join('|');
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_1, bahan, Utilities.Charset.UTF_8);
+  var hex = '';
+  for (var i = 0; i < bytes.length; i++) {
+    // computeDigest mengembalikan byte BERTANDA (-128..127) — tanpa & 0xFF, byte di atas
+    // 127 menjadi hex negatif dan sidik jarinya tidak akan pernah cocok.
+    var b = (bytes[i] & 0xFF).toString(16);
+    hex += b.length === 1 ? '0' + b : b;
   }
-  return taken;
-}
-
-/** ID baru: sufiks 2 karakter dulu, memanjang hanya kalau ruangnya sudah sesak. */
-function buildRowUid_(cfg, prefix) {
-  var abc = '0123456789abcdefghijklmnopqrstuvwxyz';
-  var taken = takenUids_(cfg);
-  for (var len = 2; len <= 4; len++) {
-    for (var attempt = 0; attempt < 40; attempt++) {
-      var s = '';
-      for (var i = 0; i < len; i++) s += abc.charAt(Math.floor(Math.random() * abc.length));
-      var uid = prefix + '-' + s;
-      if (!taken[uid]) return uid;
-    }
-  }
-  return prefix + '-' + Date.now().toString(36);
+  return hex.slice(0, 10);
 }
 
 // ─── Item key (harus identik dengan lib/critical-sheet.ts) ───────────────────

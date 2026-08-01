@@ -48,7 +48,10 @@ export default function RecordBrowser({ reloadKey, onSelect, onMeta }: RecordBro
         let cancelled = false;
         setLoading(true);
         setError(null);
-        fetchRecent({ kind, q: debouncedQ, page, pageSize: PAGE_SIZE })
+        // `bust` hanya terisi setelah "Perbarui data" (reloadKey > 0) — saat itu jawaban
+        // CDN yang lama justru yang tidak boleh dipakai. Pemuatan biasa tetap boleh
+        // dilayani CDN.
+        fetchRecent({ kind, q: debouncedQ, page, pageSize: PAGE_SIZE, bust: reloadKey || undefined })
             .then(res => {
                 if (cancelled) return;
                 setRecent(res.items); setTotal(res.total); onMeta?.(res.fetchedAt);
@@ -83,6 +86,8 @@ export default function RecordBrowser({ reloadKey, onSelect, onMeta }: RecordBro
     const openPhotoFor = useCallback((entry: RecentEntry) => {
         setOpenRecord({
             uid: entry.uid,
+            rowIndex: entry.rowIndex,
+            sig: entry.sig,
             kind: entry.kind,
             itemKey: entry.itemKey,
             itemName: entry.itemName,

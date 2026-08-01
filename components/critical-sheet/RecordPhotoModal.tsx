@@ -9,7 +9,11 @@ import { PhotoImg, PhotoLightbox, PHOTO_KIND, type PhotoRecordInfo } from './Pho
 
 /** Record (satu baris sheet) yang jadi pemilik foto. */
 export interface PhotoRecordTarget extends PhotoRecordInfo {
+    /** '' bila baris ini belum punya foto sama sekali — uid-nya lahir saat upload pertama. */
     uid: string;
+    /** Identitas cadangan untuk baris ber-uid kosong: nomor baris + sidik jari isinya. */
+    rowIndex?: number;
+    sig?: string;
     itemKey: string;
     itemName: string;
     /** Varian mentah baris itu (kolom "Varian") — bisa gabungan seperti "DEF". */
@@ -28,7 +32,7 @@ interface RecordPhotoModalProps {
  *
  * Ini jalur upload satu-satunya: operator sampai ke sini dari tombol Foto di tabel
  * atau deep-link `?foto=<uid>` dari sel spreadsheet. Setelah upload, API menulis balik
- * kolom "Link Foto" baris tersebut di spreadsheet.
+ * kolom "Dokumentasi" baris tersebut di spreadsheet.
  */
 export default function RecordPhotoModal({ record, onClose, onCountChange }: RecordPhotoModalProps) {
     const { operator } = useOperator();
@@ -51,8 +55,17 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
     // membuka halaman daftar tidak menarik seluruh foto sekaligus.
     // Pemanggil memberi key={record.uid} sehingga ganti record = remount; `loading`
     // sudah true dari state awal dan tidak perlu di-set ulang di dalam effect.
+    /**
+     * uid record ini. Baris yang belum pernah difoto memulainya dengan '' dan baru
+     * mendapatkannya dari server saat foto pertama tersimpan — sejak itu foto berikutnya
+     * di modal yang sama menempel ke uid tersebut, bukan membuat identitas baru lagi.
+     */
+    const [uid, setUid] = useState(record.uid);
+
     useEffect(() => {
         let cancelled = false;
+        // Belum punya uid = dipastikan belum punya foto; tak ada yang perlu diambil.
+        if (!record.uid) { setLoading(false); return; }
         fetchSheetPhotos([record.uid])
             .then(p => { if (!cancelled) setPhotos(p); })
             .catch(() => { if (!cancelled) setError('Gagal memuat foto'); })
@@ -60,10 +73,10 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         return () => { cancelled = true; };
     }, [record.uid]);
 
-    const update = useCallback((next: SheetPhoto[]) => {
+    const update = useCallback((next: SheetPhoto[], uidBaru?: string) => {
         setPhotos(next);
-        onCountChange?.(record.uid, next.length);
-    }, [onCountChange, record.uid]);
+        onCountChange?.(uidBaru ?? uid, next.length);
+    }, [onCountChange, uid]);
 
     const handleFiles = useCallback(async (files: FileList | File[] | null) => {
         const list = files ? Array.from(files).filter(f => f.type.startsWith('image/')) : [];
@@ -72,19 +85,33 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         setUploading(true);
         setPending(list.length);
         let next = photos;
+        let uidSaatIni = uid;
         for (const file of list) {
             const compressed = await compressImage(file).catch(() => file);
             const form = new FormData();
             form.append('file', compressed);
             form.append('parent_kind', record.kind);
-            form.append('row_uid', record.uid);
+            // Sudah punya uid → pakai itu. Belum → tunjukkan barisnya lewat nomor baris +
+            // sidik jari isinya, dan server yang menerbitkan uid-nya.
+            if (uidSaatIni) {
+                form.append('row_uid', uidSaatIni);
+            } else if (record.rowIndex !== undefined && record.sig) {
+                form.append('row_index', String(record.rowIndex));
+                form.append('sig', record.sig);
+            } else {
+                setError('Baris ini tidak bisa dikenali — tekan "Perbarui data" lalu coba lagi.');
+                break;
+            }
             if (operator?.name) form.append('uploaded_by', operator.name);
             try {
                 const res = await fetch('/api/sheet-photos', { method: 'POST', body: form });
                 const json = await res.json();
                 if (!res.ok) { setError(json.error ?? 'Upload gagal'); break; }
+                // Foto pertama sebuah baris melahirkan uid-nya; berkas berikutnya dalam
+                // antrean ini harus menempel ke uid yang sama, bukan membuat yang baru.
+                if (!uidSaatIni && json.rowUid) { uidSaatIni = json.rowUid as string; setUid(uidSaatIni); }
                 next = [...next, json.photo as SheetPhoto];
-                update(next);
+                update(next, uidSaatIni);
                 setPending(p => Math.max(0, p - 1));
             } catch {
                 setError('Gagal terhubung ke server');
@@ -94,7 +121,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         setUploading(false);
         setPending(0);
         if (fileInputRef.current) fileInputRef.current.value = '';
-    }, [photos, record.kind, record.uid, operator?.name, update]);
+    }, [photos, record.kind, record.rowIndex, record.sig, uid, operator?.name, update]);
 
     const pickFiles = useCallback(() => fileInputRef.current?.click(), []);
 
@@ -112,15 +139,15 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         }
         setPhotos(prev => {
             const next = prev.filter(p => p.id !== id);
-            onCountChange?.(record.uid, next.length);
+            onCountChange?.(uid, next.length);
             return next;
         });
         setDeleting(prev => prev.filter(x => x !== id));
         setLightboxIdx(null);
-    }, [onCountChange, record.uid]);
+    }, [onCountChange, uid]);
 
     async function copyLink() {
-        const url = `${window.location.origin}/critical-maintenance?item=${encodeURIComponent(record.itemKey)}&foto=${encodeURIComponent(record.uid)}`;
+        const url = `${window.location.origin}/critical-maintenance?item=${encodeURIComponent(record.itemKey)}&foto=${encodeURIComponent(uid)}`;
         try {
             await navigator.clipboard.writeText(url);
             setCopied(true);
@@ -263,7 +290,7 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                             <p className="text-sm font-bold text-neutral-600 mt-1">Klik untuk pilih foto</p>
                             <p className="text-[11px] text-neutral-400 mt-0.5">atau seret berkasnya ke sini</p>
                             <p className="text-[11px] text-neutral-400 mt-2">
-                                Setelah upload, kolom <span className="font-semibold">Link Foto</span> di spreadsheet terisi otomatis.
+                                Setelah upload, kolom <span className="font-semibold">Dokumentasi</span> di spreadsheet terisi otomatis.
                             </p>
                         </button>
                     ) : (

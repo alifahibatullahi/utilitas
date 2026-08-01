@@ -4,9 +4,15 @@
  * Menjawab satu pertanyaan: "kalau app membaca spreadsheet yang ditunjuk env sekarang,
  * apakah semua kolom yang dikelola app terdeteksi dengan benar?"
  *
+ * Identitas baris kini hidup di dalam URL sel "Dokumentasi", bukan di kolom "ID".
+ * Kolom ID (di AA) tinggal ARSIP — app tidak pernah menulisnya lagi, jadi baris tanpa
+ * ID bukan lagi temuan. Yang penting sekarang: kolom Dokumentasi terdeteksi, dan uid di
+ * dalamnya masih cocok dengan isi barisnya.
+ *
  * Dipakai di dua momen:
- *   1. Sebelum/sesudah menyisipkan atau memindah kolom — memastikan kolom "ID" masih
- *      terbaca di posisi barunya, sehingga backfill TIDAK menulis ulang ID massal.
+ *   1. Sebelum/sesudah menyisipkan, memindah, atau MENGGANTI NAMA kolom — kolom foto
+ *      pernah diganti nama ("Link Foto" → "Dokumentasi") dan fiturnya mati diam-diam
+ *      berhari-hari karena tidak ada yang memeriksa.
  *   2. Saat migrasi ke spreadsheet produksi — memastikan tab, baris header, dan kolom
  *      terdeteksi sebelum app pertama kali menyentuhnya.
  *
@@ -16,7 +22,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { google } from 'googleapis';
-import { parseCriticalTab, parseMaintenanceTab, isUidHeader } from '../lib/critical-sheet';
+import { parseCriticalTab, parseMaintenanceTab, isUidHeader, uidFromPhotoFormula, uidMatchesRow } from '../lib/critical-sheet';
 
 // ─── Env (.env.local, format sama seperti scripts/fetch-headers.ts) ──────────
 const envPath = path.resolve(__dirname, '..', '.env.local');
@@ -115,50 +121,80 @@ async function main() {
             headerRowIndex: number;
             uidColIndex: number | null;
             photoColIndex: number | null;
-            rows: { uid: string; linkFoto: string }[];
+            rows: { rowIndex: number; legacyId: string; item: string; varian: string; linkFoto: string }[];
         },
+        /** uid per baris, dibaca dari FORMULA sel Dokumentasi (bukan dari kolom ID). */
+        uidPerBaris: Map<number, string>,
     ) => {
-        const missingUid = parsed.rows.filter(r => !r.uid).length;
-        const withPhoto = parsed.rows.filter(r => r.linkFoto).length;
+        const berfoto = parsed.rows.filter(r => uidPerBaris.get(r.rowIndex));
+        const berArsip = parsed.rows.filter(r => r.legacyId).length;
 
         console.log(`=== ${label} — "${tabTitle}" (gid ${gid}, ${columnCount} kolom) ===`);
-        console.log(`  baris header    : ${parsed.headerRowIndex}`);
-        console.log(`  baris data valid: ${parsed.rows.length}`);
-        console.log(`  kolom ID        : ${parsed.uidColIndex === null ? '— TIDAK DITEMUKAN —' : `${colLetter(parsed.uidColIndex)} (index ${parsed.uidColIndex})`}`);
-        console.log(`  kolom Link Foto : ${parsed.photoColIndex === null ? '— BELUM ADA —' : `${colLetter(parsed.photoColIndex)} (index ${parsed.photoColIndex})`}`);
-        console.log(`  baris tanpa ID  : ${missingUid}`);
-        console.log(`  sel Link Foto terisi: ${withPhoto}`);
+        console.log(`  baris header     : ${parsed.headerRowIndex}`);
+        console.log(`  baris data valid : ${parsed.rows.length}`);
+        console.log(`  kolom Dokumentasi: ${parsed.photoColIndex === null ? '— BELUM ADA —' : `${colLetter(parsed.photoColIndex)} (index ${parsed.photoColIndex})`}`);
+        console.log(`  baris berfoto    : ${berfoto.length}  (uid ada di sel Dokumentasi)`);
+        console.log(`  kolom ID (arsip) : ${parsed.uidColIndex === null ? '— tidak ada —' : `${colLetter(parsed.uidColIndex)}, terisi ${berArsip}/${parsed.rows.length}`}`);
 
         const uidCols = duplicateUidCols(allRows);
         if (uidCols.length > 1) {
             problems++;
             console.log(`  ⛔ KOLOM ID GANDA: ${uidCols.map(colLetter).join(', ')}`);
-            console.log('      App memakai yang paling kiri, jadi sebagian data akan menunjuk ID yang salah.');
-            console.log('      Biasanya kolom "web_uid" lama yang belum dihapus setelah ID pindah ke B.');
-            console.log('      Hapus kolom duplikatnya, sisakan satu.');
+            console.log('      Membingungkan saat pemulihan foto — hapus duplikatnya, sisakan satu.');
         }
 
-        if (parsed.uidColIndex === null) {
-            problems++;
-            console.log('  ⛔ Kolom "ID" TIDAK ADA di baris header.');
-            console.log('      App tidak akan menebak posisinya — fitur foto mati sampai kolomnya ada.');
-        } else if (missingUid > 0) {
-            problems++;
-            console.log(`  ⚠️  ${missingUid} baris akan DIISI ID BARU saat web dimuat.`);
-            console.log('      Wajar hanya untuk baris yang memang baru. Kalau angkanya mendekati');
-            console.log('      jumlah baris data, berarti kolom ID TIDAK terdeteksi — hentikan');
-            console.log('      dan periksa nama header sebelum membuka web.');
-        }
+        // Kolom Dokumentasi hilang = fitur foto mati TOTAL, dan pernah terjadi tanpa
+        // ada yang menyadarinya. Ini temuan paling penting di sini.
         if (parsed.photoColIndex === null) {
-            console.log('  ℹ️  Kolom "Link Foto" belum dibuat — fitur link foto nonaktif (web tetap jalan).');
+            problems++;
+            console.log('  ⛔ Kolom "Dokumentasi" TIDAK DITEMUKAN di baris header.');
+            console.log('      Foto tetap tersimpan tapi tidak akan menempel ke baris mana pun.');
+            console.log('      Nama yang diterima: "Dokumentasi" atau "Link Foto".');
+        }
+
+        // uid membawa kode item di dalamnya, jadi ketidakcocokan = isi baris tergeser
+        // (mis. memblok sebagian kolom lalu menyortirnya) — foto akan tampil di baris salah.
+        const geser = berfoto.filter(r => !uidMatchesRow(uidPerBaris.get(r.rowIndex)!, r.item, r.varian));
+        if (geser.length) {
+            problems++;
+            console.log(`  ⛔ ${geser.length} sel Dokumentasi TIDAK COCOK dengan isi barisnya:`);
+            for (const r of geser.slice(0, 5)) {
+                console.log(`      baris ${r.rowIndex}: uid ${uidPerBaris.get(r.rowIndex)} vs "${r.item}"${r.varian ? ` varian ${r.varian}` : ''}`);
+            }
+            console.log('      Jalankan: npx tsx scripts/repair-photo-links.ts');
         }
         console.log('');
     };
 
+    const criticalParsed = parseCriticalTab(criticalRows ?? []);
+    const maintenanceParsed = parseMaintenanceTab(maintenanceRows ?? []);
+
+    /**
+     * uid TIDAK ada di nilai tampilan sel — hanya di dalam formula HYPERLINK-nya.
+     * Karena itu kolom Dokumentasi dibaca sekali lagi dengan render FORMULA.
+     */
+    const bacaUid = async (tabTitle: string, photoColIndex: number | null): Promise<Map<number, string>> => {
+        const peta = new Map<number, string>();
+        if (photoColIndex === null) return peta;
+        const col = colLetter(photoColIndex);
+        const res = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `${quote(tabTitle)}!${col}1:${col}`,
+            valueRenderOption: 'FORMULA',
+        });
+        ((res.data.values ?? []) as string[][]).forEach((r, idx) => {
+            const uid = uidFromPhotoFormula(String(r?.[0] ?? ''));
+            if (uid) peta.set(idx + 1, uid);
+        });
+        return peta;
+    };
+
     report('CRITICAL', criticalTab.title!, criticalGid,
-        criticalTab.gridProperties?.columnCount ?? 0, criticalRows ?? [], parseCriticalTab(criticalRows ?? []));
+        criticalTab.gridProperties?.columnCount ?? 0, criticalRows ?? [], criticalParsed,
+        await bacaUid(criticalTab.title!, criticalParsed.photoColIndex));
     report('MAINTENANCE', maintenanceTab.title!, maintenanceGid,
-        maintenanceTab.gridProperties?.columnCount ?? 0, maintenanceRows ?? [], parseMaintenanceTab(maintenanceRows ?? []));
+        maintenanceTab.gridProperties?.columnCount ?? 0, maintenanceRows ?? [], maintenanceParsed,
+        await bacaUid(maintenanceTab.title!, maintenanceParsed.photoColIndex));
 
     console.log(problems === 0
         ? '✅ Semua kolom yang dikelola app terdeteksi.'

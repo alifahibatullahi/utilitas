@@ -7,6 +7,9 @@
  *   2. Maintenance        : No | Tanggal Dilaporkan | Shift | Nama dan Nomor Item | Varian |
  *                           Uraian | Scope | Status | Notifikasi | Foreman | gabungan | (Ref Critical)
  * Posisi header TIDAK di-hardcode — dideteksi dari isi sel (tahan sisip baris/kolom).
+ * Per Agt 2026 kolom "ID" ada di AA (dulu B) dan kolom foto bernama "Dokumentasi" di
+ * K (critical) / I (maintenance) — dulu "Link Foto" di N/L. Karena deteksinya by nama,
+ * pemindahan itu tidak butuh perubahan kode; penggantian NAMA-nya yang butuh.
  * Input data tetap di spreadsheet; app hanya MENULIS kolom "ID" (identitas baris yang
  * dipakai relasi foto) dan tidak pernah menyentuh kolom isian operator.
  *
@@ -16,7 +19,7 @@
  * cold start baca ulang. Kuota Sheets (300 read/menit) tetap aman.
  */
 
-import { randomInt } from 'crypto';
+import { createHash, randomInt } from 'crypto';
 import { getSheetsClient, withRetry, fromIndonesianDate } from './google-sheets';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -42,26 +45,29 @@ function tabGid(envName: string): number {
 
 // Kolom yang dikelola app dicari BY NAMA HEADER, bukan posisi — supaya tahan sisip kolom
 // dan supaya spreadsheet produksi (urutan kolomnya bisa beda) tidak perlu ubah kode.
-const UID_HEADER = 'ID';
 const UID_HEADER_NAME = 'id';                 // sudah dinormalisasi (lihat normHeader)
 const UID_HEADER_LEGACY_PREFIX = 'web_uid';   // nama lama, sebelum kolom dipindah ke B
-const PHOTO_HEADER = 'link foto';
+// Kolom foto sekarang bernama "Dokumentasi" (Critical kolom K, Maintenance kolom I);
+// sebelumnya "Link Foto" di kolom N/L. Kedua nama diterima supaya spreadsheet yang
+// belum diganti — dan salinan lama untuk uji coba — tetap terbaca tanpa ubah kode.
+const PHOTO_HEADER = 'Dokumentasi';
+const PHOTO_HEADER_NAMES = ['dokumentasi', 'link foto'];   // sudah dinormalisasi
 
-// Satu pembacaan penuh = 4,5 MB dari Sheets + parsing 27rb baris, dan tiap instance
-// serverless punya cache sendiri (cold start = baca lagi). Isian sheet berubah beberapa
-// kali per HARI, bukan per menit, jadi TTL 5 menit memangkas pembacaan penuh sampai ~80%
-// dibanding 60 detik tanpa terasa basi. Yang butuh data detik-ini tetap terlayani:
-// tombol "Perbarui data" dan link `?refresh=1` dari spreadsheet memaksa baca ulang.
-const CACHE_TTL_MS = 300_000;
-// Tombol "Perbarui data" & menu di spreadsheet memanggil force-load. Satu load penuh =
-// ~84rb baris dua tab, jadi force yang datang beruntun (banyak operator klik bersamaan)
-// tetap dilayani dari cache selama masih lebih baru dari ambang ini.
-const MIN_FORCE_INTERVAL_MS = 15_000;
+// Dulu di sini ada cache in-memory ber-TTL, karena tiap request memuat seluruh
+// spreadsheet. Cache itu sudah tidak ada: halaman web membaca cermin Postgres
+// (lib/critical-sheet-db.ts), dan file ini hanya dipakai cron & script. Cache per
+// instance lambda juga tidak pernah benar-benar bekerja — tombol "Perbarui data" hanya
+// menyegarkan instance yang kebetulan menerima request itu.
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface CriticalRow {
+    /** Identitas baris untuk relasi foto — dari URL di dalam sel "Dokumentasi", '' bila belum berfoto. */
     uid: string;
+    /** Sidik jari isi baris: identitas cadangan saat `uid` masih kosong. */
+    sig?: string;
+    /** Isi kolom "ID" (AA). Arsip: tidak pernah ditulis lagi, hanya untuk pemulihan. */
+    legacyId: string;
     rowIndex: number;              // baris sheet 1-based
     no: number | null;
     tanggal: string | null;        // ISO dari "Tanggal Dilaporkan"
@@ -77,11 +83,13 @@ export interface CriticalRow {
     tanggalOkRaw: string;
     pengOk: string;
     gabungan: string;
-    linkFoto: string;              // isi sel "Link Foto" (formula HYPERLINK, '' bila kosong)
+    linkFoto: string;              // isi sel "Dokumentasi" (formula HYPERLINK, '' bila kosong)
 }
 
 export interface MaintenanceRow {
     uid: string;
+    sig?: string;
+    legacyId: string;
     rowIndex: number;
     no: number | null;
     tanggal: string | null;
@@ -105,7 +113,7 @@ export interface TabRef {
     title: string;
     headerRowIndex: number;         // 1-based
     uidColIndex: number | null;     // 0-based; null = kolom "ID" tidak ada di baris header
-    photoColIndex: number | null;   // null = kolom "Link Foto" belum dibuat di sheet
+    photoColIndex: number | null;   // null = kolom "Dokumentasi" belum dibuat di sheet
 }
 
 export interface CriticalSheetData {
@@ -115,11 +123,17 @@ export interface CriticalSheetData {
     /** Pemisah argumen formula sesuai locale spreadsheet (lihat argSeparatorForLocale). */
     argSeparator: ArgSeparator;
     fetchedAt: string;
+    /**
+     * Peta baris → uid dari kolom "Dokumentasi", untuk SELURUH sheet. Pada pembacaan ekor
+     * cakupannya tetap penuh (kolomnya murah dibaca utuh), jadi sync bisa memperbaiki uid
+     * baris lama tanpa harus ikut membaca isinya.
+     */
+    uidMaps: { critical: Map<number, string>; maintenance: Map<number, string> };
 }
 
 // ─── Parsing helpers ─────────────────────────────────────────────────────────
 
-function quoteTab(title: string): string {
+export function quoteTab(title: string): string {
     return `'${title.replace(/'/g, "''")}'`;
 }
 
@@ -197,14 +211,16 @@ interface ParsedTab<T> {
 }
 
 /**
- * Kolom ID dikenali dari header "ID" (nama sekarang, kolom B) maupun "web_uid …"
- * (nama lama sebelum kolomnya dipindah) — sheet lama tetap terbaca tanpa diubah dulu.
+ * Kolom ID dikenali dari header "ID" maupun "web_uid …" (nama lama sebelum kolomnya
+ * dipindah). Kolomnya sendiri OPSIONAL: sejak identitas pindah ke sel "Dokumentasi",
+ * isinya hanya arsip pemulihan dan app tidak pernah menulisnya lagi. Sheet tanpa kolom
+ * ini berjalan normal.
  */
 export function isUidHeader(normalizedName: string): boolean {
     return normalizedName === UID_HEADER_NAME || normalizedName.startsWith(UID_HEADER_LEGACY_PREFIX);
 }
 
-/** Kolom yang dikelola app di satu tab. Kolom foto opsional (null = belum dibuat). */
+/** Kolom yang dikelola app di satu tab. Kolom Dokumentasi opsional (null = belum dibuat). */
 function resolveManagedCols(map: HeaderMap): { uidColIndex: number | null; photoColIndex: number | null } {
     // Object.entries mengikuti urutan sisip = urutan kolom, jadi yang pertama = paling kiri.
     // Kolom ID ganda = tanda ada versi kode/sheet lain yang menulis ID di kolom berbeda.
@@ -216,19 +232,25 @@ function resolveManagedCols(map: HeaderMap): { uidColIndex: number | null; photo
             `Memakai ${colLetter(uidCols[0])}. Hapus kolom duplikatnya — biasanya sisa kolom "web_uid" lama.`,
         );
     }
-    // Tidak ada tebakan posisi di sini. Dulu ada fallback ke kolom AB, dan itu berbahaya
-    // sekarang: kolom ID hidup di B, di tengah data operator. Salah tebak = menimpa isian
-    // operator ATAU mengisi ID baru di kolom kosong sehingga SELURUH relasi foto putus.
-    // Lebih baik berhenti mengelola ID (baca tetap jalan) dan berteriak di log.
-    if (uidCols.length === 0) {
+    // Kolom ID TIDAK ADA bukan lagi kesalahan — sejak identitas pindah ke sel Dokumentasi,
+    // kolom ini hanya arsip pemulihan dan tidak pernah ditulis lagi. Dulu di sini ada
+    // console.error yang menyatakan "foto tidak bisa dikaitkan"; membiarkannya berarti
+    // menakut-nakuti setiap kali sheet yang sudah bersih disinkronkan.
+    // Nama depan daftar yang menang bila (untuk sementara) kedua nama ada di satu sheet.
+    const photoName = PHOTO_HEADER_NAMES.find(name => name in map);
+    // Tanpa kolom ini TIDAK ADA identitas baris sama sekali: foto tetap tersimpan tapi
+    // tidak pernah menempel ke baris mana pun. Persis yang terjadi saat kolomnya diganti
+    // nama dari "Link Foto" menjadi "Dokumentasi" — diam-diam mati selama berhari-hari.
+    if (photoName === undefined) {
         console.error(
-            `[critical-sheet] Kolom "${UID_HEADER}" TIDAK DITEMUKAN di baris header. Foto tidak bisa ` +
-            `dikaitkan ke baris sampai kolomnya ada. Periksa: npx tsx scripts/check-critical-sheet.ts`,
+            `[critical-sheet] Kolom "${PHOTO_HEADER}" TIDAK DITEMUKAN di baris header ` +
+            `(nama yang diterima: ${PHOTO_HEADER_NAMES.join(', ')}). Foto tidak bisa dikaitkan ` +
+            `ke baris sampai kolomnya ada. Periksa: npx tsx scripts/check-critical-sheet.ts`,
         );
     }
     return {
         uidColIndex: uidCols[0] ?? null,
-        photoColIndex: map[PHOTO_HEADER] ?? null,
+        photoColIndex: photoName === undefined ? null : map[photoName],
     };
 }
 
@@ -246,7 +268,10 @@ export function parseCriticalTab(rows: string[][]): ParsedTab<CriticalRow> {
         if ((!item && !uraian) || (!uraian && !tanggalRaw)) continue;
         const tanggalOkRaw = cell(r, map['tanggal di ok']);
         out.push({
-            uid: uidColIndex === null ? '' : cell(r, uidColIndex),
+            // uid diisi belakangan dari sel Dokumentasi (lihat applyPhotoUids) — kolom ID
+            // di AA tidak lagi menjadi kunci, hanya ikut terbawa sebagai arsip.
+            uid: '',
+            legacyId: uidColIndex === null ? '' : cell(r, uidColIndex),
             rowIndex: i + 1,
             no: parseNo(cell(r, map['no'])),
             tanggal: parseSheetDate(tanggalRaw),
@@ -281,7 +306,8 @@ export function parseMaintenanceTab(rows: string[][]): ParsedTab<MaintenanceRow>
         // formula sampai puluhan ribu baris di bawah data asli).
         if ((!item && !uraian) || (!uraian && !tanggalRaw)) continue;
         out.push({
-            uid: uidColIndex === null ? '' : cell(r, uidColIndex),
+            uid: '',
+            legacyId: uidColIndex === null ? '' : cell(r, uidColIndex),
             rowIndex: i + 1,
             no: parseNo(cell(r, map['no'])),
             tanggal: parseSheetDate(tanggalRaw),
@@ -301,9 +327,9 @@ export function parseMaintenanceTab(rows: string[][]): ParsedTab<MaintenanceRow>
     return { headerRowIndex: rowIdx + 1, uidColIndex, photoColIndex, rows: out };
 }
 
-// ─── UID backfill ────────────────────────────────────────────────────────────
+// ─── Identitas baris ─────────────────────────────────────────────────────────
 
-function colLetter(index0: number): string {
+export function colLetter(index0: number): string {
     let n = index0 + 1;
     let s = '';
     while (n > 0) {
@@ -317,110 +343,99 @@ function colLetter(index0: number): string {
 interface TabInfo { gid: number; title: string; columnCount: number }
 
 /**
- * Isi ID untuk baris yang belum punya di satu tab, tulis balik HANYA kolom ID.
- * Backfill pertama bisa puluhan ribu baris → tulis per BLOK KONTIGU (bukan per sel)
- * supaya payload batchUpdate kecil. Re-read kolom ID fresh sebelum menulis untuk
- * mempersempit race antar instance (sel yang keburu terisi tidak ditimpa; sisa race
- * last-writer-wins dan tidak berbahaya).
+ * Ambil uid dari isi sel "Dokumentasi" — yaitu dari URL di dalam formula HYPERLINK
+ * (`=HYPERLINK("…?item=…&foto=<uid>"; "📷 …")`, lihat photoCellFormula).
+ * '' bila selnya kosong atau bukan tautan buatan app.
  */
-async function ensureRowUids(
-    sheets: ReturnType<typeof getSheetsClient>,
-    tab: TabInfo,
-    parsed: { headerRowIndex: number; uidColIndex: number | null; rows: { uid: string; rowIndex: number; item: string; varian: string }[] },
-    /** Seluruh ID yang sudah terpakai di spreadsheet — penjaga agar tidak ada yang kembar. */
-    taken: Set<string>,
-): Promise<void> {
-    // Kolom ID tidak ada → tidak ada tempat yang aman untuk menulis (sudah dilaporkan
-    // di resolveManagedCols). Membaca sheet tetap jalan, hanya foto yang nonaktif.
-    if (parsed.uidColIndex === null) return;
-    const needy = parsed.rows.filter(r => !r.uid);
-    if (needy.length === 0) return;
-
-    // ── Rem darurat ──────────────────────────────────────────────────────────
-    // Baris baru datang beberapa per hari. Kalau tiba-tiba SEBAGIAN BESAR baris di tab
-    // yang sudah besar kehilangan ID, itu bukan baris baru — itu kolom ID yang salah
-    // dibaca (kolom bergeser karena penyisipan, kolom ID ganda, atau header berubah).
-    // Menulis ulang puluhan ribu ID akan memutus SELURUH relasi foto, jadi lebih baik
-    // batal mengisi dan berteriak di log; membaca tetap jalan.
-    if (parsed.rows.length > 200 && needy.length > parsed.rows.length / 2) {
-        console.error(
-            `[critical-sheet] BACKFILL DIBATALKAN di tab ${tab.title}: ${needy.length} dari ` +
-            `${parsed.rows.length} baris tidak punya ID di kolom ${colLetter(parsed.uidColIndex)}. ` +
-            `Ini pola "kolom salah", bukan baris baru. Periksa posisi kolom ID ` +
-            `(npx tsx scripts/check-critical-sheet.ts) sebelum melanjutkan.`,
-        );
-        return;
+export function uidFromPhotoFormula(formula: string): string {
+    const m = /[?&]foto=([^"&\s]+)/.exec(formula ?? '');
+    if (!m) return '';
+    try {
+        return decodeURIComponent(m[1]).trim();
+    } catch {
+        return m[1].trim();
     }
-
-    const uidColIndex = parsed.uidColIndex;
-
-    // Grid bisa lebih sempit dari kolom uid → lebarkan sekali.
-    if (tab.columnCount < uidColIndex + 1) {
-        await withRetry(() => sheets.spreadsheets.batchUpdate({
-            spreadsheetId: sheetId(),
-            requestBody: {
-                requests: [{
-                    appendDimension: {
-                        sheetId: tab.gid,
-                        dimension: 'COLUMNS',
-                        length: uidColIndex + 1 - tab.columnCount,
-                    },
-                }],
-            },
-        }), `expand columns ${tab.title}`);
-    }
-
-    const uidCol = colLetter(uidColIndex);
-    const fresh = await withRetry(() => sheets.spreadsheets.values.get({
-        spreadsheetId: sheetId(),
-        range: `${quoteTab(tab.title)}!${uidCol}1:${uidCol}`,
-    }), `get uid column ${tab.title}`);
-    const freshCol = (fresh.data.values ?? []) as string[][];
-    const freshAt = (rowIndex1: number): string => (freshCol[rowIndex1 - 1]?.[0] ?? '').trim();
-
-    // Kumpulkan sel yang benar-benar perlu ditulis (masih kosong setelah re-read).
-    const toWrite: { rowIndex: number; value: string }[] = [];
-    if (!freshAt(parsed.headerRowIndex)) {
-        toWrite.push({ rowIndex: parsed.headerRowIndex, value: UID_HEADER });
-    }
-    for (const row of needy) {
-        const existing = freshAt(row.rowIndex);
-        if (existing) { row.uid = existing; taken.add(existing); continue; }
-        row.uid = buildRowUid(row.item, row.varian, taken);
-        toWrite.push({ rowIndex: row.rowIndex, value: row.uid });
-    }
-    if (toWrite.length === 0) return;
-
-    // Grup blok kontigu → satu range per blok.
-    toWrite.sort((a, b) => a.rowIndex - b.rowIndex);
-    const data: { range: string; values: string[][] }[] = [];
-    let block: { start: number; values: string[][] } | null = null;
-    for (const w of toWrite) {
-        if (block && w.rowIndex === block.start + block.values.length) {
-            block.values.push([w.value]);
-        } else {
-            if (block) {
-                data.push({ range: `${quoteTab(tab.title)}!${uidCol}${block.start}:${uidCol}${block.start + block.values.length - 1}`, values: block.values });
-            }
-            block = { start: w.rowIndex, values: [[w.value]] };
-        }
-    }
-    if (block) {
-        data.push({ range: `${quoteTab(tab.title)}!${uidCol}${block.start}:${uidCol}${block.start + block.values.length - 1}`, values: block.values });
-    }
-
-    await withRetry(() => sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: sheetId(),
-        requestBody: { valueInputOption: 'RAW', data },
-    }), `backfill ${toWrite.length} ID (${data.length} blok) ${tab.title}`);
-    console.log(`[critical-sheet] backfill ${toWrite.length} ID di tab ${tab.title}`);
 }
 
 /**
- * Dua kerusakan yang dulu tidak pernah ketahuan, sekarang dilaporkan tiap kali sheet
- * dibaca penuh. Sengaja HANYA melapor — ID tidak pernah diperbaiki otomatis, karena
- * mengganti ID berarti memutus foto yang menempel padanya, dan ketidakcocokan bisa
- * saja berasal dari koreksi nama item yang sah.
+ * Peta baris → uid untuk tiap tab, dibaca dari kolom "Dokumentasi".
+ *
+ * Kenapa dari sel Dokumentasi, bukan dari kolom ID: sel ini berada DI DALAM blok data
+ * operator, jadi ia ikut berpindah saat baris disortir atau dipindahkan. Kolom ID (AA)
+ * ada di luar blok itu dan akan tertinggal — persis kerusakan yang paling sering terjadi
+ * dan paling sulit dilihat.
+ *
+ * Murah walau sheet-nya 23rb baris: satu kolom, dan yang terisi hanya baris berfoto —
+ * baris kosong pulang sebagai array kosong, jadi payload-nya puluhan KB, bukan megabyte.
+ * Karena itu peta ini dibaca ULANG tiap refresh, termasuk untuk baris yang isinya sudah
+ * beku di snapshot: foto pada record lama pun langsung terlihat.
+ *
+ * WAJIB `valueRenderOption: 'FORMULA'` — dengan FORMATTED_VALUE yang kembali hanyalah
+ * teks tampilannya ("📷 Critical P-02.10 D (3)"), tanpa uid di dalamnya.
+ */
+async function readPhotoUidMap(
+    sheets: ReturnType<typeof getSheetsClient>,
+    tabs: { title: string; photoColIndex: number | null }[],
+): Promise<Map<number, string>[]> {
+    const hasil = tabs.map(() => new Map<number, string>());
+    const ranges: string[] = [];
+    const pemilik: number[] = [];        // ranges[i] milik tabs[pemilik[i]]
+    tabs.forEach((t, i) => {
+        if (t.photoColIndex === null) return;   // kolomnya belum dibuat → tab ini dilewati
+        const col = colLetter(t.photoColIndex);
+        ranges.push(`${quoteTab(t.title)}!${col}1:${col}`);
+        pemilik.push(i);
+    });
+    if (ranges.length === 0) return hasil;
+
+    const res = await withRetry(() => sheets.spreadsheets.values.batchGet({
+        spreadsheetId: sheetId(),
+        ranges,
+        valueRenderOption: 'FORMULA',
+    }), 'batchGet kolom Dokumentasi');
+
+    (res.data.valueRanges ?? []).forEach((vr, i) => {
+        const map = hasil[pemilik[i]];
+        const rows = (vr.values ?? []) as string[][];
+        rows.forEach((r, idx) => {
+            const uid = uidFromPhotoFormula(String(r?.[0] ?? ''));
+            if (uid) map.set(idx + 1, uid);      // idx 0 = baris sheet 1
+        });
+    });
+    return hasil;
+}
+
+/** Tempelkan uid hasil readPhotoUidMap ke baris-baris yang sudah di-parse. */
+function applyPhotoUids<T extends { rowIndex: number; uid: string }>(rows: T[], map: Map<number, string>): void {
+    for (const r of rows) r.uid = map.get(r.rowIndex) ?? '';
+}
+
+/**
+ * Sidik jari isi satu baris — identitas cadangan yang tidak bergantung pada sel mana pun.
+ *
+ * Dipakai dua arah: (1) menemukan baris untuk foto PERTAMA-nya, saat sel Dokumentasi
+ * memang belum ada isinya, dan (2) menemukan kembali baris sebuah foto kalau selnya
+ * kelak terhapus atau tergeser (scripts/repair-photo-links.ts).
+ *
+ * Dinormalisasi seadanya (huruf kecil, spasi dirapikan) — cukup untuk tahan beda
+ * kapitalisasi dan spasi ganda, tapi sengaja TIDAK longgar: kalau operator mengoreksi
+ * ejaan uraian, sidik jarinya memang berubah, dan lebih baik gagal mencocokkan daripada
+ * menempelkan foto ke baris yang salah.
+ */
+export function rowFingerprint(item: string, varian: string, uraian: string, tanggalRaw: string): string {
+    const norm = (v: string) => (v ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const bahan = [norm(item), norm(varian), norm(uraian), norm(tanggalRaw)].join('|');
+    return createHash('sha1').update(bahan).digest('hex').slice(0, 10);
+}
+
+/**
+ * Dua kerusakan yang dulu tidak pernah ketahuan, dilaporkan tiap kali sheet dibaca.
+ * Sengaja HANYA melapor — uid tidak pernah diperbaiki otomatis, karena menggantinya
+ * berarti memutus foto yang menempel padanya, dan ketidakcocokan bisa saja berasal dari
+ * koreksi nama item yang sah.
+ *
+ * Sekarang hanya menyangkut baris BERFOTO (uid datang dari sel Dokumentasi), jadi tiap
+ * temuan di sini benar-benar berarti ada foto yang berisiko tampil di baris yang salah.
  */
 function reportUidAnomalies(label: string, rows: { uid: string; rowIndex: number; item: string; varian: string }[]): void {
     const seen = new Map<string, number>();
@@ -440,25 +455,30 @@ function reportUidAnomalies(label: string, rows: { uid: string; rowIndex: number
 
     if (duplicates.length) {
         console.error(
-            `[critical-sheet] ${label}: ${duplicates.length} ID KEMBAR — foto akan tampil di baris yang salah. ` +
+            `[critical-sheet] ${label}: ${duplicates.length} uid KEMBAR di kolom Dokumentasi — ` +
+            `foto akan tampil di baris yang salah. ` +
             duplicates.slice(0, 5).join('; '),
         );
     }
     if (mismatched.length) {
         console.error(
-            `[critical-sheet] ${label}: ${mismatched.length} baris ID-nya TIDAK COCOK dengan itemnya — ` +
-            `biasanya tanda isi baris tergeser (sortir tanpa ikut kolom uid). ` +
+            `[critical-sheet] ${label}: ${mismatched.length} sel Dokumentasi TIDAK COCOK dengan itemnya — ` +
+            `biasanya tanda isi baris tergeser (memblok sebagian kolom lalu menyortirnya). ` +
             mismatched.slice(0, 5).join('; '),
         );
     }
 }
 
-// ─── Loader (in-memory cache, TTL 5 menit) ───────────────────────────────────
+// ─── Loader dari spreadsheet ─────────────────────────────────────────────────
+//
+// PENTING: fungsi di bawah ini MAHAL — satu pembacaan penuh = 8,75 MB JSON, ±51 MB heap,
+// dan ±5 detik. Plan gratis Vercel memutus fungsi di 10 detik, jadi ini TIDAK BOLEH
+// berada di jalur request. Tempatnya hanya di cron dan script (lib/critical-sheet-sync.ts);
+// halaman web membaca cermin di Postgres (lib/critical-sheet-db.ts), yang untuk satu
+// halaman hanya ±7 KB.
 
-async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
-    const sheets = getSheetsClient();
-
-    // Resolve kedua tab by gid tiap load (murah; sekaligus tahan rename tab).
+/** Metadata spreadsheet + kedua tab, di-resolve by gid (tahan rename tab). */
+async function resolveTabs(sheets: ReturnType<typeof getSheetsClient>) {
     const meta = await withRetry(() => sheets.spreadsheets.get({
         spreadsheetId: sheetId(),
         fields: 'properties.locale,sheets.properties(sheetId,title,gridProperties.columnCount)',
@@ -468,11 +488,20 @@ async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
         if (!t?.properties?.title) throw new Error(`Tab gid=${gid} tidak ditemukan di spreadsheet critical`);
         return { gid, title: t.properties.title, columnCount: t.properties.gridProperties?.columnCount ?? 26 };
     };
-    const criticalTab = findTab(tabGid('GOOGLE_SHEETS_CRITICAL_GID'));
-    const maintenanceTab = findTab(tabGid('GOOGLE_SHEETS_MAINTENANCE_GID'));
+    return {
+        criticalTab: findTab(tabGid('GOOGLE_SHEETS_CRITICAL_GID')),
+        maintenanceTab: findTab(tabGid('GOOGLE_SHEETS_MAINTENANCE_GID')),
+        argSeparator: argSeparatorForLocale(meta.data.properties?.locale ?? ''),
+    };
+}
 
-    // Satu batchGet untuk kedua tab. A:AE = kolom ID + data operator + kolom Link Foto,
-    // dengan sisa ruang bila kolomnya bergeser akibat penyisipan kolom baru.
+/** Baca SELURUH isi kedua tab. Mahal — lihat catatan di atas. */
+export async function loadCriticalSheetFull(): Promise<CriticalSheetData> {
+    const sheets = getSheetsClient();
+    const { criticalTab, maintenanceTab, argSeparator } = await resolveTabs(sheets);
+
+    // Satu batchGet untuk kedua tab. A:AE = data operator + kolom Dokumentasi + kolom ID
+    // di AA, dengan sisa ruang bila kolomnya bergeser akibat penyisipan kolom baru.
     const res = await withRetry(() => sheets.spreadsheets.values.batchGet({
         spreadsheetId: sheetId(),
         ranges: [
@@ -486,13 +515,16 @@ async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
     const criticalParsed = parseCriticalTab(criticalRows ?? []);
     const maintenanceParsed = parseMaintenanceTab(maintenanceRows ?? []);
 
-    // Satu himpunan ID untuk KEDUA tab: foto dicari lintas tab lewat ID, jadi kembar
-    // antar-tab pun berbahaya.
-    const taken = new Set<string>();
-    for (const r of [...criticalParsed.rows, ...maintenanceParsed.rows]) if (r.uid) taken.add(r.uid);
-
-    await ensureRowUids(sheets, criticalTab, criticalParsed, taken);
-    await ensureRowUids(sheets, maintenanceTab, maintenanceParsed, taken);
+    // Identitas baris datang dari sel Dokumentasi, bukan dari kolom ID. App TIDAK PERNAH
+    // lagi menulis kolom ID: dulu tiap pembacaan mengisi ID untuk semua baris yang belum
+    // punya (27rb sel) padahal yang benar-benar dipakai hanya baris berfoto — segelintir.
+    // Kolom ID di AA tetap dibaca sebagai `legacyId`, murni sebagai arsip pemulihan.
+    const [criticalUids, maintenanceUids] = await readPhotoUidMap(sheets, [
+        { title: criticalTab.title, photoColIndex: criticalParsed.photoColIndex },
+        { title: maintenanceTab.title, photoColIndex: maintenanceParsed.photoColIndex },
+    ]);
+    applyPhotoUids(criticalParsed.rows, criticalUids);
+    applyPhotoUids(maintenanceParsed.rows, maintenanceUids);
 
     reportUidAnomalies('Critical Equipment', criticalParsed.rows);
     reportUidAnomalies('Maintenance', maintenanceParsed.rows);
@@ -501,56 +533,104 @@ async function loadCriticalSheetUncached(): Promise<CriticalSheetData> {
     criticalParsed.rows.reverse();
     maintenanceParsed.rows.reverse();
 
-    const toRef = (kind: 'critical' | 'maintenance', tab: TabInfo, parsed: ParsedTab<unknown>): TabRef => ({
+    return {
+        criticals: criticalParsed.rows,
+        maintenances: maintenanceParsed.rows,
+        tabs: {
+            critical: toTabRef('critical', criticalTab, criticalParsed),
+            maintenance: toTabRef('maintenance', maintenanceTab, maintenanceParsed),
+        },
+        argSeparator,
+        fetchedAt: new Date().toISOString(),
+        uidMaps: { critical: criticalUids, maintenance: maintenanceUids },
+    };
+}
+
+function toTabRef(kind: 'critical' | 'maintenance', tab: TabInfo, parsed: ParsedTab<unknown>): TabRef {
+    return {
         kind,
         gid: tab.gid,
         title: tab.title,
         headerRowIndex: parsed.headerRowIndex,
         uidColIndex: parsed.uidColIndex,
         photoColIndex: parsed.photoColIndex,
-    });
+    };
+}
+
+/**
+ * Baca EKOR kedua tab — dari baris `start*` ke bawah — ditambah 30 baris pertama supaya
+ * baris header tetap ikut terbaca (posisinya tidak di-hardcode).
+ *
+ * Inilah pembaruan rutin. Dasarnya kebiasaan operator: urutan baris masih berubah selama
+ * shift berjalan, tapi begitu harinya lewat posisinya tetap — jadi yang perlu dilihat
+ * ulang tiap beberapa menit hanyalah ujung sheet, bukan 27rb baris.
+ *
+ * Kolom "Dokumentasi" tetap dibaca PENUH (satu kolom, hampir seluruhnya kosong, puluhan
+ * KB) supaya foto yang baru ditempel ke record LAMA pun langsung terlihat. Petanya ikut
+ * dikembalikan lewat `uidMaps` karena isinya menyangkut SELURUH sheet, bukan cuma ekor.
+ *
+ * Baris di antara header dan ekor menjadi lubang di array; parser memang sudah melewati
+ * baris tanpa uraian/tanggal, jadi penomoran barisnya tetap benar tanpa parser terpisah.
+ */
+export async function loadCriticalSheetTailFrom(
+    startCritical: number,
+    startMaintenance: number,
+): Promise<CriticalSheetData> {
+    const sheets = getSheetsClient();
+    const { criticalTab, maintenanceTab, argSeparator } = await resolveTabs(sheets);
+
+    // Baris header selalu ikut (findHeader memindai 30 baris pertama), lalu ekornya.
+    const HEADER_SCAN = 30;
+    const cMulai = Math.max(HEADER_SCAN + 1, startCritical);
+    const mMulai = Math.max(HEADER_SCAN + 1, startMaintenance);
+
+    const res = await withRetry(() => sheets.spreadsheets.values.batchGet({
+        spreadsheetId: sheetId(),
+        ranges: [
+            `${quoteTab(criticalTab.title)}!A1:AE${HEADER_SCAN}`,
+            `${quoteTab(criticalTab.title)}!A${cMulai}:AE`,
+            `${quoteTab(maintenanceTab.title)}!A1:AE${HEADER_SCAN}`,
+            `${quoteTab(maintenanceTab.title)}!A${mMulai}:AE`,
+        ],
+        valueRenderOption: 'FORMATTED_VALUE',
+    }), 'batchGet ekor critical+maintenance');
+
+    const vr = (res.data.valueRanges ?? []).map(v => (v.values ?? []) as string[][]);
+    // Susun ulang jadi array bernomor baris sheet; sisanya sengaja dibiarkan berlubang.
+    const rakit = (kepala: string[][], ekor: string[][], mulai: number): string[][] => {
+        const rows: string[][] = [];
+        kepala.forEach((r, i) => { rows[i] = r; });
+        ekor.forEach((r, i) => { rows[mulai - 1 + i] = r; });
+        return rows;
+    };
+    const criticalRows = rakit(vr[0] ?? [], vr[1] ?? [], cMulai);
+    const maintenanceRows = rakit(vr[2] ?? [], vr[3] ?? [], mMulai);
+
+    const criticalParsed = parseCriticalTab(criticalRows);
+    const maintenanceParsed = parseMaintenanceTab(maintenanceRows);
+
+    const [criticalUids, maintenanceUids] = await readPhotoUidMap(sheets, [
+        { title: criticalTab.title, photoColIndex: criticalParsed.photoColIndex },
+        { title: maintenanceTab.title, photoColIndex: maintenanceParsed.photoColIndex },
+    ]);
+    applyPhotoUids(criticalParsed.rows, criticalUids);
+    applyPhotoUids(maintenanceParsed.rows, maintenanceUids);
+
+    criticalParsed.rows.reverse();
+    maintenanceParsed.rows.reverse();
 
     return {
         criticals: criticalParsed.rows,
         maintenances: maintenanceParsed.rows,
         tabs: {
-            critical: toRef('critical', criticalTab, criticalParsed),
-            maintenance: toRef('maintenance', maintenanceTab, maintenanceParsed),
+            critical: toTabRef('critical', criticalTab, criticalParsed),
+            maintenance: toTabRef('maintenance', maintenanceTab, maintenanceParsed),
         },
-        argSeparator: argSeparatorForLocale(meta.data.properties?.locale ?? ''),
+        argSeparator,
         fetchedAt: new Date().toISOString(),
+        /** Peta uid LENGKAP (kolom Dokumentasi dibaca penuh), bukan hanya bagian ekor. */
+        uidMaps: { critical: criticalUids, maintenance: maintenanceUids },
     };
-}
-
-let cache: { data: CriticalSheetData; at: number } | null = null;
-let inflight: Promise<CriticalSheetData> | null = null;
-
-/**
- * Loader ter-cache in-memory (TTL 5 menit) dengan dedup request paralel:
- * viewer serentak berbagi satu fetch. `force` (tombol "Perbarui data" & menu di
- * spreadsheet) memangkas TTL menjadi MIN_FORCE_INTERVAL_MS — bukan mengabaikannya sama
- * sekali — supaya klik beruntun dari banyak operator tidak menjadi belasan pembacaan
- * penuh sekaligus. Kalau baca sheet gagal (jaringan/kuota) tapi masih ada cache lama,
- * sajikan cache lama (stale-while-error) alih-alih error.
- */
-export async function loadCriticalSheet(force = false): Promise<CriticalSheetData> {
-    const ttl = force ? MIN_FORCE_INTERVAL_MS : CACHE_TTL_MS;
-    if (cache && Date.now() - cache.at < ttl) return cache.data;
-    if (inflight) return inflight;
-    inflight = loadCriticalSheetUncached()
-        .then(data => {
-            cache = { data, at: Date.now() };
-            return data;
-        })
-        .catch(err => {
-            if (cache) {
-                console.warn('[critical-sheet] load gagal, sajikan cache lama:', err instanceof Error ? err.message : err);
-                return cache.data;
-            }
-            throw err;
-        })
-        .finally(() => { inflight = null; });
-    return inflight;
 }
 
 /** Status selesai = "OK" (case-insensitive). Selain itu dianggap masih aktif. */
@@ -709,26 +789,14 @@ export function uidMatchesRow(uid: string, item: string, varian: string): boolea
     return prefix === uidPrefixFor(item, varian);
 }
 
-/** Ambil semua record critical & maintenance untuk satu item key (data sudah terbaru-dulu).
- *  Record multi-varian (mis. "DEF") ikut muncul di tiap halaman varian penyusunnya. */
-export function getItemDetail(data: CriticalSheetData, key: string): ItemDetail | null {
-    const criticals = data.criticals.filter(c => recordItemKeys(c.item, c.varian).includes(key));
-    const maintenances = data.maintenances.filter(m => recordItemKeys(m.item, m.varian).includes(key));
-    if (criticals.length === 0 && maintenances.length === 0) return null;
-    const sample = criticals[0] ?? maintenances[0];
-    const barIdx = key.lastIndexOf('|');
-    const variant = barIdx >= 0 ? key.slice(barIdx + 1) : '';
-    return {
-        key,
-        itemName: (sample.item ?? '').replace(/\s+/g, ' ').trim(),
-        variant,
-        code: extractCode(sample.item),
-        criticals,
-        maintenances,
-    };
-}
-
 // ─── Feed aktivitas terbaru ──────────────────────────────────────────────────
+//
+// Penyaringan, pencarian, dan pengambilan per item TIDAK lagi dilakukan di sini.
+// Dulu ada getItemDetail/buildRecentFeed/filterRecentFeed yang menyaring 27rb baris di
+// memori tiap request; sekarang semuanya query SQL di lib/critical-sheet-db.ts. Fungsi
+// lamanya sengaja dihapus, bukan dibiarkan: dua implementasi untuk semantik yang sama
+// (urutan feed, aturan pencocokan kata kunci) pasti menyimpang tanpa ada yang menyadari.
+// Tipe di bawah tetap di sini karena dipakai bersama oleh lapis DB dan klien.
 
 /**
  * Satu baris di daftar record. Kolom yang hanya ada di salah satu tab diisi ''
@@ -736,8 +804,12 @@ export function getItemDetail(data: CriticalSheetData, key: string): ItemDetail 
  * tidak perlu narrowing per kind.
  */
 export interface RecentEntry {
+    /** '' selama baris itu belum punya foto — identitasnya baru lahir saat foto pertama. */
     uid: string;
     kind: 'critical' | 'maintenance';
+    /** Baris sheet 1-based + sidik jari isinya: identitas baris yang BELUM punya uid. */
+    rowIndex: number;
+    sig: string;
     tanggal: string | null;
     tanggalRaw: string;
     shift: string;           // maintenance saja
@@ -755,101 +827,105 @@ export interface RecentEntry {
 }
 
 /**
- * Gabungkan record critical + maintenance jadi satu feed terurut tanggal terbaru dulu.
- * `itemKey` = halaman item tujuan saat record diklik (token varian pertama; record
- * multi-varian tetap dapat ditemukan di halaman varian lain lewat pencarian item).
+ * Normalisasi teks untuk pencocokan pencarian: lowercase, spasi dirapatkan.
+ * Dipakai sync untuk mengisi kolom `search`, sehingga hasil query SQL sama persis
+ * dengan aturan pencocokan yang dulu dijalankan di memori.
  */
-export function buildRecentFeed(data: CriticalSheetData, kind: 'all' | 'critical' | 'maintenance'): RecentEntry[] {
-    const out: RecentEntry[] = [];
-    if (kind !== 'maintenance') {
-        for (const c of data.criticals) {
-            out.push({
-                uid: c.uid, kind: 'critical', tanggal: c.tanggal, tanggalRaw: c.tanggalRaw,
-                shift: '', itemName: (c.item ?? '').replace(/\s+/g, ' ').trim(), variant: c.varian,
-                code: extractCode(c.item), uraian: c.uraian, notifikasi: c.notif,
-                scope: c.scope, status: c.status, pelapor: c.pelapor, foreman: '', tanggalOkRaw: c.tanggalOkRaw,
-                itemKey: recordItemKeys(c.item, c.varian)[0],
-            });
-        }
-    }
-    if (kind !== 'critical') {
-        for (const m of data.maintenances) {
-            out.push({
-                uid: m.uid, kind: 'maintenance', tanggal: m.tanggal, tanggalRaw: m.tanggalRaw,
-                shift: m.shift, itemName: (m.item ?? '').replace(/\s+/g, ' ').trim(), variant: m.varian,
-                code: extractCode(m.item), uraian: m.uraian, notifikasi: m.notifikasi,
-                scope: m.scope, status: m.status, pelapor: '', foreman: m.foreman, tanggalOkRaw: '',
-                itemKey: recordItemKeys(m.item, m.varian)[0],
-            });
-        }
-    }
-    // Tanggal terbaru dulu; tanpa tanggal ditaruh paling akhir.
-    out.sort((a, b) => {
-        if (a.tanggal && b.tanggal) return a.tanggal === b.tanggal ? 0 : b.tanggal.localeCompare(a.tanggal);
-        if (a.tanggal && !b.tanggal) return -1;
-        if (!a.tanggal && b.tanggal) return 1;
-        return 0;
-    });
-    return out;
-}
-
-/** Normalisasi teks untuk pencocokan pencarian: lowercase, spasi dirapatkan. */
-function normSearch(v: string): string {
+export function normSearch(v: string): string {
     return (v ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Filter feed dengan kata kunci bebas: cocok bila SEMUA kata kunci muncul di
- * gabungan nama item + kode + uraian + notifikasi ("B-02 bearing" ikut ketemu).
- * Dipisah dari buildRecentFeed karena `code` baru ada setelah tahap build, dan
- * dipanggil sebelum paginasi supaya `total` di respons mengikuti hasil filter.
- */
-export function filterRecentFeed(entries: RecentEntry[], q: string): RecentEntry[] {
-    const tokens = normSearch(q).split(' ').filter(Boolean);
-    if (tokens.length === 0) return entries;
-    return entries.filter(e => {
-        const hay = normSearch(`${e.itemName} ${e.code} ${e.uraian} ${e.notifikasi}`);
-        return tokens.every(t => hay.includes(t));
-    });
-}
+// ─── Kolom "Dokumentasi" ─────────────────────────────────────────────────────
 
-// ─── Kolom "Link Foto" ───────────────────────────────────────────────────────
-
-/** Lokasi satu baris sheet berdasarkan web_uid-nya. */
+/** Lokasi satu baris sheet berdasarkan uid-nya. */
 export interface RowLocation {
     kind: 'critical' | 'maintenance';
     tabTitle: string;
     rowIndex: number;             // 1-based
     photoColIndex: number | null;
     itemKey: string;              // halaman item tujuan link
-    /** Kode + varian baris itu — dipakai sebagai label sel Link Foto. */
+    /** Kode + varian baris itu — dipakai sebagai label sel Dokumentasi. */
     itemLabel: string;
 }
 
-export function findRowByUid(data: CriticalSheetData, uid: string): RowLocation | null {
+/**
+ * Sidik jari baris yang disimpan bersama fotonya di `sheet_photos`. Dipakai untuk
+ * menemukan baris ketika uid belum (atau tidak lagi) ada di sel Dokumentasi.
+ */
+export interface RowHint {
+    kind: 'critical' | 'maintenance';
+    rowIndex: number | null;
+    item: string;
+    varian: string;
+    uraian: string;
+    tanggalRaw: string;
+}
+
+type AnyRow = CriticalRow | MaintenanceRow;
+
+function toLocation(data: CriticalSheetData, kind: 'critical' | 'maintenance', row: AnyRow): RowLocation {
+    const tab = kind === 'critical' ? data.tabs.critical : data.tabs.maintenance;
+    return {
+        kind,
+        tabTitle: tab.title,
+        rowIndex: row.rowIndex,
+        photoColIndex: tab.photoColIndex,
+        itemKey: recordItemKeys(row.item, row.varian)[0],
+        itemLabel: rowItemLabel(row.item, row.varian),
+    };
+}
+
+/**
+ * Cari baris pemilik sebuah uid, berlapis dari yang paling dapat dipercaya:
+ *
+ *   1. sel Dokumentasi — satu-satunya sumber yang selalu ikut berpindah bersama barisnya;
+ *   2. sidik jari isi baris (`hint`) — WAJIB ada jalur ini, karena foto PERTAMA sebuah
+ *      baris justru ditulis saat selnya masih kosong: tanpa ini, sel tidak akan pernah
+ *      terisi dan uid-nya tidak akan pernah muncul di lapis 1 (buntu);
+ *   3. kolom ID di AA — arsip dari masa sebelum identitas pindah. Berguna untuk baris
+ *      lama, dan nilainya memang menyusut seiring waktu karena tidak ditulis lagi.
+ *
+ * `hint.rowIndex` dicoba lebih dulu sebagai tebakan, tapi selalu diverifikasi dengan
+ * sidik jarinya — nomor baris bisa bergeser kapan saja oleh penyisipan di atasnya.
+ * Sidik jari yang cocok di LEBIH DARI SATU baris dianggap tidak menentukan (null),
+ * karena menebak di situ berarti menempelkan foto ke baris yang mungkin salah.
+ */
+export function findRowByUid(data: CriticalSheetData, uid: string, hint?: RowHint | null): RowLocation | null {
     if (!uid) return null;
+
+    // 1. Sel Dokumentasi.
     const critical = data.criticals.find(c => c.uid === uid);
-    if (critical) {
-        return {
-            kind: 'critical',
-            tabTitle: data.tabs.critical.title,
-            rowIndex: critical.rowIndex,
-            photoColIndex: data.tabs.critical.photoColIndex,
-            itemKey: recordItemKeys(critical.item, critical.varian)[0],
-            itemLabel: rowItemLabel(critical.item, critical.varian),
-        };
-    }
+    if (critical) return toLocation(data, 'critical', critical);
     const maintenance = data.maintenances.find(m => m.uid === uid);
-    if (maintenance) {
-        return {
-            kind: 'maintenance',
-            tabTitle: data.tabs.maintenance.title,
-            rowIndex: maintenance.rowIndex,
-            photoColIndex: data.tabs.maintenance.photoColIndex,
-            itemKey: recordItemKeys(maintenance.item, maintenance.varian)[0],
-            itemLabel: rowItemLabel(maintenance.item, maintenance.varian),
-        };
+    if (maintenance) return toLocation(data, 'maintenance', maintenance);
+
+    // 2. Sidik jari.
+    if (hint) {
+        const rows: AnyRow[] = hint.kind === 'critical' ? data.criticals : data.maintenances;
+        const sidik = rowFingerprint(hint.item, hint.varian, hint.uraian, hint.tanggalRaw);
+        const cocok = (r: AnyRow) => rowFingerprint(r.item, r.varian, r.uraian, r.tanggalRaw) === sidik;
+
+        if (hint.rowIndex !== null) {
+            const tebakan = rows.find(r => r.rowIndex === hint.rowIndex);
+            if (tebakan && cocok(tebakan)) return toLocation(data, hint.kind, tebakan);
+        }
+        const kandidat = rows.filter(cocok);
+        if (kandidat.length === 1) return toLocation(data, hint.kind, kandidat[0]);
+        if (kandidat.length > 1) {
+            console.warn(
+                `[critical-sheet] uid ${uid}: ${kandidat.length} baris ${hint.kind} bersidik jari sama ` +
+                `(baris ${kandidat.map(k => k.rowIndex).join(', ')}) — tidak ditebak.`,
+            );
+            return null;
+        }
     }
+
+    // 3. Arsip kolom ID.
+    const lamaC = data.criticals.find(c => c.legacyId === uid);
+    if (lamaC) return toLocation(data, 'critical', lamaC);
+    const lamaM = data.maintenances.find(m => m.legacyId === uid);
+    if (lamaM) return toLocation(data, 'maintenance', lamaM);
+
     return null;
 }
 
@@ -865,7 +941,7 @@ export function recordKindLabel(kind: 'critical' | 'maintenance'): string {
 }
 
 /**
- * Isi sel "Link Foto": kosong bila belum ada foto, HYPERLINK bila sudah.
+ * Isi sel "Dokumentasi": kosong bila belum ada foto, HYPERLINK bila sudah.
  *
  * Labelnya menyebut JENIS + ITEM baris itu ("📷 Critical P-02.10 D (3)"), bukan sekadar
  * "Foto (3)", dengan alasan yang sama seperti kode item di dalam ID: sel yang menyebut
@@ -885,40 +961,37 @@ export function photoCellFormula(
     if (count <= 0) return '';
     // Tanda kutip ganda di dalam formula HYPERLINK di-escape dengan menggandakannya.
     const safeUrl = url.replace(/"/g, '""');
+    return `=HYPERLINK("${safeUrl}"${sep}"${photoCellLabel(count, itemLabel, kindLabel)}")`;
+}
+
+/**
+ * Teks yang TERLIHAT di sel Dokumentasi — juga yang tersimpan di cermin Postgres, karena
+ * dari sheet yang terbaca memang tampilannya (FORMATTED_VALUE), bukan formulanya.
+ */
+export function photoCellLabel(count: number, itemLabel = '', kindLabel = ''): string {
     const escape = (v: string) => v.trim().replace(/"/g, '""');
     // Ikon kamera sudah menyatakan "ini foto", jadi bagian teksnya dipakai untuk yang
     // tidak bisa ditebak: jenis recordnya dan item mana.
     const bagian = [escape(kindLabel), escape(itemLabel)].filter(Boolean).join(' ');
-    const label = bagian ? `📷 ${bagian} (${count})` : `📷 Foto (${count})`;
-    return `=HYPERLINK("${safeUrl}"${sep}"${label}")`;
+    return bagian ? `📷 ${bagian} (${count})` : `📷 Foto (${count})`;
 }
 
 /**
- * Tulis ulang satu sel "Link Foto" setelah jumlah foto baris berubah.
- * Dipanggil best-effort dari API upload/hapus: kegagalan di sini TIDAK boleh
- * menggagalkan operasi foto, jadi pemanggil membungkusnya dengan try/catch.
- * Return false bila baris/kolom tidak ketemu (mis. kolom Link Foto belum dibuat).
+ * Tulis satu sel "Dokumentasi" — primitif, tanpa tahu asal barisnya.
+ * Pemilihan barisnya ada di lib/critical-sheet-db.ts (writePhotoCell), yang mencarinya di
+ * cermin Postgres alih-alih memuat ulang seluruh spreadsheet.
  */
-export async function writePhotoCell(uid: string, count: number): Promise<boolean> {
-    let data = await loadCriticalSheet();
-    let loc = findRowByUid(data, uid);
-    // Baris yang baru saja ditambahkan operator bisa belum ada di cache → coba sekali lagi
-    // dengan force (tetap dibatasi MIN_FORCE_INTERVAL_MS).
-    if (!loc) {
-        data = await loadCriticalSheet(true);
-        loc = findRowByUid(data, uid);
-    }
-    if (!loc || loc.photoColIndex === null) return false;
-
-    const col = colLetter(loc.photoColIndex);
-    const value = photoCellFormula(
-        count, photoPageUrl(loc.itemKey, uid), data.argSeparator, loc.itemLabel, recordKindLabel(loc.kind),
-    );
+export async function updatePhotoCell(
+    tabTitle: string,
+    photoColIndex: number,
+    rowIndex: number,
+    value: string,
+): Promise<void> {
+    const col = colLetter(photoColIndex);
     await withRetry(() => getSheetsClient().spreadsheets.values.update({
         spreadsheetId: sheetId(),
-        range: `${quoteTab(loc!.tabTitle)}!${col}${loc!.rowIndex}`,
+        range: `${quoteTab(tabTitle)}!${col}${rowIndex}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [[value]] },
-    }), `tulis Link Foto ${loc.tabTitle}!${col}${loc.rowIndex}`);
-    return true;
+    }), `tulis Dokumentasi ${tabTitle}!${col}${rowIndex}`);
 }

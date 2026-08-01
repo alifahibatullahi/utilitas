@@ -18,6 +18,24 @@ import PhotoButton from './PhotoButton';
  * yang menempel di sel lain (mode gabungan), supaya tidak ada kolom separuh kosong.
  */
 
+/**
+ * Bisakah baris ini dilampiri foto? Punya uid berarti sudah pernah difoto; kalau belum,
+ * cukup nomor baris + sidik jari isinya — uid-nya baru lahir saat foto pertama tersimpan.
+ * Nyaris selalu true; false hanya ketika cermin sheet belum tersinkron.
+ */
+export function canPhoto(e: RecentEntry): boolean {
+    return Boolean(e.uid) || (e.rowIndex !== undefined && Boolean(e.sig));
+}
+
+/**
+ * Kunci baris yang stabil untuk React key dan untuk menandai modal mana yang terbuka.
+ * Bukan uid: baris yang belum berfoto belum punya uid, dan uid kosong akan membuat
+ * seluruh baris semacam itu terlihat sebagai satu record yang sama.
+ */
+export function rowKey(e: RecentEntry): string {
+    return `${e.kind}:${e.rowIndex}`;
+}
+
 export interface RowActions {
     photoCount: number;
     onOpenPhoto: () => void;
@@ -120,7 +138,7 @@ export const C: Record<string, RecordColumn> = {
         key: 'foto', label: 'Foto', cellClass: 'w-20 text-right',
         render: (e, a) => (
             <div className="flex justify-end">
-                <PhotoButton count={a.photoCount} onClick={a.onOpenPhoto} disabled={!e.uid} compact />
+                <PhotoButton count={a.photoCount} onClick={a.onOpenPhoto} disabled={!canPhoto(e)} compact />
             </div>
         ),
     },
@@ -128,7 +146,7 @@ export const C: Record<string, RecordColumn> = {
         key: 'aksi', label: 'Aksi', cellClass: 'w-28 text-right',
         render: (e, a) => (
             <div className="flex items-center justify-end gap-1.5">
-                <PhotoButton count={a.photoCount} onClick={a.onOpenPhoto} disabled={!e.uid} compact />
+                <PhotoButton count={a.photoCount} onClick={a.onOpenPhoto} disabled={!canPhoto(e)} compact />
                 {a.onSelect && (
                     <button
                         onClick={a.onSelect}
@@ -166,10 +184,10 @@ export function RecordTable({ entries, cols, rowActionsFor, minWidthClass = 'min
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
-                        {entries.map((e, idx) => {
+                        {entries.map(e => {
                             const actions = rowActionsFor(e);
                             return (
-                                <tr key={e.uid || `${e.kind}-${idx}`} className="hover:bg-neutral-50 transition-colors align-top">
+                                <tr key={rowKey(e)} className="hover:bg-neutral-50 transition-colors align-top">
                                     {cols.map(c => (
                                         <td key={c.key} className={`px-3 py-3 ${c.cellClass ?? ''}`}>{c.render(e, actions)}</td>
                                     ))}
@@ -192,7 +210,7 @@ export function RecordCards({ entries, rowActionsFor, showItem = true }: {
 }) {
     return (
         <div className="md:hidden space-y-2">
-            {entries.map((e, idx) => {
+            {entries.map(e => {
                 const actions = rowActionsFor(e);
                 const meta = [
                     e.notifikasi && `Notif ${e.notifikasi}`,
@@ -216,7 +234,7 @@ export function RecordCards({ entries, rowActionsFor, showItem = true }: {
                 );
                 return (
                     <div
-                        key={e.uid || `${e.kind}-${idx}`}
+                        key={rowKey(e)}
                         className="flex items-stretch gap-3 border border-neutral-200 rounded-xl pl-2 pr-3 py-3 bg-white"
                     >
                         <div className={`w-1.5 rounded-full shrink-0 ${kindRailClass(e.kind)}`} />
@@ -226,7 +244,7 @@ export function RecordCards({ entries, rowActionsFor, showItem = true }: {
                                 : body}
 
                             <div className="flex items-center gap-2 mt-2 pt-2 border-t border-neutral-100">
-                                <PhotoButton count={actions.photoCount} onClick={actions.onOpenPhoto} disabled={!e.uid} />
+                                <PhotoButton count={actions.photoCount} onClick={actions.onOpenPhoto} disabled={!canPhoto(e)} />
                                 {actions.onSelect && (
                                     <button
                                         onClick={actions.onSelect}

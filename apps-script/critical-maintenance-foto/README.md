@@ -6,13 +6,13 @@ mengunggah apa pun** dan tidak butuh izin Google Drive.
 
 ## Alur operator
 
-1. Isi baris critical/maintenance di spreadsheet seperti biasa. Kolom **Link Foto**
+1. Isi baris critical/maintenance di spreadsheet seperti biasa. Kolom **Dokumentasi**
    masih kosong.
 2. Klik salah satu sel di baris itu → menu **📷 Upload Foto → Upload foto baris terpilih**.
 3. Dialog muncul berisi ringkasan baris → **Buka web & upload foto**.
 4. Web terbuka langsung di record tersebut → pilih/ambil foto → upload.
    Ini jalan di HP juga, karena upload-nya di web, bukan di dialog Apps Script.
-5. Kolom **Link Foto** baris itu terisi otomatis: `📷 Foto (n)`, klik untuk kembali
+5. Kolom **Dokumentasi** baris itu terisi otomatis: `📷 Foto (n)`, klik untuk kembali
    membuka galeri record tersebut. Kalau semua fotonya dihapus, selnya kosong lagi.
 
 Kalau saat menu diklik tidak ada baris data yang jelas (masih di baris judul, atau tab
@@ -49,16 +49,22 @@ produksi cukup tempel ulang kedua file dan isi ketiga properti itu.
 
 ## Prasyarat di spreadsheet
 
-- Kolom **`Link Foto`** sudah ada di kedua tab (Critical: kolom N, Maintenance: kolom L).
+- Kolom **`Dokumentasi`** sudah ada di kedua tab (Critical: kolom K, Maintenance: kolom I).
   Web yang mengisi & mengosongkan selnya; script ini tidak pernah menulisnya.
-- Kolom **`ID`** (kolom B) harus tetap ada dan isinya jangan diubah — itu identitas baris
-  yang menghubungkannya ke foto. Bentuknya `KODE-VARIAN-acak`, mis. `L-08.12-A-a1`.
-  Kalau baris yang dipilih belum punya ID, script mengisikannya sekali dengan format yang
-  sama supaya tautannya bisa langsung menunjuk record itu.
-  Header lama `web_uid …` masih dikenali, jadi sheet yang belum diganti tetap jalan.
+  Nama lama `Link Foto` masih dikenali, jadi sheet yang belum diganti tetap jalan.
+
+  **Sel inilah identitas barisnya.** Di dalam formula `=HYPERLINK(...)`-nya tersimpan uid
+  record tersebut. Karena kolomnya berada di tengah data operator, ia ikut berpindah saat
+  baris disortir — itu sebabnya identitas ditaruh di sini, bukan di kolom terpisah.
+  Jangan menyalin sel Dokumentasi dari satu baris ke baris lain: fotonya akan ikut.
+
+- Kolom **`ID`** (kolom AA) kini **arsip saja**. App tidak pernah menulisnya lagi, dan
+  baris baru memang tidak akan mendapat ID. Isinya dipertahankan sebagai cadangan
+  pemulihan bila sel Dokumentasi hilang; jangan dihapus dulu.
 
 Cek kapan saja dengan `npx tsx scripts/check-critical-sheet.ts` di repo web — script itu
-read-only dan melaporkan tab, baris header, serta posisi kolom `ID` & `Link Foto`.
+read-only dan melaporkan tab, baris header, posisi kolom `Dokumentasi`, jumlah baris
+berfoto, serta baris yang uid-nya tidak cocok dengan isinya.
 
 ## Catatan
 

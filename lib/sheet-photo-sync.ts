@@ -1,5 +1,5 @@
 /**
- * Sinkronisasi kolom "Link Foto" di spreadsheet setelah jumlah foto satu baris berubah.
+ * Sinkronisasi kolom "Dokumentasi" di spreadsheet setelah jumlah foto satu baris berubah.
  *
  * Dipakai oleh API upload & hapus foto. SELALU best-effort: spreadsheet adalah cermin,
  * bukan sumber kebenaran, jadi gagal menulis sel tidak boleh menggagalkan upload/hapus
@@ -7,7 +7,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { writePhotoCell } from './critical-sheet';
+import { writePhotoCell } from './critical-sheet-db';
+import type { RowHint } from './critical-sheet';
 
 /**
  * Hitung ulang foto milik `rowUid`, lalu tulis/kosongkan selnya di sheet.
@@ -26,11 +27,32 @@ export async function syncPhotoCell(rowUid: string): Promise<void> {
             .eq('row_uid', rowUid);
         if (error) throw error;
 
-        const written = await writePhotoCell(rowUid, count ?? 0);
+        // Sidik jari baris ikut diambil: untuk foto PERTAMA sebuah baris, sel Dokumentasi
+        // masih kosong, jadi uid-nya belum bisa dipakai mencari barisnya. Sidik jari
+        // inilah yang menunjukkan baris mana yang dimaksud (lihat findRowByUid).
+        const { data: contoh } = await supabase
+            .from('sheet_photos')
+            .select('parent_kind, row_index, row_item, row_varian, row_uraian, row_tanggal')
+            .eq('row_uid', rowUid)
+            .limit(1)
+            .maybeSingle();
+
+        const hint: RowHint | null = contoh && contoh.row_item
+            ? {
+                kind:       contoh.parent_kind as 'critical' | 'maintenance',
+                rowIndex:   (contoh.row_index as number | null) ?? null,
+                item:       (contoh.row_item as string) ?? '',
+                varian:     (contoh.row_varian as string) ?? '',
+                uraian:     (contoh.row_uraian as string) ?? '',
+                tanggalRaw: (contoh.row_tanggal as string) ?? '',
+            }
+            : null;
+
+        const written = await writePhotoCell(rowUid, count ?? 0, hint);
         if (!written) {
-            console.warn(`[sheet-photo-sync] baris ${rowUid} atau kolom "Link Foto" tidak ditemukan — sel dilewati`);
+            console.warn(`[sheet-photo-sync] baris ${rowUid} atau kolom "Dokumentasi" tidak ditemukan — sel dilewati`);
         }
     } catch (err) {
-        console.warn('[sheet-photo-sync] gagal memperbarui sel Link Foto:', err instanceof Error ? err.message : err);
+        console.warn('[sheet-photo-sync] gagal memperbarui sel Dokumentasi:', err instanceof Error ? err.message : err);
     }
 }

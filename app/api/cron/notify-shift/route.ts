@@ -16,6 +16,15 @@ import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
 import { autofillShutdownShift, autofillShutdownDaily } from '@/lib/shutdown-autofill';
 import { autopublishPastDeadline } from '@/lib/auto-publish';
 import { notifyAshSiloDaily } from '@/lib/ash-silo-notify';
+import { syncFullIfStale, syncTail } from '@/lib/critical-sheet-sync';
+
+/**
+ * Isi baris LAMA masih bisa berubah (Status / "Tanggal di OK" sering diisi belakangan),
+ * dan hanya pembacaan penuh yang bisa mengetahui baris yang dihapus. 30 menit = kompromi
+ * antara "perubahan lama cepat terlihat" dan "jangan sering-sering membayar 5 detik".
+ * Operator yang butuh seketika tinggal menekan "Perbarui data".
+ */
+const SHEET_FULL_SYNC_MAX_AGE_MS = 30 * 60_000;
 
 // Pesan lanjutan yang dikirim SETELAH reminder pribadi (grup A–C, mode personal):
 // minta penerima meneruskan reminder ke grup WA-nya supaya operator lain ikut mengisi.
@@ -125,7 +134,21 @@ export async function GET(req: NextRequest) {
         ashSilo = { error: e instanceof Error ? e.message : String(e) };
     }
 
-    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish, ashSilo });
+    // Segarkan cermin spreadsheet Critical Maintenance. Tiap tick hanya EKOR sheet
+    // (murah); pembacaan penuh — yang juga menangkap perubahan pada baris lama dan baris
+    // yang dihapus — dijalankan paling sering sekali per SNAPSHOT_MAX_AGE_MS.
+    //
+    // Diletakkan di sini, bukan sebagai endpoint cron sendiri, karena cron eksternal
+    // sudah memanggil route ini tiap ~15 menit. Best-effort: sync yang gagal tidak boleh
+    // menggagalkan reminder, yang jauh lebih penting.
+    let sheetSync: unknown;
+    try {
+        sheetSync = (await syncFullIfStale(SHEET_FULL_SYNC_MAX_AGE_MS)) ?? (await syncTail());
+    } catch (e) {
+        sheetSync = { error: e instanceof Error ? e.message : String(e) };
+    }
+
+    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish, ashSilo, sheetSync });
 }
 
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {

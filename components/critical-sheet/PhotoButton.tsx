@@ -8,7 +8,9 @@
  * sekilas untuk tahu baris mana yang sudah ada fotonya. Biru solid = ada foto, kotak
  * garis putus-putus = masih kosong.
  *  - `compact`  : padding lebih rapat untuk sel tabel; labelnya tetap "Foto".
- *  - `disabled` : baris sheet belum punya ID, jadi belum bisa dilampiri foto.
+ *  - `disabled` : barisnya tidak bisa dikenali sama sekali (jarang — biasanya cermin
+ *                 sheet belum tersinkron). "Belum ada foto" BUKAN alasan menonaktifkan:
+ *                 justru baris itulah yang paling sering perlu ditambahi foto.
  */
 export default function PhotoButton({ count, onClick, disabled = false, compact = false }: {
     count: number;
@@ -29,7 +31,7 @@ export default function PhotoButton({ count, onClick, disabled = false, compact 
                     : 'border border-dashed border-neutral-300 text-neutral-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50'
             }`}
             title={disabled
-                ? 'Baris ini belum punya ID — muat ulang data dulu'
+                ? 'Baris ini belum dikenali — tekan "Perbarui data" dulu'
                 : has ? `Lihat ${count} foto record ini` : 'Tambahkan foto untuk record ini'}
         >
             <span className="material-symbols-outlined" style={{ fontSize: 15 }}>

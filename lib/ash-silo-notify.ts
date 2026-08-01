@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendWaText, logNotification, formatTanggalIndo, nowWIB } from '@/lib/whatsapp';
 
-// Kirim "UPDATE SILO UBB" ke grup WA tiap hari sekitar 07:00 WIB. Dipanggil dari
+// Kirim "Level Ash Silo UBB" ke grup WA tiap hari sekitar 07:00 WIB. Dipanggil dari
 // endpoint cron notify-shift (di-ping scheduler eksternal ~15 mnt sekali); fungsi
 // ini yang menentukan kapan benar-benar kirim (window jam) + dedup 1×/hari.
 
@@ -81,7 +81,7 @@ export async function notifyAshSiloDaily(supabase: SupabaseClient) {
     if (a == null && b == null) return { skipped: 'no_data' as const };
 
     // 5. Susun pesan sesuai format yang diminta.
-    const message = `UPDATE SILO UBB\n${formatTanggalIndo(date)}\n\nSILO A ${fmt(a)}\nSILO B ${fmt(b)}`;
+    const message = `*Level Ash Silo UBB*\n${formatTanggalIndo(date)}\n\nSilo A ${fmt(a)}\nSilo B ${fmt(b)}`;
 
     // 6. Kirim ke grup via akun 'publish' (Fonnte) — device Fonnte yang jadi
     //    anggota grup ini.

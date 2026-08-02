@@ -9,8 +9,12 @@ mengunggah apa pun** dan tidak butuh izin Google Drive.
 1. Isi baris critical/maintenance di spreadsheet seperti biasa. Kolom **Dokumentasi**
    masih kosong.
 2. Klik salah satu sel di baris itu → menu **📷 Upload Foto → Upload foto baris terpilih**.
-3. Dialog muncul berisi ringkasan baris → **Buka web & upload foto**.
-4. Web terbuka langsung di record tersebut → pilih/ambil foto → upload.
+3. Dialog muncul berisi ringkasan baris yang dipilih — jenis, status, scope, tanggal/shift,
+   nomor baris, uraian lengkap, item + varian, notifikasi, pelapor/foreman, dan berapa media
+   yang sudah ada → **Buka web & upload foto**.
+4. Web terbuka **langsung pada pop up record tersebut** → pilih/ambil foto → upload.
+   Berlaku juga untuk baris yang kolom Dokumentasi-nya masih kosong: barisnya dikenali dari
+   nomor baris + sidik jari isinya, jadi tidak perlu dicari lagi di daftar.
    Ini jalan di HP juga, karena upload-nya di web, bukan di dialog Apps Script.
 5. Kolom **Dokumentasi** baris itu terisi otomatis: `📷 Foto (n)`, klik untuk kembali
    membuka galeri record tersebut. Kalau semua fotonya dihapus, selnya kosong lagi.
@@ -24,8 +28,8 @@ sendiri record yang baru dia isi.
 Kedua file di sini adalah **salinan versi-terkontrol** dari script yang dipasang langsung
 di spreadsheet (container-bound):
 
-- `Code.gs` — menu, penentuan baris terpilih, pembentukan URL.
-- `OpenWeb.html` — dialog konfirmasi + pembuka tab.
+- `Code.gs` — menu, penentuan baris terpilih, pembacaan kolomnya, pembentukan URL.
+- `OpenWeb.html` — dialog ringkasan baris + pembuka tab.
 
 ## Pasang
 

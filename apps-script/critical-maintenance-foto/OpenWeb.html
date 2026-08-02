@@ -3,22 +3,54 @@
 <head>
   <base target="_top">
   <style>
-    body { font-family: 'Google Sans', Roboto, Arial, sans-serif; margin: 0; padding: 18px; color: #202124; }
-    .row { border: 1px solid #dadce0; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; background: #f8f9fa; }
-    .kind { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 5px; background: #202124; color: #fff; }
-    .kind.critical { background: #d93025; }
-    .date { font-size: 12px; color: #5f6368; margin-left: 6px; }
-    .uraian { font-size: 13px; font-weight: 600; margin: 6px 0 2px; }
-    .item { font-size: 11px; color: #5f6368; }
-    .note { font-size: 12px; color: #5f6368; line-height: 1.45; margin-bottom: 14px; }
-    button { font-size: 14px; font-weight: 600; padding: 10px 16px; border: 0; border-radius: 8px; background: #1a73e8; color: #fff; cursor: pointer; width: 100%; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Google Sans', Roboto, Arial, sans-serif; margin: 0; color: #202124;
+      display: flex; flex-direction: column; background: #fff;
+    }
+    .scroll { flex: 1; overflow-y: auto; padding: 16px 18px 4px; }
+    .foot { padding: 12px 18px 14px; border-top: 1px solid #e8eaed; background: #fff; }
+
+    .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .chip { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+    .kind { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .kind.critical { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+    .status { color: #fff; background: #737373; }
+    .status.open { background: #dc2626; }
+    .status.ip { background: #f59e0b; }
+    .scope { background: #fff; border: 1px solid #dadce0; color: #5f6368; }
+    .pos { margin-left: auto; font-size: 11px; font-weight: 700; color: #80868b; white-space: nowrap; }
+
+    .when { font-size: 12px; font-weight: 600; color: #5f6368; margin-top: 10px; }
+    .uraian {
+      font-size: 15px; font-weight: 600; line-height: 1.45; margin-top: 4px;
+      background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 10px; padding: 10px 12px;
+      max-height: 132px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;
+    }
+    .uraian .lead { color: #9aa0a6; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 14px 0 0; }
+    .grid .wide { grid-column: 1 / -1; }
+    .lbl { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9aa0a6; }
+    .val { font-size: 13px; font-weight: 600; color: #202124; word-wrap: break-word; margin-top: 1px; }
+
+    .note { font-size: 12px; color: #5f6368; line-height: 1.5; }
+    .scroll .note { margin-top: 14px; }
+    button {
+      font-size: 14px; font-weight: 700; padding: 12px 16px; border: 0; border-radius: 8px;
+      background: #1a73e8; color: #fff; cursor: pointer; width: 100%;
+    }
     button:hover { background: #1765cc; }
-    .hint { font-size: 11px; color: #5f6368; margin-top: 12px; line-height: 1.45; }
+    .hint { font-size: 11px; color: #5f6368; margin-top: 10px; line-height: 1.45; }
     a { color: #1a73e8; word-break: break-all; font-size: 11px; }
   </style>
 </head>
 <body>
-  <div id="content"></div>
+  <div class="scroll" id="content"></div>
+  <div class="foot">
+    <button onclick="go()">Buka web &amp; upload foto</button>
+    <div class="hint" id="hint"></div>
+  </div>
 
   <script>
     // Scriptlet force-print (tanda seru) dipakai supaya tanda kutip di dalam JSON tidak
@@ -30,19 +62,65 @@
 
     var html = '';
     if (ctx.mode === 'record') {
-      html += '<div class="row">';
-      html += '<span class="kind ' + (ctx.kindLabel === 'Critical' ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
-      if (ctx.tanggal) html += '<span class="date">' + escapeHtml(ctx.tanggal) + '</span>';
-      html += '<div class="uraian">' + escapeHtml(ctx.uraian || '(tanpa uraian)') + '</div>';
-      if (ctx.item) html += '<div class="item">' + escapeHtml(ctx.item) + '</div>';
+      var critical = ctx.kindLabel === 'Critical';
+
+      html += '<div class="chips">';
+      html += '<span class="chip kind ' + (critical ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
+      html += '<span class="chip status ' + statusClass(ctx.status) + '">' + escapeHtml(statusLabel(ctx.status)) + '</span>';
+      if (ctx.scope) html += '<span class="chip scope">' + escapeHtml(ctx.scope) + '</span>';
+      html += '<span class="pos">Baris ' + escapeHtml(String(ctx.row)) + (ctx.no ? ' &middot; No ' + escapeHtml(ctx.no) : '') + '</span>';
       html += '</div>';
-      html += '<div class="note">Foto diunggah lewat web. Halaman akan langsung terbuka di record ini.</div>';
+
+      var when = [ctx.tanggal, ctx.shift ? 'Shift ' + ctx.shift : ''].filter(Boolean).join(' · ');
+      if (when) html += '<div class="when">' + escapeHtml(when) + '</div>';
+
+      html += '<div class="uraian"><span class="lead">' + escapeHtml(ctx.kindLabel) + ': </span>'
+            + escapeHtml(ctx.uraian || '(tanpa uraian)') + '</div>';
+
+      html += '<div class="grid">';
+      html += field('Nama & Nomor Item', ctx.item, true);
+      html += field('Varian', ctx.varian);
+      html += field('Notifikasi', ctx.notifikasi);
+      html += field(critical ? 'Yang Melaporkan' : 'Foreman', critical ? ctx.pelapor : ctx.foreman);
+      html += field('Tanggal di OK', ctx.tanggalOk);
+      html += field('Dokumentasi', ctx.foto);
+      html += '</div>';
+
+      html += '<div class="note">Foto diunggah lewat web — halaman langsung terbuka pada pop up record ini, '
+            + 'termasuk untuk baris yang kolom Dokumentasi-nya masih kosong.</div>';
     } else {
       html += '<div class="note">' + escapeHtml(ctx.note || '') + '</div>';
     }
-    html += '<button onclick="go()">Buka web &amp; upload foto</button>';
-    html += '<div class="hint">Tidak terbuka otomatis? Klik tautan ini:<br><a href="' + escapeAttr(ctx.url) + '" target="_blank" rel="noopener">' + escapeHtml(ctx.url) + '</a></div>';
+
     document.getElementById('content').innerHTML = html;
+    document.getElementById('hint').innerHTML =
+      'Tidak terbuka otomatis? Klik tautan ini:<br><a href="' + escapeAttr(ctx.url) + '" target="_blank" rel="noopener">'
+      + escapeHtml(ctx.url) + '</a>';
+
+    // Field kosong disembunyikan, bukan diisi tanda hubung: yang tampil di dialog sempit ini
+    // sebaiknya hanya yang benar-benar ada isinya.
+    function field(label, value, wide) {
+      if (!value) return '';
+      return '<div class="' + (wide ? 'wide' : '') + '">'
+           + '<div class="lbl">' + escapeHtml(label) + '</div>'
+           + '<div class="val">' + escapeHtml(value) + '</div></div>';
+    }
+
+    // Sel status kosong di sheet berarti pekerjaannya belum ditutup, sama seperti di web.
+    function statusLabel(status) {
+      var key = String(status == null ? '' : status).trim().toLowerCase();
+      if (!key || key === 'open') return 'OPEN';
+      if (key === 'ok') return 'SELESAI';
+      if (key === 'ip') return 'IN PROGRESS';
+      return String(status).trim().toUpperCase();
+    }
+
+    function statusClass(status) {
+      var key = String(status == null ? '' : status).trim().toLowerCase();
+      if (!key || key === 'open') return 'open';
+      if (key === 'ip') return 'ip';
+      return '';
+    }
 
     function go() {
       window.open(ctx.url, '_blank', 'noopener');

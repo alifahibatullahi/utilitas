@@ -26,14 +26,17 @@ function openUploadPage() {
 
   var tpl = HtmlService.createTemplateFromFile('OpenWeb');
   tpl.ctx = JSON.stringify(target);
-  var html = tpl.evaluate().setWidth(420).setHeight(260);
+  var record = target.mode === 'record';
+  var html = tpl.evaluate()
+    .setWidth(record ? 620 : 460)
+    .setHeight(record ? 540 : 300);
   ui.showModalDialog(html, '📷 Upload Foto');
 }
 
 function buildTarget_(cfg) {
-  var recentUrl = cfg.appUrl + '/critical-maintenance?tab=recent&refresh=1';
+  var recentUrl = cfg.appUrl + '/critical-maintenance?refresh=1';
   var fallback = function (note) {
-    return { url: recentUrl, mode: 'recent', note: note, item: '', uraian: '', tanggal: '' };
+    return { url: recentUrl, mode: 'recent', note: note };
   };
 
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
@@ -57,28 +60,28 @@ function buildTarget_(cfg) {
 
   var headers = hr.headers;
   var vals = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
-  var itemCol = findHeaderIndex_(headers, ['nama dan nomor item', 'nama item', 'item']);
-  var varianCol = findHeaderIndex_(headers, ['varian']);
-  var uraianCol = findHeaderIndex_(headers, ['uraian']);
-  var tglCol = findHeaderIndex_(headers, ['tanggal dilaporkan', 'tanggal']);
+  var ambil = function (names) {
+    var idx = findHeaderIndex_(headers, names);
+    return idx >= 0 ? String(vals[idx] || '').trim() : '';
+  };
 
-  var item = itemCol >= 0 ? String(vals[itemCol] || '').trim() : '';
-  var varian = varianCol >= 0 ? String(vals[varianCol] || '').trim() : '';
-  var uraian = uraianCol >= 0 ? String(vals[uraianCol] || '').trim() : '';
-  var tanggal = tglCol >= 0 ? String(vals[tglCol] || '').trim() : '';
+  var item = ambil(['nama dan nomor item', 'nama item', 'item']);
+  var varian = ambil(['varian']);
+  var uraian = ambil(['uraian']);
+  var tanggal = ambil(['tanggal dilaporkan', 'tanggal']);
 
   if (!item && !uraian) {
     return fallback('Baris yang dipilih masih kosong — web dibuka di daftar aktivitas terbaru.');
   }
 
-  var uid = readPhotoUid_(sheet, headers, row);
-  var url = cfg.appUrl + '/critical-maintenance?item=' + encodeURIComponent(itemKeyOf_(item, varian));
-  if (uid) {
-    url += '&foto=' + encodeURIComponent(uid);
-  } else {
-    url += '&kind=' + encodeURIComponent(kind)
-         + '&row=' + row
-         + '&sig=' + encodeURIComponent(rowFingerprint_(item, varian, uraian, tanggal));
+  var foto = readPhotoInfo_(sheet, headers, row);
+  var url = cfg.appUrl + '/critical-maintenance'
+          + '?item=' + encodeURIComponent(itemKeyOf_(item, varian))
+          + '&kind=' + encodeURIComponent(kind)
+          + '&row=' + row
+          + '&sig=' + encodeURIComponent(rowFingerprint_(item, varian, uraian, tanggal));
+  if (foto.uid) {
+    url += '&foto=' + encodeURIComponent(foto.uid);
   }
 
   return {
@@ -86,18 +89,40 @@ function buildTarget_(cfg) {
     mode: 'record',
     note: '',
     kindLabel: kind === 'critical' ? 'Critical' : 'Maintenance',
-    item: item,
-    uraian: uraian.length > 120 ? uraian.slice(0, 120) + '…' : uraian,
+    row: row,
+    no: ambil(['no']),
     tanggal: tanggal,
+    shift: ambil(['shift']),
+    item: item,
+    varian: varian,
+    uraian: uraian,
+    notifikasi: ambil(['notif', 'notifikasi']),
+    scope: ambil(['scope']),
+    status: ambil(['status']),
+    pelapor: ambil(['yang melaporkan', 'pelapor']),
+    foreman: ambil(['foreman']),
+    tanggalOk: ambil(['tanggal di ok']),
+    foto: foto.label,
   };
 }
 
-function readPhotoUid_(sheet, headers, row) {
+function readPhotoInfo_(sheet, headers, row) {
   var idx = findHeaderIndex_(headers, ['dokumentasi', 'link foto']);
-  if (idx < 0) return '';
-  var formula = String(sheet.getRange(row, idx + 1).getFormula() || '');
+  if (idx < 0) return { uid: '', label: '' };
+
+  var sel = sheet.getRange(row, idx + 1);
+  var formula = String(sel.getFormula() || '');
   var m = /[?&]foto=([^"&\s]+)/.exec(formula);
-  return m ? decodeURIComponent(m[1]) : '';
+  var uid = m ? decodeURIComponent(m[1]) : '';
+
+  var tampil = String(sel.getDisplayValue() || '').trim();
+  var n = /\((\d+)\)\s*$/.exec(tampil);
+  var jumlah = n ? parseInt(n[1], 10) : 0;
+  var label = jumlah > 0
+    ? 'Sudah ada ' + jumlah + (tampil.indexOf('🎬') >= 0 ? ' foto/video' : ' foto')
+    : 'Belum ada foto';
+
+  return { uid: uid, label: label };
 }
 
 function normHeader_(v) {

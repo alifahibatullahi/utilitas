@@ -6,7 +6,7 @@ import { fetchRecent, fetchSheetPhotos } from './types';
 import { kindActiveClass } from './SheetBadges';
 import { SheetPagination } from './SheetFilterBar';
 import { C, RecordCards, RecordTable, type RecordColumn, type RowActions } from './RecordColumns';
-import RecordPhotoModal, { type PhotoRecordTarget } from './RecordPhotoModal';
+import RecordPhotoModal, { photoTargetOf, type PhotoRecordTarget } from './RecordPhotoModal';
 
 const PAGE_SIZE = 20;
 
@@ -20,7 +20,7 @@ interface RecordBrowserProps {
 
 /**
  * Tampilan awal viewer: satu daftar record critical + maintenance (terbaru dulu),
- * berbentuk tabel berkolom mengikuti kolom spreadsheet — tabel di layar lebar,
+ * berbentuk tabel berkolom mengikuti kolom spreadsheet — tabel di layar lebar,
  * kartu di HP. Tiap baris punya tombol Foto (upload/lihat foto record itu) dan
  * Detail (buka halaman item). Filter jenis + pencarian bebas di atas daftar.
  */
@@ -63,7 +63,7 @@ export default function RecordBrowser({ reloadKey, onSelect, onMeta }: RecordBro
     }, [debouncedQ, kind, page, reloadKey]);
 
     // Hitungan foto hanya untuk baris yang sedang tampil (≤ PAGE_SIZE uid),
-    // bukan seluruh sheet — satu query per halaman.
+    // bukan seluruh sheet — satu query per halaman.
     useEffect(() => {
         const uids = recent.map(e => e.uid).filter(Boolean);
         if (uids.length === 0) { setPhotoCounts({}); return; }
@@ -83,22 +83,7 @@ export default function RecordBrowser({ reloadKey, onSelect, onMeta }: RecordBro
         setPhotoCounts(prev => ({ ...prev, [uid]: count }));
     }, []);
 
-    const openPhotoFor = useCallback((entry: RecentEntry) => {
-        setOpenRecord({
-            uid: entry.uid,
-            rowIndex: entry.rowIndex,
-            sig: entry.sig,
-            kind: entry.kind,
-            itemKey: entry.itemKey,
-            itemName: entry.itemName,
-            variant: entry.variant,
-            tanggalRaw: entry.tanggalRaw,
-            uraian: entry.uraian,
-            pelapor: entry.pelapor,
-            scope: entry.scope,
-            status: entry.status,
-        });
-    }, []);
+    const openPhotoFor = useCallback((entry: RecentEntry) => setOpenRecord(photoTargetOf(entry)), []);
 
     const rowActionsFor = useCallback((e: RecentEntry): RowActions => ({
         photoCount: photoCounts[e.uid] ?? 0,
@@ -163,7 +148,7 @@ export default function RecordBrowser({ reloadKey, onSelect, onMeta }: RecordBro
 
             {openRecord && (
                 <RecordPhotoModal
-                    key={openRecord.uid}
+                    key={openRecord.uid || `${openRecord.kind}:${openRecord.rowIndex}`}
                     record={openRecord}
                     onClose={() => setOpenRecord(null)}
                     onCountChange={handleCountChange}

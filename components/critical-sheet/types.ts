@@ -170,6 +170,41 @@ export interface RecentResponse {
     error?: string;
 }
 
+// ─── Deep-link dari spreadsheet ──────────────────────────────────────────────
+
+/**
+ * Baris yang ditunjuk tautan dari sel/menu spreadsheet. `uid` ada bila barisnya sudah
+ * berfoto; baris yang belum pernah difoto dikenali lewat `kind` + `rowIndex` + `sig`
+ * (persis identitas yang dipakai saat foto pertamanya disimpan).
+ */
+export interface PhotoFocus {
+    uid?: string;
+    kind?: 'critical' | 'maintenance';
+    rowIndex?: number;
+    sig?: string;
+}
+
+/** Baca fokus dari query string; null bila tautannya memang bukan tautan record. */
+export function readPhotoFocus(sp: { get(name: string): string | null }): PhotoFocus | null {
+    const uid = (sp.get('foto') ?? '').trim();
+    const kindRaw = (sp.get('kind') ?? '').trim();
+    const kind = kindRaw === 'critical' || kindRaw === 'maintenance' ? kindRaw : undefined;
+    const rowRaw = Number(sp.get('row'));
+    const rowIndex = Number.isInteger(rowRaw) && rowRaw > 0 ? rowRaw : undefined;
+    const sig = (sp.get('sig') ?? '').trim();
+
+    // Nomor baris tanpa sidik jari tidak dipakai: nomor baris saja bisa basi begitu ada
+    // penyisipan di atasnya, dan salah baris di sini berarti foto menempel ke record lain.
+    const punyaBaris = kind !== undefined && rowIndex !== undefined && sig !== '';
+    if (!uid && !punyaBaris) return null;
+    return {
+        uid: uid || undefined,
+        kind: punyaBaris ? kind : undefined,
+        rowIndex: punyaBaris ? rowIndex : undefined,
+        sig: punyaBaris ? sig : undefined,
+    };
+}
+
 // ─── Fetch helpers ───────────────────────────────────────────────────────────
 
 /**
@@ -203,6 +238,24 @@ export async function fetchItemDetail(key: string, bust?: number): Promise<ItemD
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Gagal memuat detail item');
     return json as ItemDetailResponse;
+}
+
+/**
+ * Satu baris yang ditunjuk deep-link. Dipanggil SEBELUM halaman di belakangnya selesai
+ * memuat, supaya pop up recordnya yang pertama kali terlihat operator.
+ */
+export async function fetchFocusRecord(f: PhotoFocus): Promise<RecentEntry> {
+    const qs = new URLSearchParams();
+    if (f.uid) qs.set('uid', f.uid);
+    if (f.kind && f.rowIndex !== undefined && f.sig) {
+        qs.set('kind', f.kind);
+        qs.set('row', String(f.rowIndex));
+        qs.set('sig', f.sig);
+    }
+    const res = await fetch(`/api/critical-maintenance/row?${qs.toString()}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? 'Gagal membuka record');
+    return json.record as RecentEntry;
 }
 
 export async function fetchItemSpec(key: string): Promise<ItemSpec | null> {

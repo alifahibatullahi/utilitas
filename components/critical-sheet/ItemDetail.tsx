@@ -5,7 +5,7 @@ import type { ItemDetailResponse, RecentEntry, SheetPhoto } from './types';
 import { fetchItemDetail, fetchSheetPhotos, itemLabel } from './types';
 import ItemSpecSection from './ItemSpecSection';
 import ItemPhotoGallery from './ItemPhotoGallery';
-import RecordPhotoModal, { type PhotoRecordTarget } from './RecordPhotoModal';
+import RecordPhotoModal, { photoTargetOf, type PhotoRecordTarget } from './RecordPhotoModal';
 import { C, RecordCards, RecordTable, rowKey, type RowActions } from './RecordColumns';
 
 /**
@@ -19,15 +19,11 @@ interface ItemDetailProps {
     itemKey: string;
     reloadKey: number;
     onBack: () => void;
-    /** row_uid dari deep-link `?foto=` (link di sel spreadsheet) — modalnya dibuka otomatis. */
-    focusUid?: string | null;
-    /** Dipanggil setelah focusUid dipakai, supaya param tidak menempel di URL. */
-    onFocusHandled?: () => void;
 }
 
 /** Halaman detail satu item (layout 2-kolom): kolom utama = SATU tabel riwayat gabungan
  *  critical + maintenance, kolom kanan = spesifikasi (Tech Specs) + galeri foto agregat. */
-export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFocusHandled }: ItemDetailProps) {
+export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailProps) {
     const [data, setData] = useState<ItemDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -53,7 +49,7 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
      */
     const records = useMemo<RecentEntry[]>(() => {
         if (!data) return [];
-        // Bentuknya sengaja RecentEntry — sama persis dengan daftar awal, supaya kedua
+        // Bentuknya sengaja RecentEntry — sama persis dengan daftar awal, supaya kedua
         // halaman bisa memakai satu peta kolom (RecordColumns) dan tidak melenceng.
         const shared = { itemName: data.itemName, code: data.code, itemKey: data.key };
         const merged: RecentEntry[] = [
@@ -108,14 +104,6 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
         return { ...c, ...countOverride };
     }, [photos, countOverride]);
 
-    // Deep-link dari sel spreadsheet: buka modal record begitu datanya siap.
-    useEffect(() => {
-        if (!focusUid || !data) return;
-        const exists = records.some(r => r.uid === focusUid);
-        if (exists) setOpenUid(focusUid);
-        onFocusHandled?.();
-    }, [focusUid, data, records, onFocusHandled]);
-
     // Record yang sedang dibuka modalnya, lengkap dengan konteks item untuk link & judul.
     // Dicari lewat kunci baris (`kind:rowIndex`), bukan uid: baris yang belum berfoto
     // belum punya uid, dan justru baris itulah yang paling sering perlu ditambahi foto.
@@ -123,20 +111,9 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
         if (!openUid || !data) return null;
         const src = records.find(r => rowKey(r) === openUid || (r.uid && r.uid === openUid));
         if (!src) return null;
-        return {
-            uid: src.uid,
-            rowIndex: src.rowIndex,
-            sig: src.sig,
-            kind: src.kind,
-            itemKey: data.key,
-            itemName: data.itemName,
-            variant: src.variant,
-            tanggalRaw: src.tanggalRaw,
-            uraian: src.uraian,
-            pelapor: src.pelapor,
-            scope: src.scope,
-            status: src.status,
-        };
+        // Nama & key item diambil dari halaman ini, bukan dari barisnya: satu record bisa
+        // menyangkut beberapa varian, dan yang berlaku di sini adalah varian halaman ini.
+        return { ...photoTargetOf(src), itemKey: data.key, itemName: data.itemName };
     }, [openUid, data, records]);
 
     const handleCountChange = useCallback((uid: string, count: number) => {
@@ -213,7 +190,7 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, focusUid, onFoc
                         </div>
 
                         {/* Sidebar kanan: spesifikasi + foto. Sengaja lebih ramping dari
-                            sebelumnya  tabel riwayat di kirinya butuh ruang 7 kolom. */}
+                            sebelumnya — tabel riwayat di kirinya butuh ruang 7 kolom. */}
                         <div className="w-full lg:w-72 xl:w-80 shrink-0 space-y-4">
                             <ItemSpecSection itemKey={data.key} itemName={data.itemName} variant={data.variant} code={data.code} />
                             <div className="rounded-2xl border border-neutral-200 bg-white p-4">

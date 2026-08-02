@@ -386,6 +386,40 @@ export async function resolveRowForUpload(
     return null;
 }
 
+/**
+ * Satu baris yang ditunjuk deep-link dari spreadsheet, untuk dibuka langsung sebagai pop up
+ * foto — tanpa memuat seluruh riwayat itemnya lebih dulu.
+ *
+ * Baris berfoto datang membawa uid; baris yang belum pernah difoto hanya punya nomor baris +
+ * sidik jari, dan itu SENGAJA diserahkan ke `resolveRowForUpload` — fungsi yang sama dengan
+ * yang dipakai saat fotonya nanti disimpan. Kalau keduanya memakai aturan pencocokan yang
+ * berbeda, pop up bisa menampilkan baris A sementara fotonya menempel ke baris B.
+ */
+export async function queryFocusRow(f: {
+    uid?: string;
+    kind?: 'critical' | 'maintenance';
+    rowIndex?: number;
+    sig?: string;
+}): Promise<{ record: RecentEntry } | { ambigu: RecentEntry[] } | null> {
+    if (f.uid) {
+        const supabase = createAdmin();
+        const { data, error } = await supabase
+            .from('critical_sheet_rows').select(KOLOM).eq('uid', f.uid).limit(1);
+        if (error) throw error;
+        const hit = ((data ?? []) as unknown as DbRow[])[0];
+        if (hit) return { record: toRecentEntry(hit) };
+        // uid tidak ketemu bukan akhir cerita: pemanggil boleh menyertakan nomor baris +
+        // sidik jari sekaligus, dan cermin bisa saja belum sempat merekam uid barunya.
+    }
+
+    if (!f.kind || f.rowIndex === undefined || !f.sig) return null;
+
+    const hasil = await resolveRowForUpload(f.kind, f.rowIndex, f.sig);
+    if (!hasil) return null;
+    if ('ambigu' in hasil) return { ambigu: hasil.kandidat.map(toRecentEntry) };
+    return { record: toRecentEntry(hasil.row) };
+}
+
 /** uid yang sudah terpakai di cermin — penjaga agar uid baru tidak kembar. */
 export async function uidsTerpakai(): Promise<Set<string>> {
     const supabase = createAdmin();

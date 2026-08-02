@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { compressImageToFit } from '@/lib/image-compression';
 import { MAX_UPLOAD_BYTES, mediaKindOf, formatBytes } from '@/lib/upload-limits';
-import { fetchSheetPhotos, itemLabel, mediaSummary, type SheetPhoto } from './types';
+import { fetchSheetPhotos, itemLabel, mediaSummary, type RecentEntry, type SheetPhoto } from './types';
 import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
 import { MediaThumb, PhotoLightbox, PHOTO_KIND, type PhotoRecordInfo } from './PhotoViewer';
 
@@ -19,6 +19,28 @@ export interface PhotoRecordTarget extends PhotoRecordInfo {
     itemName: string;
     /** Varian mentah baris itu (kolom "Varian") — bisa gabungan seperti "DEF". */
     variant: string;
+}
+
+/**
+ * Satu baris daftar → target modal fotonya. Ketiga pemanggil modal (daftar record, riwayat
+ * item, deep-link dari spreadsheet) memakai ini supaya isi headernya tidak pelan-pelan
+ * berbeda antar halaman.
+ */
+export function photoTargetOf(e: RecentEntry): PhotoRecordTarget {
+    return {
+        uid: e.uid,
+        rowIndex: e.rowIndex,
+        sig: e.sig,
+        kind: e.kind,
+        itemKey: e.itemKey,
+        itemName: e.itemName,
+        variant: e.variant,
+        tanggalRaw: e.tanggalRaw,
+        uraian: e.uraian,
+        pelapor: e.pelapor,
+        scope: e.scope,
+        status: e.status,
+    };
 }
 
 interface RecordPhotoModalProps {

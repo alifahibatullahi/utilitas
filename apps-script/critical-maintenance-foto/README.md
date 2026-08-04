@@ -9,9 +9,10 @@ mengunggah apa pun** dan tidak butuh izin Google Drive.
 1. Isi baris critical/maintenance di spreadsheet seperti biasa. Kolom **Dokumentasi**
    masih kosong.
 2. Klik salah satu sel di baris itu → menu **📷 Upload Foto → Upload foto baris terpilih**.
-3. Dialog muncul berisi empat penanda baris itu, sengaja dibuat besar supaya salah baris
-   langsung ketahuan: **nama & nomor item + varian**, **uraian**, **scope**, dan **yang
-   melaporkan** (di tab Maintenance: **foreman**) → **Buka web & upload foto**.
+3. Dialog langsung muncul (kerangka dulu), lalu terisi empat penanda baris itu — sengaja
+   dibuat besar supaya salah baris langsung ketahuan: **nama & nomor item + varian**,
+   **uraian**, **scope**, dan **yang melaporkan** (di tab Maintenance: **foreman**).
+   Tombolnya aktif begitu ringkasannya datang → **Buka web & upload foto**.
 4. Web terbuka **langsung pada pop up record tersebut** → pilih/ambil foto → upload.
    Berlaku juga untuk baris yang kolom Dokumentasi-nya masih kosong: barisnya dikenali dari
    nomor baris + sidik jari isinya, jadi tidak perlu dicari lagi di daftar.
@@ -29,7 +30,12 @@ Kedua file di sini adalah **salinan versi-terkontrol** dari script yang dipasang
 di spreadsheet (container-bound):
 
 - `Code.gs` — menu, penentuan baris terpilih, pembacaan kolomnya, pembentukan URL.
-- `OpenWeb.html` — dialog ringkasan baris + pembuka tab.
+  Baris header di-cache per tab (`CacheService`, 6 jam) supaya pemindaian 30 baris pertama
+  tidak diulang tiap kali menu diklik; cache-nya ikut berganti kalau jumlah kolom berubah.
+- `OpenWeb.html` — dialog ringkasan baris + pembuka tab. Dialog tampil lebih dulu lalu
+  memanggil `getUploadTarget()`; sambil menunggu, ia juga memanggil `appUrl` sekali
+  (`…/api/critical-maintenance/row?warm=1`) supaya server web sudah bangun saat tombolnya
+  ditekan.
 
 ## Pasang
 

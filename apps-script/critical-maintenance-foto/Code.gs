@@ -20,17 +20,14 @@ function onOpen() {
 }
 
 function openUploadPage() {
-  var ui = SpreadsheetApp.getUi();
-  var cfg = getConfig_();
-  var target = buildTarget_(cfg);
-
   var tpl = HtmlService.createTemplateFromFile('OpenWeb');
-  tpl.ctx = JSON.stringify(target);
-  var record = target.mode === 'record';
-  var html = tpl.evaluate()
-    .setWidth(record ? 620 : 460)
-    .setHeight(record ? 470 : 300);
-  ui.showModalDialog(html, '📷 Upload Foto');
+  tpl.appUrl = JSON.stringify(getConfig_().appUrl);
+  var html = tpl.evaluate().setWidth(620).setHeight(470);
+  SpreadsheetApp.getUi().showModalDialog(html, '📷 Upload Foto');
+}
+
+function getUploadTarget() {
+  return buildTarget_(getConfig_());
 }
 
 function buildTarget_(cfg) {
@@ -59,7 +56,7 @@ function buildTarget_(cfg) {
   }
 
   var headers = hr.headers;
-  var vals = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  var vals = sheet.getRange(row, 1, 1, headers.length).getDisplayValues()[0];
   var ambil = function (names) {
     var idx = findHeaderIndex_(headers, names);
     return idx >= 0 ? String(vals[idx] || '').trim() : '';
@@ -71,6 +68,7 @@ function buildTarget_(cfg) {
   var tanggal = ambil(['tanggal dilaporkan', 'tanggal']);
 
   if (!item && !uraian) {
+    lupakanHeader_(sheet);
     return fallback('Baris yang dipilih masih kosong — web dibuka di daftar aktivitas terbaru.');
   }
 
@@ -120,7 +118,36 @@ function findHeaderIndex_(headers, names) {
   return -1;
 }
 
+function headerCacheKey_(sheet) {
+  return 'hdr:' + sheet.getSheetId() + ':' + sheet.getLastColumn();
+}
+
 function findHeaderRow_(sheet, cfg) {
+  var cache = CacheService.getDocumentCache();
+  var kunci = headerCacheKey_(sheet);
+  if (cache) {
+    var tersimpan = cache.get(kunci);
+    if (tersimpan) {
+      try {
+        return JSON.parse(tersimpan);
+      } catch (e) {
+      }
+    }
+  }
+
+  var hasil = scanHeaderRow_(sheet, cfg);
+  if (hasil && cache) {
+    cache.put(kunci, JSON.stringify(hasil), 21600);
+  }
+  return hasil;
+}
+
+function lupakanHeader_(sheet) {
+  var cache = CacheService.getDocumentCache();
+  if (cache) cache.remove(headerCacheKey_(sheet));
+}
+
+function scanHeaderRow_(sheet, cfg) {
   var lastCol = sheet.getLastColumn();
   var lastRow = sheet.getLastRow();
   if (lastCol < 1 || lastRow < 1) return null;

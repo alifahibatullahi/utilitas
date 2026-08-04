@@ -37,6 +37,9 @@ const TAIL_ROWS = 400;
 /** Sekali tulis maksimal sekian baris — menjaga payload request Supabase tetap wajar. */
 const CHUNK = 500;
 
+/** Sekali tanya maksimal sekian nomor baris — menjaga panjang URL PostgREST tetap wajar. */
+const HASH_CHUNK = 300;
+
 interface RowRecord {
     kind: 'critical' | 'maintenance';
     row_index: number;
@@ -137,19 +140,9 @@ async function upsertChanged(
     supabase: SupabaseClient,
     records: RowRecord[],
     maxWrites?: number,
+    hanyaEkor = false,
 ): Promise<{ ditulis: number; tersisa: number }> {
-    const lama = new Map<string, string>();
-    // Supabase membatasi jumlah baris per response (default 1000), jadi diambil bertahap.
-    for (let from = 0; ; from += 1000) {
-        const { data, error } = await supabase
-            .from('critical_sheet_rows')
-            .select('kind, row_index, content_hash')
-            .range(from, from + 999);
-        if (error) throw error;
-        const batch = data ?? [];
-        for (const r of batch) lama.set(`${r.kind}:${r.row_index}`, r.content_hash as string);
-        if (batch.length < 1000) break;
-    }
+    const lama = hanyaEkor ? await hashEkor(supabase, records) : await hashSeluruhnya(supabase);
 
     const berubah = records.filter(r => lama.get(`${r.kind}:${r.row_index}`) !== r.content_hash);
     const ditulis = maxWrites === undefined ? berubah : berubah.slice(0, maxWrites);
@@ -162,6 +155,53 @@ async function upsertChanged(
         if (error) throw error;
     }
     return { ditulis: ditulis.length, tersisa: berubah.length - ditulis.length };
+}
+
+/** Hash SELURUH cermin — hanya masuk akal untuk syncFull, yang memang membandingkan semua
+ *  baris. 27 rb baris = 28 permintaan berurutan; jangan dipakai di jalur yang sering. */
+async function hashSeluruhnya(supabase: SupabaseClient): Promise<Map<string, string>> {
+    const lama = new Map<string, string>();
+    // Supabase membatasi jumlah baris per response (default 1000), jadi diambil bertahap.
+    for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase
+            .from('critical_sheet_rows')
+            .select('kind, row_index, content_hash')
+            .range(from, from + 999);
+        if (error) throw error;
+        const batch = data ?? [];
+        for (const r of batch) lama.set(`${r.kind}:${r.row_index}`, r.content_hash as string);
+        if (batch.length < 1000) break;
+    }
+    return lama;
+}
+
+/**
+ * Hash untuk baris yang BENAR-BENAR dibandingkan saja. syncTail hanya membaca ekor sheet,
+ * jadi menarik hash 27 rb baris untuk membandingkan ~800 adalah 28 perjalanan ke database
+ * yang seluruhnya sia-sia — dan itu ongkos yang ditanggung tiap kali operator membuka menu
+ * di spreadsheet.
+ *
+ * Nomor barisnya disebut satu per satu, BUKAN sebagai rentang `row_index >= terkecil`:
+ * pembacaan ekor selalu ikut membawa blok header (30 baris pertama), jadi batas bawahnya
+ * jatuh di baris ~6 dan rentangnya mencakup seluruh tabel — lalu dipotong diam-diam oleh
+ * batas 1000 baris per respons, sehingga ekornya tidak pernah ketemu dan SELURUH ekor
+ * ditulis ulang tiap sync.
+ */
+async function hashEkor(supabase: SupabaseClient, records: RowRecord[]): Promise<Map<string, string>> {
+    const lama = new Map<string, string>();
+    for (const kind of ['critical', 'maintenance'] as const) {
+        const barisan = records.filter(r => r.kind === kind).map(r => r.row_index);
+        for (let i = 0; i < barisan.length; i += HASH_CHUNK) {
+            const { data, error } = await supabase
+                .from('critical_sheet_rows')
+                .select('row_index, content_hash')
+                .eq('kind', kind)
+                .in('row_index', barisan.slice(i, i + HASH_CHUNK));
+            if (error) throw error;
+            for (const r of data ?? []) lama.set(`${kind}:${r.row_index}`, r.content_hash as string);
+        }
+    }
+    return lama;
 }
 
 async function tulisMeta(supabase: SupabaseClient, patch: Record<string, unknown>): Promise<void> {
@@ -272,7 +312,7 @@ export async function syncTail(): Promise<SyncResult> {
         );
 
         const records = toRecords(data);
-        const hasil = await upsertChanged(supabase, records);
+        const hasil = await upsertChanged(supabase, records, undefined, true);
         const ditulis = hasil.ditulis + await syncUidsSaja(supabase, data, records);
 
         await tulisMeta(supabase, {
@@ -301,12 +341,32 @@ async function syncUidsSaja(
     let n = 0;
     for (const kind of ['critical', 'maintenance'] as const) {
         const peta = kind === 'critical' ? data.uidMaps.critical : data.uidMaps.maintenance;
-        for (const [rowIndex, uid] of peta) {
-            if (dilewati.has(`${kind}:${rowIndex}`)) continue;
+        const perlu = [...peta].filter(([rowIndex]) => !dilewati.has(`${kind}:${rowIndex}`));
+        if (perlu.length === 0) continue;
+
+        // Dulu di sini ada satu UPDATE per baris berfoto — `neq('uid', …)` membuatnya jadi
+        // no-op di server, tapi perjalanannya tetap dibayar. Padahal uid sebuah baris nyaris
+        // tidak pernah berubah: sekali dibaca, biasanya tidak ada yang perlu ditulis sama
+        // sekali. Jadi bacanya diborong dulu, menulisnya hanya yang benar-benar beda.
+        const sekarang = new Map<number, string>();
+        for (let i = 0; i < perlu.length; i += CHUNK) {
+            const { data: adaDb, error } = await supabase
+                .from('critical_sheet_rows')
+                .select('row_index, uid')
+                .eq('kind', kind)
+                .in('row_index', perlu.slice(i, i + CHUNK).map(([rowIndex]) => rowIndex));
+            if (error) throw error;
+            for (const r of adaDb ?? []) sekarang.set(r.row_index as number, r.uid as string);
+        }
+
+        for (const [rowIndex, uid] of perlu) {
+            // Baris yang belum ada di cermin dilewati: UPDATE-nya tidak akan kena apa pun,
+            // dan isinya akan datang lengkap lewat sync berikutnya.
+            if (!sekarang.has(rowIndex) || sekarang.get(rowIndex) === uid) continue;
             const { error } = await supabase
                 .from('critical_sheet_rows')
                 .update({ uid })
-                .eq('kind', kind).eq('row_index', rowIndex).neq('uid', uid);
+                .eq('kind', kind).eq('row_index', rowIndex);
             if (error) throw error;
             n++;
         }

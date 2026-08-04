@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import RecordBrowser from './RecordBrowser';
 import ItemDetail from './ItemDetail';
 import RecordPhotoModal, { photoTargetOf, type PhotoRecordTarget } from './RecordPhotoModal';
-import { fetchFocusRecord, readPhotoFocus } from './types';
+import { fetchFocusRecord, FocusRowMissingError, readPhotoFocus } from './types';
 
 /**
  * Viewer Critical Maintenance. Data & input tinggal di Google Sheets; halaman ini
@@ -68,17 +68,36 @@ export default function CriticalSheetPage() {
         stripParams(['foto', 'kind', 'row', 'sig']);
     }, [focus, stripParams]);
 
-    // Cari barisnya langsung ke cermin — satu query kecil, tidak menunggu halaman di
-    // belakangnya. Baris berfoto ditemukan lewat uid, baris yang belum berfoto lewat
-    // nomor baris + sidik jari (aturan yang sama dengan saat fotonya nanti disimpan).
+    /**
+     * Cari barisnya langsung ke cermin — satu query kecil, tidak menunggu halaman di
+     * belakangnya DAN tidak menunggu sinkronisasi. Baris berfoto ditemukan lewat uid, baris
+     * yang belum berfoto lewat nomor baris + sidik jari (aturan yang sama dengan saat
+     * fotonya nanti disimpan).
+     *
+     * Dua percobaan. Yang pertama berjalan berbarengan dengan POST `?refresh=1`: hampir
+     * semua baris sudah ada di cermin, jadi pop up-nya terbuka tanpa menanggung ongkos
+     * sinkronisasi sama sekali. Hanya bila barisnya BELUM tercermin — baris yang baru saja
+     * diketik operator — percobaan kedua menunggu sinkronisasi selesai.
+     */
+    const [attempt, setAttempt] = useState(1);
     useEffect(() => {
-        if (!focus || (needsSync && !syncDone)) return;
+        if (!focus || focusRecord || focusError) return;
+        if (attempt > 1 && !syncDone) return;
         let cancelled = false;
         fetchFocusRecord(focus)
             .then(r => { if (!cancelled) setFocusRecord(photoTargetOf(r)); })
-            .catch(err => { if (!cancelled) setFocusError(err instanceof Error ? err.message : 'Gagal membuka record'); });
+            .catch(err => {
+                if (cancelled) return;
+                // Belum tercermin + sinkronisasi memang sedang jalan = masih ada harapan.
+                // Kegagalan lain (jaringan, 500, baris kembar) tidak akan berubah oleh sync.
+                if (err instanceof FocusRowMissingError && attempt === 1 && needsSync) {
+                    setAttempt(2);
+                    return;
+                }
+                setFocusError(err instanceof Error ? err.message : 'Gagal membuka record');
+            });
         return () => { cancelled = true; };
-    }, [focus, needsSync, syncDone]);
+    }, [focus, attempt, syncDone, needsSync, focusRecord, focusError]);
 
     /** Tutup pop up deep-link: fokusnya selesai, dan daftar di belakang dibaca ulang
      *  supaya jumlah foto yang baru ikut terlihat. */
@@ -211,7 +230,7 @@ export default function CriticalSheetPage() {
             {/* Pop up record dari spreadsheet. Kerangkanya tampil lebih dulu supaya yang
                 pertama dilihat operator memang pop up-nya — isinya menyusul, halaman di
                 belakang memuat sendiri. */}
-            {focus && !focusRecord && !focusError && <FocusSkeleton />}
+            {focus && !focusRecord && !focusError && <FocusSkeleton waiting={attempt > 1} />}
             {focusRecord && (
                 <RecordPhotoModal
                     key={focusRecord.uid || `${focusRecord.kind}:${focusRecord.rowIndex}`}
@@ -224,8 +243,11 @@ export default function CriticalSheetPage() {
 }
 
 /** Bentuk kasar RecordPhotoModal selagi barisnya dicari — ukuran & sudutnya sengaja sama,
- *  jadi pop up-nya tidak "melompat" saat isinya datang. */
-function FocusSkeleton() {
+ *  jadi pop up-nya tidak "melompat" saat isinya datang.
+ *
+ *  `waiting` = percobaan pertama tidak menemukan barisnya, jadi yang ditunggu sekarang
+ *  sinkronisasi spreadsheet. Menunggu tanpa sebab yang disebut terasa jauh lebih lama. */
+function FocusSkeleton({ waiting = false }: { waiting?: boolean }) {
     return (
         <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
             <div className="w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl px-4 sm:px-5 py-4" aria-busy="true">
@@ -237,7 +259,9 @@ function FocusSkeleton() {
                         <div key={i} className="aspect-square rounded-xl bg-neutral-200 animate-pulse" />
                     ))}
                 </div>
-                <p className="text-[11px] font-bold text-neutral-400 mt-4">Membuka record dari spreadsheet…</p>
+                <p className="text-[11px] font-bold text-neutral-400 mt-4">
+                    {waiting ? 'Menunggu data baru dari spreadsheet…' : 'Membuka record dari spreadsheet…'}
+                </p>
             </div>
         </div>
     );

@@ -241,6 +241,18 @@ export async function fetchItemDetail(key: string, bust?: number): Promise<ItemD
 }
 
 /**
+ * Barisnya tidak ada di cermin. Dibedakan dari kegagalan lain karena hanya keadaan INI yang
+ * masuk akal dicoba ulang setelah sinkronisasi: baris yang baru diketik operator memang
+ * belum sempat tercermin.
+ */
+export class FocusRowMissingError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'FocusRowMissingError';
+    }
+}
+
+/**
  * Satu baris yang ditunjuk deep-link. Dipanggil SEBELUM halaman di belakangnya selesai
  * memuat, supaya pop up recordnya yang pertama kali terlihat operator.
  */
@@ -254,6 +266,7 @@ export async function fetchFocusRecord(f: PhotoFocus): Promise<RecentEntry> {
     }
     const res = await fetch(`/api/critical-maintenance/row?${qs.toString()}`);
     const json = await res.json();
+    if (res.status === 404) throw new FocusRowMissingError(json.error ?? 'Baris tidak ditemukan');
     if (!res.ok) throw new Error(json.error ?? 'Gagal membuka record');
     return json.record as RecentEntry;
 }

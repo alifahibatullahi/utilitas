@@ -40,6 +40,10 @@
       background: #1a73e8; color: #fff; cursor: pointer; width: 100%;
     }
     button:hover { background: #1765cc; }
+    button:disabled { background: #c6dafc; cursor: default; }
+
+    .skel { background: #e8eaed; border-radius: 6px; animation: denyut 1.2s ease-in-out infinite; }
+    @keyframes denyut { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
     .hint { font-size: 11px; color: #5f6368; margin-top: 10px; line-height: 1.45; }
     a { color: #1a73e8; word-break: break-all; font-size: 11px; }
   </style>
@@ -47,7 +51,7 @@
 <body>
   <div class="scroll" id="content"></div>
   <div class="foot">
-    <button onclick="go()">Buka web &amp; upload foto</button>
+    <button id="buka" onclick="go()" disabled>Menyiapkan&hellip;</button>
     <div class="hint" id="hint"></div>
   </div>
 
@@ -57,33 +61,74 @@
     // mesin template Apps Script memindai seluruh berkas, bukan hanya bagian non-komentar,
     // sehingga scriptlet kosong di dalam komentar pun ikut dievaluasi dan bikin
     // "SyntaxError: Unexpected token ';'".
-    var ctx = JSON.parse(<?!= JSON.stringify(ctx) ?>);
+    var appUrl = JSON.parse(<?!= JSON.stringify(appUrl) ?>);
+    var ctx = null;
 
-    var html = '';
-    if (ctx.mode === 'record') {
-      // Empat informasi ini saja, sebesar mungkin: cukup untuk memastikan "ini memang baris
-      // yang saya pilih" sebelum operator menekan tombolnya. Tanggal, notifikasi, status,
-      // dan nomor baris sengaja tidak ikut — sudah terlihat di spreadsheet di belakangnya.
-      var critical = ctx.kindLabel === 'Critical';
+    // Dialog ini sengaja tampil DULU, isinya menyusul: membaca baris terpilih butuh
+    // beberapa panggilan ke Sheets, dan menahannya di depan membuat menu terasa mati
+    // beberapa detik setelah diklik.
+    document.getElementById('content').innerHTML = kerangka();
+    google.script.run
+      .withSuccessHandler(tampilkan)
+      .withFailureHandler(gagal)
+      .getUploadTarget();
 
-      html += '<span class="kind ' + (critical ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
-      html += '<div class="item">' + escapeHtml(itemLabel()) + '</div>';
-      html += '<div class="uraian">' + escapeHtml(ctx.uraian || '(tanpa uraian)') + '</div>';
-
-      html += '<div class="pair">';
-      html += field('Scope', ctx.scope);
-      html += field(critical ? 'Yang Melaporkan' : 'Foreman', critical ? ctx.pelapor : ctx.foreman);
-      html += '</div>';
-
-      html += '<div class="note">Foto diunggah lewat web &mdash; halaman langsung terbuka pada pop up record ini.</div>';
-    } else {
-      html += '<div class="note">' + escapeHtml(ctx.note || '') + '</div>';
+    // Sementara operator membaca ringkasannya, fungsi di server web dibangunkan — jadi
+    // klik tombolnya nanti tidak lagi menanggung cold start. Sekadar usaha: kalau
+    // diblokir, tidak ada yang berubah selain hilangnya percepatan ini.
+    try {
+      fetch(appUrl + '/api/critical-maintenance/row?warm=1', { mode: 'no-cors', cache: 'no-store' });
+    } catch (e) {
     }
 
-    document.getElementById('content').innerHTML = html;
-    document.getElementById('hint').innerHTML =
-      'Tidak terbuka otomatis? Klik tautan ini:<br><a href="' + escapeAttr(ctx.url) + '" target="_blank" rel="noopener">'
-      + escapeHtml(ctx.url) + '</a>';
+    function kerangka() {
+      return '<div class="skel" style="width:90px;height:20px;border-radius:999px"></div>'
+           + '<div class="skel" style="width:70%;height:28px;margin-top:12px"></div>'
+           + '<div class="skel" style="width:100%;height:64px;margin-top:14px;border-radius:10px"></div>'
+           + '<div class="pair" style="margin-top:18px">'
+           + '<div class="skel" style="width:60%;height:34px"></div>'
+           + '<div class="skel" style="width:60%;height:34px"></div>'
+           + '</div>';
+    }
+
+    function tampilkan(target) {
+      ctx = target;
+      var html = '';
+      if (ctx.mode === 'record') {
+        // Empat informasi ini saja, sebesar mungkin: cukup untuk memastikan "ini memang baris
+        // yang saya pilih" sebelum operator menekan tombolnya. Tanggal, notifikasi, status,
+        // dan nomor baris sengaja tidak ikut — sudah terlihat di spreadsheet di belakangnya.
+        var critical = ctx.kindLabel === 'Critical';
+
+        html += '<span class="kind ' + (critical ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
+        html += '<div class="item">' + escapeHtml(itemLabel()) + '</div>';
+        html += '<div class="uraian">' + escapeHtml(ctx.uraian || '(tanpa uraian)') + '</div>';
+
+        html += '<div class="pair">';
+        html += field('Scope', ctx.scope);
+        html += field(critical ? 'Yang Melaporkan' : 'Foreman', critical ? ctx.pelapor : ctx.foreman);
+        html += '</div>';
+
+        html += '<div class="note">Foto diunggah lewat web &mdash; halaman langsung terbuka pada pop up record ini.</div>';
+      } else {
+        html += '<div class="note">' + escapeHtml(ctx.note || '') + '</div>';
+      }
+
+      document.getElementById('content').innerHTML = html;
+      document.getElementById('hint').innerHTML =
+        'Tidak terbuka otomatis? Klik tautan ini:<br><a href="' + escapeAttr(ctx.url) + '" target="_blank" rel="noopener">'
+        + escapeHtml(ctx.url) + '</a>';
+
+      var tombol = document.getElementById('buka');
+      tombol.disabled = false;
+      tombol.textContent = 'Buka web & upload foto';
+    }
+
+    function gagal(err) {
+      document.getElementById('content').innerHTML =
+        '<div class="note">Gagal membaca baris terpilih: ' + escapeHtml(err && err.message ? err.message : String(err))
+        + '<br>Tutup dialog ini lalu coba lagi.</div>';
+    }
 
     // Varian menempel di belakang nama item, sama seperti di web ("… Phosphat Pump D").
     function itemLabel() {

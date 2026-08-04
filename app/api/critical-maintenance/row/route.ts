@@ -13,6 +13,14 @@ import { queryFocusRow } from '@/lib/critical-sheet-db';
 export async function GET(req: NextRequest) {
     try {
         const sp = req.nextUrl.searchParams;
+
+        // Pemanasan dari dialog spreadsheet: dipanggil saat dialognya terbuka, supaya fungsi
+        // ini sudah bangun ketika operator benar-benar menekan tombolnya sedetik kemudian.
+        // Tidak menyentuh database — yang dibayar cuma cold start-nya.
+        if (sp.get('warm') === '1') {
+            return new NextResponse(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+        }
+
         const uid = (sp.get('uid') ?? '').trim();
         const kindRaw = (sp.get('kind') ?? '').trim();
         const kind = kindRaw === 'critical' || kindRaw === 'maintenance' ? kindRaw : undefined;

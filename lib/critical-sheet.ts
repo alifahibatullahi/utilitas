@@ -994,6 +994,27 @@ export function totalMedia(c: number | MediaCount): number {
 }
 
 /**
+ * Posisi kolom "Dokumentasi" yang SEDANG berlaku di sebuah tab, dibaca langsung dari baris
+ * headernya. `null` = kolomnya tidak ada di baris itu.
+ *
+ * Dipakai sebagai pemeriksaan tepat sebelum menulis. Posisi yang tersimpan di cermin baru
+ * diperbarui saat sync berjalan (cron ~15 menit), sedangkan operator sesekali memindah
+ * kolom — Dokumentasi tab Maintenance pernah bergeser K → I. Menulis dengan posisi basi
+ * berarti menaruh formula HYPERLINK di kolom milik data operator, menimpanya diam-diam.
+ * Satu pembacaan sebaris ini murah: upload foto jarang, dan salahnya tidak bisa dibatalkan.
+ */
+export async function readPhotoColIndex(tabTitle: string, headerRowIndex: number): Promise<number | null> {
+    const res = await withRetry(() => getSheetsClient().spreadsheets.values.get({
+        spreadsheetId: sheetId(),
+        range: `${quoteTab(tabTitle)}!A${headerRowIndex}:AE${headerRowIndex}`,
+    }), `baca baris header ${tabTitle}`);
+    const row = ((res.data.values ?? [])[0] ?? []) as string[];
+    const map = buildHeaderMap(row);
+    const name = PHOTO_HEADER_NAMES.find(n => n in map);
+    return name === undefined ? null : map[name];
+}
+
+/**
  * Tulis satu sel "Dokumentasi" — primitif, tanpa tahu asal barisnya.
  * Pemilihan barisnya ada di lib/critical-sheet-db.ts (writePhotoCell), yang mencarinya di
  * cermin Postgres alih-alih memuat ulang seluruh spreadsheet.

@@ -30,8 +30,14 @@ Kedua file di sini adalah **salinan versi-terkontrol** dari script yang dipasang
 di spreadsheet (container-bound):
 
 - `Code.gs` — menu, penentuan baris terpilih, pembacaan kolomnya, pembentukan URL.
-  Baris header di-cache per tab (`CacheService`, 6 jam) supaya pemindaian 30 baris pertama
-  tidak diulang tiap kali menu diklik; cache-nya ikut berganti kalau jumlah kolom berubah.
+  Baris header dipindai ulang tiap kali menu diklik. Sempat di-cache (`CacheService`, 6 jam)
+  demi kecepatan, lalu dibatalkan: kolom di sheet ini memang sesekali dipindah operator
+  (Dokumentasi tab Maintenance pernah geser K → I), dan cache yang basi membuat dialog
+  membaca kolom yang salah tanpa ada yang tahu. Ongkosnya cuma satu pembacaan 30 baris,
+  sementara dialognya sendiri sudah tampil duluan.
+
+  Nilai bawaan `APP_URL`/`CRITICAL_GID`/`MAINTENANCE_GID` ada di baris pertama berkas —
+  Script Properties (`appUrl`, `criticalGid`, `maintenanceGid`) tetap menang bila diisi.
 - `OpenWeb.html` — dialog ringkasan baris + pembuka tab. Dialog tampil lebih dulu lalu
   memanggil `getUploadTarget()`; sambil menunggu, ia juga memanggil `appUrl` sekali
   (`…/api/critical-maintenance/row?warm=1`) supaya server web sudah bangun saat tombolnya
@@ -69,8 +75,11 @@ adalah `JSON.stringify(appUrl)` yang force-print di awal `<script>`.
 
 ## Prasyarat di spreadsheet
 
-- Kolom **`Dokumentasi`** sudah ada di kedua tab (di DATA OPERASIONAL: kolom **K** di
-  keduanya, baris header di baris 2).
+- Kolom **`Dokumentasi`** sudah ada di kedua tab. Posisinya **dicari lewat nama header**,
+  bukan huruf kolom, jadi boleh dipindah — per 4 Agustus 2026 di DATA OPERASIONAL ia ada di
+  **K** (Critical Equipment) dan **I** (Maintenance), baris header di baris 2 pada keduanya.
+  Setelah memindahkannya, tekan **"Perbarui data"** di web sekali: posisi kolom ikut disimpan
+  di cermin dan dipakai saat menulis balik sel.
   Web yang mengisi & mengosongkan selnya; script ini tidak pernah menulisnya.
   Nama lama `Link Foto` masih dikenali, jadi sheet yang belum diganti tetap jalan.
 

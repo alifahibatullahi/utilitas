@@ -73,7 +73,6 @@ function buildTarget_(cfg) {
   var tanggal = ambil(['tanggal dilaporkan', 'tanggal']);
 
   if (!item && !uraian) {
-    lupakanHeader_(sheet);
     return fallback('Baris yang dipilih masih kosong — web dibuka di daftar aktivitas terbaru.');
   }
 
@@ -123,36 +122,7 @@ function findHeaderIndex_(headers, names) {
   return -1;
 }
 
-function headerCacheKey_(sheet) {
-  return 'hdr:' + sheet.getSheetId() + ':' + sheet.getLastColumn();
-}
-
 function findHeaderRow_(sheet, cfg) {
-  var cache = CacheService.getDocumentCache();
-  var kunci = headerCacheKey_(sheet);
-  if (cache) {
-    var tersimpan = cache.get(kunci);
-    if (tersimpan) {
-      try {
-        return JSON.parse(tersimpan);
-      } catch (e) {
-      }
-    }
-  }
-
-  var hasil = scanHeaderRow_(sheet, cfg);
-  if (hasil && cache) {
-    cache.put(kunci, JSON.stringify(hasil), 21600);
-  }
-  return hasil;
-}
-
-function lupakanHeader_(sheet) {
-  var cache = CacheService.getDocumentCache();
-  if (cache) cache.remove(headerCacheKey_(sheet));
-}
-
-function scanHeaderRow_(sheet, cfg) {
   var lastCol = sheet.getLastColumn();
   var lastRow = sheet.getLastRow();
   if (lastCol < 1 || lastRow < 1) return null;

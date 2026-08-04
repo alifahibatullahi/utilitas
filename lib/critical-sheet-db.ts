@@ -13,8 +13,10 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
+    colLetter,
     extractCode,
     photoCellFormula,
+    readPhotoColIndex,
     totalMedia,
     type MediaCount,
     photoCellLabel,
@@ -445,6 +447,22 @@ export function ringkasBaris(r: DbRow) {
  * tersimpan di R2 + Supabase dan spreadsheet hanyalah cermin.
  * Return false bila baris atau kolom Dokumentasi tidak ditemukan.
  */
+/** Luruskan posisi kolom Dokumentasi di metadata cermin, supaya sync berikutnya —
+ *  dan penulisan berikutnya — tidak mengulang pembetulan yang sama. */
+async function simpanPhotoColIndex(
+    meta: TabsMeta,
+    kind: 'critical' | 'maintenance',
+    photoColIndex: number,
+): Promise<void> {
+    const tabs = { ...meta.tabs };
+    tabs[kind] = { ...tabs[kind], photoColIndex };
+    const { error } = await createAdmin()
+        .from('critical_sheet_sync')
+        .update({ tabs: { ...meta, tabs } })
+        .eq('id', 1);
+    if (error) throw error;
+}
+
 export async function writePhotoCell(uid: string, count: MediaCount, hint?: RowHint | null): Promise<boolean> {
     const meta = await queryTabsMeta();
     if (!meta) {
@@ -458,7 +476,28 @@ export async function writePhotoCell(uid: string, count: MediaCount, hint?: RowH
     const value = photoCellFormula(
         count, photoPageUrl(loc.itemKey, uid), meta.argSeparator, loc.itemLabel, kindLabel,
     );
-    await updatePhotoCell(loc.tabTitle, loc.photoColIndex, loc.rowIndex, value);
+
+    // Posisi kolom di cermin baru diperbarui saat sync (cron ~15 menit), sedangkan operator
+    // sesekali memindah kolom. Menulis dengan posisi basi = menimpa data operator di kolom
+    // sebelah, diam-diam dan tanpa bisa dibatalkan — jadi posisinya dipastikan dulu.
+    const tab = loc.kind === 'critical' ? meta.tabs.critical : meta.tabs.maintenance;
+    const kolom = await readPhotoColIndex(loc.tabTitle, tab.headerRowIndex);
+    if (kolom === null) {
+        console.error(
+            `[critical-sheet-db] kolom "Dokumentasi" tidak ada di baris header ${loc.tabTitle} — ` +
+            'sel tidak ditulis. Foto tetap tersimpan; periksa: npx tsx scripts/check-critical-sheet.ts',
+        );
+        return false;
+    }
+    if (kolom !== loc.photoColIndex) {
+        console.warn(
+            `[critical-sheet-db] kolom Dokumentasi ${loc.tabTitle} bergeser ` +
+            `${colLetter(loc.photoColIndex)} → ${colLetter(kolom)}; metadata cermin diluruskan.`,
+        );
+        await simpanPhotoColIndex(meta, loc.kind, kolom);
+    }
+
+    await updatePhotoCell(loc.tabTitle, kolom, loc.rowIndex, value);
     const ada = totalMedia(count) > 0;
 
     // Sel di sheet sudah berubah; samakan cerminnya sekarang juga. Tanpa ini foto pertama

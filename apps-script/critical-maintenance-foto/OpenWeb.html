@@ -2,40 +2,39 @@
 <html>
 <head>
   <base target="_top">
+  <!-- Tanpa ini, teks berkarakter non-ASCII (tanda pisah panjang, nama item bersimbol) bisa
+       tampil kacau saat berkasnya dibuka di luar Apps Script maupun saat browser menebak
+       encoding sendiri. -->
+  <meta charset="utf-8">
   <style>
     html, body { height: 100%; }
     body {
       font-family: 'Google Sans', Roboto, Arial, sans-serif; margin: 0; color: #202124;
       display: flex; flex-direction: column; background: #fff;
     }
-    .scroll { flex: 1; overflow-y: auto; padding: 16px 18px 4px; }
-    .foot { padding: 12px 18px 14px; border-top: 1px solid #e8eaed; background: #fff; }
+    .scroll { flex: 1; overflow-y: auto; padding: 18px 20px 6px; }
+    .foot { padding: 12px 20px 14px; border-top: 1px solid #e8eaed; background: #fff; }
 
-    .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-    .chip { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
-    .kind { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-    .kind.critical { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-    .status { color: #fff; background: #737373; }
-    .status.open { background: #dc2626; }
-    .status.ip { background: #f59e0b; }
-    .scope { background: #fff; border: 1px solid #dadce0; color: #5f6368; }
-    .pos { margin-left: auto; font-size: 11px; font-weight: 700; color: #80868b; white-space: nowrap; }
-
-    .when { font-size: 12px; font-weight: 600; color: #5f6368; margin-top: 10px; }
-    .uraian {
-      font-size: 15px; font-weight: 600; line-height: 1.45; margin-top: 4px;
-      background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 10px; padding: 10px 12px;
-      max-height: 132px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;
+    .kind {
+      display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px;
+      border-radius: 999px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;
     }
-    .uraian .lead { color: #9aa0a6; }
+    .kind.critical { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 14px 0 0; }
-    .grid .wide { grid-column: 1 / -1; }
-    .lbl { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9aa0a6; }
-    .val { font-size: 13px; font-weight: 600; color: #202124; word-wrap: break-word; margin-top: 1px; }
+    .item { font-size: 22px; font-weight: 700; line-height: 1.25; margin-top: 10px; word-wrap: break-word; }
+
+    .uraian {
+      font-size: 17px; font-weight: 600; line-height: 1.45; margin-top: 12px;
+      background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 10px; padding: 12px 14px;
+      max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;
+    }
+
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .lbl { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9aa0a6; }
+    .val { font-size: 17px; font-weight: 700; color: #202124; word-wrap: break-word; margin-top: 2px; }
 
     .note { font-size: 12px; color: #5f6368; line-height: 1.5; }
-    .scroll .note { margin-top: 14px; }
+    .scroll .note { margin-top: 16px; }
     button {
       font-size: 14px; font-weight: 700; padding: 12px 16px; border: 0; border-radius: 8px;
       background: #1a73e8; color: #fff; cursor: pointer; width: 100%;
@@ -62,32 +61,21 @@
 
     var html = '';
     if (ctx.mode === 'record') {
+      // Empat informasi ini saja, sebesar mungkin: cukup untuk memastikan "ini memang baris
+      // yang saya pilih" sebelum operator menekan tombolnya. Tanggal, notifikasi, status,
+      // dan nomor baris sengaja tidak ikut — sudah terlihat di spreadsheet di belakangnya.
       var critical = ctx.kindLabel === 'Critical';
 
-      html += '<div class="chips">';
-      html += '<span class="chip kind ' + (critical ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
-      html += '<span class="chip status ' + statusClass(ctx.status) + '">' + escapeHtml(statusLabel(ctx.status)) + '</span>';
-      if (ctx.scope) html += '<span class="chip scope">' + escapeHtml(ctx.scope) + '</span>';
-      html += '<span class="pos">Baris ' + escapeHtml(String(ctx.row)) + (ctx.no ? ' &middot; No ' + escapeHtml(ctx.no) : '') + '</span>';
-      html += '</div>';
+      html += '<span class="kind ' + (critical ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
+      html += '<div class="item">' + escapeHtml(itemLabel()) + '</div>';
+      html += '<div class="uraian">' + escapeHtml(ctx.uraian || '(tanpa uraian)') + '</div>';
 
-      var when = [ctx.tanggal, ctx.shift ? 'Shift ' + ctx.shift : ''].filter(Boolean).join(' · ');
-      if (when) html += '<div class="when">' + escapeHtml(when) + '</div>';
-
-      html += '<div class="uraian"><span class="lead">' + escapeHtml(ctx.kindLabel) + ': </span>'
-            + escapeHtml(ctx.uraian || '(tanpa uraian)') + '</div>';
-
-      html += '<div class="grid">';
-      html += field('Nama & Nomor Item', ctx.item, true);
-      html += field('Varian', ctx.varian);
-      html += field('Notifikasi', ctx.notifikasi);
+      html += '<div class="pair">';
+      html += field('Scope', ctx.scope);
       html += field(critical ? 'Yang Melaporkan' : 'Foreman', critical ? ctx.pelapor : ctx.foreman);
-      html += field('Tanggal di OK', ctx.tanggalOk);
-      html += field('Dokumentasi', ctx.foto);
       html += '</div>';
 
-      html += '<div class="note">Foto diunggah lewat web — halaman langsung terbuka pada pop up record ini, '
-            + 'termasuk untuk baris yang kolom Dokumentasi-nya masih kosong.</div>';
+      html += '<div class="note">Foto diunggah lewat web &mdash; halaman langsung terbuka pada pop up record ini.</div>';
     } else {
       html += '<div class="note">' + escapeHtml(ctx.note || '') + '</div>';
     }
@@ -97,29 +85,18 @@
       'Tidak terbuka otomatis? Klik tautan ini:<br><a href="' + escapeAttr(ctx.url) + '" target="_blank" rel="noopener">'
       + escapeHtml(ctx.url) + '</a>';
 
-    // Field kosong disembunyikan, bukan diisi tanda hubung: yang tampil di dialog sempit ini
-    // sebaiknya hanya yang benar-benar ada isinya.
-    function field(label, value, wide) {
-      if (!value) return '';
-      return '<div class="' + (wide ? 'wide' : '') + '">'
-           + '<div class="lbl">' + escapeHtml(label) + '</div>'
-           + '<div class="val">' + escapeHtml(value) + '</div></div>';
+    // Varian menempel di belakang nama item, sama seperti di web ("… Phosphat Pump D").
+    function itemLabel() {
+      var nama = String(ctx.item == null ? '' : ctx.item).replace(/\s+/g, ' ').trim();
+      var varian = String(ctx.varian == null ? '' : ctx.varian).replace(/\s+/g, ' ').trim();
+      return varian ? nama + ' ' + varian : nama;
     }
 
-    // Sel status kosong di sheet berarti pekerjaannya belum ditutup, sama seperti di web.
-    function statusLabel(status) {
-      var key = String(status == null ? '' : status).trim().toLowerCase();
-      if (!key || key === 'open') return 'OPEN';
-      if (key === 'ok') return 'SELESAI';
-      if (key === 'ip') return 'IN PROGRESS';
-      return String(status).trim().toUpperCase();
-    }
-
-    function statusClass(status) {
-      var key = String(status == null ? '' : status).trim().toLowerCase();
-      if (!key || key === 'open') return 'open';
-      if (key === 'ip') return 'ip';
-      return '';
+    // Nilai kosong tetap memakai tanda hubung: kedua slot ini selalu ada, dan kolom yang
+    // menghilang justru membuat operator ragu apakah barisnya benar.
+    function field(label, value) {
+      return '<div><div class="lbl">' + escapeHtml(label) + '</div>'
+           + '<div class="val">' + escapeHtml(value || '—') + '</div></div>';
     }
 
     function go() {

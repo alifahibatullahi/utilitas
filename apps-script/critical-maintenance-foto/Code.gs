@@ -29,7 +29,7 @@ function openUploadPage() {
   var record = target.mode === 'record';
   var html = tpl.evaluate()
     .setWidth(record ? 620 : 460)
-    .setHeight(record ? 540 : 300);
+    .setHeight(record ? 470 : 300);
   ui.showModalDialog(html, '📷 Upload Foto');
 }
 
@@ -74,14 +74,14 @@ function buildTarget_(cfg) {
     return fallback('Baris yang dipilih masih kosong — web dibuka di daftar aktivitas terbaru.');
   }
 
-  var foto = readPhotoInfo_(sheet, headers, row);
+  var uid = readPhotoUid_(sheet, headers, row);
   var url = cfg.appUrl + '/critical-maintenance'
           + '?item=' + encodeURIComponent(itemKeyOf_(item, varian))
           + '&kind=' + encodeURIComponent(kind)
           + '&row=' + row
           + '&sig=' + encodeURIComponent(rowFingerprint_(item, varian, uraian, tanggal));
-  if (foto.uid) {
-    url += '&foto=' + encodeURIComponent(foto.uid);
+  if (uid) {
+    url += '&foto=' + encodeURIComponent(uid);
   }
 
   return {
@@ -89,40 +89,21 @@ function buildTarget_(cfg) {
     mode: 'record',
     note: '',
     kindLabel: kind === 'critical' ? 'Critical' : 'Maintenance',
-    row: row,
-    no: ambil(['no']),
-    tanggal: tanggal,
-    shift: ambil(['shift']),
     item: item,
     varian: varian,
     uraian: uraian,
-    notifikasi: ambil(['notif', 'notifikasi']),
     scope: ambil(['scope']),
-    status: ambil(['status']),
     pelapor: ambil(['yang melaporkan', 'pelapor']),
     foreman: ambil(['foreman']),
-    tanggalOk: ambil(['tanggal di ok']),
-    foto: foto.label,
   };
 }
 
-function readPhotoInfo_(sheet, headers, row) {
+function readPhotoUid_(sheet, headers, row) {
   var idx = findHeaderIndex_(headers, ['dokumentasi', 'link foto']);
-  if (idx < 0) return { uid: '', label: '' };
-
-  var sel = sheet.getRange(row, idx + 1);
-  var formula = String(sel.getFormula() || '');
+  if (idx < 0) return '';
+  var formula = String(sheet.getRange(row, idx + 1).getFormula() || '');
   var m = /[?&]foto=([^"&\s]+)/.exec(formula);
-  var uid = m ? decodeURIComponent(m[1]) : '';
-
-  var tampil = String(sel.getDisplayValue() || '').trim();
-  var n = /\((\d+)\)\s*$/.exec(tampil);
-  var jumlah = n ? parseInt(n[1], 10) : 0;
-  var label = jumlah > 0
-    ? 'Sudah ada ' + jumlah + (tampil.indexOf('🎬') >= 0 ? ' foto/video' : ' foto')
-    : 'Belum ada foto';
-
-  return { uid: uid, label: label };
+  return m ? decodeURIComponent(m[1]) : '';
 }
 
 function normHeader_(v) {

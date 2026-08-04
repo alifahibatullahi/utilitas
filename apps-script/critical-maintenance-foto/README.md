@@ -39,27 +39,38 @@ di spreadsheet (container-bound):
 
 ## Pasang
 
+Dipasang di workbook **DATA OPERASIONAL** (`1qbN1nrpJmVJ_WY2YPGB4TCJixLrf5cwAyycqqHZC1mw`),
+tab **Critical Equipment** (gid `317293896`) dan **Maintenance** (gid `1401715754`).
+
 1. Buka spreadsheet → **Extensions → Apps Script**.
 2. Ganti isi `Code.gs` di editor dengan isi `Code.gs` dari folder ini.
 3. **File → + → HTML**, beri nama **`OpenWeb`** (tanpa `.html`), tempel isi
    `OpenWeb.html` dari folder ini.
-4. **Project Settings → Script Properties**, tambahkan tiga properti:
-
-   | Properti | Isi |
-   |---|---|
-   | `appUrl` | URL web, mis. `https://powerops.example.com` (tanpa `/` di akhir) |
-   | `criticalGid` | gid tab Critical Equipment (lihat `#gid=` di URL tab) |
-   | `maintenanceGid` | gid tab Maintenance |
-
-5. **Save**, jalankan `onOpen` sekali (▶) untuk memicu otorisasi (hanya izin
+4. **Save**, jalankan `onOpen` sekali (▶) untuk memicu otorisasi (hanya izin
    Spreadsheet), lalu **reload spreadsheet** → menu **📷 Upload Foto** muncul.
 
-Konfigurasi ada di Script Properties, bukan di kode — jadi saat pindah ke spreadsheet
-produksi cukup tempel ulang kedua file dan isi ketiga properti itu.
+Cukup tempel; URL web dan kedua gid sudah jadi nilai bawaan di baris pertama `Code.gs`
+(`APP_URL`, `CRITICAL_GID`, `MAINTENANCE_GID`). Kalau perlu menunjuk spreadsheet atau
+lingkungan lain tanpa mengubah kode, isi **Project Settings → Script Properties** dengan
+`appUrl` / `criticalGid` / `maintenanceGid` — properti selalu menang atas nilai bawaan.
+
+⚠️ Kalau workbook ini sudah punya Apps Script sendiri, **jangan menimpa berkasnya**: satu
+spreadsheet cuma punya satu project container-bound, dan `onOpen` yang terdefinisi dua kali
+akan saling meniadakan. Tambahkan `Code.gs` ini sebagai berkas baru dan gabungkan isi
+`onOpen`-nya.
+
+### Kedua berkas sengaja tanpa komentar
+
+Selain agar ringkas saat ditempel, ini menghilangkan satu jebakan: mesin template Apps Script
+memindai **seluruh** berkas `.html`, termasuk bagian yang dikomentari — sebuah contoh
+scriptlet yang ditulis di dalam komentar pun ikut dievaluasi dan memunculkan
+`SyntaxError: Unexpected token ';'`. Satu-satunya scriptlet yang boleh ada di `OpenWeb.html`
+adalah `JSON.stringify(appUrl)` yang force-print di awal `<script>`.
 
 ## Prasyarat di spreadsheet
 
-- Kolom **`Dokumentasi`** sudah ada di kedua tab (Critical: kolom K, Maintenance: kolom I).
+- Kolom **`Dokumentasi`** sudah ada di kedua tab (di DATA OPERASIONAL: kolom **K** di
+  keduanya, baris header di baris 2).
   Web yang mengisi & mengosongkan selnya; script ini tidak pernah menulisnya.
   Nama lama `Link Foto` masih dikenali, jadi sheet yang belum diganti tetap jalan.
 
@@ -68,9 +79,9 @@ produksi cukup tempel ulang kedua file dan isi ketiga properti itu.
   baris disortir — itu sebabnya identitas ditaruh di sini, bukan di kolom terpisah.
   Jangan menyalin sel Dokumentasi dari satu baris ke baris lain: fotonya akan ikut.
 
-- Kolom **`ID`** (kolom AA) kini **arsip saja**. App tidak pernah menulisnya lagi, dan
-  baris baru memang tidak akan mendapat ID. Isinya dipertahankan sebagai cadangan
-  pemulihan bila sel Dokumentasi hilang; jangan dihapus dulu.
+- Kolom **`ID`** tidak ada di DATA OPERASIONAL, dan memang tidak perlu: sejak identitas
+  pindah ke sel Dokumentasi, app tidak pernah menulis kolom itu lagi. Kalau di sheet lain
+  masih ada, biarkan — dibaca hanya sebagai arsip pemulihan.
 
 Cek kapan saja dengan `npx tsx scripts/check-critical-sheet.ts` di repo web — script itu
 read-only dan melaporkan tab, baris header, posisi kolom `Dokumentasi`, jumlah baris

@@ -1,15 +1,20 @@
+var APP_URL = 'https://utilitas.vercel.app';
+var CRITICAL_GID = 317293896;
+var MAINTENANCE_GID = 1401715754;
+
 function getConfig_() {
   var props = PropertiesService.getScriptProperties();
-  var appUrl = (props.getProperty('appUrl') || '').replace(/\/+$/, '');
-  if (!appUrl) {
-    throw new Error('Script Property "appUrl" belum diisi. Buka Project Settings → Script Properties.');
-  }
   return {
-    appUrl: appUrl,
-    criticalGid: parseInt(props.getProperty('criticalGid'), 10),
-    maintenanceGid: parseInt(props.getProperty('maintenanceGid'), 10),
+    appUrl: String(props.getProperty('appUrl') || APP_URL).replace(/\/+$/, ''),
+    criticalGid: angka_(props.getProperty('criticalGid'), CRITICAL_GID),
+    maintenanceGid: angka_(props.getProperty('maintenanceGid'), MAINTENANCE_GID),
     headerScanLimit: 30,
   };
+}
+
+function angka_(v, bawaan) {
+  var n = parseInt(v, 10);
+  return isNaN(n) ? bawaan : n;
 }
 
 function onOpen() {

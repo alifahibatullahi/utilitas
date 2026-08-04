@@ -2,9 +2,6 @@
 <html>
 <head>
   <base target="_top">
-  <!-- Tanpa ini, teks berkarakter non-ASCII (tanda pisah panjang, nama item bersimbol) bisa
-       tampil kacau saat berkasnya dibuka di luar Apps Script maupun saat browser menebak
-       encoding sendiri. -->
   <meta charset="utf-8">
   <style>
     html, body { height: 100%; }
@@ -44,6 +41,7 @@
 
     .skel { background: #e8eaed; border-radius: 6px; animation: denyut 1.2s ease-in-out infinite; }
     @keyframes denyut { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+
     .hint { font-size: 11px; color: #5f6368; margin-top: 10px; line-height: 1.45; }
     a { color: #1a73e8; word-break: break-all; font-size: 11px; }
   </style>
@@ -56,26 +54,15 @@
   </div>
 
   <script>
-    // Scriptlet force-print (tanda seru) dipakai supaya tanda kutip di dalam JSON tidak
-    // ikut di-escape. JANGAN menulis contoh scriptlet di komentar mana pun pada file ini:
-    // mesin template Apps Script memindai seluruh berkas, bukan hanya bagian non-komentar,
-    // sehingga scriptlet kosong di dalam komentar pun ikut dievaluasi dan bikin
-    // "SyntaxError: Unexpected token ';'".
     var appUrl = JSON.parse(<?!= JSON.stringify(appUrl) ?>);
     var ctx = null;
 
-    // Dialog ini sengaja tampil DULU, isinya menyusul: membaca baris terpilih butuh
-    // beberapa panggilan ke Sheets, dan menahannya di depan membuat menu terasa mati
-    // beberapa detik setelah diklik.
     document.getElementById('content').innerHTML = kerangka();
     google.script.run
       .withSuccessHandler(tampilkan)
       .withFailureHandler(gagal)
       .getUploadTarget();
 
-    // Sementara operator membaca ringkasannya, fungsi di server web dibangunkan — jadi
-    // klik tombolnya nanti tidak lagi menanggung cold start. Sekadar usaha: kalau
-    // diblokir, tidak ada yang berubah selain hilangnya percepatan ini.
     try {
       fetch(appUrl + '/api/critical-maintenance/row?warm=1', { mode: 'no-cors', cache: 'no-store' });
     } catch (e) {
@@ -95,9 +82,6 @@
       ctx = target;
       var html = '';
       if (ctx.mode === 'record') {
-        // Empat informasi ini saja, sebesar mungkin: cukup untuk memastikan "ini memang baris
-        // yang saya pilih" sebelum operator menekan tombolnya. Tanggal, notifikasi, status,
-        // dan nomor baris sengaja tidak ikut — sudah terlihat di spreadsheet di belakangnya.
         var critical = ctx.kindLabel === 'Critical';
 
         html += '<span class="kind ' + (critical ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
@@ -130,15 +114,12 @@
         + '<br>Tutup dialog ini lalu coba lagi.</div>';
     }
 
-    // Varian menempel di belakang nama item, sama seperti di web ("… Phosphat Pump D").
     function itemLabel() {
       var nama = String(ctx.item == null ? '' : ctx.item).replace(/\s+/g, ' ').trim();
       var varian = String(ctx.varian == null ? '' : ctx.varian).replace(/\s+/g, ' ').trim();
       return varian ? nama + ' ' + varian : nama;
     }
 
-    // Nilai kosong tetap memakai tanda hubung: kedua slot ini selalu ada, dan kolom yang
-    // menghilang justru membuat operator ragu apakah barisnya benar.
     function field(label, value) {
       return '<div><div class="lbl">' + escapeHtml(label) + '</div>'
            + '<div class="val">' + escapeHtml(value || '—') + '</div></div>';

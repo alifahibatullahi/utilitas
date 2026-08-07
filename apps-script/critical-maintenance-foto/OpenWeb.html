@@ -7,135 +7,56 @@
     html, body { height: 100%; }
     body {
       font-family: 'Google Sans', Roboto, Arial, sans-serif; margin: 0; color: #202124;
-      display: flex; flex-direction: column; background: #fff;
+      background: #fff; display: flex; align-items: center; justify-content: center;
+      padding: 18px 20px; box-sizing: border-box;
     }
-    .scroll { flex: 1; overflow-y: auto; padding: 18px 20px 6px; }
-    .foot { padding: 12px 20px 14px; border-top: 1px solid #e8eaed; background: #fff; }
-
-    .kind {
-      display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px;
-      border-radius: 999px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;
+    .isi { width: 100%; text-align: center; }
+    .note { font-size: 13px; color: #5f6368; line-height: 1.5; }
+    .tunggu { font-size: 13px; font-weight: 600; color: #5f6368; }
+    a.tombol {
+      display: block; margin-top: 14px; font-size: 14px; font-weight: 700;
+      padding: 12px 16px; border-radius: 8px; background: #1a73e8; color: #fff;
+      text-decoration: none;
     }
-    .kind.critical { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-
-    .item { font-size: 22px; font-weight: 700; line-height: 1.25; margin-top: 10px; word-wrap: break-word; }
-
-    .uraian {
-      font-size: 17px; font-weight: 600; line-height: 1.45; margin-top: 12px;
-      background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 10px; padding: 12px 14px;
-      max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;
-    }
-
-    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
-    .lbl { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9aa0a6; }
-    .val { font-size: 17px; font-weight: 700; color: #202124; word-wrap: break-word; margin-top: 2px; }
-
-    .note { font-size: 12px; color: #5f6368; line-height: 1.5; }
-    .scroll .note { margin-top: 16px; }
-    button {
-      font-size: 14px; font-weight: 700; padding: 12px 16px; border: 0; border-radius: 8px;
-      background: #1a73e8; color: #fff; cursor: pointer; width: 100%;
-    }
-    button:hover { background: #1765cc; }
-    button:disabled { background: #c6dafc; cursor: default; }
-
-    .skel { background: #e8eaed; border-radius: 6px; animation: denyut 1.2s ease-in-out infinite; }
-    @keyframes denyut { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
-
-    .hint { font-size: 11px; color: #5f6368; margin-top: 10px; line-height: 1.45; }
-    a { color: #1a73e8; word-break: break-all; font-size: 11px; }
+    a.tombol:hover { background: #1765cc; }
+    .sembunyi { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="scroll" id="content"></div>
-  <div class="foot">
-    <button id="buka" onclick="go()" disabled>Menyiapkan&hellip;</button>
-    <div class="hint" id="hint"></div>
+  <div class="isi">
+    <div class="tunggu" id="tunggu">Membuka web&hellip;</div>
+    <div class="note sembunyi" id="pesan"></div>
+    <a class="tombol sembunyi" id="tombol" href="#" target="_blank" rel="noopener">Buka web &amp; upload foto</a>
   </div>
 
   <script>
-    var appUrl = JSON.parse(<?!= JSON.stringify(appUrl) ?>);
-    var ctx = null;
+    var url = JSON.parse(<?!= JSON.stringify(url) ?>);
+    var note = JSON.parse(<?!= JSON.stringify(note) ?>);
 
-    document.getElementById('content').innerHTML = kerangka();
-    google.script.run
-      .withSuccessHandler(tampilkan)
-      .withFailureHandler(gagal)
-      .getUploadTarget();
+    document.getElementById('tombol').href = url;
 
-    try {
-      fetch(appUrl + '/api/critical-maintenance/row?warm=1', { mode: 'no-cors', cache: 'no-store' });
-    } catch (e) {
-    }
-
-    function kerangka() {
-      return '<div class="skel" style="width:90px;height:20px;border-radius:999px"></div>'
-           + '<div class="skel" style="width:70%;height:28px;margin-top:12px"></div>'
-           + '<div class="skel" style="width:100%;height:64px;margin-top:14px;border-radius:10px"></div>'
-           + '<div class="pair" style="margin-top:18px">'
-           + '<div class="skel" style="width:60%;height:34px"></div>'
-           + '<div class="skel" style="width:60%;height:34px"></div>'
-           + '</div>';
-    }
-
-    function tampilkan(target) {
-      ctx = target;
-      var html = '';
-      if (ctx.mode === 'record') {
-        var critical = ctx.kindLabel === 'Critical';
-
-        html += '<span class="kind ' + (critical ? 'critical' : '') + '">' + escapeHtml(ctx.kindLabel) + '</span>';
-        html += '<div class="item">' + escapeHtml(itemLabel()) + '</div>';
-        html += '<div class="uraian">' + escapeHtml(ctx.uraian || '(tanpa uraian)') + '</div>';
-
-        html += '<div class="pair">';
-        html += field('Scope', ctx.scope);
-        html += field(critical ? 'Yang Melaporkan' : 'Foreman', critical ? ctx.pelapor : ctx.foreman);
-        html += '</div>';
-
-        html += '<div class="note">Foto diunggah lewat web &mdash; halaman langsung terbuka pada pop up record ini.</div>';
-      } else {
-        html += '<div class="note">' + escapeHtml(ctx.note || '') + '</div>';
+    if (note) {
+      tampilkan(note);
+    } else {
+      var w = null;
+      try {
+        w = window.open(url, '_blank');
+      } catch (e) {
       }
-
-      document.getElementById('content').innerHTML = html;
-      document.getElementById('hint').innerHTML =
-        'Tidak terbuka otomatis? Klik tautan ini:<br><a href="' + escapeAttr(ctx.url) + '" target="_blank" rel="noopener">'
-        + escapeHtml(ctx.url) + '</a>';
-
-      var tombol = document.getElementById('buka');
-      tombol.disabled = false;
-      tombol.textContent = 'Buka web & upload foto';
+      if (w) {
+        try { w.opener = null; } catch (e) {}
+        google.script.host.close();
+      } else {
+        tampilkan('Browser menahan tab baru. Klik tombol di bawah untuk membukanya.');
+      }
     }
 
-    function gagal(err) {
-      document.getElementById('content').innerHTML =
-        '<div class="note">Gagal membaca baris terpilih: ' + escapeHtml(err && err.message ? err.message : String(err))
-        + '<br>Tutup dialog ini lalu coba lagi.</div>';
-    }
-
-    function itemLabel() {
-      var nama = String(ctx.item == null ? '' : ctx.item).replace(/\s+/g, ' ').trim();
-      var varian = String(ctx.varian == null ? '' : ctx.varian).replace(/\s+/g, ' ').trim();
-      return varian ? nama + ' ' + varian : nama;
-    }
-
-    function field(label, value) {
-      return '<div><div class="lbl">' + escapeHtml(label) + '</div>'
-           + '<div class="val">' + escapeHtml(value || '—') + '</div></div>';
-    }
-
-    function go() {
-      window.open(ctx.url, '_blank', 'noopener');
-      google.script.host.close();
-    }
-
-    function escapeHtml(s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-    function escapeAttr(s) {
-      return escapeHtml(s).replace(/"/g, '&quot;');
+    function tampilkan(pesan) {
+      document.getElementById('tunggu').className = 'tunggu sembunyi';
+      var p = document.getElementById('pesan');
+      p.textContent = pesan;
+      p.className = 'note';
+      document.getElementById('tombol').className = 'tombol';
     }
   </script>
 </body>

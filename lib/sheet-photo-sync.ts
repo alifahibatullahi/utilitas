@@ -60,3 +60,46 @@ export async function syncPhotoCell(rowUid: string): Promise<void> {
         console.warn('[sheet-photo-sync] gagal memperbarui sel Dokumentasi:', err instanceof Error ? err.message : err);
     }
 }
+
+/**
+ * Susulkan sel "Dokumentasi" yang belum sempat ditulis.
+ *
+ * Penulisan sel sekarang berjalan SETELAH respons upload dikirim (`after`), jadi ada celah
+ * kecil: fungsi serverless yang keburu dimatikan meninggalkan foto yang tersimpan tapi
+ * selnya masih kosong. Cermin `uid` diisi oleh writePhotoCell di penulisan yang sama, jadi
+ * "punya foto tapi uid-nya tidak ada di baris mana pun" tepat menandai celah itu.
+ *
+ * `max` menjaga baris yang memang sudah DIHAPUS operator dari sheet — yang selamanya tidak
+ * akan ketemu — tidak menghabiskan satu tick cron dengan percobaan yang pasti gagal.
+ */
+export async function repairMissingPhotoCells(max = 5): Promise<{ diperiksa: number; disusulkan: number }> {
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+
+    const { data: foto, error } = await supabase
+        .from('sheet_photos')
+        .select('row_uid')
+        .order('created_at', { ascending: false })
+        .limit(500);
+    if (error) throw error;
+
+    const { data: baris, error: barisErr } = await supabase
+        .from('critical_sheet_rows')
+        .select('uid')
+        .neq('uid', '');
+    if (barisErr) throw barisErr;
+
+    const tercermin = new Set((baris ?? []).map(r => r.uid as string));
+    const tertinggal: string[] = [];
+    for (const f of foto ?? []) {
+        const uid = f.row_uid as string;
+        if (!uid || tercermin.has(uid) || tertinggal.includes(uid)) continue;
+        tertinggal.push(uid);
+        if (tertinggal.length >= max) break;
+    }
+
+    for (const uid of tertinggal) await syncPhotoCell(uid);
+    return { diperiksa: (foto ?? []).length, disusulkan: tertinggal.length };
+}

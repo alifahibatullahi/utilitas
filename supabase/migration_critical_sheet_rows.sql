@@ -85,6 +85,12 @@ CREATE INDEX IF NOT EXISTS idx_csr_search
 CREATE INDEX IF NOT EXISTS idx_csr_uid
   ON critical_sheet_rows (uid) WHERE uid <> '';
 
+-- Foto baris yang BELUM pernah difoto: selnya masih kosong, jadi barisnya hanya bisa
+-- dikenali dari sidik jari isinya (resolveRowForUpload & findRowForUid langkah 2). Tanpa
+-- index ini tiap upload pertama = dua seq scan 27rb baris.
+CREATE INDEX IF NOT EXISTS idx_csr_fingerprint
+  ON critical_sheet_rows (kind, fingerprint) WHERE fingerprint <> '';
+
 ALTER TABLE critical_sheet_rows ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Critical sheet rows readable by everyone"

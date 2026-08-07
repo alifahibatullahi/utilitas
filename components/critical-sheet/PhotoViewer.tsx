@@ -20,6 +20,13 @@ export interface PhotoRecordInfo {
     pelapor: string;
     scope: string;
     status: string;
+    /**
+     * Record ini dirakit dari tautan spreadsheet: hanya item, varian, uraian, dan tanggalnya
+     * yang diketahui. Status TIDAK boleh dirender — `SheetStatusBadge` menerjemahkan status
+     * kosong menjadi "OPEN", jadi record ber-status "IP" akan tampil salah, bukan sekadar
+     * tidak lengkap. Kolom selebihnya menyusul pada pembaruan berikutnya.
+     */
+    ringkas?: boolean;
 }
 
 /** Aksen jenis untuk foto: chip solid + bingkai thumbnail. */
@@ -410,7 +417,7 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                             {kind.label}
                             {info?.tanggalRaw && <span className="opacity-80">· {info.tanggalRaw}</span>}
                         </span>
-                        {info && <SheetStatusBadge status={info.status} />}
+                        {info && !info.ringkas && <SheetStatusBadge status={info.status} />}
                         {info?.scope?.trim() && <SheetScopeBadge scope={info.scope} />}
                         {info?.pelapor && (
                             <span className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold bg-white/10 text-white/90">

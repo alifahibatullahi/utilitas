@@ -9,20 +9,27 @@ mengunggah apa pun** dan tidak butuh izin Google Drive.
 1. Isi baris critical/maintenance di spreadsheet seperti biasa. Kolom **Dokumentasi**
    masih kosong.
 2. Klik salah satu sel di baris itu → menu **📷 Upload Foto → Upload foto baris terpilih**.
-3. Dialog langsung muncul (kerangka dulu), lalu terisi empat penanda baris itu — sengaja
-   dibuat besar supaya salah baris langsung ketahuan: **nama & nomor item + varian**,
-   **uraian**, **scope**, dan **yang melaporkan** (di tab Maintenance: **foreman**).
-   Tombolnya aktif begitu ringkasannya datang → **Buka web & upload foto**.
-4. Web terbuka **langsung pada pop up record tersebut** → pilih/ambil foto → upload.
-   Berlaku juga untuk baris yang kolom Dokumentasi-nya masih kosong: barisnya dikenali dari
-   nomor baris + sidik jari isinya, jadi tidak perlu dicari lagi di daftar.
+3. **Tab web langsung terbuka** — tidak ada dialog ringkasan lagi. Pop up upload foto record
+   itu sudah terisi begitu halaman tampil, karena isi barisnya (nama & nomor item, varian,
+   uraian, tanggal) dititipkan di URL-nya. Web **tidak memanggil API apa pun** untuk record
+   itu, dan spreadsheet tidak dibaca ulang.
+4. Pilih/ambil foto → upload. Berlaku juga untuk baris yang kolom Dokumentasi-nya masih
+   kosong: barisnya dikenali dari nomor baris + sidik jari isinya.
    Ini jalan di HP juga, karena upload-nya di web, bukan di dialog Apps Script.
 5. Kolom **Dokumentasi** baris itu terisi otomatis: `📷 Foto (n)`, klik untuk kembali
    membuka galeri record tersebut. Kalau semua fotonya dihapus, selnya kosong lagi.
+   Selnya ditulis **sesaat setelah** foto tersimpan, bukan seketika — jadi wajar kalau
+   isinya baru muncul beberapa detik kemudian.
+
+Menu ini **khusus untuk upload foto**. Ia tidak lagi ikut menyegarkan data
+critical/maintenance di web; itu urusan tombol **"Perbarui data"** di halaman web dan cron.
+Yang tersentuh saat upload hanyalah **item + uraian** baris tersebut; kolom lain (scope,
+status, shift, foreman, …) menyusul pada pembaruan berikutnya.
 
 Kalau saat menu diklik tidak ada baris data yang jelas (masih di baris judul, atau tab
-lain), web tetap dibuka — di daftar **Aktivitas Terbaru**, supaya operator bisa mencari
-sendiri record yang baru dia isi.
+lain), dialog kecil muncul menjelaskan sebabnya + tombol untuk membuka daftar record di web.
+Dialog kecil itu juga muncul kalau browser menahan tab baru (popup blocker) — tombolnya
+selalu berhasil karena diklik operator sendiri.
 
 ## Isi folder ini
 
@@ -32,16 +39,22 @@ di spreadsheet (container-bound):
 - `Code.gs` — menu, penentuan baris terpilih, pembacaan kolomnya, pembentukan URL.
   Baris header dipindai ulang tiap kali menu diklik. Sempat di-cache (`CacheService`, 6 jam)
   demi kecepatan, lalu dibatalkan: kolom di sheet ini memang sesekali dipindah operator
-  (Dokumentasi tab Maintenance pernah geser K → I), dan cache yang basi membuat dialog
-  membaca kolom yang salah tanpa ada yang tahu. Ongkosnya cuma satu pembacaan 30 baris,
-  sementara dialognya sendiri sudah tampil duluan.
+  (Dokumentasi tab Maintenance pernah geser K → I), dan cache yang basi membuat script
+  membaca kolom yang salah tanpa ada yang tahu.
+
+  Seluruh targetnya dihitung di **satu eksekusi** — tidak ada lagi `google.script.run`
+  bolak-balik. Perjalanan ke backend Sheets ditekan seminimalnya: Script Properties dibaca
+  sekali (`getProperties()`), `getLastRow()` tidak dipakai, dan formula sel Dokumentasi hanya
+  dibaca kalau selnya memang berisi — dari puluhan ribu baris, hanya segelintir yang berfoto.
 
   Nilai bawaan `APP_URL`/`CRITICAL_GID`/`MAINTENANCE_GID` ada di baris pertama berkas —
   Script Properties (`appUrl`, `criticalGid`, `maintenanceGid`) tetap menang bila diisi.
-- `OpenWeb.html` — dialog ringkasan baris + pembuka tab. Dialog tampil lebih dulu lalu
-  memanggil `getUploadTarget()`; sambil menunggu, ia juga memanggil `appUrl` sekali
-  (`…/api/critical-maintenance/row?warm=1`) supaya server web sudah bangun saat tombolnya
-  ditekan.
+- `OpenWeb.html` — pembuka tab, itu saja. Ia langsung `window.open(url)` lalu menutup dirinya
+  sendiri; operator praktis tidak melihatnya. Kalau `window.open` mengembalikan null (browser
+  menahan tab baru) atau barisnya tidak jelas, dialog tetap terbuka dengan satu tombol.
+
+  Catatan: `window.open(url, '_blank', 'noopener')` **selalu** mengembalikan null — makanya
+  `noopener` tidak dipakai di situ, dan `opener` dinolkan setelahnya.
 
 ## Pasang
 
@@ -71,7 +84,7 @@ Selain agar ringkas saat ditempel, ini menghilangkan satu jebakan: mesin templat
 memindai **seluruh** berkas `.html`, termasuk bagian yang dikomentari — sebuah contoh
 scriptlet yang ditulis di dalam komentar pun ikut dievaluasi dan memunculkan
 `SyntaxError: Unexpected token ';'`. Satu-satunya scriptlet yang boleh ada di `OpenWeb.html`
-adalah `JSON.stringify(appUrl)` yang force-print di awal `<script>`.
+adalah `JSON.stringify(url)` dan `JSON.stringify(note)` yang force-print di awal `<script>`.
 
 ## Prasyarat di spreadsheet
 

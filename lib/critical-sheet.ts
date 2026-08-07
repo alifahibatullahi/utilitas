@@ -131,6 +131,16 @@ export interface CriticalSheetData {
     uidMaps: { critical: Map<number, string>; maintenance: Map<number, string> };
 }
 
+/**
+ * Metadata tab sebagaimana tersimpan di cermin (`critical_sheet_sync.tabs`). Bentuknya sama
+ * dengan `TabsMeta` di lib/critical-sheet-db.ts; sengaja dideklarasikan ulang di sini supaya
+ * file ini tidak perlu mengimpor modul yang justru mengimpornya.
+ */
+export interface TabsSnapshot {
+    tabs: { critical: TabRef; maintenance: TabRef };
+    argSeparator: ArgSeparator;
+}
+
 // ─── Parsing helpers ─────────────────────────────────────────────────────────
 
 export function quoteTab(title: string): string {
@@ -365,26 +375,30 @@ export function uidFromPhotoFormula(formula: string): string {
  * ada di luar blok itu dan akan tertinggal — persis kerusakan yang paling sering terjadi
  * dan paling sulit dilihat.
  *
- * Murah walau sheet-nya 23rb baris: satu kolom, dan yang terisi hanya baris berfoto —
- * baris kosong pulang sebagai array kosong, jadi payload-nya puluhan KB, bukan megabyte.
- * Karena itu peta ini dibaca ULANG tiap refresh, termasuk untuk baris yang isinya sudah
- * beku di snapshot: foto pada record lama pun langsung terlihat.
+ * `startRow` (1-based) membatasi pembacaan mulai baris berapa. Pembacaan PENUH (syncFull)
+ * memakai 1; pembacaan ekor memakai baris awal ekornya. Dulu ekor pun selalu membaca dari
+ * baris 1: satu kolom memang tipis, tapi Google memulangkan array sampai baris terisi
+ * terakhir — tab Maintenance mengirim ±23rb entri kosong demi SATU baris yang berisi, dan
+ * ongkos itu ditanggung tiap kali operator membuka menu di spreadsheet.
  *
  * WAJIB `valueRenderOption: 'FORMULA'` — dengan FORMATTED_VALUE yang kembali hanyalah
  * teks tampilannya ("📷 Critical P-02.10 D (3)"), tanpa uid di dalamnya.
  */
 async function readPhotoUidMap(
     sheets: ReturnType<typeof getSheetsClient>,
-    tabs: { title: string; photoColIndex: number | null }[],
+    tabs: { title: string; photoColIndex: number | null; startRow?: number }[],
 ): Promise<Map<number, string>[]> {
     const hasil = tabs.map(() => new Map<number, string>());
     const ranges: string[] = [];
     const pemilik: number[] = [];        // ranges[i] milik tabs[pemilik[i]]
+    const mulai: number[] = [];          // baris sheet pertama yang dicakup ranges[i]
     tabs.forEach((t, i) => {
         if (t.photoColIndex === null) return;   // kolomnya belum dibuat → tab ini dilewati
         const col = colLetter(t.photoColIndex);
-        ranges.push(`${quoteTab(t.title)}!${col}1:${col}`);
+        const awal = Math.max(1, t.startRow ?? 1);
+        ranges.push(`${quoteTab(t.title)}!${col}${awal}:${col}`);
         pemilik.push(i);
+        mulai.push(awal);
     });
     if (ranges.length === 0) return hasil;
 
@@ -399,7 +413,7 @@ async function readPhotoUidMap(
         const rows = (vr.values ?? []) as string[][];
         rows.forEach((r, idx) => {
             const uid = uidFromPhotoFormula(String(r?.[0] ?? ''));
-            if (uid) map.set(idx + 1, uid);      // idx 0 = baris sheet 1
+            if (uid) map.set(idx + mulai[i], uid);   // idx 0 = baris sheet `mulai[i]`
         });
     });
     return hasil;
@@ -546,6 +560,11 @@ export async function loadCriticalSheetFull(): Promise<CriticalSheetData> {
     };
 }
 
+/** TabRef tersimpan → TabInfo. `columnCount` tidak dipakai di jalur ekor, jadi diisi bawaan. */
+function toTabInfo(ref: TabRef): TabInfo {
+    return { gid: ref.gid, title: ref.title, columnCount: 26 };
+}
+
 function toTabRef(kind: 'critical' | 'maintenance', tab: TabInfo, parsed: ParsedTab<unknown>): TabRef {
     return {
         kind,
@@ -565,9 +584,15 @@ function toTabRef(kind: 'critical' | 'maintenance', tab: TabInfo, parsed: Parsed
  * shift berjalan, tapi begitu harinya lewat posisinya tetap — jadi yang perlu dilihat
  * ulang tiap beberapa menit hanyalah ujung sheet, bukan 27rb baris.
  *
- * Kolom "Dokumentasi" tetap dibaca PENUH (satu kolom, hampir seluruhnya kosong, puluhan
- * KB) supaya foto yang baru ditempel ke record LAMA pun langsung terlihat. Petanya ikut
- * dikembalikan lewat `uidMaps` karena isinya menyangkut SELURUH sheet, bukan cuma ekor.
+ * Kolom "Dokumentasi" dibaca dari baris awal ekor juga, bukan dari baris 1. Uid baris di
+ * LUAR ekor sudah dicerminkan langsung oleh writePhotoCell saat fotonya diunggah, jadi yang
+ * tersisa untuk pembacaan penuh hanyalah memulihkan uid yang berpindah karena operator
+ * menyortir baris — dan itu bagian syncFull.
+ *
+ * `tabsMeta` = metadata tab yang sudah tersimpan di cermin. Bila diberikan, `resolveTabs()`
+ * dilewati: satu panggilan Sheets berurutan hilang dari jalur yang dipakai tombol "Perbarui
+ * data". Judul tab yang basi (tab di-rename) membuat batchGet gagal, dan pemanggil boleh
+ * mencoba lagi tanpa `tabsMeta`.
  *
  * Baris di antara header dan ekor menjadi lubang di array; parser memang sudah melewati
  * baris tanpa uraian/tanggal, jadi penomoran barisnya tetap benar tanpa parser terpisah.
@@ -575,9 +600,16 @@ function toTabRef(kind: 'critical' | 'maintenance', tab: TabInfo, parsed: Parsed
 export async function loadCriticalSheetTailFrom(
     startCritical: number,
     startMaintenance: number,
+    tabsMeta?: TabsSnapshot | null,
 ): Promise<CriticalSheetData> {
     const sheets = getSheetsClient();
-    const { criticalTab, maintenanceTab, argSeparator } = await resolveTabs(sheets);
+    const { criticalTab, maintenanceTab, argSeparator } = tabsMeta
+        ? {
+            criticalTab: toTabInfo(tabsMeta.tabs.critical),
+            maintenanceTab: toTabInfo(tabsMeta.tabs.maintenance),
+            argSeparator: tabsMeta.argSeparator,
+        }
+        : await resolveTabs(sheets);
 
     // Baris header selalu ikut (findHeader memindai 30 baris pertama), lalu ekornya.
     const HEADER_SCAN = 30;
@@ -610,8 +642,8 @@ export async function loadCriticalSheetTailFrom(
     const maintenanceParsed = parseMaintenanceTab(maintenanceRows);
 
     const [criticalUids, maintenanceUids] = await readPhotoUidMap(sheets, [
-        { title: criticalTab.title, photoColIndex: criticalParsed.photoColIndex },
-        { title: maintenanceTab.title, photoColIndex: maintenanceParsed.photoColIndex },
+        { title: criticalTab.title, photoColIndex: criticalParsed.photoColIndex, startRow: cMulai },
+        { title: maintenanceTab.title, photoColIndex: maintenanceParsed.photoColIndex, startRow: mMulai },
     ]);
     applyPhotoUids(criticalParsed.rows, criticalUids);
     applyPhotoUids(maintenanceParsed.rows, maintenanceUids);
@@ -628,9 +660,51 @@ export async function loadCriticalSheetTailFrom(
         },
         argSeparator,
         fetchedAt: new Date().toISOString(),
-        /** Peta uid LENGKAP (kolom Dokumentasi dibaca penuh), bukan hanya bagian ekor. */
+        /** Peta uid SEBATAS EKOR — di luar itu cermin sudah dijaga writePhotoCell & syncFull. */
         uidMaps: { critical: criticalUids, maintenance: maintenanceUids },
     };
+}
+
+/**
+ * Baca SATU baris saja, plus blok header di atasnya. Dipakai saat deep-link dari spreadsheet
+ * menunjuk baris yang belum tercermin — yaitu baris yang baru diketik operator, justru kasus
+ * yang paling sering. Dulu satu-satunya jalan adalah menunggu syncTail seluruhnya selesai.
+ *
+ * Satu panggilan Sheets berisi dua rentang, dan metadata tabnya diserahkan pemanggil
+ * (tersimpan di cermin), jadi tidak ada `spreadsheets.get` sama sekali.
+ *
+ * null = barisnya kosong / bukan baris data / nomor barisnya di luar sheet. Pemanggil WAJIB
+ * mencocokkan sidik jari hasilnya sebelum mempercayainya: nomor baris saja bisa basi.
+ */
+export async function loadSingleSheetRow(
+    kind: 'critical' | 'maintenance',
+    tabTitle: string,
+    rowIndex: number,
+): Promise<CriticalRow | MaintenanceRow | null> {
+    if (!Number.isInteger(rowIndex) || rowIndex < 1) return null;
+    const sheets = getSheetsClient();
+    const HEADER_SCAN = 30;
+
+    const res = await withRetry(() => sheets.spreadsheets.values.batchGet({
+        spreadsheetId: sheetId(),
+        ranges: [
+            `${quoteTab(tabTitle)}!A1:AE${HEADER_SCAN}`,
+            `${quoteTab(tabTitle)}!A${rowIndex}:AE${rowIndex}`,
+        ],
+        valueRenderOption: 'FORMATTED_VALUE',
+    }), `batchGet baris ${tabTitle}!${rowIndex}`);
+
+    const vr = (res.data.valueRanges ?? []).map(v => (v.values ?? []) as string[][]);
+    // Array bernomor baris sheet, berlubang di antaranya — bentuk yang sama dengan
+    // pembacaan ekor, jadi parser yang sama bisa dipakai apa adanya.
+    const rows: string[][] = [];
+    (vr[0] ?? []).forEach((r, i) => { rows[i] = r; });
+    const target = (vr[1] ?? [])[0];
+    if (target) rows[rowIndex - 1] = target;
+
+    const parsed = kind === 'critical' ? parseCriticalTab(rows) : parseMaintenanceTab(rows);
+    // Baris di dalam blok header ikut terparse; ambil yang nomornya memang diminta.
+    return parsed.rows.find(r => r.rowIndex === rowIndex) ?? null;
 }
 
 /** Status selesai = "OK" (case-insensitive). Selain itu dianggap masih aktif. */

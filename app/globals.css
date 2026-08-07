@@ -93,6 +93,57 @@
   animation: alertPulse 1.5s ease-in-out infinite;
 }
 
+/* Kamera polaroid — penanda tunggu di /critical-maintenance. Motif yang sama dipakai di
+   dialog Apps Script (apps-script/critical-maintenance-foto/OpenWeb.html); kalau salah satu
+   diubah, ubah keduanya supaya operator melihat hal yang sama di sheet dan di web. */
+@keyframes kameraAyun {
+  0%, 100% { transform: translateY(0); }
+  44% { transform: translateY(-3px); }
+  56% { transform: translateY(1.5px); }
+}
+@keyframes kameraFokus {
+  0%, 28%, 66%, 100% { transform: scale(1); }
+  40% { transform: scale(0.58); }
+  50% { transform: scale(1.18); }
+}
+@keyframes kameraKedip {
+  0%, 41%, 100% { opacity: 0; transform: scale(0.4); }
+  46% { opacity: 0.95; transform: scale(1); }
+  55% { opacity: 0; transform: scale(2); }
+}
+@keyframes kameraCetak {
+  0%, 50% { transform: translateY(0); opacity: 1; }
+  88% { transform: translateY(34px); opacity: 1; }
+  100% { transform: translateY(34px); opacity: 0; }
+}
+@keyframes kameraCuci {
+  0%, 56% { fill: #e5e5e5; }
+  92%, 100% { fill: #93c5fd; }
+}
+
+.kamera-badan,
+.kamera-iris,
+.kamera-blitz,
+.kamera-kartu {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.kamera-badan { animation: kameraAyun 3s ease-in-out infinite; }
+.kamera-iris { animation: kameraFokus 3s ease-in-out infinite; }
+.kamera-blitz { opacity: 0; animation: kameraKedip 3s ease-in-out infinite; }
+.kamera-kartu { animation: kameraCetak 3s ease-in-out infinite; }
+.kamera-cetakan { fill: #e5e5e5; animation: kameraCuci 3s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kamera-badan,
+  .kamera-iris,
+  .kamera-blitz,
+  .kamera-kartu,
+  .kamera-cetakan {
+    animation: none;
+  }
+}
+
 /* Liquid wave animation */
 @keyframes liquidWave {
   0%, 100% { transform: translateX(0); }

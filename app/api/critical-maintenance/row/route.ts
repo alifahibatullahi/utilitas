@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryFocusRow } from '@/lib/critical-sheet-db';
+import { resolveRowOrRepair } from '@/lib/critical-sheet-sync';
 
 export async function GET(req: NextRequest) {
     try {
@@ -35,7 +36,17 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        const hasil = await queryFocusRow({ uid: uid || undefined, kind, rowIndex, sig: sig || undefined });
+        let hasil = await queryFocusRow({ uid: uid || undefined, kind, rowIndex, sig: sig || undefined });
+
+        // Tidak ada di cermin = biasanya baris yang BARU diketik operator, dan itu justru
+        // kasus terbanyak. Baca satu baris itu langsung dari sheet (satu panggilan, menuju
+        // nomor barisnya) alih-alih menunggu sinkronisasi ekor selesai.
+        if (!hasil && kind && rowIndex !== undefined && sig) {
+            const diperbaiki = await resolveRowOrRepair(kind, rowIndex, sig, uid || undefined);
+            if (diperbaiki) {
+                hasil = await queryFocusRow({ uid: uid || undefined, kind, rowIndex, sig });
+            }
+        }
 
         if (!hasil) {
             return NextResponse.json(

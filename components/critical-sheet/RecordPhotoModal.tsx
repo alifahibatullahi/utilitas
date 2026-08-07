@@ -4,9 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { compressImageToFit } from '@/lib/image-compression';
 import { MAX_UPLOAD_BYTES, mediaKindOf, formatBytes } from '@/lib/upload-limits';
-import { fetchSheetPhotos, itemLabel, mediaSummary, type RecentEntry, type SheetPhoto } from './types';
+import { fetchSheetPhotos, itemLabel, mediaSummary, type PhotoFocus, type RecentEntry, type SheetPhoto } from './types';
 import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
 import { MediaThumb, PhotoLightbox, PHOTO_KIND, type PhotoRecordInfo } from './PhotoViewer';
+import PolaroidCamera from './PolaroidCamera';
+
+/** Berapa unggahan berjalan bersamaan dalam satu batch. Cukup untuk menutup latensi tanpa
+ *  membuat jaringan lapangan tersedak — operator jarang mengirim lebih dari 3-4 berkas. */
+const PARALEL = 3;
 
 /** Record (satu baris sheet) yang jadi pemilik foto. */
 export interface PhotoRecordTarget extends PhotoRecordInfo {
@@ -19,6 +24,36 @@ export interface PhotoRecordTarget extends PhotoRecordInfo {
     itemName: string;
     /** Varian mentah baris itu (kolom "Varian") — bisa gabungan seperti "DEF". */
     variant: string;
+}
+
+/**
+ * Target modal langsung dari tautan menu spreadsheet — tanpa satu pun panggilan API.
+ *
+ * Menu itu sudah membaca isi barisnya untuk menyusun `sig`, jadi isinya ikut dititipkan di
+ * URL. Cukup untuk MENAMPILKAN; yang MENGIKAT foto ke barisnya tetap `rowIndex` + `sig`,
+ * diverifikasi ulang ke spreadsheet oleh server saat fotonya benar-benar disimpan.
+ *
+ * null bila tautannya tidak membawa isi (mis. tautan dari sel Dokumentasi yang hanya
+ * ber-uid) — pemanggil harus jatuh ke `fetchFocusRecord`.
+ */
+export function photoTargetFromFocus(f: PhotoFocus): PhotoRecordTarget | null {
+    if (!f.isi || !f.kind || f.rowIndex === undefined || !f.sig) return null;
+    return {
+        uid: f.uid ?? '',
+        rowIndex: f.rowIndex,
+        sig: f.sig,
+        kind: f.kind,
+        itemKey: f.itemKey ?? '',
+        itemName: f.isi.nama,
+        variant: f.isi.varian,
+        tanggalRaw: f.isi.tanggalRaw,
+        uraian: f.isi.uraian,
+        // Sengaja kosong DAN ditandai ringkas: lihat catatan `ringkas` di PhotoRecordInfo.
+        pelapor: '',
+        scope: '',
+        status: '',
+        ringkas: true,
+    };
 }
 
 /**
@@ -96,11 +131,6 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         return () => { cancelled = true; };
     }, [record.uid]);
 
-    const update = useCallback((next: SheetPhoto[], uidBaru?: string) => {
-        setPhotos(next);
-        onCountChange?.(uidBaru ?? uid, next.length);
-    }, [onCountChange, uid]);
-
     const handleFiles = useCallback(async (files: FileList | File[] | null) => {
         // Foto DAN video sama-sama diterima; yang tipenya di luar keduanya diabaikan diam-diam
         // (mis. operator tak sengaja menjatuhkan PDF ke area unggah).
@@ -109,58 +139,113 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
         setError(null);
         setUploading(true);
         setPending(list.length);
-        let next = photos;
+
+        const galat: string[] = [];
+        const kurangiAntre = () => setPending(p => Math.max(0, p - 1));
+
+        // Kecilkan semuanya dulu. Yang tetap kebesaran disaring DI SINI, bukan dibiarkan ke
+        // server: Vercel menolak body di atas 4,5 MB sebelum kode server berjalan, jadi
+        // operator hanya akan melihat kegagalan tanpa sebab. Satu berkas bermasalah tidak
+        // lagi menghentikan sisa antreannya.
+        const siap: (File | null)[] = await Promise.all(list.map(async file => {
+            const hasil = await compressImageToFit(file, MAX_UPLOAD_BYTES).catch(() => file);
+            if (hasil.size <= MAX_UPLOAD_BYTES) return hasil;
+            galat.push(
+                mediaKindOf(file.type) === 'video'
+                    ? `Video "${file.name}" ${formatBytes(hasil.size)} — maksimal ${formatBytes(MAX_UPLOAD_BYTES)}. `
+                      + 'Rekam lebih pendek (±15 detik) atau turunkan resolusi kamera ke 720p.'
+                    : `Foto "${file.name}" tetap ${formatBytes(hasil.size)} setelah dikecilkan — maksimal ${formatBytes(MAX_UPLOAD_BYTES)}.`,
+            );
+            kurangiAntre();
+            return null;
+        }));
+        const antre = siap.filter((f): f is File => f !== null);
+
         let uidSaatIni = uid;
-        for (const file of list) {
-            // Foto dikecilkan sampai muat; video tidak bisa di-transcode di browser, jadi
-            // ia lewat apa adanya dan hanya bisa ditolak kalau kebesaran.
-            const siap = await compressImageToFit(file, MAX_UPLOAD_BYTES).catch(() => file);
-            if (siap.size > MAX_UPLOAD_BYTES) {
-                // Dihentikan DI SINI, bukan dibiarkan ke server: Vercel menolak body di atas
-                // 4,5 MB sebelum kode server berjalan, jadi operator hanya akan melihat
-                // kegagalan tanpa sebab. Pesannya menyebut ukuran nyata dan jalan keluarnya.
-                setError(
-                    mediaKindOf(file.type) === 'video'
-                        ? `Video "${file.name}" ${formatBytes(siap.size)} — maksimal ${formatBytes(MAX_UPLOAD_BYTES)}. `
-                          + 'Rekam lebih pendek (±15 detik) atau turunkan resolusi kamera ke 720p.'
-                        : `Foto "${file.name}" tetap ${formatBytes(siap.size)} setelah dikecilkan — maksimal ${formatBytes(MAX_UPLOAD_BYTES)}.`,
-                );
-                break;
-            }
+        let terkirim = 0;
+
+        // `sync_cell=0` di SEMUA permintaan: selnya ditulis sekali di akhir, dengan jumlah
+        // akhir. Kalau tiap berkas menulisnya sendiri, dua unggahan paralel bisa saling
+        // menimpa dengan hitungan yang sudah basi.
+        const kirim = async (file: File, pakaiSidikJari: boolean) => {
             const form = new FormData();
-            form.append('file', siap);
+            form.append('file', file);
             form.append('parent_kind', record.kind);
-            // Sudah punya uid → pakai itu. Belum → tunjukkan barisnya lewat nomor baris +
-            // sidik jari isinya, dan server yang menerbitkan uid-nya.
-            if (uidSaatIni) {
-                form.append('row_uid', uidSaatIni);
-            } else if (record.rowIndex !== undefined && record.sig) {
+            form.append('sync_cell', '0');
+            if (pakaiSidikJari) {
                 form.append('row_index', String(record.rowIndex));
-                form.append('sig', record.sig);
+                form.append('sig', record.sig as string);
             } else {
-                setError('Baris ini tidak bisa dikenali — tekan "Perbarui data" lalu coba lagi.');
-                break;
+                form.append('row_uid', uidSaatIni);
             }
             if (operator?.name) form.append('uploaded_by', operator.name);
-            try {
-                const res = await fetch('/api/sheet-photos', { method: 'POST', body: form });
-                const json = await res.json();
-                if (!res.ok) { setError(json.error ?? 'Upload gagal'); break; }
-                // Foto pertama sebuah baris melahirkan uid-nya; berkas berikutnya dalam
-                // antrean ini harus menempel ke uid yang sama, bukan membuat yang baru.
-                if (!uidSaatIni && json.rowUid) { uidSaatIni = json.rowUid as string; setUid(uidSaatIni); }
-                next = [...next, json.photo as SheetPhoto];
-                update(next, uidSaatIni);
-                setPending(p => Math.max(0, p - 1));
-            } catch {
-                setError('Gagal terhubung ke server');
-                break;
+
+            const res = await fetch('/api/sheet-photos', { method: 'POST', body: form });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? 'Upload gagal');
+            // Foto pertama sebuah baris melahirkan uid-nya; berkas berikutnya harus menempel
+            // ke uid yang sama, bukan membuat identitas baru lagi.
+            if (!uidSaatIni && json.rowUid) { uidSaatIni = json.rowUid as string; setUid(uidSaatIni); }
+            setPhotos(prev => [...prev, json.photo as SheetPhoto]);
+            terkirim++;
+            kurangiAntre();
+        };
+
+        const catat = (err: unknown) => {
+            galat.push(err instanceof Error && err.message ? err.message : 'Gagal terhubung ke server');
+            kurangiAntre();
+        };
+
+        let mulaiDari = 0;
+        if (!uidSaatIni) {
+            if (record.rowIndex === undefined || !record.sig) {
+                setError('Baris ini tidak bisa dikenali — tekan "Perbarui data" lalu coba lagi.');
+                setUploading(false);
+                setPending(0);
+                return;
+            }
+            // Berkas pertama berjalan SENDIRIAN: dialah yang menerbitkan uid baris ini. Kalau
+            // ikut paralel, dua permintaan akan menerbitkan dua uid berbeda untuk satu baris.
+            if (antre.length > 0) {
+                try { await kirim(antre[0], true); } catch (err) { catat(err); }
+                mulaiDari = 1;
             }
         }
+
+        const sisa = uidSaatIni ? antre.slice(mulaiDari) : [];
+        if (mulaiDari === 1 && !uidSaatIni && antre.length > 1) {
+            // Berkas pertama gagal → uid belum lahir, sisanya tidak punya tujuan.
+            galat.push('Sisa berkas tidak diunggah karena berkas pertama gagal.');
+            for (let i = 1; i < antre.length; i++) kurangiAntre();
+        }
+
+        let berikutnya = 0;
+        await Promise.all(
+            Array.from({ length: Math.min(PARALEL, sisa.length) }, async () => {
+                while (berikutnya < sisa.length) {
+                    const file = sisa[berikutnya++];
+                    try { await kirim(file, false); } catch (err) { catat(err); }
+                }
+            }),
+        );
+
+        if (terkirim > 0 && uidSaatIni) {
+            onCountChange?.(uidSaatIni, photos.length + terkirim);
+            // Penutup batch: satu penulisan sel "Dokumentasi" dengan jumlah akhir. Tidak
+            // ditunggu — server pun mengerjakannya setelah respons, dan cron menyusulkan yang
+            // terlewat (repairMissingPhotoCells).
+            void fetch('/api/sheet-photos/sync-cell', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ row_uid: uidSaatIni }),
+            }).catch(() => { /* sel menyusul lewat cron */ });
+        }
+
+        if (galat.length > 0) setError(galat[0]);
         setUploading(false);
         setPending(0);
         if (fileInputRef.current) fileInputRef.current.value = '';
-    }, [photos, record.kind, record.rowIndex, record.sig, uid, operator?.name, update]);
+    }, [photos.length, record.kind, record.rowIndex, record.sig, uid, operator?.name, onCountChange]);
 
     const pickFiles = useCallback(() => fileInputRef.current?.click(), []);
 
@@ -236,7 +321,9 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                                     {kind.label}
                                 </span>
                                 <span className="text-xs font-bold text-neutral-600">{record.tanggalRaw || '—'}</span>
-                                <SheetStatusBadge status={record.status} />
+                                {/* Status disembunyikan untuk record ringkas — lihat catatan
+                                    `ringkas` di PhotoRecordInfo. */}
+                                {!record.ringkas && <SheetStatusBadge status={record.status} />}
                                 <SheetScopeBadge scope={record.scope} />
                             </div>
 
@@ -311,12 +398,11 @@ export default function RecordPhotoModal({ record, onClose, onCountChange }: Rec
                 {/* Grid foto */}
                 <div className="px-4 sm:px-5 py-4">
                     {loading ? (
-                        // Kerangka seukuran thumbnail — lebih jelas "sedang dimuat"
-                        // daripada satu baris teks, dan tata letaknya tidak melompat.
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" aria-busy="true">
-                            {[0, 1, 2].map(i => (
-                                <div key={i} className="aspect-square rounded-xl bg-neutral-200 animate-pulse" />
-                            ))}
+                        // Satu-satunya tunggu yang tersisa di alur ini (pop up-nya sendiri
+                        // sudah lengkap sejak render pertama), jadi di sinilah kameranya.
+                        <div className="flex flex-col items-center gap-2 py-6" aria-busy="true">
+                            <PolaroidCamera className="w-[132px] h-auto" />
+                            <p className="text-xs font-bold text-neutral-500 animate-pulse">Memuat foto…</p>
                         </div>
                     ) : photos.length === 0 && pending === 0 ? (
                         // Kotak kosong ini sekaligus tombolnya — tidak ada lagi "mau klik apa".

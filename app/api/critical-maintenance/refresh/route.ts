@@ -2,18 +2,20 @@
  * POST /api/critical-maintenance/refresh — segarkan cermin dari Google Sheets
  * (tombol "Perbarui data" dan link `?refresh=1` dari menu spreadsheet).
  *
- * Yang dijalankan adalah syncTail: ujung sheet + seluruh kolom Dokumentasi. Itu sudah
- * mencakup semua yang biasanya dicari operator setelah menekan tombol — baris yang baru
- * saja diketik dan foto yang baru ditempel — dengan ongkos sepersekian pembacaan penuh.
+ * Yang dijalankan adalah syncTail dengan jendela ekor sempit — itu sudah mencakup yang
+ * biasanya dicari operator setelah menekan tombol: baris yang baru saja diketik.
  * `?full=1` memaksa pembacaan penuh, untuk saat baris LAMA yang diubah (mis. Status
  * diisi "OK") perlu segera terlihat.
+ *
+ * Pop up record dari menu spreadsheet TIDAK lagi menunggu ini: barisnya diperbaiki satu per
+ * satu lewat /api/critical-maintenance/row (resolveRowOrRepair).
  *
  * Hasilnya tersimpan di Postgres, jadi berbeda dengan cache in-memory yang dulu:
  * SEMUA instance lambda ikut segar, bukan hanya yang kebetulan menerima request ini.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { syncFull, syncTail } from '@/lib/critical-sheet-sync';
+import { syncFull, syncTail, TAIL_ROWS_INTERAKTIF } from '@/lib/critical-sheet-sync';
 
 /** Pembacaan penuh butuh ±5 detik; beri ruang di atas batas default. */
 export const maxDuration = 60;
@@ -33,7 +35,9 @@ export async function POST(req: NextRequest) {
         }
         terakhir = Date.now();
 
-        const hasil = full ? await syncFull() : await syncTail();
+        // Jendela ekor sempit: dari sini yang dicari operator hanyalah baris yang baru saja
+        // ia ketik. Cron tetap memakai jendela lebarnya sendiri.
+        const hasil = full ? await syncFull() : await syncTail(TAIL_ROWS_INTERAKTIF);
         return NextResponse.json({ ok: true, ...hasil, fetchedAt: new Date().toISOString() });
     } catch (err) {
         console.error('[critical-maintenance/refresh]', err);

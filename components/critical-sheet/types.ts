@@ -182,6 +182,13 @@ export interface PhotoFocus {
     kind?: 'critical' | 'maintenance';
     rowIndex?: number;
     sig?: string;
+    itemKey?: string;
+    /**
+     * Isi baris yang dititipkan menu spreadsheet di URL-nya. Ada = pop up bisa dirakit
+     * SEKETIKA tanpa satu pun panggilan API; kosong (tautan lama, atau tautan dari sel
+     * Dokumentasi) = jalur `fetchFocusRecord` seperti biasa.
+     */
+    isi?: { nama: string; varian: string; uraian: string; tanggalRaw: string };
 }
 
 /** Baca fokus dari query string; null bila tautannya memang bukan tautan record. */
@@ -192,16 +199,38 @@ export function readPhotoFocus(sp: { get(name: string): string | null }): PhotoF
     const rowRaw = Number(sp.get('row'));
     const rowIndex = Number.isInteger(rowRaw) && rowRaw > 0 ? rowRaw : undefined;
     const sig = (sp.get('sig') ?? '').trim();
+    // `ik` = kunci item yang dititipkan menu spreadsheet TANPA membuka halaman itemnya:
+    // `item` merangkap penentu halaman, dan memuat seluruh riwayat item di belakang pop up
+    // yang akan segera ditutup operator itu pekerjaan yang tidak ia minta. Tautan dari sel
+    // Dokumentasi tetap memakai `item` — di situ halaman itemnya memang yang dituju.
+    const itemKey = ((sp.get('ik') || sp.get('item')) ?? '').trim();
+
+    const nama = (sp.get('nama') ?? '').trim();
+    const uraian = (sp.get('uraian') ?? '').trim();
 
     // Nomor baris tanpa sidik jari tidak dipakai: nomor baris saja bisa basi begitu ada
     // penyisipan di atasnya, dan salah baris di sini berarti foto menempel ke record lain.
     const punyaBaris = kind !== undefined && rowIndex !== undefined && sig !== '';
     if (!uid && !punyaBaris) return null;
+
+    // Isi hanya dipercaya bila barisnya juga jelas: tanpa row+sig, isi itu tidak punya
+    // tujuan upload dan tidak ada yang bisa memverifikasinya nanti.
+    const isi = punyaBaris && (nama || uraian)
+        ? {
+            nama,
+            varian: (sp.get('varian') ?? '').trim(),
+            uraian,
+            tanggalRaw: (sp.get('tgl') ?? '').trim(),
+        }
+        : undefined;
+
     return {
         uid: uid || undefined,
         kind: punyaBaris ? kind : undefined,
         rowIndex: punyaBaris ? rowIndex : undefined,
         sig: punyaBaris ? sig : undefined,
+        itemKey: itemKey || undefined,
+        isi,
     };
 }
 

@@ -2,14 +2,18 @@ var APP_URL = 'https://utilitas.vercel.app';
 var CRITICAL_GID = 317293896;
 var MAINTENANCE_GID = 1401715754;
 
+var CFG_ = null;
+
 function getConfig_() {
-  var props = PropertiesService.getScriptProperties();
-  return {
-    appUrl: String(props.getProperty('appUrl') || APP_URL).replace(/\/+$/, ''),
-    criticalGid: angka_(props.getProperty('criticalGid'), CRITICAL_GID),
-    maintenanceGid: angka_(props.getProperty('maintenanceGid'), MAINTENANCE_GID),
+  if (CFG_) return CFG_;
+  var props = PropertiesService.getScriptProperties().getProperties();
+  CFG_ = {
+    appUrl: String(props.appUrl || APP_URL).replace(/\/+$/, ''),
+    criticalGid: angka_(props.criticalGid, CRITICAL_GID),
+    maintenanceGid: angka_(props.maintenanceGid, MAINTENANCE_GID),
     headerScanLimit: 30,
   };
+  return CFG_;
 }
 
 function angka_(v, bawaan) {
@@ -25,20 +29,18 @@ function onOpen() {
 }
 
 function openUploadPage() {
+  var target = buildTarget_(getConfig_());
   var tpl = HtmlService.createTemplateFromFile('OpenWeb');
-  tpl.appUrl = JSON.stringify(getConfig_().appUrl);
-  var html = tpl.evaluate().setWidth(620).setHeight(470);
+  tpl.url = JSON.stringify(target.url);
+  tpl.note = JSON.stringify(target.note);
+  var html = tpl.evaluate().setWidth(430).setHeight(target.note ? 200 : 130);
   SpreadsheetApp.getUi().showModalDialog(html, '📷 Upload Foto');
 }
 
-function getUploadTarget() {
-  return buildTarget_(getConfig_());
-}
-
 function buildTarget_(cfg) {
-  var recentUrl = cfg.appUrl + '/critical-maintenance?refresh=1';
+  var recentUrl = cfg.appUrl + '/critical-maintenance';
   var fallback = function (note) {
-    return { url: recentUrl, mode: 'recent', note: note };
+    return { url: recentUrl, note: note };
   };
 
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
@@ -76,33 +78,28 @@ function buildTarget_(cfg) {
     return fallback('Baris yang dipilih masih kosong — web dibuka di daftar aktivitas terbaru.');
   }
 
-  var uid = readPhotoUid_(sheet, headers, row);
+  var sig = rowFingerprint_(item, varian, uraian, tanggal);
+  var uid = readPhotoUid_(sheet, headers, row, vals);
   var url = cfg.appUrl + '/critical-maintenance'
-          + '?item=' + encodeURIComponent(itemKeyOf_(item, varian))
+          + '?ik=' + encodeURIComponent(itemKeyOf_(item, varian))
           + '&kind=' + encodeURIComponent(kind)
           + '&row=' + row
-          + '&sig=' + encodeURIComponent(rowFingerprint_(item, varian, uraian, tanggal));
+          + '&sig=' + encodeURIComponent(sig)
+          + '&nama=' + encodeURIComponent(item)
+          + '&varian=' + encodeURIComponent(varian)
+          + '&uraian=' + encodeURIComponent(uraian)
+          + '&tgl=' + encodeURIComponent(tanggal);
   if (uid) {
     url += '&foto=' + encodeURIComponent(uid);
   }
 
-  return {
-    url: url + '&refresh=1',
-    mode: 'record',
-    note: '',
-    kindLabel: kind === 'critical' ? 'Critical' : 'Maintenance',
-    item: item,
-    varian: varian,
-    uraian: uraian,
-    scope: ambil(['scope']),
-    pelapor: ambil(['yang melaporkan', 'pelapor']),
-    foreman: ambil(['foreman']),
-  };
+  return { url: url, note: '' };
 }
 
-function readPhotoUid_(sheet, headers, row) {
+function readPhotoUid_(sheet, headers, row, vals) {
   var idx = findHeaderIndex_(headers, ['dokumentasi', 'link foto']);
   if (idx < 0) return '';
+  if (!String(vals[idx] == null ? '' : vals[idx]).trim()) return '';
   var formula = String(sheet.getRange(row, idx + 1).getFormula() || '');
   var m = /[?&]foto=([^"&\s]+)/.exec(formula);
   return m ? decodeURIComponent(m[1]) : '';
@@ -124,9 +121,9 @@ function findHeaderIndex_(headers, names) {
 
 function findHeaderRow_(sheet, cfg) {
   var lastCol = sheet.getLastColumn();
-  var lastRow = sheet.getLastRow();
-  if (lastCol < 1 || lastRow < 1) return null;
-  var scan = Math.min(lastRow, cfg.headerScanLimit);
+  if (lastCol < 1) return null;
+  var scan = Math.min(sheet.getMaxRows(), cfg.headerScanLimit);
+  if (scan < 1) return null;
   var block = sheet.getRange(1, 1, scan, lastCol).getDisplayValues();
   for (var i = 0; i < block.length; i++) {
     var headers = block[i];

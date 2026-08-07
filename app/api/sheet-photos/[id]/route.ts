@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { deleteFromR2, keyFromUrl } from '@/lib/r2';
 import { syncPhotoCell } from '@/lib/sheet-photo-sync';
@@ -38,8 +38,11 @@ export async function DELETE(
         return NextResponse.json({ error: delErr.message }, { status: 500 });
     }
 
-    // Turunkan hitungan di sel "Link Foto" (dikosongkan bila foto terakhir dihapus).
-    await syncPhotoCell((photo as { row_uid: string }).row_uid);
+    // Turunkan hitungan di sel "Dokumentasi" (dikosongkan bila foto terakhir dihapus).
+    // Setelah respons: fotonya sudah hilang dari R2 + Supabase, dan ubinnya di layar sudah
+    // punya penanda "sedang dihapus" sendiri — tak ada gunanya menahannya demi dua panggilan
+    // Sheets yang tidak terlihat operator.
+    after(() => syncPhotoCell((photo as { row_uid: string }).row_uid));
 
     return NextResponse.json({ ok: true });
 }

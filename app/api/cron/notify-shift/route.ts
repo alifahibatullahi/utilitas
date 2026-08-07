@@ -17,6 +17,7 @@ import { autofillShutdownShift, autofillShutdownDaily } from '@/lib/shutdown-aut
 import { autopublishPastDeadline } from '@/lib/auto-publish';
 import { notifyAshSiloDaily } from '@/lib/ash-silo-notify';
 import { syncFullIfStale, syncTail } from '@/lib/critical-sheet-sync';
+import { repairMissingPhotoCells } from '@/lib/sheet-photo-sync';
 
 /**
  * Isi baris LAMA masih bisa berubah (Status / "Tanggal di OK" sering diisi belakangan),
@@ -148,7 +149,17 @@ export async function GET(req: NextRequest) {
         sheetSync = { error: e instanceof Error ? e.message : String(e) };
     }
 
-    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish, ashSilo, sheetSync });
+    // Susulan sel "Dokumentasi" yang terlewat. Penulisannya berjalan setelah respons upload
+    // dikirim, jadi fungsi yang keburu dimatikan bisa meninggalkan foto tanpa sel. Dijalankan
+    // SESUDAH sync di atas: uid yang baru dicerminkan sync tidak perlu disusulkan lagi.
+    let photoCells: unknown;
+    try {
+        photoCells = await repairMissingPhotoCells();
+    } catch (e) {
+        photoCells = { error: e instanceof Error ? e.message : String(e) };
+    }
+
+    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish, ashSilo, sheetSync, photoCells });
 }
 
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {

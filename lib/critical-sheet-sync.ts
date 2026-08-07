@@ -22,17 +22,26 @@ import {
     extractCode,
     loadCriticalSheetFull,
     loadCriticalSheetTailFrom,
+    loadSingleSheetRow,
     normSearch,
     recordItemKeys,
     rowFingerprint,
     type CriticalRow,
     type CriticalSheetData,
     type MaintenanceRow,
+    type TabsSnapshot,
 } from './critical-sheet';
-import { createAdmin } from './critical-sheet-db';
+import { createAdmin, queryTabsMeta, resolveRowForUpload } from './critical-sheet-db';
 
 /** Berapa baris terakhir yang ikut dibaca ulang saat syncTail. */
 const TAIL_ROWS = 400;
+
+/**
+ * Ekor untuk jalur INTERAKTIF (tombol "Perbarui data", `?refresh=1` dari menu spreadsheet).
+ * Yang dicari operator di situ hanya baris yang baru saja ia ketik, jadi jendelanya tidak
+ * perlu selebar cron — dan `hashEkor` ikut menyusut dari 4 permintaan Supabase jadi 2.
+ */
+export const TAIL_ROWS_INTERAKTIF = 100;
 
 /** Sekali tulis maksimal sekian baris — menjaga payload request Supabase tetap wajar. */
 const CHUNK = 500;
@@ -103,6 +112,55 @@ function baseRecord(kind: 'critical' | 'maintenance', r: CriticalRow | Maintenan
         code: extractCode(r.item),
         search: normSearch(`${r.item} ${extractCode(r.item)} ${r.uraian} ${critical ? c.notif : m.notifikasi}`),
         fingerprint: rowFingerprint(r.item, r.varian, r.uraian, r.tanggalRaw),
+        content_hash: '',
+    };
+    rec.content_hash = hashRecord(rec);
+    return rec;
+}
+
+/**
+ * Baris INTI: hanya yang dibutuhkan supaya foto bisa menempel dan pop up bisa menyebut
+ * recordnya. Ditulis saat foto pertama sebuah baris diunggah — jalur itu tidak boleh ikut
+ * memperbarui data critical/maintenance; itu urusan tombol "Perbarui data" dan cron.
+ *
+ * Yang ikut ditulis di luar item & uraian: `varian` + `tanggal_raw`, karena `rowFingerprint`
+ * dihitung dari item|varian|uraian|tanggalRaw — tanpa keduanya `resolveRowForUpload` tidak
+ * akan mengenali baris ini lagi pada upload berikutnya.
+ *
+ * `content_hash` sengaja dihitung dari baris inti ini, BUKAN dari baris penuh: hasilnya pasti
+ * berbeda dari hash baris aslinya, jadi sync berikutnya melihatnya sebagai berubah dan
+ * menimpanya dengan isi lengkap. Kalau hash penuh yang ditulis, baris ini akan dianggap
+ * mutakhir selamanya dan kolom kosongnya tidak pernah terisi.
+ */
+function recordInti(kind: 'critical' | 'maintenance', r: CriticalRow | MaintenanceRow): RowRecord {
+    const rec: RowRecord = {
+        kind,
+        row_index: r.rowIndex,
+        uid: r.uid,
+        item: r.item,
+        varian: r.varian,
+        uraian: r.uraian,
+        tanggal: r.tanggal,
+        tanggal_raw: r.tanggalRaw,
+        item_keys: recordItemKeys(r.item, r.varian),
+        code: extractCode(r.item),
+        search: normSearch(`${r.item} ${extractCode(r.item)} ${r.uraian}`),
+        fingerprint: rowFingerprint(r.item, r.varian, r.uraian, r.tanggalRaw),
+        // Menyusul pada pembaruan berikutnya.
+        legacy_id: '',
+        no: null,
+        scope: '',
+        status: '',
+        gabungan: '',
+        link_foto: '',
+        pelapor: '',
+        notif: '',
+        tanggal_ok: null,
+        tanggal_ok_raw: '',
+        peng_ok: '',
+        shift: '',
+        notifikasi: '',
+        foreman: '',
         content_hash: '',
     };
     rec.content_hash = hashRecord(rec);
@@ -284,14 +342,14 @@ export async function syncFull(maxWrites?: number): Promise<SyncResult> {
 }
 
 /**
- * Perbarui ujung sheet saja + seluruh kolom Dokumentasi. Inilah yang dijalankan sering:
- * baris baru yang diketik operator muncul, dan foto yang baru ditempel ke record LAMA
- * pun ikut terlihat (peta uid mencakup seluruh sheet, bukan hanya ekor).
+ * Perbarui ujung sheet saja — termasuk kolom Dokumentasi sepanjang ekor itu. Inilah yang
+ * dijalankan sering: baris baru yang diketik operator muncul di daftar.
  *
- * TIDAK melihat perubahan isi baris lama dan tidak bisa mendeteksi baris terhapus —
- * itu bagian syncFull.
+ * TIDAK melihat perubahan isi baris lama dan tidak bisa mendeteksi baris terhapus — itu
+ * bagian syncFull. Uid baris di luar ekor juga bukan urusannya: writePhotoCell sudah
+ * mencerminkannya seketika saat foto diunggah.
  */
-export async function syncTail(): Promise<SyncResult> {
+export async function syncTail(tailRows: number = TAIL_ROWS): Promise<SyncResult> {
     const t0 = Date.now();
     const supabase = createAdmin();
     try {
@@ -306,10 +364,23 @@ export async function syncTail(): Promise<SyncResult> {
 
         const batasC = await maxRowIndex(supabase, 'critical');
         const batasM = await maxRowIndex(supabase, 'maintenance');
-        const data = await loadCriticalSheetTailFrom(
-            Math.max(1, batasC - TAIL_ROWS),
-            Math.max(1, batasM - TAIL_ROWS),
-        );
+        const mulaiC = Math.max(1, batasC - tailRows);
+        const mulaiM = Math.max(1, batasM - tailRows);
+
+        // Judul tab diambil dari cermin supaya `spreadsheets.get` tidak perlu dipanggil.
+        // Kalau tabnya ternyata sudah di-rename, batchGet-nya gagal — ulangi sekali dengan
+        // metadata segar, jadi sheet yang berubah tetap pulih sendiri alih-alih macet.
+        const tersimpan = meta.tabs as TabsSnapshot;
+        let data: CriticalSheetData;
+        try {
+            data = await loadCriticalSheetTailFrom(mulaiC, mulaiM, tersimpan);
+        } catch (err) {
+            console.warn(
+                '[critical-sheet-sync] ekor gagal dengan metadata tersimpan, baca ulang metadata:',
+                err instanceof Error ? err.message : err,
+            );
+            data = await loadCriticalSheetTailFrom(mulaiC, mulaiM);
+        }
 
         const records = toRecords(data);
         const hasil = await upsertChanged(supabase, records, undefined, true);
@@ -329,8 +400,9 @@ export async function syncTail(): Promise<SyncResult> {
 }
 
 /**
- * Samakan kolom `uid` untuk baris DI LUAR ekor. Kolom Dokumentasi dibaca penuh, jadi foto
- * yang ditempel ke record lama diketahui di sini tanpa perlu ikut membaca isi barisnya.
+ * Samakan kolom `uid` untuk baris yang petanya ikut terbaca tapi isinya tidak ditulis ulang.
+ * Sejak kolom Dokumentasi hanya dibaca sepanjang ekor, cakupannya tinggal baris ekor yang
+ * lolos saringan parser — pada syncFull ia tetap mencakup seluruh sheet.
  */
 async function syncUidsSaja(
     supabase: SupabaseClient,
@@ -372,6 +444,63 @@ async function syncUidsSaja(
         }
     }
     return n;
+}
+
+/**
+ * Cari baris tujuan upload; kalau belum tercermin, PERBAIKI SATU BARIS ITU SAJA.
+ *
+ * Kebiasaan operator: foto hampir selalu untuk record yang ia ketik di shift yang sama, jadi
+ * barisnya baru — belum tersentuh sync mana pun. Dulu keadaan itu berarti menunggu syncTail
+ * seluruhnya selesai (3 panggilan Sheets berurutan) hanya untuk menemukan satu baris; di sini
+ * cukup satu panggilan yang langsung menuju nomor barisnya.
+ *
+ * Penjaganya sidik jari: baris hasil pembacaan HARUS cocok dengan `sig` yang dibawa tautan.
+ * Tidak cocok = tautannya basi (barisnya bergeser atau isinya diubah), dan tidak ada apa pun
+ * yang ditulis. Sidik jari kembar tetap dikembalikan sebagai `ambigu`, tidak pernah ditebak.
+ *
+ * Pembacaan ke spreadsheet di sini SENGAJA dipertahankan meski pop up sudah mendapat isinya
+ * dari URL: di sinilah foto menempel permanen, jadi di sini pula isinya diverifikasi ulang ke
+ * sumber kebenaran. Isi dari URL cukup untuk MENAMPILKAN, tidak cukup untuk MENGIKAT.
+ *
+ * Yang ditulis hanya baris INTI (lihat recordInti) — kolom selebihnya menyusul lewat tombol
+ * "Perbarui data" atau cron.
+ */
+export async function resolveRowOrRepair(
+    kind: 'critical' | 'maintenance',
+    rowIndex: number,
+    sig: string,
+    uid?: string,
+): Promise<Awaited<ReturnType<typeof resolveRowForUpload>>> {
+    const awal = await resolveRowForUpload(kind, rowIndex, sig);
+    if (awal) return awal;
+
+    const meta = await queryTabsMeta();
+    if (!meta) return null;
+    const tab = kind === 'critical' ? meta.tabs.critical : meta.tabs.maintenance;
+
+    let baris: Awaited<ReturnType<typeof loadSingleSheetRow>>;
+    try {
+        baris = await loadSingleSheetRow(kind, tab.title, rowIndex);
+    } catch (err) {
+        console.warn(
+            `[critical-sheet-sync] gagal membaca ${tab.title}!${rowIndex}:`,
+            err instanceof Error ? err.message : err,
+        );
+        return null;
+    }
+    if (!baris) return null;
+    if (rowFingerprint(baris.item, baris.varian, baris.uraian, baris.tanggalRaw) !== sig) return null;
+
+    // uid tidak ikut dibaca dari sel Dokumentasi (perlu render FORMULA, satu panggilan lagi);
+    // deep-link dari spreadsheet sudah membawanya lewat `&foto=`.
+    baris.uid = (uid ?? '').trim();
+    const rec = recordInti(kind, baris);
+    const { error } = await createAdmin()
+        .from('critical_sheet_rows')
+        .upsert({ ...rec, synced_at: new Date().toISOString() }, { onConflict: 'kind,row_index' });
+    if (error) throw error;
+
+    return resolveRowForUpload(kind, rowIndex, sig);
 }
 
 async function maxRowIndex(supabase: SupabaseClient, kind: 'critical' | 'maintenance'): Promise<number> {

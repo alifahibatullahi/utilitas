@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToR2, deleteFromR2, MAX_UPLOAD_BYTES, mediaKindOf, formatBytes } from '@/lib/r2';
 import { syncPhotoCell } from '@/lib/sheet-photo-sync';
-import { resolveRowForUpload, ringkasBaris, uidsTerpakai } from '@/lib/critical-sheet-db';
+import { ringkasBaris, uidsTerpakai } from '@/lib/critical-sheet-db';
+import { resolveRowOrRepair } from '@/lib/critical-sheet-sync';
 import { buildRowUid } from '@/lib/critical-sheet';
 
 /**
@@ -44,6 +45,11 @@ export async function POST(req: NextRequest) {
         const rowIndex   = parseInt((formData.get('row_index') as string) ?? '', 10);
         const sig        = ((formData.get('sig') as string) ?? '').trim();
         let   rowUid     = ((formData.get('row_uid') as string) ?? '').trim();
+        // '0' = klien mengunggah beberapa berkas sekaligus dan akan menutupnya sendiri dengan
+        // SATU panggilan /api/sheet-photos/sync-cell setelah batch-nya selesai. Tanpa itu tiap
+        // berkas menulis sel yang sama, dan yang paralel bisa saling menimpa dengan hitungan
+        // yang sudah basi. Bawaannya '1' supaya pemanggil lama tetap berperilaku sama.
+        const syncCell   = ((formData.get('sync_cell') as string) ?? '1').trim() !== '0';
 
         if (!file) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -55,7 +61,7 @@ export async function POST(req: NextRequest) {
         // ── Baris yang belum pernah difoto ───────────────────────────────────
         // Identitas baris lahir DI SINI, bukan saat sheet dibaca: app tidak lagi menulis
         // ID ke 27rb baris hanya supaya segelintir di antaranya bisa dilampiri foto.
-        let barisBaru: Awaited<ReturnType<typeof resolveRowForUpload>> = null;
+        let barisBaru: Awaited<ReturnType<typeof resolveRowOrRepair>> = null;
         if (!rowUid) {
             if (!Number.isFinite(rowIndex) || !sig) {
                 return NextResponse.json(
@@ -63,7 +69,9 @@ export async function POST(req: NextRequest) {
                     { status: 400 },
                 );
             }
-            barisBaru = await resolveRowForUpload(parentKind, rowIndex, sig);
+            // Baris yang baru diketik operator belum tercermin; resolveRowOrRepair membaca
+            // satu baris itu langsung dari sheet alih-alih menyerah dengan "Perbarui data".
+            barisBaru = await resolveRowOrRepair(parentKind, rowIndex, sig);
             if (!barisBaru) {
                 return NextResponse.json({
                     error: 'Baris tidak ditemukan lagi di spreadsheet — mungkin sudah diubah atau dihapus. '
@@ -135,8 +143,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: dbErr.message }, { status: 500 });
         }
 
-        // Cermin ke kolom "Dokumentasi" di spreadsheet. Menelan errornya sendiri.
-        await syncPhotoCell(rowUid);
+        // Cermin ke kolom "Dokumentasi" di spreadsheet — SETELAH respons dikirim. Fotonya
+        // sudah aman di R2 + Supabase, sedangkan penulisan selnya butuh dua panggilan Sheets
+        // lagi; menunggunya berarti operator menatap layar selama itu untuk sesuatu yang
+        // tidak ia lihat. Sel yang terlewat (fungsi keburu dimatikan) disusul cron lewat
+        // repairMissingPhotoCells, atau `npx tsx scripts/resync-photo-cells.ts`.
+        if (syncCell) after(() => syncPhotoCell(rowUid));
 
         // `rowUid` dikembalikan supaya klien tahu uid yang baru saja lahir untuk baris
         // yang tadinya belum punya — foto berikutnya di baris itu langsung memakainya.

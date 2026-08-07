@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import RecordBrowser from './RecordBrowser';
 import ItemDetail from './ItemDetail';
-import RecordPhotoModal, { photoTargetOf, type PhotoRecordTarget } from './RecordPhotoModal';
-import { fetchFocusRecord, FocusRowMissingError, readPhotoFocus } from './types';
+import RecordPhotoModal, { photoTargetFromFocus, photoTargetOf, type PhotoRecordTarget } from './RecordPhotoModal';
+import { fetchFocusRecord, readPhotoFocus } from './types';
 
 /**
  * Viewer Critical Maintenance. Data & input tinggal di Google Sheets; halaman ini
@@ -17,7 +17,6 @@ export default function CriticalSheetPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const activeKey = searchParams.get('item');
-    const wantsRefresh = searchParams.get('refresh') === '1';
 
     const [reloadKey, setReloadKey] = useState(0);
     const [fetchedAt, setFetchedAt] = useState<string | null>(null);
@@ -30,11 +29,15 @@ export default function CriticalSheetPage() {
      * recordnya, bukan menunggu seluruh riwayat item termuat lalu mencari barisnya sendiri.
      */
     const [focus, setFocus] = useState(() => readPhotoFocus(searchParams));
-    const [focusRecord, setFocusRecord] = useState<PhotoRecordTarget | null>(null);
+    /**
+     * Menu spreadsheet menitipkan isi barisnya di URL, jadi pop up-nya sudah lengkap sejak
+     * render pertama: nol panggilan API, dan spreadsheet tidak tersentuh sampai fotonya
+     * benar-benar diunggah. Tautan lama yang hanya ber-uid tetap lewat `fetchFocusRecord`.
+     */
+    const [focusRecord, setFocusRecord] = useState<PhotoRecordTarget | null>(
+        () => (focus ? photoTargetFromFocus(focus) : null),
+    );
     const [focusError, setFocusError] = useState<string | null>(null);
-    /** `?refresh=1` harus selesai dulu: baris yang baru diketik belum ada di cermin. */
-    const [needsSync] = useState(wantsRefresh);
-    const [syncDone, setSyncDone] = useState(false);
 
     const onMeta = useCallback((at: string) => setFetchedAt(at), []);
 
@@ -65,39 +68,29 @@ export default function CriticalSheetPage() {
     useEffect(() => {
         if (!focus || focusStripped.current) return;
         focusStripped.current = true;
-        stripParams(['foto', 'kind', 'row', 'sig']);
+        // `refresh` & `tab` ikut dibuang: tautan LAMA dari menu spreadsheet masih
+        // membawanya, dan keduanya sekarang tidak berarti apa-apa.
+        stripParams(['foto', 'kind', 'row', 'sig', 'ik', 'nama', 'varian', 'uraian', 'tgl', 'refresh', 'tab']);
     }, [focus, stripParams]);
 
     /**
-     * Cari barisnya langsung ke cermin — satu query kecil, tidak menunggu halaman di
-     * belakangnya DAN tidak menunggu sinkronisasi. Baris berfoto ditemukan lewat uid, baris
-     * yang belum berfoto lewat nomor baris + sidik jari (aturan yang sama dengan saat
-     * fotonya nanti disimpan).
+     * Hanya untuk tautan yang TIDAK membawa isi barisnya — yaitu HYPERLINK di sel Dokumentasi,
+     * yang cuma ber-uid. Tautan dari menu spreadsheet sudah lengkap sejak render pertama, jadi
+     * `focusRecord` sudah terisi dan efek ini tidak pernah jalan.
      *
-     * Dua percobaan. Yang pertama berjalan berbarengan dengan POST `?refresh=1`: hampir
-     * semua baris sudah ada di cermin, jadi pop up-nya terbuka tanpa menanggung ongkos
-     * sinkronisasi sama sekali. Hanya bila barisnya BELUM tercermin — baris yang baru saja
-     * diketik operator — percobaan kedua menunggu sinkronisasi selesai.
+     * Satu query kecil ke cermin; baris yang belum tercermin diperbaiki server (satu baris
+     * saja) di /api/critical-maintenance/row.
      */
-    const [attempt, setAttempt] = useState(1);
     useEffect(() => {
         if (!focus || focusRecord || focusError) return;
-        if (attempt > 1 && !syncDone) return;
         let cancelled = false;
         fetchFocusRecord(focus)
             .then(r => { if (!cancelled) setFocusRecord(photoTargetOf(r)); })
             .catch(err => {
-                if (cancelled) return;
-                // Belum tercermin + sinkronisasi memang sedang jalan = masih ada harapan.
-                // Kegagalan lain (jaringan, 500, baris kembar) tidak akan berubah oleh sync.
-                if (err instanceof FocusRowMissingError && attempt === 1 && needsSync) {
-                    setAttempt(2);
-                    return;
-                }
-                setFocusError(err instanceof Error ? err.message : 'Gagal membuka record');
+                if (!cancelled) setFocusError(err instanceof Error ? err.message : 'Gagal membuka record');
             });
         return () => { cancelled = true; };
-    }, [focus, attempt, syncDone, needsSync, focusRecord, focusError]);
+    }, [focus, focusRecord, focusError]);
 
     /** Tutup pop up deep-link: fokusnya selesai, dan daftar di belakang dibaca ulang
      *  supaya jumlah foto yang baru ikut terlihat. */
@@ -106,33 +99,6 @@ export default function CriticalSheetPage() {
         setFocusRecord(null);
         setReloadKey(k => k + 1);
     }, []);
-
-    /**
-     * `?refresh=1` datang dari menu di spreadsheet: baris yang BARU diketik operator
-     * belum tentu ada di cache loader (TTL 5 menit), dan ID-nya belum di-backfill.
-     * Dijalankan sekali lalu paramnya dibuang dari URL supaya reload tidak memicu lagi.
-     * Server tetap punya rem sendiri (MIN_FORCE_INTERVAL_MS) bila banyak operator
-     * membuka menu bersamaan. `tab` ikut dibuang: link lama dari spreadsheet masih
-     * membawa `?tab=recent` yang sekarang tidak berarti apa-apa (daftar record sudah
-     * jadi tampilan awal).
-     */
-    const refreshHandled = useRef(false);
-    useEffect(() => {
-        // `needsSync`, bukan `wantsRefresh`: paramnya sudah dibuang lebih dulu oleh
-        // pembersih fokus di atas, dan sinkronisasinya tetap harus jalan.
-        if (!needsSync || refreshHandled.current) return;
-        refreshHandled.current = true;
-        setRefreshing(true);
-        fetch('/api/critical-maintenance/refresh', { method: 'POST' })
-            .catch(() => { /* daftar akan menampilkan errornya sendiri */ })
-            .finally(() => {
-                setRefreshing(false);
-                setSyncDone(true);
-                setReloadKey(k => k + 1);
-                stripParams(['refresh', 'tab']);
-            });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [needsSync]);
 
     function selectItem(key: string) {
         router.push(`/critical-maintenance?item=${encodeURIComponent(key)}`);
@@ -227,10 +193,9 @@ export default function CriticalSheetPage() {
                     />}
             </div>
 
-            {/* Pop up record dari spreadsheet. Kerangkanya tampil lebih dulu supaya yang
-                pertama dilihat operator memang pop up-nya — isinya menyusul, halaman di
-                belakang memuat sendiri. */}
-            {focus && !focusRecord && !focusError && <FocusSkeleton waiting={attempt > 1} />}
+            {/* Kerangka pop up — hanya terlihat untuk tautan dari sel Dokumentasi, yang
+                barisnya masih harus dicari. Tautan menu spreadsheet melewatinya. */}
+            {focus && !focusRecord && !focusError && <FocusSkeleton />}
             {focusRecord && (
                 <RecordPhotoModal
                     key={focusRecord.uid || `${focusRecord.kind}:${focusRecord.rowIndex}`}
@@ -243,11 +208,8 @@ export default function CriticalSheetPage() {
 }
 
 /** Bentuk kasar RecordPhotoModal selagi barisnya dicari — ukuran & sudutnya sengaja sama,
- *  jadi pop up-nya tidak "melompat" saat isinya datang.
- *
- *  `waiting` = percobaan pertama tidak menemukan barisnya, jadi yang ditunggu sekarang
- *  sinkronisasi spreadsheet. Menunggu tanpa sebab yang disebut terasa jauh lebih lama. */
-function FocusSkeleton({ waiting = false }: { waiting?: boolean }) {
+ *  jadi pop up-nya tidak "melompat" saat isinya datang. */
+function FocusSkeleton() {
     return (
         <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
             <div className="w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl px-4 sm:px-5 py-4" aria-busy="true">
@@ -259,9 +221,7 @@ function FocusSkeleton({ waiting = false }: { waiting?: boolean }) {
                         <div key={i} className="aspect-square rounded-xl bg-neutral-200 animate-pulse" />
                     ))}
                 </div>
-                <p className="text-[11px] font-bold text-neutral-400 mt-4">
-                    {waiting ? 'Menunggu data baru dari spreadsheet…' : 'Membuka record dari spreadsheet…'}
-                </p>
+                <p className="text-[11px] font-bold text-neutral-400 mt-4">Membuka record dari spreadsheet…</p>
             </div>
         </div>
     );

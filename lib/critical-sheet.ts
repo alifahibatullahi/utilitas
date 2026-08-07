@@ -719,8 +719,15 @@ export interface ItemDetail {
     itemName: string;
     variant: string;
     code: string;
+    /** SATU halaman riwayat, sudah terurut terbaru dulu — bukan seluruh riwayat item. */
     criticals: CriticalRow[];
     maintenances: MaintenanceRow[];
+    /** Jumlah SELURUH record item ini, untuk paginasi & badge hitungan. */
+    total: number;
+    totalCritical: number;
+    totalMaintenance: number;
+    page: number;
+    pageSize: number;
 }
 
 function normItem(item: string): string {

@@ -180,16 +180,16 @@ export default function CriticalSheetPage() {
                     </div>
                 )}
 
+                {/* Halaman item memuat datanya SEKALIGUS dengan pop up di atasnya — sejak
+                    riwayatnya berhalaman (50 record), ongkosnya kecil dan operator tidak
+                    perlu menunggu apa pun lagi saat menutup pop up. */}
                 {activeKey
                     ? <ItemDetail
+                        // Ganti item = remount, supaya nomor halaman riwayatnya kembali ke 1.
+                        key={activeKey}
                         itemKey={activeKey}
                         reloadKey={reloadKey}
                         onBack={back}
-                        // `focus`, bukan `focusRecord`: tautan dari sel Dokumentasi masih
-                        // mencari barisnya dulu, dan selama kerangka pop up tampil pun riwayat
-                        // itemnya belum perlu diunduh. `focusError` melepas gerbangnya supaya
-                        // tautan yang gagal tidak meninggalkan halaman item menggantung.
-                        tunda={!!focus && !focusError}
                     />
                     : <RecordBrowser
                         reloadKey={reloadKey}

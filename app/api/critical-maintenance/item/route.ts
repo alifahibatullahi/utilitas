@@ -1,7 +1,10 @@
 /**
- * GET /api/critical-maintenance/item?key=<itemKey> — detail satu item:
- * seluruh riwayat critical & maintenance untuk item+varian itu (dua list terpisah,
- * tidak dihubungkan). Kecil karena difilter per item — di database, bukan di memori.
+ * GET /api/critical-maintenance/item?key=<itemKey>&page=&pageSize= — SATU HALAMAN riwayat
+ * satu item (critical & maintenance, dua list terpisah dan tidak dihubungkan), ditambah
+ * hitungan total dan baris berfotonya untuk galeri sidebar.
+ *
+ * Berhalaman sejak Agt 2026: memulangkan seluruh riwayat sekaligus berarti 679 KB untuk
+ * item tersibuk, dan halaman ini dimuat di belakang pop up upload foto.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,12 +12,18 @@ import { queryItemDetail } from '@/lib/critical-sheet-db';
 
 export async function GET(req: NextRequest) {
     try {
-        const key = (req.nextUrl.searchParams.get('key') ?? '').trim();
+        const sp = req.nextUrl.searchParams;
+        const key = (sp.get('key') ?? '').trim();
         if (!key) {
             return NextResponse.json({ error: 'Parameter key wajib' }, { status: 400 });
         }
 
-        const detail = await queryItemDetail(key);
+        const page = Number(sp.get('page'));
+        const pageSize = Number(sp.get('pageSize'));
+        const detail = await queryItemDetail(key, {
+            page: Number.isFinite(page) ? page : undefined,
+            pageSize: Number.isFinite(pageSize) ? pageSize : undefined,
+        });
         if (!detail) {
             return NextResponse.json({ error: 'Item tidak ditemukan' }, { status: 404 });
         }

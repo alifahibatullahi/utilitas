@@ -5,17 +5,21 @@ import type { RecentEntry, SheetPhoto } from './types';
 import { MediaThumb, PhotoLightbox, PHOTO_KIND } from './PhotoViewer';
 
 interface ItemPhotoGalleryProps {
-    /** Semua foto item (gabungan seluruh record) — sudah di-batch fetch oleh parent. */
+    /** Foto milik record yang tampil di halaman riwayat aktif — sudah di-batch fetch parent. */
     photos: SheetPhoto[];
-    /** Record item untuk melabeli sumber tiap foto. */
+    /** Record halaman aktif, untuk melabeli sumber tiap foto. */
     records: RecentEntry[];
 }
 
 const PREVIEW_COUNT = 6;
 
 /**
- * Galeri LENGKAP satu item: seluruh foto dari semua record critical + maintenance item
- * itu dalam satu grid, tiap foto berlabel sumbernya.
+ * Galeri foto record critical + maintenance dalam satu grid, tiap foto berlabel sumbernya.
+ *
+ * Cakupannya mengikuti HALAMAN riwayat yang sedang dibuka, bukan seluruh item: sejak riwayat
+ * berhalaman, hanya foto baris yang benar-benar tampil yang diunduh. Judul di sidebar
+ * menyebutkan batasan itu supaya galeri yang berubah saat pindah halaman tidak terbaca
+ * seperti foto yang hilang.
  *
  * View-only — upload & hapus dilakukan di RecordPhotoModal, yang dibuka lewat tombol Foto
  * di tabel riwayat. Sengaja tidak ada jalan pintas dari sini supaya jelas foto itu milik

@@ -49,8 +49,14 @@ export interface ItemDetailResponse {
     itemName: string;
     variant: string;
     code: string;
+    /** SATU halaman riwayat, bukan seluruhnya — lihat `total`. */
     criticals: SheetCritical[];
     maintenances: SheetMaintenance[];
+    total: number;
+    totalCritical: number;
+    totalMaintenance: number;
+    page: number;
+    pageSize: number;
     fetchedAt: string;
     error?: string;
 }
@@ -262,9 +268,14 @@ export async function fetchRecent(params: {
     return json as RecentResponse;
 }
 
-export async function fetchItemDetail(key: string, bust?: number): Promise<ItemDetailResponse> {
+export async function fetchItemDetail(
+    key: string,
+    opts: { page?: number; pageSize?: number; bust?: number } = {},
+): Promise<ItemDetailResponse> {
     const qs = new URLSearchParams({ key });
-    if (bust) qs.set('t', String(bust));
+    if (opts.page) qs.set('page', String(opts.page));
+    if (opts.pageSize) qs.set('pageSize', String(opts.pageSize));
+    if (opts.bust) qs.set('t', String(opts.bust));
     const res = await fetch(`/api/critical-maintenance/item?${qs.toString()}`);
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Gagal memuat detail item');

@@ -200,62 +200,88 @@ export async function queryRecentFeed(opts: {
 }
 
 /**
- * Semua record satu halaman item. Record multi-varian ("DEF") sudah dipecah menjadi
- * beberapa item key saat sync, jadi di sini cukup pencocokan array.
+ * SATU HALAMAN riwayat item. Record multi-varian ("DEF") sudah dipecah menjadi beberapa
+ * item key saat sync, jadi di sini cukup pencocokan array.
+ *
+ * Dulu fungsi ini memulangkan SELURUH riwayat item sekaligus — untuk "B-02.01 Boiler A/B"
+ * varian A itu 2.395 record = 679 KB, dan halaman itu dibuka di belakang pop up upload foto
+ * saat operator justru sedang mengunggah. Sekarang hanya satu halaman yang keluar, jadi
+ * penjemputan bertahap 1.000-baris (batas PostgREST per response) tidak diperlukan lagi:
+ * `pageSize` selalu jauh di bawah batas itu.
+ *
+ * Dua hitungan per jenis (untuk badge "n critical / n maintenance") berjalan PARALEL dengan
+ * query halamannya — jarak ke Supabase (ap-northeast-1) beberapa ratus milidetik, jadi
+ * menderetkannya jauh lebih mahal daripada query-nya sendiri.
+ *
+ * Foto TIDAK diambil di sini: klien hanya menanyakan foto milik baris yang benar-benar
+ * tampil di halaman itu (lihat ItemDetail.tsx), pola yang sama dengan daftar record.
  */
-export async function queryItemDetail(key: string): Promise<ItemDetail | null> {
+export async function queryItemDetail(
+    key: string,
+    opts: { page?: number; pageSize?: number } = {},
+): Promise<ItemDetail | null> {
     const supabase = createAdmin();
+    const pageSize = Math.min(Math.max(1, Math.trunc(opts.pageSize ?? 50)), 200);
+    const page = Math.max(1, Math.trunc(opts.page ?? 1));
+    const from = (page - 1) * pageSize;
 
-    // PostgREST membatasi 1.000 baris per response — dan batas itu tidak bisa ditembus
-    // lewat header Range — sedangkan item tersibuk ("BOILER A/B" varian B) punya 2.564
-    // record. Tanpa penjemputan bertahap, riwayatnya terpotong diam-diam.
-    //
-    // Halaman berikutnya diambil PARALEL, bukan berurutan: jaraknya ke Supabase
-    // (ap-northeast-1) beberapa ratus milidetik, jadi 3 round-trip berderet itulah yang
-    // membuat halaman item terbesar sempat 12,4 detik — di atas batas fungsi Vercel.
-    const PAGE = 1000;
-    const ambil = async (from: number): Promise<DbRow[]> => {
-        const { data, error } = await supabase
-            .from('critical_sheet_rows')
-            .select(KOLOM_ITEM)
-            .contains('item_keys', [key])
-            .order('tanggal', { ascending: false, nullsFirst: false })
-            .order('row_index', { ascending: false })
-            .range(from, from + PAGE - 1);
-        if (error) throw error;
-        return (data ?? []) as unknown as DbRow[];
-    };
-
-    const pertama = await supabase
+    const halaman = supabase
         .from('critical_sheet_rows')
         .select(KOLOM_ITEM, { count: 'exact' })
         .contains('item_keys', [key])
         .order('tanggal', { ascending: false, nullsFirst: false })
         .order('row_index', { ascending: false })
-        .range(0, PAGE - 1);
-    if (pertama.error) throw pertama.error;
+        .range(from, from + pageSize - 1);
 
-    const rows = (pertama.data ?? []) as unknown as DbRow[];
-    const total = pertama.count ?? rows.length;
-    if (total > PAGE) {
-        const sisa = await Promise.all(
-            Array.from({ length: Math.ceil(total / PAGE) - 1 }, (_, i) => ambil((i + 1) * PAGE)),
-        );
-        for (const s of sisa) rows.push(...s);
+    const hitung = (kind: 'critical' | 'maintenance') => supabase
+        .from('critical_sheet_rows')
+        .select('kind', { count: 'exact', head: true })
+        .contains('item_keys', [key])
+        .eq('kind', kind);
+
+    const [hal, nC, nM] = await Promise.all([halaman, hitung('critical'), hitung('maintenance')]);
+    if (nC.error) throw nC.error;
+    if (nM.error) throw nM.error;
+
+    // PostgREST membalas 416 (PGRST103) begitu AWAL rentangnya melewati jumlah baris —
+    // bukan halaman kosong, tapi error. Nomor halaman di luar jangkauan bisa datang dari
+    // riwayat yang menyusut setelah sync, dan itu tidak boleh berakhir sebagai 500;
+    // hitungannya sendiri tetap sah karena kedua query hitung tidak memakai rentang.
+    const diLuarJangkauan = hal.error?.code === 'PGRST103';
+    if (hal.error && !diLuarJangkauan) throw hal.error;
+
+    const rows = diLuarJangkauan ? [] : ((hal.data ?? []) as unknown as DbRow[]);
+    const total = diLuarJangkauan
+        ? (nC.count ?? 0) + (nM.count ?? 0)
+        : (hal.count ?? rows.length);
+    if (total === 0) return null;
+
+    // Identitas item diambil dari baris mana pun miliknya. Halaman yang kebetulan kosong
+    // (nomor halaman melewati batas setelah data menyusut) tetap harus tahu nama itemnya.
+    let contoh: Pick<DbRow, 'item' | 'code'> | undefined = rows[0];
+    if (!contoh) {
+        const { data } = await supabase
+            .from('critical_sheet_rows')
+            .select('item, code')
+            .contains('item_keys', [key])
+            .limit(1);
+        contoh = ((data ?? []) as unknown as DbRow[])[0];
     }
-    if (rows.length === 0) return null;
+    if (!contoh) return null;
 
-    const criticals = rows.filter(r => r.kind === 'critical').map(toCriticalRow);
-    const maintenances = rows.filter(r => r.kind === 'maintenance').map(toMaintenanceRow);
-    const contoh = rows[0];
     const barIdx = key.lastIndexOf('|');
     return {
         key,
         itemName: (contoh.item ?? '').replace(/\s+/g, ' ').trim(),
         variant: barIdx >= 0 ? key.slice(barIdx + 1) : '',
         code: contoh.code || extractCode(contoh.item),
-        criticals,
-        maintenances,
+        criticals: rows.filter(r => r.kind === 'critical').map(toCriticalRow),
+        maintenances: rows.filter(r => r.kind === 'maintenance').map(toMaintenanceRow),
+        total,
+        totalCritical: nC.count ?? 0,
+        totalMaintenance: nM.count ?? 0,
+        page,
+        pageSize,
     };
 }
 

@@ -5,6 +5,7 @@ import type { ItemDetailResponse, RecentEntry, SheetPhoto } from './types';
 import { fetchItemDetail, fetchSheetPhotos, itemLabel } from './types';
 import ItemSpecSection from './ItemSpecSection';
 import ItemPhotoGallery from './ItemPhotoGallery';
+import { SheetPagination } from './SheetFilterBar';
 import RecordPhotoModal, { photoTargetOf, type PhotoRecordTarget } from './RecordPhotoModal';
 import { C, RecordCards, RecordTable, rowKey, type RowActions } from './RecordColumns';
 
@@ -19,21 +20,26 @@ interface ItemDetailProps {
     itemKey: string;
     reloadKey: number;
     onBack: () => void;
-    /**
-     * Tahan pengambilan datanya selama pop up record dari spreadsheet masih terbuka.
-     *
-     * Operator yang datang dari menu 📷 sedang memilih & mengunggah foto; riwayat item bisa
-     * ribuan record (Boiler A/B varian A: 2.395) ditambah query foto seluruh baris ber-uid di
-     * dalamnya. Mengunduhnya saat itu juga berarti berebut jaringan dengan upload-nya sendiri,
-     * untuk halaman yang belum tentu jadi dilihat.
-     */
-    tunda?: boolean;
 }
 
-/** Halaman detail satu item (layout 2-kolom): kolom utama = SATU tabel riwayat gabungan
- *  critical + maintenance, kolom kanan = spesifikasi (Tech Specs) + galeri foto agregat. */
-export default function ItemDetail({ itemKey, reloadKey, onBack, tunda = false }: ItemDetailProps) {
+/**
+ * Berapa record riwayat per halaman. Item tersibuk ("B-02.01 Boiler A/B" varian A) punya
+ * 2.395 record = 679 KB kalau dimuat sekaligus, dan halaman ini terbuka di belakang pop up
+ * upload foto — persis saat operator sedang mengunggah. Satu halaman ±14 KB.
+ */
+const PAGE_SIZE = 50;
+
+/**
+ * Halaman detail satu item (layout 2-kolom): kolom utama = SATU tabel riwayat gabungan
+ * critical + maintenance, kolom kanan = spesifikasi (Tech Specs) + galeri foto.
+ *
+ * Pemanggil memberi `key={itemKey}` supaya ganti item = remount. Itu yang mengembalikan
+ * nomor halaman ke 1; tanpa itu item baru terbuka di nomor halaman milik item sebelumnya,
+ * yang bisa saja di luar jangkauannya.
+ */
+export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailProps) {
     const [data, setData] = useState<ItemDetailResponse | null>(null);
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [photos, setPhotos] = useState<SheetPhoto[]>([]);
@@ -41,18 +47,15 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, tunda = false }
     const [openUid, setOpenUid] = useState<string | null>(null);
 
     useEffect(() => {
-        // Keluar SEBELUM setLoading: `loading` bertahan di nilai awalnya (true), jadi kerangka
-        // di bawah yang tampil — tanpa perlu state atau tampilan "tertunda" tersendiri.
-        if (tunda) return;
         let cancelled = false;
         setLoading(true);
         setError(null);
-        fetchItemDetail(itemKey, reloadKey || undefined)
+        fetchItemDetail(itemKey, { page, pageSize: PAGE_SIZE, bust: reloadKey || undefined })
             .then(d => { if (!cancelled) setData(d); })
             .catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'Gagal memuat'); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [itemKey, reloadKey, tunda]);
+    }, [itemKey, page, reloadKey]);
 
     /**
      * Riwayat item = SATU daftar gabungan critical + maintenance, terbaru dulu.
@@ -95,17 +98,22 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, tunda = false }
         return merged;
     }, [data]);
 
-    // Hanya baris yang sudah punya uid yang bisa punya foto — sisanya tak perlu ditanyakan.
-    const allUids = useMemo(() => records.map(r => r.uid).filter(Boolean), [records]);
+    /**
+     * Foto hanya ditanyakan untuk baris yang BENAR-BENAR tampil di halaman ini — bukan
+     * seluruh riwayat item. Pola yang sama dengan daftar record (RecordBrowser): satu query
+     * per halaman, dan yang tidak dilihat tidak diunduh. Baris tanpa uid dipastikan belum
+     * berfoto, jadi tak perlu ditanyakan sama sekali.
+     */
+    const uidsHalaman = useMemo(() => records.map(r => r.uid).filter(Boolean).join(','), [records]);
 
     useEffect(() => {
-        if (allUids.length === 0) { setPhotos([]); return; }
+        if (!uidsHalaman) { setPhotos([]); return; }
         let cancelled = false;
-        fetchSheetPhotos(allUids)
+        fetchSheetPhotos(uidsHalaman.split(','))
             .then(p => { if (!cancelled) setPhotos(p); })
             .catch(() => { if (!cancelled) setPhotos([]); });
         return () => { cancelled = true; };
-    }, [allUids]);
+    }, [uidsHalaman]);
 
     const [countOverride, setCountOverride] = useState<Record<string, number>>({});
 
@@ -170,17 +178,19 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, tunda = false }
                     <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
                         {/* Kolom utama: riwayat gabungan critical + maintenance */}
                         <div className="flex-1 min-w-0 w-full space-y-3">
+                            {/* Hitungannya SELURUH riwayat item, bukan isi halaman ini —
+                                itulah angka yang dicari operator saat membuka sebuah item. */}
                             <div className="flex items-center gap-3 flex-wrap px-0.5">
                                 <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-500">
-                                    Riwayat ({records.length})
+                                    Riwayat ({data.total})
                                 </h3>
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-600">
                                     <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                    {data.criticals.length} critical
+                                    {data.totalCritical} critical
                                 </span>
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                    {data.maintenances.length} maintenance
+                                    {data.totalMaintenance} maintenance
                                 </span>
                             </div>
 
@@ -189,7 +199,9 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, tunda = false }
                                     Belum ada riwayat critical maupun maintenance untuk item ini.
                                 </div>
                             ) : (
-                                <>
+                                // Diredupkan selagi halaman berikutnya datang, bukan diganti
+                                // kerangka: isi lama tetap terbaca dan tata letaknya tidak melompat.
+                                <div className={`transition-opacity ${loading ? 'opacity-50' : ''}`}>
                                     <RecordTable
                                         entries={records}
                                         cols={ITEM_COLS}
@@ -197,8 +209,10 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, tunda = false }
                                         minWidthClass="min-w-[720px]"
                                     />
                                     <RecordCards entries={records} rowActionsFor={rowActionsFor} showItem={false} />
-                                </>
+                                </div>
                             )}
+
+                            <SheetPagination page={page} total={data.total} pageSize={PAGE_SIZE} onPage={setPage} />
                         </div>
 
                         {/* Sidebar kanan: spesifikasi + foto. Sengaja lebih ramping dari
@@ -206,9 +220,18 @@ export default function ItemDetail({ itemKey, reloadKey, onBack, tunda = false }
                         <div className="w-full lg:w-72 xl:w-80 shrink-0 space-y-4">
                             <ItemSpecSection itemKey={data.key} itemName={data.itemName} variant={data.variant} code={data.code} />
                             <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                                {/* Cakupannya disebut terang-terangan: isinya foto record di
+                                    halaman ini saja, bukan seluruh item. Tanpa keterangan itu
+                                    galeri yang "menyusut" saat berpindah halaman terbaca
+                                    seperti foto yang hilang. */}
                                 <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-500 flex items-center gap-1.5 mb-3">
                                     <span className="material-symbols-outlined text-neutral-400" style={{ fontSize: 16 }}>photo_library</span>
                                     Foto
+                                    {data.total > PAGE_SIZE && (
+                                        <span className="font-semibold normal-case tracking-normal text-neutral-400">
+                                            · halaman ini
+                                        </span>
+                                    )}
                                 </h3>
                                 <ItemPhotoGallery photos={photos} records={records} />
                             </div>

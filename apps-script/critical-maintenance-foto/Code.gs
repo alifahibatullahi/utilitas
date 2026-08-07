@@ -81,7 +81,7 @@ function buildTarget_(cfg) {
   var sig = rowFingerprint_(item, varian, uraian, tanggal);
   var uid = readPhotoUid_(sheet, headers, row, vals);
   var url = cfg.appUrl + '/critical-maintenance'
-          + '?ik=' + encodeURIComponent(itemKeyOf_(item, varian))
+          + '?item=' + encodeURIComponent(itemKeyOf_(item, varian))
           + '&kind=' + encodeURIComponent(kind)
           + '&row=' + row
           + '&sig=' + encodeURIComponent(sig)

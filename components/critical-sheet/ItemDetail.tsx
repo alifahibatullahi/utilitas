@@ -19,11 +19,20 @@ interface ItemDetailProps {
     itemKey: string;
     reloadKey: number;
     onBack: () => void;
+    /**
+     * Tahan pengambilan datanya selama pop up record dari spreadsheet masih terbuka.
+     *
+     * Operator yang datang dari menu 📷 sedang memilih & mengunggah foto; riwayat item bisa
+     * ribuan record (Boiler A/B varian A: 2.395) ditambah query foto seluruh baris ber-uid di
+     * dalamnya. Mengunduhnya saat itu juga berarti berebut jaringan dengan upload-nya sendiri,
+     * untuk halaman yang belum tentu jadi dilihat.
+     */
+    tunda?: boolean;
 }
 
 /** Halaman detail satu item (layout 2-kolom): kolom utama = SATU tabel riwayat gabungan
  *  critical + maintenance, kolom kanan = spesifikasi (Tech Specs) + galeri foto agregat. */
-export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailProps) {
+export default function ItemDetail({ itemKey, reloadKey, onBack, tunda = false }: ItemDetailProps) {
     const [data, setData] = useState<ItemDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -32,6 +41,9 @@ export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailPro
     const [openUid, setOpenUid] = useState<string | null>(null);
 
     useEffect(() => {
+        // Keluar SEBELUM setLoading: `loading` bertahan di nilai awalnya (true), jadi kerangka
+        // di bawah yang tampil — tanpa perlu state atau tampilan "tertunda" tersendiri.
+        if (tunda) return;
         let cancelled = false;
         setLoading(true);
         setError(null);
@@ -40,7 +52,7 @@ export default function ItemDetail({ itemKey, reloadKey, onBack }: ItemDetailPro
             .catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'Gagal memuat'); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [itemKey, reloadKey]);
+    }, [itemKey, reloadKey, tunda]);
 
     /**
      * Riwayat item = SATU daftar gabungan critical + maintenance, terbaru dulu.

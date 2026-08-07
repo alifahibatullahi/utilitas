@@ -185,6 +185,11 @@ export default function CriticalSheetPage() {
                         itemKey={activeKey}
                         reloadKey={reloadKey}
                         onBack={back}
+                        // `focus`, bukan `focusRecord`: tautan dari sel Dokumentasi masih
+                        // mencari barisnya dulu, dan selama kerangka pop up tampil pun riwayat
+                        // itemnya belum perlu diunduh. `focusError` melepas gerbangnya supaya
+                        // tautan yang gagal tidak meninggalkan halaman item menggantung.
+                        tunda={!!focus && !focusError}
                     />
                     : <RecordBrowser
                         reloadKey={reloadKey}

@@ -199,10 +199,12 @@ export function readPhotoFocus(sp: { get(name: string): string | null }): PhotoF
     const rowRaw = Number(sp.get('row'));
     const rowIndex = Number.isInteger(rowRaw) && rowRaw > 0 ? rowRaw : undefined;
     const sig = (sp.get('sig') ?? '').trim();
-    // `ik` = kunci item yang dititipkan menu spreadsheet TANPA membuka halaman itemnya:
-    // `item` merangkap penentu halaman, dan memuat seluruh riwayat item di belakang pop up
-    // yang akan segera ditutup operator itu pekerjaan yang tidak ia minta. Tautan dari sel
-    // Dokumentasi tetap memakai `item` — di situ halaman itemnya memang yang dituju.
+    // `item` merangkap dua peran: kunci item record ini, DAN penentu halaman yang dibuka di
+    // belakang pop up. Menu spreadsheet memang menunjuk halaman item, jadi ia mengirim `item`.
+    // Riwayat item itu bisa ribuan record, tapi memuatnya ditunda sampai pop up ditutup
+    // (prop `tunda` di ItemDetail) supaya unduhannya tidak berebut dengan upload fotonya.
+    // `ik` = nama lama param yang sama, dibaca sebagai cadangan untuk tab yang terlanjur
+    // terbuka dengan URL versi sebelumnya.
     const itemKey = ((sp.get('ik') || sp.get('item')) ?? '').trim();
 
     const nama = (sp.get('nama') ?? '').trim();

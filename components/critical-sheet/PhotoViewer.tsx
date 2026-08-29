@@ -362,21 +362,18 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                     </button>
                 </>
             )}
-            <div className="relative flex flex-col items-center gap-3 w-full max-w-4xl max-h-[92vh]" onClick={e => e.stopPropagation()}>
+            <div className="relative flex flex-col items-center gap-3 w-full max-w-4xl h-full" onClick={e => e.stopPropagation()}>
                 {isVideo ? (
                     // Video tidak ikut zoom/pan: gerakan jari di sini milik kontrol pemutar
                     // (geser posisi, volume). Memasang handler zoom di atasnya membuat
                     // kontrolnya susah dipakai di HP tanpa memberi manfaat apa pun.
-                    <div
-                        className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black flex items-center justify-center w-full"
-                        style={{ height: 'min(70vh, calc(92vh - 160px))' }}
-                    >
+                    <div className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black flex items-center justify-center w-full flex-1 min-h-0">
                         <VideoPlayer photo={photo} className="max-w-full max-h-full" />
                     </div>
                 ) : (
                 <div
-                    className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black/40 flex items-center justify-center w-full touch-none"
-                    style={{ height: 'min(70vh, calc(92vh - 160px))', cursor: zoom > 1 ? (dragFrom.current ? 'grabbing' : 'grab') : 'zoom-in' }}
+                    className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black/40 flex items-center justify-center w-full flex-1 min-h-0 touch-none"
+                    style={{ cursor: zoom > 1 ? (dragFrom.current ? 'grabbing' : 'grab') : 'zoom-in' }}
                     onDoubleClick={toggleZoom}
                     onWheel={e => zoomBy(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP)}
                     onPointerDown={e => {
@@ -396,9 +393,11 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                     onPointerCancel={() => { dragFrom.current = null; }}
                 >
                     {/* Pembungkus yang di-transform, bukan <img>-nya, supaya PhotoImg tetap
-                        komponen yang sama persis dengan thumbnail. */}
+                        komponen yang sama persis dengan thumbnail. Ukurannya wajib w-full
+                        h-full: kalau tingginya ikut isi, max-h-full di <img> tidak punya
+                        acuan persen, jadi foto tegak melebar penuh lalu terpotong. */}
                     <div
-                        className="flex items-center justify-center max-w-full max-h-full"
+                        className="flex items-center justify-center w-full h-full"
                         style={{
                             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                             transition: dragFrom.current ? 'none' : 'transform 120ms ease-out',
@@ -410,7 +409,7 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                 )}
 
                 {/* Label konteks: jenis + tanggal, lalu status/scope/pelapor, lalu uraian. */}
-                <div className="w-full max-w-3xl space-y-2">
+                <div className="w-full max-w-3xl space-y-2 shrink-0">
                     <div className="flex items-center justify-center gap-2 flex-wrap">
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold ${kind.chip}`}>
                             <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{kind.icon}</span>

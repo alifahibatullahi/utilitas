@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>PowerOps — Slide</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background: #F5F7FA;
+    color: #1B2733;
+    padding: 56px 64px;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 28px;
+  }
+
+  .header { text-align: center; }
+  .eyebrow {
+    font-size: 16px;
+    letter-spacing: 3px;
+    color: #5B6B7C;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 48px;
+    font-weight: 700;
+    color: #0F1E2C;
+    margin-bottom: 8px;
+    line-height: 1.15;
+  }
+  .subtitle { font-size: 22px; color: #5B6B7C; }
+
+  /* KPI ROW */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+  .kpi {
+    background: white;
+    border-radius: 18px;
+    padding: 24px 20px;
+    box-shadow: 0 4px 14px rgba(15, 30, 44, 0.06);
+    border-top: 5px solid #1E88E5;
+    text-align: center;
+  }
+  .kpi-label {
+    font-size: 14px;
+    color: #5B6B7C;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+  .kpi-numbers {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .kpi-before {
+    font-size: 40px;
+    font-weight: 700;
+    color: #C62828;
+    text-decoration: line-through;
+    text-decoration-thickness: 3px;
+  }
+  .kpi-arrow { color: #90A4AE; font-size: 26px; }
+  .kpi-after {
+    font-size: 56px;
+    font-weight: 800;
+    color: #2E7D32;
+    line-height: 1;
+  }
+  .kpi-after.text { font-size: 36px; }
+  .kpi-unit {
+    font-size: 13px;
+    color: #5B6B7C;
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .kpi-delta {
+    display: inline-block;
+    background: #E8F5E9;
+    color: #1B5E20;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 999px;
+    margin-top: 10px;
+  }
+
+  /* COMPARISON */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .panel {
+    background: white;
+    border-radius: 18px;
+    padding: 24px 28px;
+    box-shadow: 0 4px 14px rgba(15, 30, 44, 0.06);
+    display: flex;
+    flex-direction: column;
+  }
+  .panel.before { border-left: 7px solid #C62828; background: #FFFBFB; }
+  .panel.after  { border-left: 7px solid #2E7D32; background: #FAFFFA; }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #E0E6EC;
+  }
+  .dot { width: 16px; height: 16px; border-radius: 50%; }
+  .dot.red { background: #C62828; }
+  .dot.green { background: #2E7D32; }
+  .panel-title { font-size: 22px; font-weight: 700; }
+  .panel-title.red { color: #B71C1C; }
+  .panel-title.green { color: #1B5E20; }
+  .panel-tag {
+    margin-left: auto;
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .panel-tag.red { background: #FFEBEE; color: #B71C1C; }
+  .panel-tag.green { background: #E8F5E9; color: #1B5E20; }
+
+  .items { display: flex; flex-direction: column; gap: 2px; }
+  .item {
+    display: flex;
+    gap: 14px;
+    padding: 10px 0;
+    align-items: flex-start;
+    border-bottom: 1px dashed #ECEFF1;
+  }
+  .item:last-child { border-bottom: none; }
+  .item-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .item-icon.red { background: #FFEBEE; color: #C62828; }
+  .item-icon.green { background: #E8F5E9; color: #2E7D32; }
+  .item-body { flex: 1; }
+  .item-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1B2733;
+    margin-bottom: 2px;
+    line-height: 1.3;
+  }
+  .item-desc { font-size: 13px; color: #5B6B7C; line-height: 1.45; }
+
+  /* CALLOUT */
+  .callout {
+    background: linear-gradient(135deg, #0F1E2C 0%, #1B3A57 100%);
+    color: white;
+    padding: 22px 32px;
+    border-radius: 18px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 28px;
+  }
+  .callout-title {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #9DB4CB;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .callout-text {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .callout-text strong { color: #4FC3F7; }
+  .badge {
+    background: rgba(79, 195, 247, 0.12);
+    border: 1.5px solid #4FC3F7;
+    color: #4FC3F7;
+    padding: 12px 22px;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .badge-num {
+    font-size: 36px;
+    font-weight: 800;
+    display: block;
+    color: white;
+    line-height: 1.1;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="eyebrow">Ringkasan Eksekutif · Operations</div>
+  <h1>PowerOps Meringkas Workflow Laporan Shift &amp; Harian</h1>
+  <div class="subtitle">Dari 5 tools terpisah &amp; banyak input manual → 1 platform, satu kali input, distribusi otomatis</div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">Tools / Channel</div>
+    <div class="kpi-numbers">
+      <span class="kpi-before">5</span>
+      <span class="kpi-arrow">→</span>
+      <span class="kpi-after">1</span>
+    </div>
+    <div class="kpi-unit">HT, Logbook, Spreadsheet, Telepon, WA</div>
+    <div class="kpi-delta">−80% tools</div>
+  </div>
+
+  <div class="kpi">
+    <div class="kpi-label">Orang Input Data</div>
+    <div class="kpi-numbers">
+      <span class="kpi-before">3</span>
+      <span class="kpi-arrow">→</span>
+      <span class="kpi-after">1</span>
+    </div>
+    <div class="kpi-unit">Operator + CCR + Foreman → Operator saja</div>
+    <div class="kpi-delta">−66% titik input</div>
+  </div>
+
+  <div class="kpi">
+    <div class="kpi-label">Tahap Manual</div>
+    <div class="kpi-numbers">
+      <span class="kpi-before">7</span>
+      <span class="kpi-arrow">→</span>
+      <span class="kpi-after">2</span>
+    </div>
+    <div class="kpi-unit">HT, catat, tulis ulang, review, telepon, share</div>
+    <div class="kpi-delta">−71% langkah manual</div>
+  </div>
+
+  <div class="kpi">
+    <div class="kpi-label">Distribusi Laporan</div>
+    <div class="kpi-numbers">
+      <span class="kpi-after text">Manual</span>
+      <span class="kpi-arrow">→</span>
+      <span class="kpi-after">Auto</span>
+    </div>
+    <div class="kpi-unit">Telepon + copy-paste → push otomatis</div>
+    <div class="kpi-delta">0 langkah manual</div>
+  </div>
+</div>
+
+<div class="compare">
+  <div class="panel before">
+    <div class="panel-header">
+      <span class="dot red"></span>
+      <span class="panel-title red">SEBELUM PowerOps</span>
+      <span class="panel-tag red">Banyak Friksi</span>
+    </div>
+    <div class="items">
+      <div class="item"><div class="item-icon red">1</div><div class="item-body"><div class="item-title">Operator lapor via HT satu per satu</div><div class="item-desc">Antri panggilan, rawan miss-info, makan waktu CCR.</div></div></div>
+      <div class="item"><div class="item-icon red">2</div><div class="item-body"><div class="item-title">CCR catat di Logbook (tulis tangan)</div><div class="item-desc">Tidak searchable, sulit diaudit, mudah hilang.</div></div></div>
+      <div class="item"><div class="item-icon red">3</div><div class="item-body"><div class="item-title">Foreman input ulang ke Spreadsheet</div><div class="item-desc">Double input → risiko salah ketik &amp; data inkonsisten.</div></div></div>
+      <div class="item"><div class="item-icon red">4</div><div class="item-body"><div class="item-title">Supervisor telepon Washift manual</div><div class="item-desc">Bergantung availability telepon, tidak ada record.</div></div></div>
+      <div class="item"><div class="item-icon red">5</div><div class="item-body"><div class="item-title">Share manual ke WhatsApp Group</div><div class="item-desc">Copy-paste tiap shift, format inkonsisten.</div></div></div>
+    </div>
+  </div>
+
+  <div class="panel after">
+    <div class="panel-header">
+      <span class="dot green"></span>
+      <span class="panel-title green">SESUDAH PowerOps</span>
+      <span class="panel-tag green">Lean &amp; Otomatis</span>
+    </div>
+    <div class="items">
+      <div class="item"><div class="item-icon green">1</div><div class="item-body"><div class="item-title">Operator input langsung di form PowerOps</div><div class="item-desc">Satu kali input, di sumber data — tanpa antrian HT.</div></div></div>
+      <div class="item"><div class="item-icon green">2</div><div class="item-body"><div class="item-title">Data otomatis tersimpan di database</div><div class="item-desc">Single source of truth — searchable &amp; audit-ready.</div></div></div>
+      <div class="item"><div class="item-icon green">3</div><div class="item-body"><div class="item-title">Tidak perlu input ulang</div><div class="item-desc">Foreman &amp; Supervisor langsung melihat data yang sama.</div></div></div>
+      <div class="item"><div class="item-icon green">4</div><div class="item-body"><div class="item-title">Foreman / Supervisor cukup ACC</div><div class="item-desc">Approve satu klik, jejak persetujuan tersimpan.</div></div></div>
+      <div class="item"><div class="item-icon green">5</div><div class="item-body"><div class="item-title">Push otomatis ke Washift &amp; WA Group</div><div class="item-desc">Distribusi instan tanpa telepon &amp; copy-paste.</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="callout">
+  <div>
+    <div class="callout-title">Hasil Akhir</div>
+    <div class="callout-text">
+      PowerOps memangkas <strong>3 dari 5 tools</strong>, menghilangkan <strong>double input</strong>,
+      dan mengubah distribusi laporan dari <strong>manual</strong> menjadi <strong>otomatis</strong>
+      — operator fokus operasi, supervisor fokus keputusan.
+    </div>
+  </div>
+  <div class="badge">
+    Efisiensi proses
+    <span class="badge-num">~70%</span>
+    pengurangan langkah manual
+  </div>
+</div>
+
+</body>
+</html>

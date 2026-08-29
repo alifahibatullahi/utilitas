@@ -1,0 +1,59 @@
+flowchart LR
+
+%% ============== SEBELUM ==============
+subgraph BEFORE["🔴 SEBELUM PowerOps"]
+    direction TB
+    NOTEB["Setiap maintenance dicatat<br/>sebagai entry terpisah / berdiri sendiri"]
+
+    C1["📍 Critical #001<br/>Pompa A — terdeteksi bocor"]
+    C2["📍 Maintenance #001<br/>Pompa A — ganti seal"]
+    C3["📍 Maintenance #002<br/>Pompa A — test running"]
+    C4["📍 Maintenance #003<br/>Pompa A — selesai &amp; serah terima"]
+
+    NOTEB --- C1
+    C1 -.-|"tidak terhubung"| C2
+    C2 -.-|"tidak terhubung"| C3
+    C3 -.-|"tidak terhubung"| C4
+
+    ISS["⚠️ Sulit melihat kronologi<br/>satu pekerjaan utuh"]
+    C4 --> ISS
+end
+
+%% ============== SESUDAH ==============
+subgraph AFTER["🟢 SESUDAH PowerOps"]
+    direction TB
+    NOTEA["1 Critical Job mengelompokkan<br/>seluruh maintenance terkait"]
+
+    CJ["🔧 Critical Job<br/>Perbaikan Pompa A"]
+
+    M1["① Maintenance<br/>Inspeksi &amp; deteksi leak<br/>📸 foto"]
+    M2["② Maintenance<br/>Ganti seal<br/>📸 foto"]
+    M3["③ Maintenance<br/>Test running<br/>📸 foto"]
+    M4["④ Maintenance<br/>Serah terima &amp; closeout<br/>📸 foto"]
+
+    NOTEA --- CJ
+    CJ --> M1 --> M2 --> M3 --> M4
+
+    BEN["✅ Alur kronologis jelas<br/>📸 Foto per maintenance<br/>(berlaku juga untuk<br/>Preventif &amp; Modifikasi)"]
+    M4 --> BEN
+end
+
+BEFORE ==>|"Implementasi PowerOps"| AFTER
+
+%% ============== STYLING ==============
+classDef criticalNode fill:#FFEBEE,stroke:#C62828,color:#B71C1C;
+classDef maintNode fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20;
+classDef parentNode fill:#FFF3E0,stroke:#E65100,color:#BF360C,font-weight:bold;
+classDef noteNode fill:#FAFAFA,stroke:#9E9E9E,color:#424242;
+classDef warnNode fill:#FFEBEE,stroke:#C62828,color:#B71C1C,font-weight:bold;
+classDef benefitNode fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20,font-weight:bold;
+
+class C1,C2,C3,C4 criticalNode;
+class M1,M2,M3,M4 maintNode;
+class CJ parentNode;
+class NOTEB,NOTEA noteNode;
+class ISS warnNode;
+class BEN benefitNode;
+
+style BEFORE fill:#FFF8F8,stroke:#C62828,stroke-width:2px;
+style AFTER fill:#F8FFF8,stroke:#2E7D32,stroke-width:2px;

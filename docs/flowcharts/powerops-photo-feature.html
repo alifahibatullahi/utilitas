@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Photo Documentation Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1600px; background: #F1F8F4; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1B3024;
+    padding: 40px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+  .card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(27, 48, 36, 0.08);
+    border-top: 6px solid #2E7D32;
+  }
+  .card.critical { border-top-color: #C62828; }
+  .card.preventif { border-top-color: #1565C0; }
+  .card.modifikasi { border-top-color: #EF6C00; }
+
+  .photo {
+    aspect-ratio: 16 / 10;
+    background: linear-gradient(135deg, #DCEDC8 0%, #A5D6A7 100%);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .photo.critical { background: linear-gradient(135deg, #FFCDD2 0%, #EF9A9A 100%); }
+  .photo.preventif { background: linear-gradient(135deg, #BBDEFB 0%, #90CAF9 100%); }
+  .photo.modifikasi { background: linear-gradient(135deg, #FFE0B2 0%, #FFCC80 100%); }
+
+  .photo-icon {
+    font-size: 88px;
+    opacity: 0.6;
+  }
+  .photo-tag {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .photo-date {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .body {
+    padding: 22px 24px;
+  }
+  .title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .meta {
+    font-size: 13px;
+    color: #5C7A6A;
+    margin-bottom: 14px;
+  }
+  .desc {
+    font-size: 14px;
+    color: #2C4A3A;
+    line-height: 1.5;
+    padding: 14px;
+    background: #F8FBF9;
+    border-radius: 10px;
+    border-left: 4px solid #81C784;
+  }
+  .desc.critical { border-left-color: #EF5350; background: #FFF5F5; }
+  .desc.preventif { border-left-color: #42A5F5; background: #F5FAFF; }
+  .desc.modifikasi { border-left-color: #FFA726; background: #FFFAF0; }
+
+  .footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #E8F0EB;
+    font-size: 13px;
+  }
+  .operator {
+    color: #2C4A3A;
+    font-weight: 600;
+  }
+  .badge-status {
+    background: #E8F5E9;
+    color: #1B5E20;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .badge-status.open { background: #FFF3E0; color: #E65100; }
+  .badge-status.progress { background: #E3F2FD; color: #0D47A1; }
+
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .header-title {
+    font-size: 30px;
+    font-weight: 700;
+    color: #1B3024;
+    margin-bottom: 6px;
+  }
+  .header-sub {
+    color: #5C7A6A;
+    font-size: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">📸 Dokumentasi Foto pada Setiap Entry</div>
+  <div class="header-sub">Berlaku untuk Critical, Preventif, dan Modifikasi — visual evidence langsung dari lapangan</div>
+</div>
+
+<div class="grid">
+
+  <div class="card critical">
+    <div class="photo critical">
+      <span class="photo-tag">Critical</span>
+      <span class="photo-icon">⚙️</span>
+      <span class="photo-date">17 Mei 2026 · 14:32</span>
+    </div>
+    <div class="body">
+      <div class="title">Pompa A — Inspeksi Leak</div>
+      <div class="meta">Critical Job · Perbaikan Pompa A · Step 1/4</div>
+      <div class="desc critical">
+        Terdeteksi rembesan minor pada mechanical seal sisi suction.
+        Foto menunjukkan posisi leak &amp; kondisi housing sebelum tindakan.
+      </div>
+      <div class="footer-row">
+        <span class="operator">👷 Operator: Rahmat</span>
+        <span class="badge-status open">In Progress</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card preventif">
+    <div class="photo preventif">
+      <span class="photo-tag">Preventif</span>
+      <span class="photo-icon">🔧</span>
+      <span class="photo-date">17 Mei 2026 · 09:15</span>
+    </div>
+    <div class="body">
+      <div class="title">Conveyor TBS — Greasing Bearing</div>
+      <div class="meta">Preventive Maintenance · Mingguan</div>
+      <div class="desc preventif">
+        Greasing 12 titik bearing conveyor utama. Foto bukti pelaksanaan
+        sebelum &amp; sesudah pemberian grease.
+      </div>
+      <div class="footer-row">
+        <span class="operator">👷 Operator: Andi</span>
+        <span class="badge-status">Selesai</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card modifikasi">
+    <div class="photo modifikasi">
+      <span class="photo-tag">Modifikasi</span>
+      <span class="photo-icon">🛠️</span>
+      <span class="photo-date">15 Mei 2026 · 10:45</span>
+    </div>
+    <div class="body">
+      <div class="title">Sterilizer — Penambahan Sensor Tekanan</div>
+      <div class="meta">Modifikasi · Improvement Project</div>
+      <div class="desc modifikasi">
+        Instalasi sensor tekanan tambahan untuk monitoring real-time.
+        Foto layout instalasi &amp; wiring ke panel SCADA.
+      </div>
+      <div class="footer-row">
+        <span class="operator">👷 Operator: Budi</span>
+        <span class="badge-status progress">Review</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -92,9 +92,21 @@ export interface SheetPhoto {
     created_at: string;
 }
 
-/** Baris lama bisa belum punya media_kind; anggap foto. */
+const EKSTENSI_VIDEO = /\.(mp4|webm|mov|m4v|3gp)$/i;
+
+/**
+ * Jenis media, dengan dua cadangan. `media_kind` adalah sumber utama, tapi kalau kolom itu
+ * sampai hilang lagi dari sebuah `.select()`, akibatnya bukan tampilan yang kurang rapi —
+ * videonya dirender sebagai <img> dan GAGAL TOTAL (persis bug yang pernah terjadi:
+ * /api/sheet-photos/query lupa memilih `media_kind`). MIME dan ekstensi berkas berasal dari
+ * kolom lain, jadi keduanya masih menyelamatkan tampilan saat itu terulang. Cast
+ * `as SheetPhoto[]` di fetchSheetPhotos membuat TypeScript tidak bisa menjaganya.
+ */
 export function isVideo(p: SheetPhoto): boolean {
-    return p.media_kind === 'video';
+    if (p.media_kind === 'video') return true;
+    if (p.media_kind === 'photo') return false;
+    return (p.mime_type ?? '').toLowerCase().startsWith('video/')
+        || EKSTENSI_VIDEO.test(p.filename ?? '');
 }
 
 /** "3 foto" / "1 video" / "3 foto, 1 video" — kosong bila tidak ada apa-apa. */

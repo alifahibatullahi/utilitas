@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { photoDirectSrc, photoSrc, type SheetPhoto } from './types';
+import { isVideo as isVideoMedia, photoDirectSrc, photoSrc, type SheetPhoto } from './types';
 import { SheetScopeBadge, SheetStatusBadge } from './SheetBadges';
 
 /**
@@ -73,10 +73,16 @@ export function PhotoImg({ photo, className, eager = false }: {
 
     // Gambar yang sudah ada di cache browser bisa selesai SEBELUM React sempat memasang
     // onLoad — tanpa pemeriksaan ini, <img> yang sebenarnya sudah lengkap tetap berdenyut.
+    //
+    // Dua pemicunya sengaja dijadikan dependensi, bukan "jalan tiap render": `src` menutup
+    // kasus sumbernya berganti, dan `state` menutup kasus efek di atas mengembalikannya ke
+    // 'loading' padahal <img>-nya tidak ikut berganti (foto yang sama, objek baru). Berhenti
+    // sendiri: sekali jadi 'loaded', setState dengan nilai sama tidak merender ulang.
     useEffect(() => {
+        if (state !== 'loading') return;
         const el = imgRef.current;
         if (el?.complete && el.naturalWidth > 0) setState('loaded');
-    });
+    }, [src, state]);
 
     // Cadangan `pub-*.r2.dev` boleh dicoba, tapi TIDAK boleh ditunggu selamanya: di
     // jaringan kantor domain itu diblokir dengan cara menggantung — tanpa batas waktu,
@@ -108,7 +114,7 @@ export function PhotoImg({ photo, className, eager = false }: {
         // Query penanda waktu memaksa browser mencoba lagi, bukan memakai kegagalan
         // yang sudah terlanjur di-cache.
         setSrc(`${photoSrc(photo)}${photoSrc(photo).includes('?') ? '&' : '?'}coba=${Date.now()}`);
-    }, [photo]);
+    }, [photo, clearFallbackTimer]);
 
     if (state === 'error') {
         return (
@@ -190,7 +196,7 @@ export function MediaThumb({ photo, className, eager = false }: {
     className?: string;
     eager?: boolean;
 }) {
-    if (photo.media_kind !== 'video') {
+    if (!isVideoMedia(photo)) {
         return <PhotoImg photo={photo} className={className} eager={eager} />;
     }
     // Sengaja BUKAN <video> — memuat metadata puluhan video sekaligus di halaman item
@@ -229,15 +235,17 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
     const touchStartX = useRef<number | null>(null);
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
+    // Titik awal geseran disimpan di ref: koordinatnya cuma dibaca di dalam event handler,
+    // tidak ikut menentukan tampilan. Yang MENENTUKAN tampilan (bentuk kursor + mematikan
+    // animasi selama jari menyeret) dipisah ke state tersendiri — ref yang berubah tidak
+    // merender ulang, jadi membacanya saat render memberi nilai basi.
     const dragFrom = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+    const [menggeser, setMenggeser] = useState(false);
     const pinchFrom = useRef<{ dist: number; zoom: number } | null>(null);
     const photo = photos[index];
-    const isVideo = photo?.media_kind === 'video';
+    const isVideo = photo ? isVideoMedia(photo) : false;
 
     const resetZoom = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
-
-    // Ganti foto selalu mulai dari perbesaran normal.
-    useEffect(() => { resetZoom(); }, [index, resetZoom]);
 
     const zoomBy = useCallback((factor: number) => {
         setZoom(prev => {
@@ -254,8 +262,20 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
         });
     }, []);
 
-    const goPrev = useCallback(() => onIndexChange((index - 1 + photos.length) % photos.length), [index, photos.length, onIndexChange]);
-    const goNext = useCallback(() => onIndexChange((index + 1) % photos.length), [index, photos.length, onIndexChange]);
+    /**
+     * Ganti foto selalu mulai dari perbesaran normal. Reset dilakukan DI SINI, bukan di
+     * useEffect yang mengintai `index`: pop up ini dipasang ulang tiap kali dibuka (induknya
+     * merender bersyarat), jadi foto pertama sudah pasti normal, dan satu-satunya cara index
+     * berubah selagi terbuka adalah lewat goPrev/goNext — panah, geser jari, tombol chevron,
+     * semuanya bermuara ke sini. Menyetel state dari dalam efek membuat render berantai.
+     */
+    const pindah = useCallback((next: number) => {
+        resetZoom();
+        onIndexChange(next);
+    }, [onIndexChange, resetZoom]);
+
+    const goPrev = useCallback(() => pindah((index - 1 + photos.length) % photos.length), [index, photos.length, pindah]);
+    const goNext = useCallback(() => pindah((index + 1) % photos.length), [index, photos.length, pindah]);
 
     useEffect(() => {
         function onKey(e: KeyboardEvent) {
@@ -373,12 +393,13 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                 ) : (
                 <div
                     className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 bg-black/40 flex items-center justify-center w-full flex-1 min-h-0 touch-none"
-                    style={{ cursor: zoom > 1 ? (dragFrom.current ? 'grabbing' : 'grab') : 'zoom-in' }}
+                    style={{ cursor: zoom > 1 ? (menggeser ? 'grabbing' : 'grab') : 'zoom-in' }}
                     onDoubleClick={toggleZoom}
                     onWheel={e => zoomBy(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP)}
                     onPointerDown={e => {
                         if (zoom <= 1) return;
                         dragFrom.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+                        setMenggeser(true);
                         e.currentTarget.setPointerCapture(e.pointerId);
                     }}
                     onPointerMove={e => {
@@ -388,9 +409,10 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                     }}
                     onPointerUp={e => {
                         dragFrom.current = null;
+                        setMenggeser(false);
                         e.currentTarget.releasePointerCapture?.(e.pointerId);
                     }}
-                    onPointerCancel={() => { dragFrom.current = null; }}
+                    onPointerCancel={() => { dragFrom.current = null; setMenggeser(false); }}
                 >
                     {/* Pembungkus yang di-transform, bukan <img>-nya, supaya PhotoImg tetap
                         komponen yang sama persis dengan thumbnail. Ukurannya wajib w-full
@@ -400,7 +422,7 @@ export function PhotoLightbox({ photos, index, onIndexChange, onClose, infoFor }
                         className="flex items-center justify-center w-full h-full"
                         style={{
                             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                            transition: dragFrom.current ? 'none' : 'transform 120ms ease-out',
+                            transition: menggeser ? 'none' : 'transform 120ms ease-out',
                         }}
                     >
                         <PhotoImg photo={photo} className="max-w-full max-h-full object-contain select-none" eager />

@@ -46,7 +46,13 @@ export async function POST(req: NextRequest) {
         .from('sheet_photos')
         // `url` ikut supaya <img> bisa memuat langsung dari R2 (proxy /file hanya fallback,
         // menekan invocation Vercel saat galeri berisi banyak foto).
-        .select('id, parent_kind, row_uid, url, filename, caption, uploaded_by, created_at')
+        //
+        // `media_kind` + `mime_type` WAJIB ikut: inilah satu-satunya jalur baca galeri, dan
+        // renderer memilih <video> vs <img> murni dari `media_kind` (PhotoViewer.tsx).
+        // Tanpa keduanya video dirender sebagai <img> di atas berkas MP4 → gagal, lalu
+        // jatuh ke `pub-*.r2.dev` yang diblokir jaringan kantor → "Gagal dimuat" setelah
+        // 8 detik. Cast `as SheetPhoto[]` di klien membuat TypeScript diam soal ini.
+        .select('id, parent_kind, row_uid, url, filename, media_kind, mime_type, caption, uploaded_by, created_at')
         .in('row_uid', chunk)));
 
     const failed = results.find(r => r.error);

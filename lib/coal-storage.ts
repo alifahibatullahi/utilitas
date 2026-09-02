@@ -16,8 +16,6 @@ export type AreaKey = 'open' | 'closed';
 export interface CoalAreaTheme {
     pita: string;      // latar pita judul (warna solid, teks putih)
     subteks: string;   // teks sekunder di atas pita
-    bar: string;       // isi bar okupansi
-    track: string;     // track bar okupansi
     batasAtas: string; // atap (closed) / garis putus-putus (open)
 }
 
@@ -29,26 +27,29 @@ export interface CoalArea {
     jumlahPilar: number;
     beratap: boolean;
     icon: string;
-    /** Lebar denah relatif terhadap area terlebar, supaya terbaca satu site plan. */
-    lebarPct: number;
-    /** Lebar minimum sebelum denah digeser mendatar (layar sempit). */
-    minWidthPx: number;
     theme: CoalAreaTheme;
 }
+
+/**
+ * Lebar minimum denah sebelum digeser mendatar di layar sempit. Satu nilai
+ * untuk kedua area supaya lebarnya sama persis dan perilaku scroll di HP juga
+ * seragam — kedua denah lurus satu sama lain saat digeser.
+ */
+export const DENAH_MIN_WIDTH_PX = 640;
 
 export const COAL_AREAS: CoalArea[] = [
     {
         key: 'open', prefix: 'O', nama: 'Open Storage',
         kapasitasTon: 30000, jumlahPilar: 6, beratap: false,
-        icon: 'wb_sunny', lebarPct: 78, minWidthPx: 500,
-        theme: { pita: '#0d9488', subteks: '#a7f3e4', bar: '#0d9488', track: '#ccfbf1', batasAtas: '#5eead4' },
+        icon: 'wb_sunny',
+        theme: { pita: '#0d9488', subteks: '#a7f3e4', batasAtas: '#5eead4' },
     },
     {
         // Abu-abu tua: kesan tertutup / beratap.
         key: 'closed', prefix: 'C', nama: 'Closed Storage',
         kapasitasTon: 40000, jumlahPilar: 11, beratap: true,
-        icon: 'warehouse', lebarPct: 100, minWidthPx: 640,
-        theme: { pita: '#334155', subteks: '#cbd5e1', bar: '#475569', track: '#e2e8f0', batasAtas: '#334155' },
+        icon: 'warehouse',
+        theme: { pita: '#334155', subteks: '#cbd5e1', batasAtas: '#334155' },
     },
 ];
 

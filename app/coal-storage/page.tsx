@@ -48,23 +48,14 @@ function GuardedPage() {
         // AppShell membungkus halaman ini dengan bg gelap, jadi latar terangnya
         // dipasang sendiri di sini — sama seperti /logbook.
         <div className="min-h-screen bg-neutral-50 pb-24">
-            <main className="max-w-5xl mx-auto px-4 sm:px-5 pt-5 sm:pt-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-5 pt-5 sm:pt-8">
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5">
                     <div className="flex items-center justify-between gap-3 mb-4">
                         <div className="flex items-center gap-2.5 min-w-0">
                             <span className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
                                 <span aria-hidden="true" className="material-symbols-outlined text-orange-500 text-xl">inventory_2</span>
                             </span>
-                            <div className="min-w-0">
-                                <h1 className="text-base font-bold text-slate-800 leading-tight">Storage Batubara</h1>
-                                {/* Detail zona muncul lewat hover di lg ke atas, lewat
-                                    ketukan di bawahnya — petunjuknya ikut menyesuaikan. */}
-                                <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                                    Peta penempatan supplier
-                                    <span className="lg:hidden"> · ketuk petak untuk detail</span>
-                                    <span className="hidden lg:inline"> · arahkan kursor ke petak untuk detail</span>
-                                </p>
-                            </div>
+                            <h1 className="text-base font-bold text-slate-800 leading-tight min-w-0">Storage Batubara</h1>
                         </div>
                         <span className="shrink-0 text-[11px] text-slate-500 border border-slate-200 rounded-full px-2.5 py-1">
                             {formatTanggal(COAL_LOTS_UPDATED_AT)}

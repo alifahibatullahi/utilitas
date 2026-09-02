@@ -4,7 +4,8 @@ import { Fragment, useState } from 'react';
 import ZonaBin from './ZonaBin';
 import ZonaDetail from './ZonaDetail';
 import {
-    CoalArea, CoalLot, formatTon, jumlahZona, persenZona, tonArea, tonZona, zonaIds,
+    CoalArea, CoalLot, DENAH_MIN_WIDTH_PX, formatTon, jumlahZona,
+    persenZona, tonArea, tonZona, zonaIds,
 } from '@/lib/coal-storage';
 
 /**
@@ -32,7 +33,7 @@ export default function AreaDenah({ area, lots, warna, highlight }: {
     return (
         <section className="mt-6">
             {/* Pita judul — warna solid supaya identitas area langsung terbaca. */}
-            <div className="flex items-center gap-3 rounded-xl px-3.5 py-2.5" style={{ background: t.pita }}>
+            <div className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 mb-3" style={{ background: t.pita }}>
                 <span className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                     <span aria-hidden="true" className="material-symbols-outlined text-white text-xl">{area.icon}</span>
                 </span>
@@ -48,14 +49,12 @@ export default function AreaDenah({ area, lots, warna, highlight }: {
                 </div>
             </div>
 
-            <div className="h-[5px] rounded-full my-2.5" style={{ background: t.track }}>
-                <div className="h-[5px] rounded-full" style={{ width: `${pct}%`, background: t.bar }} />
-            </div>
-
             {/* Di layar sempit denah digeser mendatar; di lg dibuat visible lagi
                 supaya popover hover tidak terpotong pembungkus scroll. */}
             <div className="overflow-x-auto lg:overflow-visible pb-1">
-                <div style={{ width: `${area.lebarPct}%`, minWidth: area.minWidthPx }}>
+                {/* Tanpa lebar relatif: kedua area mengisi penuh induknya supaya
+                    denah Open dan Closed sama lebar. */}
+                <div style={{ minWidth: DENAH_MIN_WIDTH_PX }}>
                     {area.beratap ? (
                         <div
                             className="h-2.5 mb-1"

@@ -18,6 +18,7 @@ const ICON_MAP: Record<string, string> = {
     forum: 'forum',
     campaign: 'campaign',
     sync: 'sync',
+    storage: 'inventory_2',
 };
 
 const CARD_THEMES: Record<string, { iconBg: string; iconText: string; hoverBorder: string }> = {
@@ -28,6 +29,7 @@ const CARD_THEMES: Record<string, { iconBg: string; iconText: string; hoverBorde
     'admin-sync-sheets': { iconBg: 'bg-blue-50', iconText: 'text-blue-500', hoverBorder: 'hover:border-blue-200' },
     'admin-users': { iconBg: 'bg-amber-50', iconText: 'text-amber-500', hoverBorder: 'hover:border-amber-200' },
     'critical-maintenance': { iconBg: 'bg-rose-50', iconText: 'text-rose-500', hoverBorder: 'hover:border-rose-200' },
+    'coal-storage': { iconBg: 'bg-orange-50', iconText: 'text-orange-500', hoverBorder: 'hover:border-orange-200' },
 };
 
 const DEFAULT_THEME = { iconBg: 'bg-slate-50', iconText: 'text-slate-500', hoverBorder: 'hover:border-slate-300' };

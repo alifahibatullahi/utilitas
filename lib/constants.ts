@@ -426,6 +426,8 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
     // Viewer berbasis Google Sheets (input tetap di spreadsheet).
     { id: 'critical-maintenance', label: 'Critical Maintenance', description: 'Daftar critical equipment & riwayat maintenance', icon: 'warning', path: '/critical-maintenance', roles: 'all', featured: true },
+    // Peta baca-saja; data penempatan masih dummy di lib/coal-storage-data.ts.
+    { id: 'coal-storage', label: 'Storage Batubara', description: 'Peta penempatan supplier di open & closed storage', icon: 'storage', path: '/coal-storage', roles: 'all', featured: true },
 ];
 
 // Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah

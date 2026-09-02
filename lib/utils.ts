@@ -21,6 +21,27 @@ export function hourWIB(): number {
     return nowWIB().getHours();
 }
 
+/** Tanggal WIB (YYYY-MM-DD) n hari sebelum hari ini */
+export function daysAgoWIB(n: number): string {
+    const d = nowWIB();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Batas hari WIB ditulis dengan offset +07:00 literal, BUKAN new Date('...T00:00:00')
+// yang naive dan ikut zona waktu perangkat — itu bikin titik di tepi rentang
+// kadang masuk kadang tidak tergantung device operator.
+
+/** Awal hari WIB sebagai ISO absolut: '2026-09-01' -> '2026-09-01T00:00:00.000+07:00' */
+export function wibDayStartIso(dateStr: string): string {
+    return `${dateStr}T00:00:00.000+07:00`;
+}
+
+/** Akhir hari WIB (inklusif): '2026-09-02' -> '2026-09-02T23:59:59.999+07:00' */
+export function wibDayEndIso(dateStr: string): string {
+    return `${dateStr}T23:59:59.999+07:00`;
+}
+
 // Get alert status based on level percentage
 export function getAlertStatus(level: number, thresholds = DEFAULT_THRESHOLDS) {
     if (level < thresholds.critical_low || level > thresholds.critical_high) {

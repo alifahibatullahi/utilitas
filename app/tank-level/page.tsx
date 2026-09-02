@@ -1,12 +1,12 @@
 'use client';
 
 import { useOperator } from '@/hooks/useOperator';
-import { useTankData } from '@/hooks/useTankData';
+import { useTankData, trendKey } from '@/hooks/useTankData';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { TANK_IDS, TANKS, TankId, TANK_THRESHOLDS, DEFAULT_THRESHOLDS } from '@/lib/constants';
-import { getAlertStatus } from '@/lib/utils';
+import { getAlertStatus, todayWIB, daysAgoWIB, wibDayStartIso, wibDayEndIso } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import BottomTabBar from '@/components/layout/BottomTabBar';
 
@@ -77,8 +77,39 @@ const TANK_COLORS: Record<string, {
     SOLAR: { base: '#f59e0b', bgClass: 'bg-amber-500', textClass: 'text-amber-400', icon: 'oil_barrel', borderClass: 'border-amber-500/30' },
 };
 
+type TrendRangeKey = '24h' | '7d' | '30d' | 'all' | 'custom';
+
+// Rentang custom dibatasi 1 tahun, dan "Semua" juga dipetakan ke 1 tahun ke
+// belakang — supaya query selalu punya batas bawah yang bisa dipakai index dan
+// rentangnya tidak ikut melar seiring umur data.
+const TREND_MAX_SPAN_DAYS = 366;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Tanggal awal yang diwakili tiap preset (juga mengisi kedua input tanggal) */
+function presetFromDate(range: Exclude<TrendRangeKey, 'custom'>): string {
+    if (range === '24h') return daysAgoWIB(1);
+    if (range === '7d') return daysAgoWIB(6);
+    if (range === '30d') return daysAgoWIB(29);
+    return daysAgoWIB(365);
+}
+
+// "24 Jam" adalah jendela bergulir, tapi batasnya dibulatkan ke jam supaya
+// key cache tidak berubah tiap render (kalau pakai Date.now() mentah, tiap
+// render jadi key baru dan memicu fetch tanpa henti).
+function isoHoursAgoFloored(hours: number): string {
+    const d = new Date();
+    d.setMinutes(0, 0, 0);
+    d.setHours(d.getHours() - hours);
+    return d.toISOString();
+}
+
+const shortDate = (d: string) =>
+    new Date(`${d}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+const shortDateTs = (ts: number) =>
+    new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
 function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankId; compact?: boolean; readOnly?: boolean }) {
-    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, solarUsages, pumpActiveSince, trendData, loadHistory, deleteSolarUnloading, updateSolarUnloading, deleteSolarUsage, updateSolarUsage } = useTankData();
+    const { currentLevels, flowRates, outputFlowRates, solarUnloadings, solarUsages, pumpActiveSince, trendSeries, loadTrendRange, deleteSolarUnloading, updateSolarUnloading, deleteSolarUsage, updateSolarUsage } = useTankData();
     // Edit unloading state
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editDate, setEditDate] = useState('');
@@ -100,12 +131,64 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
     const [historyTab, setHistoryTab] = useState<'unloading' | 'pemakaian'>('unloading');
     const [unloadingPage, setUnloadingPage] = useState(1);
     const [usagePage, setUsagePage] = useState(1);
-    const [trendRange, setTrendRange] = useState<'24h' | '7d' | '30d' | 'all'>('24h');
+    const [trendRange, setTrendRange] = useState<TrendRangeKey>('24h');
+    // Isi kedua input tanggal (draft). Belum menjadi filter sampai "Terapkan"
+    // ditekan — mengisi dua tanggal selalu melewati satu keadaan antara
+    // (mis. "Dari" sudah baru tapi "Sampai" masih lama), dan kalau itu ikut
+    // di-fetch, satu kali ganti rentang jadi dua kali tarik data.
+    const [trendFrom, setTrendFrom] = useState(() => presetFromDate('24h'));
+    const [trendTo, setTrendTo] = useState(() => todayWIB());
+    // Rentang custom yang benar-benar dipakai query
+    const [appliedRange, setAppliedRange] = useState(() => ({ from: presetFromDate('24h'), to: todayWIB() }));
 
-    // History level di-fetch lazy saat modal trend dibuka (hemat egress)
+    // Rentang efektif yang dikirim ke query. Batas hari dikunci ke WIB, bukan
+    // zona waktu perangkat operator.
+    const range = useMemo((): { fromIso: string; toIso: string; from: string; to: string } => {
+        if (trendRange === 'custom') {
+            return {
+                fromIso: wibDayStartIso(appliedRange.from), toIso: wibDayEndIso(appliedRange.to),
+                from: appliedRange.from, to: appliedRange.to,
+            };
+        }
+        const today = todayWIB();
+        const from = presetFromDate(trendRange);
+        return {
+            // Akhir hari ini dipakai sebagai batas atas untuk semua preset: nilainya
+            // stabil sepanjang hari, jadi key cache tidak berubah tiap render.
+            fromIso: trendRange === '24h' ? isoHoursAgoFloored(24) : wibDayStartIso(from),
+            toIso: wibDayEndIso(today),
+            from, to: today,
+        };
+    }, [trendRange, appliedRange]);
+
+    // Fetch mengikuti filter — inilah yang dulu tidak ada, sehingga ganti chip
+    // tidak pernah mengambil data baru.
     useEffect(() => {
-        if (isTrendModalOpen) loadHistory();
-    }, [isTrendModalOpen, loadHistory]);
+        if (!isTrendModalOpen) return;
+        loadTrendRange(tankId, range.fromIso, range.toIso);
+    }, [isTrendModalOpen, tankId, range.fromIso, range.toIso, loadTrendRange]);
+
+    const series = trendSeries[trendKey(tankId, range.fromIso, range.toIso)];
+
+    const applyPreset = (key: Exclude<TrendRangeKey, 'custom'>) => {
+        setTrendRange(key);
+        setTrendFrom(presetFromDate(key));
+        setTrendTo(todayWIB());
+    };
+
+    // Validasi draft custom — tombol Terapkan mati kalau belum masuk akal,
+    // jadi rentang tak valid tidak pernah sampai ke query.
+    const draftSpanDays = trendFrom && trendTo
+        ? Math.round((new Date(wibDayStartIso(trendTo)).getTime() - new Date(wibDayStartIso(trendFrom)).getTime()) / DAY_MS)
+        : 0;
+    const draftError = !trendFrom || !trendTo
+        ? 'Lengkapi tanggal Dari dan Sampai'
+        : trendFrom > trendTo
+            ? 'Tanggal "Dari" melebihi tanggal "Sampai"'
+            : draftSpanDays > TREND_MAX_SPAN_DAYS
+                ? `Rentang maksimal ${TREND_MAX_SPAN_DAYS} hari — persempit filter`
+                : null;
+    const draftDirty = trendFrom !== appliedRange.from || trendTo !== appliedRange.to;
 
 
     const tank = TANKS[tankId];
@@ -680,7 +763,7 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
                                 ] as const).map(opt => (
                                     <button
                                         key={opt.key}
-                                        onClick={() => setTrendRange(opt.key)}
+                                        onClick={() => applyPreset(opt.key)}
                                         style={trendRange === opt.key ? { backgroundColor: tc.base, boxShadow: `0 0 15px ${tc.base}66` } : undefined}
                                         className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all cursor-pointer border ${
                                             trendRange === opt.key
@@ -691,40 +774,102 @@ function TankCard({ tankId, compact = false, readOnly = false }: { tankId: TankI
                                         {opt.label}
                                     </button>
                                 ))}
+                                <button
+                                    onClick={() => setTrendRange('custom')}
+                                    style={trendRange === 'custom' ? { backgroundColor: tc.base, boxShadow: `0 0 15px ${tc.base}66` } : undefined}
+                                    className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all cursor-pointer border flex items-center gap-1.5 ${
+                                        trendRange === 'custom'
+                                            ? 'text-white border-transparent'
+                                            : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined text-[15px]">date_range</span>
+                                    Custom
+                                </button>
                             </div>
+
+                            {/* Rentang tanggal — aktif di mode Custom, ikut terisi saat preset dipilih */}
+                            {trendRange === 'custom' && (
+                                <div className="flex flex-wrap items-end gap-3 p-3 rounded-2xl bg-slate-800/40 border border-slate-700/60">
+                                    <div className="min-w-0">
+                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1 block">Dari</label>
+                                        <div className="overflow-hidden" style={{ minWidth: 0 }}>
+                                            <input type="date" value={trendFrom} max={todayWIB()}
+                                                onChange={e => setTrendFrom(e.target.value)}
+                                                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-slate-500 [color-scheme:dark]"
+                                                style={{ boxSizing: 'border-box', width: '100%', maxWidth: '100%', minWidth: 0, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', display: 'block' }} />
+                                        </div>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1 block">Sampai</label>
+                                        <div className="overflow-hidden" style={{ minWidth: 0 }}>
+                                            <input type="date" value={trendTo} min={trendFrom} max={todayWIB()}
+                                                onChange={e => setTrendTo(e.target.value)}
+                                                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none focus:border-slate-500 [color-scheme:dark]"
+                                                style={{ boxSizing: 'border-box', width: '100%', maxWidth: '100%', minWidth: 0, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', display: 'block' }} />
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setAppliedRange({ from: trendFrom, to: trendTo })}
+                                        disabled={!!draftError || !draftDirty}
+                                        style={!draftError && draftDirty ? { backgroundColor: tc.base, boxShadow: `0 0 15px ${tc.base}66` } : undefined}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
+                                            !draftError && draftDirty
+                                                ? 'text-white border-transparent cursor-pointer'
+                                                : 'bg-slate-800/60 text-slate-500 border-slate-700 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        Terapkan
+                                    </button>
+                                    {draftError && (
+                                        <span className="text-[11px] text-amber-400 font-bold w-full">{draftError}</span>
+                                    )}
+                                </div>
+                            )}
+
                             {(() => {
-                                const all = trendData[tankId] || [];
-                                const now = Date.now();
-                                const rangeMs: Record<typeof trendRange, number | null> = {
-                                    '24h': 24 * 60 * 60 * 1000,
-                                    '7d': 7 * 24 * 60 * 60 * 1000,
-                                    '30d': 30 * 24 * 60 * 60 * 1000,
-                                    'all': null,
-                                };
-                                const cutoff = rangeMs[trendRange];
                                 // SOLAR pakai basis 200 m³ (selaras hero "Total Volume Available"), bukan capacityM3=400
                                 const chartCap = tankId === 'SOLAR' ? 200 : tank.capacityM3;
-                                const filtered = (cutoff == null ? all : all.filter(d => now - new Date(d.timestamp).getTime() <= cutoff))
-                                    .map(d => ({ ts: new Date(d.timestamp).getTime(), m3: Math.round(d.level / 100 * chartCap) }));
-
-
+                                // Data sudah dibatasi rentangnya di server — tidak difilter ulang di sini.
+                                const points = series?.points ?? [];
+                                const filtered = points.map(p => ({ ts: p.ts, m3: Math.round(p.level / 100 * chartCap) }));
+                                const spanMs = filtered.length > 1 ? filtered[filtered.length - 1].ts - filtered[0].ts : 0;
 
                                 const fmtTick = (ts: number) => {
                                     const d = new Date(ts);
-                                    if (trendRange === '24h') {
+                                    if (spanMs < 2 * DAY_MS) {
                                         return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
                                     }
-                                    if (trendRange === '7d') {
+                                    if (spanMs < 14 * DAY_MS) {
                                         return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) + ' ' +
                                                d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
                                     }
-                                    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: trendRange === 'all' ? '2-digit' : undefined });
+                                    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: spanMs >= 365 * DAY_MS ? '2-digit' : undefined });
                                 };
+
+                                const status = series?.loading && filtered.length === 0
+                                    ? 'Memuat data…'
+                                    : series?.error
+                                            ? (
+                                                <span className="flex items-center gap-2">
+                                                    <span className="text-rose-400">{series.error}</span>
+                                                    <button onClick={() => loadTrendRange(tankId, range.fromIso, range.toIso, true)}
+                                                        className="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer">
+                                                        Coba lagi
+                                                    </button>
+                                                </span>
+                                            )
+                                            : filtered.length === 0
+                                                ? `Tidak ada data pada rentang ini (${shortDate(range.from)} – ${shortDate(range.to)})`
+                                                // Saat mentok cap, rentang yang benar-benar tergambar lebih sempit dari
+                                                // yang diminta — tampilkan span data asli supaya tidak menyesatkan.
+                                                : `${filtered.length} titik data · ${shortDateTs(filtered[0].ts)} – ${shortDateTs(filtered[filtered.length - 1].ts)}${
+                                                    series?.truncated ? ` · dibatasi ${filtered.length} titik terbaru, persempit rentang untuk data lebih lama` : ''}`;
 
                                 return (
                                     <>
                                         <div className="text-xs text-slate-500 font-bold mt-1">
-                                            {filtered.length} titik data{filtered.length === 0 ? ' — tidak ada data pada rentang ini' : ''}
+                                            {status}
                                         </div>
                                         <div className="h-[400px] 2xl:h-[500px] w-full mt-2">
                                             <ResponsiveContainer width="100%" height="100%">

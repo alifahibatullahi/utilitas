@@ -50,10 +50,28 @@ export interface TankLevelHistory {
     note?: string;
 }
 
+/** Satu seri trend untuk 1 tank pada 1 rentang tanggal — hasil query yang sudah
+ *  dibatasi di server, jadi chart tinggal menggambar tanpa memfilter lagi. */
+export interface TrendSeries {
+    points: { ts: number; level: number }[];  // ts epoch ms, level = level_pct
+    loading: boolean;
+    error: string | null;
+    /** true bila jumlah baris mentok TREND_ROW_CAP — chart hanya titik terbaru */
+    truncated: boolean;
+    fetchedAt: number;
+}
+
+/** Key cache seri trend. from null = tanpa batas bawah. */
+export function trendKey(tankId: TankId, fromIso: string | null, toIso: string): string {
+    return `${tankId}|${fromIso ?? ''}|${toIso}`;
+}
+
 interface TankDataContextType {
     currentLevels: Record<TankId, TankLevel>;
     history: TankLevelHistory[];
     trendData: Record<TankId, { time: string; timestamp: string; level: number }[]>;
+    /** Seri trend per rentang, di-key dengan trendKey(). Diisi oleh loadTrendRange. */
+    trendSeries: Record<string, TrendSeries>;
     flowRates: Record<TankId, FlowRate[]>;
     outputFlowRates: Record<TankId, OutputFlowRate[]>;
     solarUnloadings: SolarUnloading[];
@@ -63,6 +81,9 @@ interface TankDataContextType {
     /** Fetch history level on-demand (modal trend / halaman detail). Hasil di-cache
      *  sebentar; pemanggilan berulang dalam waktu dekat tidak memicu fetch ulang. */
     loadHistory: () => Promise<void>;
+    /** Fetch trend 1 tank pada rentang tertentu. Dibatasi di server (tank_id +
+     *  created_at), di-cache per rentang; rentang lampau tidak pernah difetch ulang. */
+    loadTrendRange: (tankId: TankId, fromIso: string | null, toIso: string, force?: boolean) => Promise<void>;
     submitLevel: (tankId: TankId, level: number, levelM3: number, operator: string, note?: string, trend?: string) => void;
     submitFlowRates: (tankId: TankId, rates: FlowRate[], operatorName?: string) => void;
     submitOutputFlowRates: (tankId: TankId, rates: OutputFlowRate[], operatorName?: string) => void;
@@ -92,6 +113,8 @@ function isSupabaseConfigured(): boolean {
 // Kolom eksplisit (bukan '*') untuk menekan egress Supabase
 const TANK_LEVEL_COLS = 'tank_id, level_pct, operator_name, note, trend, created_at';
 const TANK_LEVEL_HISTORY_COLS = 'tank_id, level_pct, operator_name, note, created_at';
+// Chart trend cuma butuh nilai + waktu — kolom teks sengaja tidak diikutkan
+const TANK_TREND_COLS = 'level_pct, created_at';
 const FLOW_READING_COLS = 'tank_id, direction, label, rate, pump, created_at';
 const SOLAR_UNLOADING_COLS = 'id, date, liters, supplier';
 const SOLAR_USAGE_COLS = 'id, date, liters, tujuan';
@@ -102,6 +125,20 @@ const SAFETY_POLL_MS = 5 * 60 * 1000;
 // Throttle refetch dari event visibility/online supaya gonta-ganti tab tidak
 // memicu full refetch terus-menerus.
 const MIN_REFETCH_GAP_MS = 60 * 1000;
+
+// --- Trend per rentang tanggal -------------------------------------------
+// Batas keras baris per fetch. 2 kolom x 1000 baris ~45 KB — masih di bawah
+// query history lama (500 baris x 5 kolom, semua tank, ~60 KB) dan tidak bisa
+// membengkak seiring umur data.
+const TREND_ROW_CAP = 1000;
+// Hanya rentang yang ujungnya "sekarang" yang boleh basi; rentang yang
+// berakhir di masa lalu bersifat statis dan di-cache seumur sesi.
+const TREND_FRESH_MS = 60 * 1000;
+// Cache + inflight di level modul (bukan state komponen): layout mobile dan
+// desktop dua-duanya mounted di /tank-level, jadi tanpa ini satu klik chip
+// bisa jadi dua round-trip ke Supabase.
+const trendCache = new Map<string, TrendSeries>();
+const trendInflight = new Map<string, Promise<void>>();
 
 /** Dari history pompa Demin Revamp (desc), hitung kapan pompa aktif mulai */
 function calcPumpActiveSince(rows: TankFlowReadingRow[]): string | null {
@@ -133,6 +170,7 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
     const [trendData, setTrendData] = useState<Record<TankId, { time: string; timestamp: string; level: number }[]>>({
         DEMIN: [], RCW: [], SOLAR: [],
     });
+    const [trendSeries, setTrendSeries] = useState<Record<string, TrendSeries>>({});
 
     // Build trend data from history (full history; chart-side filters by range)
     const buildTrendData = useCallback((historyItems: TankLevelHistory[]) => {
@@ -212,6 +250,88 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
         setHistory(historyItems);
         setTrendData(buildTrendData(historyItems));
     }, [buildTrendData]);
+
+    // Trend per rentang: query dibatasi di server (tank_id + created_at), jadi
+    // chart tidak perlu memfilter lagi — dulu filter cuma memotong array 500
+    // baris semua tank, sehingga "30 Hari"/"Semua" mustahil menampilkan data lama.
+    const loadTrendRange = useCallback(async (
+        tankId: TankId, fromIso: string | null, toIso: string, force = false,
+    ) => {
+        if (!isSupabaseConfigured()) return;
+        const key = trendKey(tankId, fromIso, toIso);
+
+        // Rentang yang sudah berakhir bersifat statis — sekali fetch, dipakai
+        // seumur sesi. Hanya rentang yang menyentuh "sekarang" yang bisa basi.
+        const cached = trendCache.get(key);
+        if (!force && cached && !cached.error) {
+            const isLive = new Date(toIso).getTime() >= Date.now() - 60_000;
+            if (!isLive || Date.now() - cached.fetchedAt < TREND_FRESH_MS) {
+                setTrendSeries(prev => (prev[key] === cached ? prev : { ...prev, [key]: cached }));
+                return;
+            }
+        }
+        // Dedup: instance kedua (layout mobile/desktop) menumpang fetch pertama
+        const running = trendInflight.get(key);
+        if (running) return running;
+
+        setTrendSeries(prev => ({
+            ...prev,
+            [key]: {
+                points: cached?.points ?? [],
+                loading: true,
+                error: null,
+                truncated: cached?.truncated ?? false,
+                fetchedAt: cached?.fetchedAt ?? 0,
+            },
+        }));
+
+        const task = (async () => {
+            const supabase = createClient();
+            // Hanya 2 kolom yang dipakai chart — operator_name/note tidak ikut.
+            let q = supabase
+                .from('tank_levels')
+                .select(TANK_TREND_COLS)
+                .eq('tank_id', tankId)
+                .lte('created_at', toIso)
+                // DESC + limit: kalau mentok cap, yang tersimpan titik TERBARU.
+                // Kalau ASC, grafik justru berhenti di masa lalu.
+                .order('created_at', { ascending: false })
+                .limit(TREND_ROW_CAP);
+            if (fromIso) q = q.gte('created_at', fromIso);
+
+            const { data, error } = await q;
+
+            if (error || !data) {
+                // Jangan simpan sebagai cache sukses, dan jangan auto-retry —
+                // retry hanya lewat tombol "Coba lagi" supaya jaringan CCR yang
+                // putus-nyambung tidak membanjiri Supabase.
+                setTrendSeries(prev => ({
+                    ...prev,
+                    [key]: {
+                        points: [], loading: false, truncated: false, fetchedAt: 0,
+                        error: 'Gagal memuat data trend',
+                    },
+                }));
+                return;
+            }
+
+            const rows = data as unknown as { level_pct: number; created_at: string }[];
+            const series: TrendSeries = {
+                points: rows
+                    .map(r => ({ ts: new Date(r.created_at).getTime(), level: Number(r.level_pct) }))
+                    .reverse(), // hasil DESC dibalik jadi kronologis untuk chart
+                loading: false,
+                error: null,
+                truncated: rows.length === TREND_ROW_CAP,
+                fetchedAt: Date.now(),
+            };
+            trendCache.set(key, series);
+            setTrendSeries(prev => ({ ...prev, [key]: series }));
+        })().finally(() => { trendInflight.delete(key); });
+
+        trendInflight.set(key, task);
+        return task;
+    }, []);
 
     // Fetch from Supabase on mount
     useEffect(() => {
@@ -421,6 +541,29 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
                     const newHistory = [{ id: prev.length + 1, ...newLevel }, ...prev];
                     setTrendData(buildTrendData(newHistory));
                     return newHistory;
+                });
+                // Susulkan ke seri trend yang sedang tampil supaya modal yang
+                // terbuka ikut hidup — tanpa ini chart beku sampai fetch ulang.
+                const ts = new Date(row.created_at).getTime();
+                setTrendSeries(prev => {
+                    let changed = false;
+                    const next = { ...prev };
+                    for (const [key, series] of Object.entries(prev)) {
+                        const [keyTank, keyFrom, keyTo] = key.split('|');
+                        if (keyTank !== tankId) continue;
+                        if (keyFrom && ts < new Date(keyFrom).getTime()) continue;
+                        if (ts > new Date(keyTo).getTime()) continue;
+                        if (series.points.some(p => p.ts === ts)) continue;
+                        const updated: TrendSeries = {
+                            ...series,
+                            points: [...series.points, { ts, level: Number(row.level_pct) }]
+                                .sort((a, b) => a.ts - b.ts),
+                        };
+                        trendCache.set(key, updated);
+                        next[key] = updated;
+                        changed = true;
+                    }
+                    return changed ? next : prev;
                 });
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tank_levels' }, (payload) => {
@@ -716,9 +859,9 @@ export function TankDataProvider({ children }: { children: ReactNode }) {
 
     return (
         <TankDataContext.Provider value={{
-            currentLevels, history, trendData,
+            currentLevels, history, trendData, trendSeries,
             flowRates, outputFlowRates,
-            solarUnloadings, solarUsages, pumpActiveSince, loadHistory,
+            solarUnloadings, solarUsages, pumpActiveSince, loadHistory, loadTrendRange,
             submitLevel, submitFlowRates, submitOutputFlowRates, submitSolarUnloading,
             deleteSolarUnloading, updateSolarUnloading,
             submitSolarUsage, deleteSolarUsage, updateSolarUsage,

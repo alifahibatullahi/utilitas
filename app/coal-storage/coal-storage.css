@@ -1,0 +1,62 @@
+/* Animasi masuk halaman /coal-storage.
+ *
+ * Semua gerak sekali jalan saat halaman dibuka — halaman ini dipelototi operator
+ * saat kerja, jadi tidak ada yang berulang. Easing disamakan dengan /home
+ * (cubic-bezier(0.16, 1, 0.3, 1)) supaya terasa satu tangan dengan menu utama.
+ *
+ * Penundaan tiap elemen dikirim lewat inline style (animationDelay); tinggi
+ * gundukan dan lebar bar lewat custom property (--cs-tinggi, --cs-w) supaya
+ * keyframes-nya tidak perlu tahu angkanya.
+ */
+
+@keyframes csFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.cs-fade-up {
+    opacity: 0;
+    animation: csFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Gundukan batubara tumbuh dari lantai bin. Tinggi akhir tetap ditulis inline
+   sebagai cadangan: selama animasi berjalan keyframes menang atas inline style,
+   lalu isian "both" menahan nilai akhir yang besarnya sama persis. */
+@keyframes csPileGrow {
+    from { height: 0; }
+    to   { height: var(--cs-tinggi); }
+}
+
+.cs-pile {
+    animation: csPileGrow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes csBarGrow {
+    from { width: 0; }
+    to   { width: var(--cs-w); }
+}
+
+.cs-bar {
+    animation: csBarGrow 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Atap (closed) dan garis putus-putus (open) seolah ditarik dari tengah. */
+@keyframes csDrawLine {
+    from { opacity: 0; transform: scaleX(0.6); }
+    to   { opacity: 1; transform: scaleX(1); }
+}
+
+.cs-atap {
+    transform-origin: center;
+    animation: csDrawLine 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cs-fade-up, .cs-pile, .cs-bar, .cs-atap {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+    .cs-pile { height: var(--cs-tinggi); }
+    .cs-bar  { width: var(--cs-w); }
+}

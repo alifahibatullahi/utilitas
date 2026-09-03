@@ -26,7 +26,7 @@ export default function AppShell({ children }: AppShellProps) {
     // Bar atas (logo + Menu) DIHAPUS di semua halaman (permintaan user). Navigasi ke
     // /home diganti tombol Menu floating kiri-bawah — kecuali input-laporan yang sudah
     // punya tombol Menu di grup floating kanan-bawah miliknya sendiri.
-    const hasOwnMenuButton = pathname.startsWith('/input-laporan');
+    const hasOwnMenuButton = pathname.startsWith('/input-laporan') || pathname.startsWith('/coal-storage');
 
     // Don't show shell on login page, home menu, fullscreen preview, or history data page
     if (pathname === '/' || pathname === '/home' || pathname === '/laporan-shift/preview' || pathname === '/laporan-harian/preview' || pathname === '/kanban' || pathname === '/critical' || pathname.startsWith('/critical-maintenance') || pathname === '/tank-level' || pathname === '/history' || pathname.startsWith('/history/')) {

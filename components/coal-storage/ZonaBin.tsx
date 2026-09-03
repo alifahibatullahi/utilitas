@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import ZonaDetail from './ZonaDetail';
 import {
     ambilWarna, CoalArea, CoalLot, jumlahZona, kapasitasZona, lotsZona, namaZona,
@@ -9,10 +10,11 @@ import {
 // Pakai persen supaya kemiringannya ikut proporsional saat isinya rendah.
 const PILE_CLIP = 'polygon(0% 100%, 0% 20%, 13% 0%, 87% 0%, 100% 20%, 100% 100%)';
 
-export default function ZonaBin({ area, zonaId, index, lots, warna, highlight, onSelect }: {
+export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, highlight, onSelect }: {
     area: CoalArea;
     zonaId: string;
     index: number;
+    delayMs: number;
     lots: CoalLot[];
     warna: Record<string, string>;
     highlight: string | null;
@@ -33,9 +35,19 @@ export default function ZonaBin({ area, zonaId, index, lots, warna, highlight, o
     return (
         <div className="group relative flex-1 min-w-0 hover:z-10 focus-within:z-10">
             {/* Detail hover — hanya layar lebar; di HP dipakai kartu di bawah denah. */}
+            {/* Selalu ter-render di layar lebar tapi transparan, supaya munculnya bisa
+                dianimasikan (display tidak bisa ditransisikan). Posisinya absolute,
+                jadi tidak menyentuh layout; pointer-events dimatikan saat tersembunyi.
+                Transisinya ditulis eksplisit karena aturan `*` global hanya mencakup
+                background/border/shadow. Geseran vertikalnya aman berdampingan dengan
+                -translate-x-1/2 milik align: di Tailwind v4 keduanya menulis properti
+                `translate` lewat variabel terpisah. */}
             <div
-                className={`hidden lg:group-hover:block lg:group-focus-within:block absolute bottom-full mb-2
-                    w-[212px] rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-left z-10 ${align}`}
+                className={`hidden lg:block absolute bottom-full mb-2 w-[212px] rounded-lg border border-slate-400
+                    bg-white px-3 py-2.5 text-left z-10 shadow-sm opacity-0 translate-y-1 pointer-events-none
+                    transition-[opacity,translate] duration-200 ease-out
+                    lg:group-hover:opacity-100 lg:group-hover:translate-y-0 lg:group-hover:pointer-events-auto
+                    lg:group-focus-within:opacity-100 lg:group-focus-within:translate-y-0 lg:group-focus-within:pointer-events-auto ${align}`}
             >
                 <ZonaDetail area={area} zonaId={zonaId} index={index} lots={lots} warna={warna} />
             </div>
@@ -44,16 +56,23 @@ export default function ZonaBin({ area, zonaId, index, lots, warna, highlight, o
                 type="button"
                 onClick={() => onSelect(index)}
                 aria-label={`${namaZona(index, jml)} — ${Math.round(pct)}% terisi`}
+                // Sorotan hover pakai ring, bukan border-2: menebalkan border menggeser
+                // isi petak 1px tiap kali kursor lewat, sedangkan ring tidak menyentuh layout.
                 className={`relative block w-full h-[78px] rounded-[3px] border overflow-hidden cursor-pointer
-                    transition-opacity group-hover:border-2 group-hover:border-sky-600
-                    focus-visible:outline-none focus-visible:border-2 focus-visible:border-sky-600
+                    ring-2 ring-transparent transition-[opacity,box-shadow] duration-300
+                    group-hover:ring-sky-600 focus-visible:outline-none focus-visible:ring-sky-600
                     ${kosong ? 'border-dashed border-slate-300 bg-slate-50' : 'border-slate-300 bg-[#eff3f8]'}
                     ${dim ? 'opacity-20' : 'opacity-100'}`}
             >
                 {total > 0 && (
                     <span
-                        className="absolute inset-x-0 bottom-0 flex flex-col-reverse"
-                        style={{ height: `${pct}%`, clipPath: PILE_CLIP }}
+                        className="cs-pile absolute inset-x-0 bottom-0 flex flex-col-reverse"
+                        style={{
+                            '--cs-tinggi': `${pct}%`,
+                            height: `${pct}%`,
+                            clipPath: PILE_CLIP,
+                            animationDelay: `${delayMs}ms`,
+                        } as CSSProperties}
                     >
                         {zLots.map((lot, i) => (
                             <span

@@ -14,7 +14,7 @@ export default function SupplierLegend({ lots, onHighlight }: {
     if (data.length === 0) return null;
 
     return (
-        <section className="mt-6">
+        <section className="cs-fade-up mt-6" style={{ animationDelay: '420ms' }}>
             {/* Sorot sebaran jalan lewat hover, jadi ajakannya cuma tampil di layar berkursor. */}
             <p className="text-[11px] text-slate-500 mb-2">
                 Supplier<span className="hidden lg:inline"> — arahkan kursor untuk melihat sebarannya</span>
@@ -28,11 +28,15 @@ export default function SupplierLegend({ lots, onHighlight }: {
                         onMouseLeave={() => onHighlight(null)}
                         onFocus={() => onHighlight(s.nama)}
                         onBlur={() => onHighlight(null)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1
-                            text-[11px] text-slate-700 hover:border-slate-400 transition-colors cursor-pointer
+                        className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1
+                            text-[11px] text-slate-700 hover:border-slate-400 hover:shadow-sm hover:-translate-y-px
+                            transition-[border-color,box-shadow,translate] duration-200 cursor-pointer
                             focus-visible:outline-none focus-visible:border-slate-400"
                     >
-                        <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: s.warna }} />
+                        <span
+                            className="w-2.5 h-2.5 rounded-[3px] transition-transform duration-200 group-hover:scale-125"
+                            style={{ background: s.warna }}
+                        />
                         <span className="font-semibold">{s.nama}</span>
                         <span className="text-slate-400">est. {formatTon(s.ton)} t · {s.jumlahZona} zona</span>
                     </button>

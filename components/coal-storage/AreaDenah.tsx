@@ -17,9 +17,13 @@ import {
  *   baris 2 — nomor pilar dan persen zona, sejajar di garis yang sama
  * Semua ukuran relatif; body memakai zoom 90% dan AppShell 125% di monitor
  * besar, jadi koordinat piksel absolut akan meleset.
+ *
+ * areaIndex hanya menentukan urutan animasi masuk: area kedua menyusul setelah
+ * area pertama, lalu zona di dalamnya tumbuh berurutan kiri → kanan.
  */
-export default function AreaDenah({ area, lots, warna, highlight }: {
+export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
     area: CoalArea;
+    areaIndex: number;
     lots: CoalLot[];
     warna: Record<string, string>;
     highlight: string | null;
@@ -30,10 +34,17 @@ export default function AreaDenah({ area, lots, warna, highlight }: {
     const pct = (total / area.kapasitasTon) * 100;
     const t = area.theme;
 
+    // Basis penundaan area; tiap zona menambah 45ms supaya gundukannya beriring.
+    const basis = 160 + areaIndex * 100;
+    const delayZona = (i: number) => basis + 60 + i * 45;
+
     return (
         <section className="mt-6">
             {/* Pita judul — warna solid supaya identitas area langsung terbaca. */}
-            <div className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 mb-3" style={{ background: t.pita }}>
+            <div
+                className="cs-fade-up flex items-center gap-3 rounded-xl px-3.5 py-2.5 mb-3"
+                style={{ background: t.pita, animationDelay: `${basis}ms` }}
+            >
                 <span className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                     <span aria-hidden="true" className="material-symbols-outlined text-white text-xl">{area.icon}</span>
                 </span>
@@ -57,11 +68,18 @@ export default function AreaDenah({ area, lots, warna, highlight }: {
                 <div style={{ minWidth: DENAH_MIN_WIDTH_PX }}>
                     {area.beratap ? (
                         <div
-                            className="h-2.5 mb-1"
-                            style={{ background: t.batasAtas, clipPath: 'polygon(0% 100%, 4% 0%, 96% 0%, 100% 100%)' }}
+                            className="cs-atap h-2.5 mb-1"
+                            style={{
+                                background: t.batasAtas,
+                                clipPath: 'polygon(0% 100%, 4% 0%, 96% 0%, 100% 100%)',
+                                animationDelay: `${basis + 40}ms`,
+                            }}
                         />
                     ) : (
-                        <div className="h-2.5 mb-1 border-t-2 border-dashed" style={{ borderColor: t.batasAtas }} />
+                        <div
+                            className="cs-atap h-2.5 mb-1 border-t-2 border-dashed"
+                            style={{ borderColor: t.batasAtas, animationDelay: `${basis + 40}ms` }}
+                        />
                     )}
 
                     <div className="flex items-start gap-px border-b-[3px] border-slate-600">
@@ -76,6 +94,7 @@ export default function AreaDenah({ area, lots, warna, highlight }: {
                                     area={area}
                                     zonaId={zonaId}
                                     index={i}
+                                    delayMs={delayZona(i)}
                                     lots={lots}
                                     warna={warna}
                                     highlight={highlight}
@@ -92,12 +111,25 @@ export default function AreaDenah({ area, lots, warna, highlight }: {
                                     lebar kolom; chip abu membedakannya dari persen zona. */}
                                 {i > 0 && (
                                     <div className="w-[7px] shrink-0 relative">
-                                        <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-100 px-[3px] text-[11px] leading-4 text-slate-500">
-                                            {i}
+                                        {/* Pemusatan dan animasi dipisah ke dua span: keyframes
+                                            fade-up menulis ulang transform, jadi -translate-x-1/2
+                                            tidak boleh menempel di elemen yang sama. */}
+                                        <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+                                            <span
+                                                className="cs-fade-up inline-block rounded bg-slate-100 px-[3px] text-[11px] leading-4 text-slate-500"
+                                                style={{ animationDelay: `${delayZona(i)}ms` }}
+                                            >
+                                                {i}
+                                            </span>
                                         </span>
                                     </div>
                                 )}
-                                <div className="flex-1 min-w-0 text-center text-xs leading-4 font-semibold text-slate-900">
+                                {/* Persen menyusul gundukan di kolom yang sama, jadi angkanya
+                                    terbaca tepat setelah tumpukannya selesai tumbuh. */}
+                                <div
+                                    className="cs-fade-up flex-1 min-w-0 text-center text-xs leading-4 font-semibold text-slate-900"
+                                    style={{ animationDelay: `${delayZona(i) + 220}ms` }}
+                                >
                                     {tonZona(lots, zonaId) > 0 ? `${persenZona(lots, zonaId)}%` : '—'}
                                 </div>
                             </Fragment>
@@ -107,7 +139,8 @@ export default function AreaDenah({ area, lots, warna, highlight }: {
             </div>
 
             {selected !== null && (
-                <div className="lg:hidden mt-3 rounded-lg border border-slate-300 bg-white px-3 py-2.5 relative">
+                // key per zona: pindah petak memasang ulang kartunya, jadi animasinya ikut mengulang.
+                <div key={selected} className="cs-fade-up lg:hidden mt-3 rounded-lg border border-slate-300 bg-white px-3 py-2.5 relative">
                     <button
                         type="button"
                         onClick={() => setSelected(null)}

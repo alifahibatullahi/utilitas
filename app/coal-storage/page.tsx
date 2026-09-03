@@ -8,6 +8,7 @@ import { COAL_LOTS, COAL_LOTS_UPDATED_AT } from '@/lib/coal-storage-data';
 import RingkasanEstimasi from '@/components/coal-storage/RingkasanEstimasi';
 import AreaDenah from '@/components/coal-storage/AreaDenah';
 import SupplierLegend from '@/components/coal-storage/SupplierLegend';
+import './coal-storage.css';
 
 // Penjaga login memakai useSearchParams → butuh Suspense.
 export default function CoalStorageRoute() {
@@ -50,22 +51,41 @@ function GuardedPage() {
         <div className="min-h-screen bg-neutral-50 pb-24">
             <main className="max-w-7xl mx-auto px-4 sm:px-5 pt-5 sm:pt-8">
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5">
-                    <div className="flex items-center justify-between gap-3 mb-4">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-                                <span aria-hidden="true" className="material-symbols-outlined text-orange-500 text-xl">inventory_2</span>
-                            </span>
-                            <h1 className="text-base font-bold text-slate-800 leading-tight min-w-0">Storage Batubara</h1>
+                    {/* Header berlogo — pola sama dengan /critical-maintenance. Logo yang
+                        lebih lebar disembunyikan bertahap di layar sempit supaya judul
+                        dan tombol menu tetap kebagian ruang. */}
+                    <div className="cs-fade-up flex items-center gap-3 mb-4">
+                        <div className="flex items-center gap-2 shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/logo/Danantara_Indonesia_(no_SW).png" alt="Danantara" className="h-7 w-auto object-contain hidden lg:block" />
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/logo/Logo_Pupuk_Indonesia__Persero_-removebg-preview.png" alt="Pupuk Indonesia" className="h-7 w-auto object-contain hidden sm:block" />
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/logo/logo-PG-agro-trans-small-removebg-preview.png" alt="Petrokimia Gresik" className="h-7 w-auto object-contain" />
                         </div>
-                        <span className="shrink-0 text-[11px] text-slate-500 border border-slate-200 rounded-full px-2.5 py-1">
-                            {formatTanggal(COAL_LOTS_UPDATED_AT)}
-                        </span>
+                        <div className="hidden sm:block h-8 w-px bg-neutral-200 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-base sm:text-xl font-bold text-slate-900 leading-tight">Storage Batubara</h1>
+                            <p className="text-[11px] text-neutral-400 font-medium">
+                                Estimasi penempatan supplier · data per {formatTanggal(COAL_LOTS_UPDATED_AT)}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => router.push('/home')}
+                            className="w-9 h-9 rounded-xl bg-white border border-neutral-300 text-neutral-500 hover:bg-neutral-100 flex items-center justify-center cursor-pointer transition-colors shrink-0"
+                            aria-label="Kembali ke menu"
+                            title="Kembali ke menu"
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>home</span>
+                        </button>
                     </div>
 
-                    <RingkasanEstimasi lots={COAL_LOTS} />
+                    <div className="cs-fade-up" style={{ animationDelay: '80ms' }}>
+                        <RingkasanEstimasi lots={COAL_LOTS} />
+                    </div>
 
-                    {COAL_AREAS.map(area => (
-                        <AreaDenah key={area.key} area={area} lots={COAL_LOTS} warna={warna} highlight={highlight} />
+                    {COAL_AREAS.map((area, i) => (
+                        <AreaDenah key={area.key} area={area} areaIndex={i} lots={COAL_LOTS} warna={warna} highlight={highlight} />
                     ))}
 
                     <SupplierLegend lots={COAL_LOTS} onHighlight={setHighlight} />

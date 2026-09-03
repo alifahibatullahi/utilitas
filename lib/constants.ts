@@ -428,6 +428,11 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     { id: 'critical-maintenance', label: 'Critical Maintenance', description: 'Daftar critical equipment & riwayat maintenance', icon: 'warning', path: '/critical-maintenance', roles: 'all', featured: true },
     // Peta baca-saja; data penempatan masih dummy di lib/coal-storage-data.ts.
     { id: 'coal-storage', label: 'Storage Batubara', description: 'Peta penempatan supplier di open & closed storage', icon: 'storage', path: '/coal-storage', roles: 'all', featured: true },
+    // Sengaja bernama samar: isinya gambar isometrik jalur pipa air di /piping,
+    // yang rutenya masih rangka menunggu koreksi lapangan. Halamannya sudah bisa
+    // dibuka lewat URL langsung; buang comingSoon (dan ganti label) begitu
+    // rutenya dipastikan.
+    { id: 'fitur-lanjutan', label: 'Fitur Lanjutan', description: 'Sedang disiapkan — menyusul di pembaruan berikutnya.', icon: 'locked', path: '/piping', roles: 'all', featured: true, comingSoon: true },
 ];
 
 // Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah

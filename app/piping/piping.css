@@ -1,0 +1,53 @@
+/* Animasi masuk halaman /piping.
+ *
+ * Semua gerak sekali jalan saat halaman dibuka — sama seperti /coal-storage,
+ * easing disamakan dengan /home (cubic-bezier(0.16, 1, 0.3, 1)) supaya terasa
+ * satu tangan dengan menu utama. Penundaan tiap elemen dikirim lewat inline
+ * style (animationDelay).
+ *
+ * CATATAN: elemen yang animasinya menyentuh opacity TIDAK boleh sekaligus
+ * memakai inline opacity untuk peredupan sorot — keyframes menang atas inline
+ * style. Karena itu peredupan selalu dipasang di elemen pembungkus yang berbeda.
+ */
+
+@keyframes ppFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.pp-fade-up {
+    opacity: 0;
+    animation: ppFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes ppFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.pp-fade {
+    opacity: 0;
+    animation: ppFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Pipa seolah ditarik dari pangkal ke ujung. Panjang jalur dinormalkan lewat
+   atribut pathLength="1" di SVG, jadi keyframes tidak perlu tahu panjang
+   sebenarnya dan semua pipa selesai digambar dalam durasi yang sama. */
+@keyframes ppDraw {
+    from { stroke-dashoffset: 1; }
+    to   { stroke-dashoffset: 0; }
+}
+
+.pp-draw {
+    stroke-dasharray: 1;
+    animation: ppDraw 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pp-fade-up, .pp-fade, .pp-draw {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+    .pp-draw { stroke-dasharray: none; }
+}

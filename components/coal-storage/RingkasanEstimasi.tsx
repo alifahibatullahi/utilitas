@@ -36,8 +36,11 @@ function useCountUp(target: number, durasiMs = 900) {
     return ref;
 }
 
-/** Angka sorotan halaman: penjumlahan seluruh penempatan di kedua area. */
-export default function RingkasanEstimasi({ lots }: { lots: CoalLot[] }) {
+/**
+ * Angka sorotan halaman: stok yang masih ada di kedua area, yaitu seluruh
+ * penempatan dikurangi yang sudah diambil payloader (diambilTon).
+ */
+export default function RingkasanEstimasi({ lots, diambilTon }: { lots: CoalLot[]; diambilTon: number }) {
     const total = lots.reduce((t, l) => t + l.ton, 0);
     const pct = (total / TOTAL_KAPASITAS_TON) * 100;
     // Hanya angka utama yang dihitung naik; persen dan kapasitas dibiarkan diam
@@ -47,10 +50,15 @@ export default function RingkasanEstimasi({ lots }: { lots: CoalLot[] }) {
     return (
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
             <div>
-                <p className="text-[11px] font-semibold text-orange-800">Total estimasi batubara</p>
+                <p className="text-[11px] font-semibold text-orange-800">Stok batubara saat ini</p>
                 <p className="text-3xl font-bold text-orange-900 leading-tight tabular-nums">
                     <span ref={angkaRef}>{formatTon(total)}</span> <span className="text-sm font-semibold">ton</span>
                 </p>
+                {diambilTon > 0 && (
+                    <p className="text-[11px] font-medium text-orange-800 mt-0.5">
+                        sudah diambil ± {formatTon(diambilTon)} ton
+                    </p>
+                )}
             </div>
             <div className="flex-1 min-w-[170px]">
                 <div className="flex justify-between text-[11px] font-medium text-orange-800 mb-1.5">

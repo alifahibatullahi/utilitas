@@ -11,6 +11,8 @@
 // Kode zona (O1…C12) hanya id internal; di layar yang ditampilkan adalah nomor
 // PILAR, dan zona dirujuk lewat posisinya terhadap pilar (lihat namaZona).
 
+import { getGroupForShift, type ShiftKey } from './constants';
+
 export type AreaKey = 'open' | 'closed';
 
 export interface CoalAreaTheme {
@@ -23,6 +25,8 @@ export interface CoalArea {
     key: AreaKey;
     prefix: string;
     nama: string;
+    /** Nama sesingkat mungkin untuk sel tabel — 'Open Storage' tidak muat di sana. */
+    singkat: string;
     kapasitasTon: number;
     jumlahPilar: number;
     beratap: boolean;
@@ -39,14 +43,14 @@ export const DENAH_MIN_WIDTH_PX = 640;
 
 export const COAL_AREAS: CoalArea[] = [
     {
-        key: 'open', prefix: 'O', nama: 'Open Storage',
+        key: 'open', prefix: 'O', nama: 'Open Storage', singkat: 'Open',
         kapasitasTon: 30000, jumlahPilar: 6, beratap: false,
         icon: 'wb_sunny',
         theme: { pita: '#0d9488', subteks: '#a7f3e4', batasAtas: '#5eead4' },
     },
     {
         // Abu-abu tua: kesan tertutup / beratap.
-        key: 'closed', prefix: 'C', nama: 'Closed Storage',
+        key: 'closed', prefix: 'C', nama: 'Closed Storage', singkat: 'Closed',
         kapasitasTon: 40000, jumlahPilar: 11, beratap: true,
         icon: 'warehouse',
         theme: { pita: '#334155', subteks: '#cbd5e1', batasAtas: '#334155' },
@@ -54,6 +58,15 @@ export const COAL_AREAS: CoalArea[] = [
 ];
 
 export const TOTAL_KAPASITAS_TON = COAL_AREAS.reduce((t, a) => t + a.kapasitasTon, 0);
+
+/**
+ * Apa yang sedang disorot di denah. Legend menyorot satu supplier (sebarannya
+ * bisa lintas zona), sedangkan baris tabel di bawah denah menyorot satu zona.
+ */
+export interface Sorotan {
+    tipe: 'supplier' | 'zona';
+    nilai: string;
+}
 
 /** Satu tumpukan batubara milik satu supplier di satu zona. */
 export interface CoalLot {
@@ -106,6 +119,29 @@ export function namaZona(index: number, jml: number): string {
     if (index === 0) return 'Zona sebelum pilar 1';
     if (index === jml - 1) return `Zona setelah pilar ${jml - 1}`;
     return `Zona antara pilar ${index} dan ${index + 1}`;
+}
+
+/** Index zona 0-based dari kodenya: 'C3' -> 2, 'O1' -> 0. */
+export function indexZona(zonaId: string): number {
+    const area = areaOfZona(zonaId);
+    const n = Number(zonaId.slice(area.prefix.length));
+    return Number.isFinite(n) ? Math.max(0, n - 1) : 0;
+}
+
+/**
+ * Versi paling ringkas namaZona() untuk sel tabel: tanpa kata "Zona" di depan
+ * dan tanpa "antara … dan …", jadi muat di kolom sempit.
+ */
+export function labelPilar(index: number, jml: number): string {
+    if (index === 0) return 'sebelum pilar 1';
+    if (index === jml - 1) return `setelah pilar ${jml - 1}`;
+    return `pilar ${index}–${index + 1}`;
+}
+
+/** Label pendek zona lengkap dengan areanya: 'Closed · pilar 4–5'. */
+export function labelZonaPendek(zonaId: string): string {
+    const area = areaOfZona(zonaId);
+    return `${area.singkat} · ${labelPilar(indexZona(zonaId), jumlahZona(area))}`;
 }
 
 // Delapan hue yang berjarak di roda warna, semuanya kontras di atas kartu putih.
@@ -168,8 +204,14 @@ export interface RingkasSupplier {
     warna: string;
 }
 
-export function ringkasSupplier(lots: CoalLot[]): RingkasSupplier[] {
-    const peta = petaWarnaSupplier(lots);
+/**
+ * petaWarna sengaja bisa dititipkan dari luar: pemanggilnya biasanya meringkas
+ * lot SISA, sedangkan paletnya harus tetap dihitung dari daftar lot penuh —
+ * kalau tidak, supplier yang stoknya habis menghilang dari daftar dan warna
+ * supplier lain ikut bergeser, jadi legend beda warna dengan denah.
+ */
+export function ringkasSupplier(lots: CoalLot[], petaWarna?: Record<string, string>): RingkasSupplier[] {
+    const peta = petaWarna ?? petaWarnaSupplier(lots);
     const map = new Map<string, { ton: number; zona: Set<string> }>();
     for (const lot of lots) {
         const entry = map.get(lot.supplier) ?? { ton: 0, zona: new Set<string>() };
@@ -186,8 +228,168 @@ export function formatTon(n: number): string {
     return Math.round(n).toLocaleString('id-ID');
 }
 
+/** Tanggal tanpa tahun untuk kolom tabel yang sempit: '04 Agt'. */
+export function formatTanggalPendek(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+}
+
 export function formatTanggal(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/** Awal hari (dalam skala UTC) dari sebuah tanggal — dasar hitung selisih hari. */
+function awalHariUTC(d: Date): number {
+    return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/**
+ * Umur tumpukan dalam hari kalender.
+ *
+ * Dihitung dari tanggal, bukan dari jam: tumpukan yang masuk kemarin sore
+ * tetap terbaca "1 hari", bukan "0 hari". Nilainya bisa negatif kalau tanggal
+ * masuknya ada di depan hari ini — biar salah ketik tanggal kelihatan, bukan
+ * diam-diam dibulatkan jadi nol.
+ */
+export function umurHari(iso: string, acuan: Date = new Date()): number {
+    const [y, m, d] = iso.split('-').map(Number);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return 0;
+    return Math.round((awalHariUTC(acuan) - Date.UTC(y, m - 1, d)) / 86_400_000);
+}
+
+export interface TumpukanInfo {
+    lot: CoalLot;
+    area: CoalArea;
+    labelZona: string; // 'Closed · sebelum pilar 1'
+    umur: number;      // hari sejak tanggal masuk
+    warna: string;     // warna supplier, sama dengan yang dipakai denah
+}
+
+/**
+ * Seluruh tumpukan diurutkan dari yang paling lama menunggu di lapangan.
+ *
+ * Yang dikirim ke sini sebaiknya lot SISA (lihat lotsSisa) supaya tumpukan yang
+ * sudah habis diambil tidak ikut terdaftar sebagai "paling lama". Seri tanggal
+ * dimenangkan tumpukan yang lebih besar — sisa kecil di sebelahnya bukan yang
+ * perlu diketahui operator lebih dulu.
+ */
+export function daftarUmurStok(
+    lots: CoalLot[],
+    petaWarna?: Record<string, string>,
+    acuan?: Date,
+): TumpukanInfo[] {
+    const peta = petaWarna ?? petaWarnaSupplier(lots);
+    return [...lots]
+        .sort((a, b) => a.tanggal_masuk.localeCompare(b.tanggal_masuk) || b.ton - a.ton)
+        .map(lot => ({
+            lot,
+            area: areaOfZona(lot.zona),
+            labelZona: labelZonaPendek(lot.zona),
+            umur: umurHari(lot.tanggal_masuk, acuan),
+            warna: ambilWarna(peta, lot.supplier),
+        }));
+}
+
+// ── Loading: pengambilan batubara dari storage ke hopper ────────────────────
+
+/**
+ * Satu kali pengambilan oleh payloader. Bentuk barisnya sengaja disamakan
+ * dengan calon sumbernya di laporan shift handling (lihat lib/coal-loading-data.ts).
+ */
+export interface CoalLoading {
+    tanggal: string;           // 'YYYY-MM-DD'
+    shift: ShiftKey;
+    grup?: string;             // 'A'…'D'; kalau kosong diturunkan dari jadwal regu
+    zona: string;              // 'O3' | 'C7' — pilar asal
+    shovel: number;            // jumlah shovel payloader
+    hopper: HopperKey;         // A = darat, B = laut, AB = keduanya
+}
+
+export type HopperKey = 'A' | 'B' | 'AB';
+
+/** Kapasitas satu shovel payloader — ESTIMASI, makanya tonasenya selalu ditulis "±". */
+export const TON_PER_SHOVEL = 10;
+
+/** Hopper disimpan sebagai A/B/AB (ikut kolom laporan shift), ditampilkan sebagai lokasinya. */
+export const HOPPER_LABEL: Record<HopperKey, string> = { A: 'Darat', B: 'Laut', AB: 'D+L' };
+
+export function tonKeluarZona(loadings: CoalLoading[], zonaId: string): number {
+    return loadings
+        .filter(l => l.zona === zonaId)
+        .reduce((t, l) => t + l.shovel * TON_PER_SHOVEL, 0);
+}
+
+/**
+ * Lot yang benar-benar masih ada di lapangan: penempatan masuk dikurangi loading.
+ *
+ * Pengurangannya FIFO per zona — tumpukan tertua di zona itu habis lebih dulu,
+ * sesuai cara payloader mengeruk. Lot yang tersisa nol dibuang dari hasil, dan
+ * loading yang melebihi isi zona di-clamp (tidak pernah membuat sisa negatif).
+ */
+export function lotsSisa(lots: CoalLot[], loadings: CoalLoading[]): CoalLot[] {
+    const jatah = new Map<string, number>();
+    for (const l of loadings) {
+        jatah.set(l.zona, (jatah.get(l.zona) ?? 0) + l.shovel * TON_PER_SHOVEL);
+    }
+
+    const sisa: CoalLot[] = [];
+    for (const lot of [...lots].sort((a, b) => a.tanggal_masuk.localeCompare(b.tanggal_masuk))) {
+        const keluar = jatah.get(lot.zona) ?? 0;
+        const diambil = Math.min(keluar, lot.ton);
+        jatah.set(lot.zona, keluar - diambil);
+        if (lot.ton - diambil > 0) sisa.push({ ...lot, ton: lot.ton - diambil });
+    }
+    return sisa;
+}
+
+export interface LoadingInfo {
+    loading: CoalLoading;
+    area: CoalArea;
+    labelZona: string;        // 'Closed · pilar 4–5'
+    grup: string;             // 'A'…'D'
+    ton: number;              // shovel × TON_PER_SHOVEL
+    supplier: string | null;  // batubara siapa yang terkeruk di sana
+    warna: string | null;
+}
+
+// Urutan kronologis dalam satu tanggal laporan: malam (23:00 D-1 → 07:00 D) lalu pagi, lalu sore.
+const URUT_SHIFT: Record<ShiftKey, number> = { malam: 0, pagi: 1, sore: 2 };
+
+/**
+ * Riwayat loading, terbaru di atas.
+ *
+ * Supplier per baris ditebak dari lot TERTUA di zona itu — sama dengan urutan
+ * FIFO yang dipakai lotsSisa, jadi titik warnanya sejalan dengan gundukan yang
+ * memang berkurang di denah. Zona yang tak punya penempatan sama sekali
+ * dibiarkan tanpa supplier (titik warnanya tidak digambar).
+ */
+export function daftarLoading(
+    lots: CoalLot[],
+    loadings: CoalLoading[],
+    petaWarna?: Record<string, string>,
+): LoadingInfo[] {
+    const peta = petaWarna ?? petaWarnaSupplier(lots);
+    const tertua = new Map<string, string>();
+    for (const lot of [...lots].sort((a, b) => a.tanggal_masuk.localeCompare(b.tanggal_masuk))) {
+        if (!tertua.has(lot.zona)) tertua.set(lot.zona, lot.supplier);
+    }
+
+    return [...loadings]
+        .sort((a, b) =>
+            b.tanggal.localeCompare(a.tanggal) || URUT_SHIFT[b.shift] - URUT_SHIFT[a.shift])
+        .map(loading => {
+            const supplier = tertua.get(loading.zona) ?? null;
+            return {
+                loading,
+                area: areaOfZona(loading.zona),
+                labelZona: labelZonaPendek(loading.zona),
+                grup: loading.grup ?? getGroupForShift(loading.tanggal, loading.shift),
+                ton: loading.shovel * TON_PER_SHOVEL,
+                supplier,
+                warna: supplier ? ambilWarna(peta, supplier) : null,
+            };
+        });
 }

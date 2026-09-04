@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react';
 import ZonaDetail from './ZonaDetail';
 import {
-    ambilWarna, CoalArea, CoalLot, jumlahZona, kapasitasZona, lotsZona, namaZona,
+    ambilWarna, CoalArea, CoalLot, jumlahZona, kapasitasZona, lotsZona, namaZona, Sorotan,
 } from '@/lib/coal-storage';
 
 // Siluet gundukan batubara: trapesium dengan bahu miring di atas, bukan kotak.
@@ -17,14 +17,18 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
     delayMs: number;
     lots: CoalLot[];
     warna: Record<string, string>;
-    highlight: string | null;
+    highlight: Sorotan | null;
     onSelect: (index: number) => void;
 }) {
     const zLots = lotsZona(lots, zonaId);
     const total = zLots.reduce((t, l) => t + l.ton, 0);
     const pct = Math.min(100, (total / kapasitasZona(zonaId)) * 100);
     const kosong = total === 0;
-    const dim = !!highlight && !zLots.some(l => l.supplier === highlight);
+    // Sorotan supplier menyalakan semua petak yang memuatnya; sorotan zona
+    // (dari tabel di bawah denah) cuma menyalakan satu petak.
+    const dim = !!highlight && (highlight.tipe === 'zona'
+        ? highlight.nilai !== zonaId
+        : !zLots.some(l => l.supplier === highlight.nilai));
     const jml = jumlahZona(area);
 
     // Kartu popover dirapatkan ke tepi di zona ujung supaya tidak terpotong.

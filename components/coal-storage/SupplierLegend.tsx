@@ -1,16 +1,21 @@
 'use client';
 
-import { CoalLot, formatTon, ringkasSupplier } from '@/lib/coal-storage';
+import { CoalLot, formatTon, ringkasSupplier, Sorotan } from '@/lib/coal-storage';
 
 /**
  * Chip per supplier. Hover (atau fokus keyboard) menyorot sebaran supplier itu
  * di denah — zona yang tidak memuatnya diredupkan lewat prop highlight.
+ *
+ * Peta warna dititipkan dari halaman (bukan dihitung ulang di sini) karena lots
+ * yang masuk adalah lot sisa: supplier yang stoknya habis tidak ada di daftar,
+ * dan palet yang dihitung ulang akan menggeser warna supplier lainnya.
  */
-export default function SupplierLegend({ lots, onHighlight }: {
+export default function SupplierLegend({ lots, warna, onSorot }: {
     lots: CoalLot[];
-    onHighlight: (nama: string | null) => void;
+    warna: Record<string, string>;
+    onSorot: (s: Sorotan | null) => void;
 }) {
-    const data = ringkasSupplier(lots);
+    const data = ringkasSupplier(lots, warna);
     if (data.length === 0) return null;
 
     return (
@@ -24,10 +29,10 @@ export default function SupplierLegend({ lots, onHighlight }: {
                     <button
                         key={s.nama}
                         type="button"
-                        onMouseEnter={() => onHighlight(s.nama)}
-                        onMouseLeave={() => onHighlight(null)}
-                        onFocus={() => onHighlight(s.nama)}
-                        onBlur={() => onHighlight(null)}
+                        onMouseEnter={() => onSorot({ tipe: 'supplier', nilai: s.nama })}
+                        onMouseLeave={() => onSorot(null)}
+                        onFocus={() => onSorot({ tipe: 'supplier', nilai: s.nama })}
+                        onBlur={() => onSorot(null)}
                         className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1
                             text-[11px] text-slate-700 hover:border-slate-400 hover:shadow-sm hover:-translate-y-px
                             transition-[border-color,box-shadow,translate] duration-200 cursor-pointer

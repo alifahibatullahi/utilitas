@@ -5,7 +5,7 @@ import ZonaBin from './ZonaBin';
 import ZonaDetail from './ZonaDetail';
 import {
     CoalArea, CoalLot, DENAH_MIN_WIDTH_PX, formatTon, jumlahZona,
-    persenZona, tonArea, tonZona, zonaIds,
+    persenZona, Sorotan, tonArea, tonZona, zonaIds,
 } from '@/lib/coal-storage';
 
 /**
@@ -26,7 +26,7 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
     areaIndex: number;
     lots: CoalLot[];
     warna: Record<string, string>;
-    highlight: string | null;
+    highlight: Sorotan | null;
 }) {
     const [selected, setSelected] = useState<number | null>(null);
     const zonas = zonaIds(area);

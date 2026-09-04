@@ -37,10 +37,10 @@ function useCountUp(target: number, durasiMs = 900) {
 }
 
 /**
- * Angka sorotan halaman: stok yang masih ada di kedua area, yaitu seluruh
- * penempatan dikurangi yang sudah diambil payloader (diambilTon).
+ * Angka sorotan halaman: stok yang masih ada di kedua area — seluruh penempatan
+ * yang sudah dikurangi loading (pemanggilnya mengirim lot sisa).
  */
-export default function RingkasanEstimasi({ lots, diambilTon }: { lots: CoalLot[]; diambilTon: number }) {
+export default function RingkasanEstimasi({ lots }: { lots: CoalLot[] }) {
     const total = lots.reduce((t, l) => t + l.ton, 0);
     const pct = (total / TOTAL_KAPASITAS_TON) * 100;
     // Hanya angka utama yang dihitung naik; persen dan kapasitas dibiarkan diam
@@ -54,11 +54,6 @@ export default function RingkasanEstimasi({ lots, diambilTon }: { lots: CoalLot[
                 <p className="text-3xl font-bold text-orange-900 leading-tight tabular-nums">
                     <span ref={angkaRef}>{formatTon(total)}</span> <span className="text-sm font-semibold">ton</span>
                 </p>
-                {diambilTon > 0 && (
-                    <p className="text-[11px] font-medium text-orange-800 mt-0.5">
-                        sudah diambil ± {formatTon(diambilTon)} ton
-                    </p>
-                )}
             </div>
             <div className="flex-1 min-w-[170px]">
                 <div className="flex justify-between text-[11px] font-medium text-orange-800 mb-1.5">

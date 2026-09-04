@@ -3,9 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
-import {
-    COAL_AREAS, formatTanggal, lotsSisa, petaWarnaSupplier, Sorotan, TON_PER_SHOVEL,
-} from '@/lib/coal-storage';
+import { COAL_AREAS, formatTanggal, lotsSisa, petaWarnaSupplier, Sorotan } from '@/lib/coal-storage';
 import { COAL_LOTS, COAL_LOTS_UPDATED_AT } from '@/lib/coal-storage-data';
 import { COAL_LOADINGS } from '@/lib/coal-loading-data';
 import RingkasanEstimasi from '@/components/coal-storage/RingkasanEstimasi';
@@ -36,8 +34,6 @@ function GuardedPage() {
     const warna = useMemo(() => petaWarnaSupplier(COAL_LOTS), []);
     // Yang ditampilkan di denah adalah stok nyata: penempatan masuk − loading.
     const sisa = useMemo(() => lotsSisa(COAL_LOTS, COAL_LOADINGS), []);
-    const diambilTon = useMemo(
-        () => COAL_LOADINGS.reduce((t, l) => t + l.shovel * TON_PER_SHOVEL, 0), []);
 
     // Belum login → ke halaman pilih operator dengan tujuan dititipkan di ?next=,
     // supaya link dari WA tetap mendarat di sini (pola /critical-maintenance).
@@ -92,7 +88,7 @@ function GuardedPage() {
                     </div>
 
                     <div className="cs-fade-up" style={{ animationDelay: '80ms' }}>
-                        <RingkasanEstimasi lots={sisa} diambilTon={diambilTon} />
+                        <RingkasanEstimasi lots={sisa} />
                     </div>
 
                     {COAL_AREAS.map((area, i) => (

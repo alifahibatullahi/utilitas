@@ -10,7 +10,7 @@ interface AppShellProps {
 
 // Prefix rute yang latarnya terang. Dipakai untuk latar shell sekaligus warna
 // tombol Menu melayang — tombol gelap di atas halaman putih terlihat salah.
-const LIGHT_ROUTES = ['/logbook', '/admin'];
+const LIGHT_ROUTES = ['/logbook', '/admin', '/coal-storage', '/piping'];
 
 export default function AppShell({ children }: AppShellProps) {
     const pathname = usePathname();
@@ -29,8 +29,11 @@ export default function AppShell({ children }: AppShellProps) {
 
     // Bar atas (logo + Menu) DIHAPUS di semua halaman (permintaan user). Navigasi ke
     // /home diganti tombol Menu floating kiri-bawah — kecuali input-laporan yang sudah
-    // punya tombol Menu di grup floating kanan-bawah miliknya sendiri.
-    const hasOwnMenuButton = pathname.startsWith('/input-laporan') || pathname.startsWith('/coal-storage');
+    // punya tombol Menu di grup floating kanan-bawah miliknya sendiri, serta
+    // coal-storage & piping yang punya tombol home di header berlogo masing-masing.
+    const hasOwnMenuButton = pathname.startsWith('/input-laporan')
+        || pathname.startsWith('/coal-storage')
+        || pathname.startsWith('/piping');
 
     // Rute bertema terang. Konversi tema memang bertahap per halaman, jadi daftar ini
     // tumbuh sedikit demi sedikit; halaman yang sengaja tetap gelap (tank-level,

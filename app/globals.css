@@ -202,6 +202,14 @@ body {
   zoom: 90%;
 }
 
+/* Halaman bertema terang menandai kanvasnya dengan .light-canvas supaya latar
+   body ikut terang — kalau tidak, area overscroll dan sisa layar di bawah konten
+   pendek menyisakan warna gelap. Inert untuk halaman gelap: mereka tidak pernah
+   merender kelas ini, jadi aturan default di atas tetap berlaku. */
+body:has(.light-canvas) {
+  background-color: #fafafa;
+}
+
 /* Scrollbar-hide utility */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

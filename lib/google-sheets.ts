@@ -546,15 +546,25 @@ export async function upsertTankLevelsShift(levels: TankLevelsInput, now?: Date)
 //   Kolom B = tanggal (nilai sel DD/MM/YYYY, dirender "12 Juni 2026" oleh format kolom)
 //   Kolom C = shift (dropdown data-validation: Malam/Pagi/Sore)
 //   Kolom D = catatan operasional (free text, sering diketik manual)
-// Konten dari aplikasi dibungkus penanda <Web Laporan UBB>...</Web Laporan UBB>
-// supaya terbedakan dari isian manual; teks di luar penanda TIDAK PERNAH diubah.
+// Konten dari aplikasi dibungkus penanda TAK TERLIHAT (karakter zero-width)
+// supaya terbedakan dari isian manual tanpa mengotori sel; teks di luar penanda
+// TIDAK PERNAH diubah.
 // Upsert per (tanggal, shift): baris existing → update kolom D saja; belum ada →
 // baris baru di bawah baris terakhir yang kolom B-nya terisi.
 
 const CATATAN_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_CATATAN_ID || '1qbN1nrpJmVJ_WY2YPGB4TCJixLrf5cwAyycqqHZC1mw';
 const CATATAN_SHEET_GID = 457458234;
-export const CATATAN_MARKER_START = '<Web Laporan UBB>';
-export const CATATAN_MARKER_END = '</Web Laporan UBB>';
+// Penanda pembungkus blok aplikasi di kolom D. Zero-width: tidak kelihatan di
+// Sheets, tapi ikut tersimpan apa adanya karena kolom D ditulis dengan
+// valueInputOption RAW. Jangan pakai \uFEFF — satu-satunya zero-width yang ikut
+// dibuang String.trim(), sehingga akan merusak cek "sel kosong" di bawah.
+export const CATATAN_MARKER_START = '\u2060\u200B\u2060'; // WJ + ZWSP + WJ
+export const CATATAN_MARKER_END = '\u2060\u200C\u2060';   // WJ + ZWNJ + WJ
+// Penanda teks versi lama. Masih dikenali supaya baris yang sudah terlanjur
+// berisi tag ini ikut rapi sendiri saat baris itu ditulis ulang — tidak perlu
+// migrasi massal.
+const CATATAN_LEGACY_START = '<Web Laporan UBB>';
+const CATATAN_LEGACY_END = '</Web Laporan UBB>';
 const CATATAN_SHIFT_LABEL: Record<'malam' | 'pagi' | 'sore', string> = {
     malam: 'Malam',
     pagi: 'Pagi',
@@ -596,12 +606,38 @@ function parseCatatanSheetDate(raw: string): string | null {
 }
 
 export function buildCatatanBlock(canonical: string): string {
-    return `${CATATAN_MARKER_START}\n${canonical.trim()}\n${CATATAN_MARKER_END}`;
+    return `${CATATAN_MARKER_START}${canonical.trim()}${CATATAN_MARKER_END}`;
+}
+
+/** Batas blok aplikasi di sel: penanda tak-terlihat dulu, lalu penanda teks lama.
+ *  null = sel tidak punya blok. Index-based (bukan regex) supaya karakter apa pun
+ *  di teks user aman. */
+function findCatatanBlock(cell: string): { start: number; endExclusive: number } | null {
+    const pairs = [
+        [CATATAN_MARKER_START, CATATAN_MARKER_END],
+        [CATATAN_LEGACY_START, CATATAN_LEGACY_END],
+    ] as const;
+    for (const [open, close] of pairs) {
+        const start = cell.indexOf(open);
+        if (start < 0) continue;
+        const end = cell.indexOf(close, start + open.length);
+        if (end < 0) continue;
+        return { start, endExclusive: end + close.length };
+    }
+    return null;
+}
+
+/** Buang semua penanda (baru & lama) — dipakai untuk membandingkan isi, bukan
+ *  untuk menulis balik ke sel. */
+function stripCatatanMarkers(cell: string): string {
+    return [CATATAN_MARKER_START, CATATAN_MARKER_END, CATATAN_LEGACY_START, CATATAN_LEGACY_END]
+        .reduce((acc, marker) => acc.split(marker).join(''), cell);
 }
 
 /** Merge catatan kanonik ke isi sel D existing. Aturan:
  *  - Blok penanda ada → ganti HANYA isi blok (pasangan penanda pertama); teks di
- *    luar blok preserved byte-for-byte.
+ *    luar blok preserved byte-for-byte. Blok ber-penanda LAMA ikut tergantikan
+ *    blok ber-penanda baru, jadi baris lama bersih sendiri sekali tulis.
  *  - Blok ada + canonical kosong → no-op (anti-wipe — catatan yang dikosongkan di
  *    app tidak menghapus blok, konsisten guard di useShiftReport).
  *  - Tidak ada blok + sel berisi → append blok dgn pemisah baris kosong, dedup per
@@ -613,17 +649,19 @@ export function buildCatatanBlock(canonical: string): string {
 export function mergeCatatanCell(existing: string, canonical: string): { next: string; changed: boolean } {
     const cell = existing ?? '';
     const trimmedCanonical = canonical.trim();
-    const start = cell.indexOf(CATATAN_MARKER_START);
-    const end = start >= 0 ? cell.indexOf(CATATAN_MARKER_END, start + CATATAN_MARKER_START.length) : -1;
+    const block = findCatatanBlock(cell);
 
-    if (start >= 0 && end >= 0) {
+    if (block) {
         if (!trimmedCanonical) return { next: cell, changed: false };
-        const next = cell.slice(0, start) + buildCatatanBlock(trimmedCanonical) + cell.slice(end + CATATAN_MARKER_END.length);
+        const next = cell.slice(0, block.start) + buildCatatanBlock(trimmedCanonical) + cell.slice(block.endExclusive);
         return { next, changed: next !== cell };
     }
     if (!trimmedCanonical) return { next: cell, changed: false };
-    if (!cell.trim()) return { next: buildCatatanBlock(trimmedCanonical), changed: true };
-    const existingLines = new Set(cell.split('\n').map(l => l.trim()).filter(Boolean));
+    // Bandingkan tanpa penanda: String.trim() tidak membuang ZWSP/WJ, jadi sel
+    // yang tinggal sisa penanda harus tetap dianggap kosong.
+    const bare = stripCatatanMarkers(cell);
+    if (!bare.trim()) return { next: buildCatatanBlock(trimmedCanonical), changed: true };
+    const existingLines = new Set(bare.split('\n').map(l => l.trim()).filter(Boolean));
     const newLines = trimmedCanonical.split('\n').map(l => l.trim()).filter(Boolean).filter(l => !existingLines.has(l));
     if (newLines.length === 0) return { next: cell, changed: false };
     return { next: `${cell.replace(/\s+$/, '')}\n\n${buildCatatanBlock(newLines.join('\n'))}`, changed: true };

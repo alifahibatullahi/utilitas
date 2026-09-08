@@ -1434,8 +1434,8 @@ export function useShiftReport(
 
         // Sync Catatan Operasional ke spreadsheet catatan — fire-and-forget.
         // Server re-fetch dari DB (sudah termasuk merge station_catatan via RPC di
-        // atas), hitung catatan kanonik, dan upsert kolom D dgn blok penanda
-        // <Web Laporan UBB>. Dipanggil tiap submit (bukan hanya saat field catatan
+        // atas), hitung catatan kanonik, dan upsert kolom D dgn blok berpenanda
+        // tak terlihat. Dipanggil tiap submit (bukan hanya saat field catatan
         // terisi) karena auto-lines solar/ash/bunker bisa bikin catatan non-kosong;
         // server skip kalau kosong + anti-wipe. Gagal tidak memblok save.
         fetch('/api/sheets/write', {

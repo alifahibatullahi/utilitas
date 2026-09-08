@@ -64,15 +64,28 @@ async function main() {
     const rule = dv.data.sheets?.[0]?.data?.[0]?.rowData?.[0]?.values?.[0]?.dataValidation;
     console.log('dropdown C:', JSON.stringify(rule?.condition ?? null));
 
-    // 4. Dry-run mergeCatatanCell
+    // 4. Dry-run mergeCatatanCell. Penanda blok TAK TERLIHAT, jadi hasil merge
+    //    dicetak lewat JSON.stringify supaya escape-nya kelihatan dan bisa
+    //    dibedakan dari teks biasa.
     const sampleManual = 'Cek level tangki solar jam 10, normal.';
     const canonical1 = '• Sootblower boiler A jam 14:00\n• Kedatangan solar dari PT X sebanyak 5.000 L';
     const m1 = mergeCatatanCell(sampleManual, canonical1);
-    console.log('\n[dry-run] manual + blok baru:\n' + m1.next);
+    console.log('\n[dry-run] manual + blok baru:\n' + JSON.stringify(m1.next));
     const m2 = mergeCatatanCell(m1.next, canonical1 + '\n• Vibrasi turbin naik 0,2 mm/s');
-    console.log('\n[dry-run] blok di-update:\n' + m2.next);
+    console.log('\n[dry-run] blok di-update:\n' + JSON.stringify(m2.next));
     const m3 = mergeCatatanCell(m1.next, canonical1);
     console.log('\n[dry-run] re-save identik → changed =', m3.changed, '(harus false)');
+
+    // 4b. Baris warisan: sel yang masih memakai penanda teks lama harus ikut
+    //     dirapikan jadi penanda tak terlihat, tanpa menyisakan tag sedikit pun
+    //     dan tanpa menyentuh teks manual di luar blok.
+    const legacyCell = `${sampleManual}\n\n<Web Laporan UBB>\n${canonical1}\n</Web Laporan UBB>`;
+    const m4 = mergeCatatanCell(legacyCell, canonical1 + '\n• Baris tambahan');
+    const tagTersisa = m4.next.includes('Web Laporan UBB');
+    console.log('\n[dry-run] penanda lama → baru:\n' + JSON.stringify(m4.next));
+    console.log('  teks manual terjaga :', m4.next.startsWith(sampleManual), '(harus true)');
+    console.log('  sisa tag lama       :', tagTersisa, '(harus false)');
+    console.log('  blok terlihat bersih:', JSON.stringify(m4.next.replace(/[\u2060\u200B\u200C]/g, '')));
 
     // 5. Upsert nyata (opsional, --write): tanggal tes kemarin supaya tidak tabrakan
     if (process.argv.includes('--write')) {

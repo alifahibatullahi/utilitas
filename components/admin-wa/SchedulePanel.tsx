@@ -52,32 +52,32 @@ export default function SchedulePanel() {
     return (
         <div className="space-y-4">
             <div>
-                <h3 className="text-sm font-bold text-white">Jadwal Reminder</h3>
-                <p className="text-xs text-text-secondary mt-1">
+                <h3 className="text-sm font-bold text-slate-900">Jadwal Reminder</h3>
+                <p className="text-xs text-slate-500 mt-1">
                     Reminder dikirim <b>1x per shift</b> (tidak repeat). Cron eksternal ping endpoint tiap 15 menit;
                     pengiriman pertama setelah <b>Jam mulai</b> akan trigger send, lalu di-skip permanen sampai laporan berikutnya.
                 </p>
-                <p className="text-xs text-text-secondary mt-1">
-                    <b>Jam selesai</b> = batas akhir window (kalau cron baru aktif setelah jam ini, reminder dilewat). Untuk jam yang melewati tengah malam, gunakan jam &gt; 23 (mis. <code className="text-amber-300">26:00</code> = 02:00 hari berikutnya).
+                <p className="text-xs text-slate-500 mt-1">
+                    <b>Jam selesai</b> = batas akhir window (kalau cron baru aktif setelah jam ini, reminder dilewat). Untuk jam yang melewati tengah malam, gunakan jam &gt; 23 (mis. <code className="text-amber-700">26:00</code> = 02:00 hari berikutnya).
                 </p>
             </div>
 
-            {msg && <div className="text-sm bg-surface-highlight/50 border border-slate-700 rounded-lg px-4 py-2 text-white">{msg}</div>}
+            {msg && <div className="text-sm bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-slate-800">{msg}</div>}
 
-            {loading && <div className="text-text-secondary text-sm">Memuat...</div>}
+            {loading && <div className="text-slate-500 text-sm">Memuat...</div>}
 
             <div className="space-y-3">
                 {rows.map(r => (
-                    <div key={r.id} className="bg-surface-dark rounded-xl border border-slate-800 p-5">
+                    <div key={r.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
                         <div className="flex items-start justify-between gap-4 mb-4">
                             <div>
-                                <h4 className="text-sm font-bold text-white">{r.label}</h4>
-                                <code className="text-xs text-emerald-400">{r.id}</code>
-                                <span className="ml-2 text-xs text-text-secondary">
+                                <h4 className="text-sm font-bold text-slate-900">{r.label}</h4>
+                                <code className="text-xs text-emerald-600">{r.id}</code>
+                                <span className="ml-2 text-xs text-slate-500">
                                     Window aktif: {fmtTime(r.start_hour, r.start_minute)} → {fmtTime(r.end_hour, r.end_minute)}
                                 </span>
                             </div>
-                            <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer whitespace-nowrap">
+                            <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer whitespace-nowrap">
                                 <input type="checkbox" checked={r.enabled} onChange={e => update(r.id, { enabled: e.target.checked })} />
                                 Aktif
                             </label>
@@ -106,16 +106,16 @@ export default function SchedulePanel() {
 function Field({ label, value, min, max, onChange, hint }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void; hint?: string }) {
     return (
         <div>
-            <label className="block text-xs text-text-secondary uppercase mb-1.5">{label}</label>
+            <label className="block text-xs text-slate-500 uppercase mb-1.5">{label}</label>
             <input
                 type="number"
                 value={value}
                 min={min}
                 max={max}
                 onChange={e => onChange(Number(e.target.value))}
-                className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-primary"
+                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-sm font-mono focus:outline-none focus:border-primary"
             />
-            {hint && <p className="text-[10px] text-text-secondary mt-1">{hint}</p>}
+            {hint && <p className="text-[10px] text-slate-500 mt-1">{hint}</p>}
         </div>
     );
 }

@@ -30,7 +30,7 @@ export default function NotificationHubPage() {
 
     useEffect(() => {
         if (!operator) router.push('/');
-        else if (!canManageUsers) router.push('/dashboard');
+        else if (!canManageUsers) router.push('/home');
     }, [operator, canManageUsers, router]);
 
     if (!operator || !canManageUsers) return null;
@@ -38,22 +38,22 @@ export default function NotificationHubPage() {
     return (
         <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto space-y-6">
             <header className="flex items-center gap-4">
-                <div className="p-3 bg-indigo-500/20 rounded-xl">
-                    <span className="material-symbols-outlined text-indigo-400 text-2xl">hub</span>
+                <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+                    <span className="material-symbols-outlined text-indigo-500 text-2xl">hub</span>
                 </div>
                 <div>
-                    <h2 className="text-2xl font-black tracking-tight text-white">WhatsApp Hub</h2>
-                    <p className="text-text-secondary text-sm mt-1">Pusat pengaturan notifikasi WhatsApp — log, jadwal, template, group, & operator.</p>
+                    <h2 className="text-2xl font-black tracking-tight text-slate-900">WhatsApp Hub</h2>
+                    <p className="text-neutral-400 text-sm mt-1">Pusat pengaturan notifikasi WhatsApp — log, jadwal, template, group, & operator.</p>
                 </div>
             </header>
 
-            <div className="border-b border-slate-800 flex flex-wrap gap-1">
+            <div className="border-b border-slate-200 flex flex-wrap gap-1">
                 {TABS.map(t => (
                     <button key={t.id} onClick={() => setTab(t.id)}
                         className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all cursor-pointer
                             ${tab === t.id
-                                ? 'border-primary text-white'
-                                : 'border-transparent text-text-secondary hover:text-white hover:bg-surface-highlight/30'}`}>
+                                ? 'border-primary text-blue-700'
+                                : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}>
                         <span className="material-symbols-outlined text-base">{t.icon}</span>
                         {t.label}
                     </button>

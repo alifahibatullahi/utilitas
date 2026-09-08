@@ -58,51 +58,51 @@ export default function RecipientsPanel() {
     return (
         <div className="space-y-4">
             <div>
-                <h3 className="text-sm font-bold text-white">Penerima Pribadi Reminder</h3>
-                <p className="text-xs text-text-secondary mt-1">
+                <h3 className="text-sm font-bold text-slate-900">Penerima Pribadi Reminder</h3>
+                <p className="text-xs text-slate-500 mt-1">
                     Untuk grup yang punya penerima di sini (mis. A–C), reminder <b>shift</b> &amp; <b>harian (LHUBB)</b>
                     dikirim <b>hanya ke nomor-nomor ini</b> — <i>tidak</i> ke grup WhatsApp. Grup tanpa penerima
                     (mis. D) tetap dikirim ke grup WhatsApp. Format: <code>628xxxxxxxxxx</code>.
                 </p>
             </div>
 
-            {msg && <div className="text-sm bg-surface-highlight/50 border border-slate-700 rounded-lg px-4 py-2 text-white">{msg}</div>}
+            {msg && <div className="text-sm bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-slate-800">{msg}</div>}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-surface-dark rounded-xl border border-slate-800 overflow-hidden">
-                    <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-white">Daftar Penerima</h4>
-                        <span className="text-xs text-text-secondary">{rows.length} orang</span>
+                <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-slate-900">Daftar Penerima</h4>
+                        <span className="text-xs text-slate-500">{rows.length} orang</span>
                     </div>
                     <div className="overflow-x-auto">
-                        {loading && <div className="text-center py-8 text-text-secondary text-sm">Memuat...</div>}
-                        {!loading && rows.length === 0 && <div className="text-center py-8 text-text-secondary text-sm">Belum ada penerima. Tambah di sebelah kanan.</div>}
+                        {loading && <div className="text-center py-8 text-slate-500 text-sm">Memuat...</div>}
+                        {!loading && rows.length === 0 && <div className="text-center py-8 text-slate-500 text-sm">Belum ada penerima. Tambah di sebelah kanan.</div>}
                         {!loading && GROUPS.map(g => {
                             const groupRows = rows.filter(r => r.group_letter === g);
                             if (groupRows.length === 0) return null;
                             return (
                                 <div key={g}>
-                                    <div className="px-5 py-2 bg-surface-highlight/20 text-xs font-bold text-emerald-400 uppercase tracking-wider">Grup {g}</div>
+                                    <div className="px-5 py-2 bg-slate-50 text-xs font-bold text-emerald-600 uppercase tracking-wider">Grup {g}</div>
                                     <table className="w-full text-sm">
-                                        <tbody className="divide-y divide-slate-800/50">
+                                        <tbody className="divide-y divide-slate-100">
                                             {groupRows.map(r => (
-                                                <tr key={r.id} className="hover:bg-surface-highlight/30">
+                                                <tr key={r.id} className="hover:bg-slate-50">
                                                     <td className="py-3 px-5">
-                                                        <span className="text-white font-medium">{r.name}</span>
+                                                        <span className="text-slate-800 font-medium">{r.name}</span>
                                                     </td>
-                                                    <td className="py-3 px-3"><code className="text-xs text-text-secondary">{r.phone_number}</code></td>
+                                                    <td className="py-3 px-3"><code className="text-xs text-slate-500">{r.phone_number}</code></td>
                                                     <td className="py-3 px-3 text-center">
-                                                        <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.active ? 'bg-emerald-400' : 'bg-slate-600'}`} title={r.active ? 'Aktif' : 'Nonaktif'} />
+                                                        <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.active ? 'bg-emerald-500' : 'bg-slate-300'}`} title={r.active ? 'Aktif' : 'Nonaktif'} />
                                                     </td>
                                                     <td className="py-3 px-5">
                                                         <div className="flex items-center justify-center gap-1">
-                                                            <button onClick={() => test(r.phone_number)} title="Test send" className="p-1.5 rounded-lg hover:bg-surface-highlight text-text-secondary hover:text-emerald-400 cursor-pointer">
+                                                            <button onClick={() => test(r.phone_number)} title="Test send" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-emerald-600 cursor-pointer">
                                                                 <span className="material-symbols-outlined text-base">send</span>
                                                             </button>
-                                                            <button onClick={() => startEdit(r)} title="Edit" className="p-1.5 rounded-lg hover:bg-surface-highlight text-text-secondary hover:text-white cursor-pointer">
+                                                            <button onClick={() => startEdit(r)} title="Edit" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-900 cursor-pointer">
                                                                 <span className="material-symbols-outlined text-base">edit</span>
                                                             </button>
-                                                            <button onClick={() => remove(r.id, r.name)} title="Hapus" className="p-1.5 rounded-lg hover:bg-red-500/10 text-text-secondary hover:text-red-400 cursor-pointer">
+                                                            <button onClick={() => remove(r.id, r.name)} title="Hapus" className="p-1.5 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 cursor-pointer">
                                                                 <span className="material-symbols-outlined text-base">delete</span>
                                                             </button>
                                                         </div>
@@ -117,40 +117,40 @@ export default function RecipientsPanel() {
                     </div>
                 </div>
 
-                <div className="bg-surface-dark rounded-xl border border-slate-800 p-5 space-y-4 h-fit">
-                    <h4 className="text-sm font-bold text-white">{editing ? 'Edit Penerima' : 'Tambah Penerima'}</h4>
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4 h-fit">
+                    <h4 className="text-sm font-bold text-slate-900">{editing ? 'Edit Penerima' : 'Tambah Penerima'}</h4>
 
                     <div>
-                        <label className="block text-xs text-text-secondary uppercase mb-1.5">Grup</label>
+                        <label className="block text-xs text-slate-500 uppercase mb-1.5">Grup</label>
                         <select value={form.group_letter} onChange={e => setForm({ ...form, group_letter: e.target.value })}
-                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary">
+                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-primary">
                             {GROUPS.map(g => <option key={g} value={g}>Grup {g}</option>)}
                         </select>
                     </div>
 
                     <div>
-                        <label className="block text-xs text-text-secondary uppercase mb-1.5">Nama</label>
+                        <label className="block text-xs text-slate-500 uppercase mb-1.5">Nama</label>
                         <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                             placeholder="Nama penerima"
-                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary" />
+                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-primary" />
                     </div>
 
                     <div>
-                        <label className="block text-xs text-text-secondary uppercase mb-1.5">Nomor WA</label>
+                        <label className="block text-xs text-slate-500 uppercase mb-1.5">Nomor WA</label>
                         <input value={form.phone_number} onChange={e => setForm({ ...form, phone_number: e.target.value })}
                             placeholder="628xxxxxxxxxx"
-                            className="w-full bg-surface-highlight border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary" />
-                        <p className="text-xs text-text-secondary mt-1">Tanpa &quot;+&quot;. Awalan <code>0</code> otomatis jadi <code>62</code>.</p>
+                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 font-mono text-xs focus:outline-none focus:border-primary" />
+                        <p className="text-xs text-slate-500 mt-1">Tanpa &quot;+&quot;. Awalan <code>0</code> otomatis jadi <code>62</code>.</p>
                     </div>
 
-                    <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+                    <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
                         <input type="checkbox" checked={form.active} onChange={e => setForm({ ...form, active: e.target.checked })} />
                         Aktif
                     </label>
 
                     <div className="flex gap-2 pt-2">
                         <button onClick={save} className="flex-1 px-4 py-2 text-sm bg-primary hover:bg-primary/90 text-white rounded-lg cursor-pointer">{editing ? 'Update' : 'Simpan'}</button>
-                        {editing && <button onClick={reset} className="px-4 py-2 text-sm text-text-secondary hover:text-white rounded-lg cursor-pointer">Batal</button>}
+                        {editing && <button onClick={reset} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-900 rounded-lg cursor-pointer">Batal</button>}
                     </div>
                 </div>
             </div>

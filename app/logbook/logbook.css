@@ -1,8 +1,9 @@
 /* ───────────────────────────────────────────────────────────
    Logbook "kertas" — gaya persis buku PG-LB-50-5004.
    Semua aturan di-scope di bawah .lb-paper agar tidak bocor
-   ke tema gelap aplikasi. Warna mengikuti lembar fisik:
-   kertas putih, garis grid hitam, teks hitam.
+   ke kelas lain. Warna mengikuti lembar fisik: kertas putih,
+   garis grid hitam, teks hitam — tidak berubah saat chrome
+   halaman ikut jadi terang.
    ─────────────────────────────────────────────────────────── */
 
 .lb-paper {
@@ -14,7 +15,10 @@
     width: 1000px;
     margin: 0 auto;
     padding: 12px;
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+    /* Bayangan tipis + garis rambut: di kanvas terang bayangan pekat versi lama
+       terlihat kotor. Garisnya lewat box-shadow, bukan border, supaya ikut
+       dimatikan aturan `box-shadow: none` di blok @media print di bawah. */
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06), 0 1px 6px rgba(15, 23, 42, 0.08);
     border-radius: 4px;
 }
 

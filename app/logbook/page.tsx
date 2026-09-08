@@ -432,7 +432,7 @@ export default function LogbookPage() {
             {/* Toolbar (tidak ikut print) */}
             <div className="lb-toolbar lb-no-print">
                 <button onClick={() => { const d = new Date(dateObj); d.setDate(d.getDate() - 7); setSelectedDate(toISO(d)); }}
-                    className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-surface-highlight transition-all cursor-pointer">
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer">
                     <span className="material-symbols-outlined text-sm">chevron_left</span>
                 </button>
                 <div className="flex items-center gap-1">
@@ -447,9 +447,9 @@ export default function LogbookPage() {
                             <button key={iso} onClick={() => setSelectedDate(iso)}
                                 title={isToday ? 'Hari ini' : undefined}
                                 className={`relative flex flex-col items-center w-10 py-1 rounded-lg cursor-pointer transition-all
-                                    ${isActive ? 'bg-primary text-white shadow-[0_0_12px_rgba(43,124,238,0.35)]'
-                                        : isToday ? 'text-primary ring-1 ring-primary/50 hover:bg-surface-highlight'
-                                            : 'text-text-secondary hover:text-white hover:bg-surface-highlight'}`}>
+                                    ${isActive ? 'bg-primary text-white shadow-sm'
+                                        : isToday ? 'text-blue-700 ring-1 ring-blue-300 hover:bg-slate-100'
+                                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
                                 <span className="text-[9px] font-semibold uppercase leading-none">{dayShort}</span>
                                 <span className={`text-sm font-bold leading-tight ${isActive ? 'text-white' : ''}`}>{d.getDate()}</span>
                                 <span className={`mt-0.5 w-1.5 h-1.5 rounded-full ${isToday ? (isActive ? 'bg-white' : 'bg-primary') : 'bg-transparent'}`} />
@@ -458,13 +458,13 @@ export default function LogbookPage() {
                     })}
                 </div>
                 <button onClick={() => { const d = new Date(dateObj); d.setDate(d.getDate() + 7); setSelectedDate(toISO(d)); }}
-                    className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-surface-highlight transition-all cursor-pointer">
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer">
                     <span className="material-symbols-outlined text-sm">chevron_right</span>
                 </button>
                 <div className="relative ml-1">
                     <input type="date" value={selectedDate} onChange={e => e.target.value && setSelectedDate(e.target.value)}
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                    <div className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-surface-highlight transition-all cursor-pointer">
+                    <div className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer">
                         <span className="material-symbols-outlined text-sm">calendar_today</span>
                     </div>
                 </div>
@@ -477,16 +477,16 @@ export default function LogbookPage() {
 
             {/* Banner error muat data (tidak ikut print) */}
             {loadError && (
-                <div className="lb-no-print mt-3 flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm">
-                    <span className="material-symbols-outlined text-red-400">error</span>
+                <div className="lb-no-print mt-3 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm">
+                    <span className="material-symbols-outlined text-red-500">error</span>
                     <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-red-200">Gagal memuat data logbook</p>
-                        <p className="text-red-300/80 text-xs mt-0.5 break-words">
+                        <p className="font-semibold text-red-800">Gagal memuat data logbook</p>
+                        <p className="text-red-600 text-xs mt-0.5 break-words">
                             Data yang tampil mungkin tidak lengkap atau belum diperbarui. ({loadError})
                         </p>
                     </div>
                     <button onClick={retry}
-                        className="shrink-0 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-100 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
+                        className="shrink-0 px-3 py-1.5 rounded-lg bg-white border border-red-200 hover:bg-red-100 text-red-700 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
                         <span className="material-symbols-outlined text-sm">refresh</span>
                         Coba lagi
                     </button>
@@ -497,11 +497,11 @@ export default function LogbookPage() {
             <div ref={fitRef} className="relative overflow-x-auto">
                 {/* Animasi loading data (load awal / ganti tanggal; tidak saat polling) */}
                 {dataLoading && (
-                    <div className="lb-no-print absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#0b1220]/70 backdrop-blur-sm rounded-lg min-h-[300px]">
-                        <div className="w-12 h-12 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin shadow-[0_0_12px_rgba(43,124,238,0.3)]"></div>
+                    <div className="lb-no-print absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-white/80 backdrop-blur-sm rounded-lg min-h-[300px]">
+                        <div className="w-12 h-12 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
                         <div className="text-center">
-                            <h3 className="text-white font-bold text-base mb-1">Memuat data logbook</h3>
-                            <p className="text-slate-400 text-sm">Mengambil laporan {formatDate(selectedDate)}...</p>
+                            <h3 className="text-slate-900 font-bold text-base mb-1">Memuat data logbook</h3>
+                            <p className="text-slate-500 text-sm">Mengambil laporan {formatDate(selectedDate)}...</p>
                         </div>
                     </div>
                 )}

@@ -542,20 +542,27 @@ export async function upsertTankLevelsShift(levels: TankLevelsInput, now?: Date)
 
 // ─── Catatan Operasional Sheet ────────────────────────────────────────────────
 //
-// Spreadsheet catatan operasional yang juga diisi manual oleh user:
+// Spreadsheet catatan operasional yang juga diisi manual oleh user. Sheet-nya
+// BERKOLOM PER KATEGORI (header di baris 2):
 //   Kolom B = tanggal (nilai sel DD/MM/YYYY, dirender "12 Juni 2026" oleh format kolom)
 //   Kolom C = shift (dropdown data-validation: Malam/Pagi/Sore)
-//   Kolom D = catatan operasional (free text, sering diketik manual)
+//   Kolom D = Operasional        ← ditulis aplikasi
+//   Kolom E = Switch Equipment     (manual — aplikasi tidak punya sumbernya)
+//   Kolom F = Unloading Fly Ash  ← ditulis aplikasi
+//   Kolom G = In-Out Solar       ← ditulis aplikasi
+//   Kolom H = In-Out Batubara      (manual)
+// Pembagian barisnya dilakukan partisiCatatanPerKolom di lib/shift-catatan.ts.
 // Konten dari aplikasi dibungkus penanda TAK TERLIHAT (karakter zero-width)
 // supaya terbedakan dari isian manual tanpa mengotori sel; teks di luar penanda
-// TIDAK PERNAH diubah.
-// Upsert per (tanggal, shift): baris existing → update kolom D saja; belum ada →
-// baris baru di bawah baris terakhir yang kolom B-nya terisi.
+// TIDAK PERNAH diubah. Tiap kolom punya blok penandanya sendiri.
+// Upsert per (tanggal, shift): baris existing → update kolom D/F/G yang berubah
+// saja; belum ada → baris baru di bawah baris terakhir yang kolom B-nya terisi.
 
 const CATATAN_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_CATATAN_ID || '1qbN1nrpJmVJ_WY2YPGB4TCJixLrf5cwAyycqqHZC1mw';
 const CATATAN_SHEET_GID = 457458234;
-// Penanda pembungkus blok aplikasi di kolom D. Zero-width: tidak kelihatan di
-// Sheets, tapi ikut tersimpan apa adanya karena kolom D ditulis dengan
+// Penanda pembungkus blok aplikasi di tiap kolom yang ditulis (D, F, G).
+// Zero-width: tidak kelihatan di Sheets, tapi ikut tersimpan apa adanya karena
+// sel-selnya ditulis dengan
 // valueInputOption RAW. Jangan pakai \uFEFF — satu-satunya zero-width yang ikut
 // dibuang String.trim(), sehingga akan merusak cek "sel kosong" di bawah.
 export const CATATAN_MARKER_START = '\u2060\u200B\u2060'; // WJ + ZWSP + WJ
@@ -594,7 +601,7 @@ async function resolveCatatanTab(sheets: ReturnType<typeof getSheetsClient>, for
 
 /** Parse nilai kolom B ke ISO "YYYY-MM-DD". Terima "12 Juni 2026" (FORMATTED_VALUE
  *  dgn format Indonesia), "12/06/2026" / "1/6/2026" (D/M/YYYY locale id), dan ISO. */
-function parseCatatanSheetDate(raw: string): string | null {
+export function parseCatatanSheetDate(raw: string): string | null {
     const s = (raw ?? '').trim();
     if (!s) return null;
     const indo = fromIndonesianDate(s);
@@ -627,9 +634,17 @@ function findCatatanBlock(cell: string): { start: number; endExclusive: number }
     return null;
 }
 
+/** Kunci pembanding untuk dedup baris: abaikan bullet/strip di depan, spasi
+ *  berlebih, dan beda huruf besar-kecil. Operator sering mengetik kalimat yang
+ *  sama persis tapi tanpa bullet (mis. di kolom Unloading Fly Ash); tanpa
+ *  normalisasi ini blok aplikasi akan mendobel kalimat yang sudah ada. */
+function kunciBaris(line: string): string {
+    return line.replace(/^[•\-*]\s*/, '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 /** Buang semua penanda (baru & lama) — dipakai untuk membandingkan isi, bukan
  *  untuk menulis balik ke sel. */
-function stripCatatanMarkers(cell: string): string {
+export function stripCatatanMarkers(cell: string): string {
     return [CATATAN_MARKER_START, CATATAN_MARKER_END, CATATAN_LEGACY_START, CATATAN_LEGACY_END]
         .reduce((acc, marker) => acc.split(marker).join(''), cell);
 }
@@ -661,8 +676,8 @@ export function mergeCatatanCell(existing: string, canonical: string): { next: s
     // yang tinggal sisa penanda harus tetap dianggap kosong.
     const bare = stripCatatanMarkers(cell);
     if (!bare.trim()) return { next: buildCatatanBlock(trimmedCanonical), changed: true };
-    const existingLines = new Set(bare.split('\n').map(l => l.trim()).filter(Boolean));
-    const newLines = trimmedCanonical.split('\n').map(l => l.trim()).filter(Boolean).filter(l => !existingLines.has(l));
+    const existingLines = new Set(bare.split('\n').map(kunciBaris).filter(Boolean));
+    const newLines = trimmedCanonical.split('\n').map(l => l.trim()).filter(Boolean).filter(l => !existingLines.has(kunciBaris(l)));
     if (newLines.length === 0) return { next: cell, changed: false };
     return { next: `${cell.replace(/\s+$/, '')}\n\n${buildCatatanBlock(newLines.join('\n'))}`, changed: true };
 }
@@ -672,21 +687,41 @@ export interface CatatanUpsertResult {
     tab: string;
     rowIndex?: number;
     reason?: string;
+    /** Huruf kolom yang benar-benar ditulis, mis. ['D','F'] — untuk log. */
+    kolom?: string[];
 }
+
+/** Isi catatan per kolom sheet. Lihat partisiCatatanPerKolom di lib/shift-catatan.ts. */
+export interface CatatanKolomInput {
+    operasional: string;
+    flyAsh: string;
+    solar: string;
+}
+
+// Peta ember → kolom sheet. Offset dihitung dari kolom B karena rentang baca
+// dianchor di B (B=0, C=1, D=2, E=3, F=4, G=5, H=6).
+const CATATAN_KOLOM: { key: keyof CatatanKolomInput; huruf: string; offset: number }[] = [
+    { key: 'operasional', huruf: 'D', offset: 2 },
+    { key: 'flyAsh', huruf: 'F', offset: 4 },
+    { key: 'solar', huruf: 'G', offset: 5 },
+];
 
 /**
  * Upsert catatan operasional kanonik ke spreadsheet catatan.
- * Cari baris by (tanggal kolom B, shift kolom C); ketemu → merge kolom D (lihat
- * mergeCatatanCell), tidak → tulis baris baru di bawah baris terakhir ber-tanggal.
+ * Cari baris by (tanggal kolom B, shift kolom C); ketemu → merge kolom D/F/G
+ * masing-masing (lihat mergeCatatanCell), tidak → tulis baris baru di bawah baris
+ * terakhir ber-tanggal. Kolom yang embernya kosong TIDAK disentuh (anti-wipe dari
+ * mergeCatatanCell), jadi isian manual di F/G aman saat shift itu tidak punya
+ * aktivitas fly ash/solar. Kolom E & H tidak pernah ditulis aplikasi.
  * Kolom C adalah dropdown — values.update hanya menulis nilai, rule dropdown utuh.
- * Concurrency: read-modify-write D bisa race antar station yang save hampir
+ * Concurrency: read-modify-write bisa race antar station yang save hampir
  * bersamaan; karena blok dihitung ulang dari DB tiap tulis, last-writer-wins
  * konvergen ke isi yang benar.
  */
 export async function upsertCatatanOperasional(
     isoDate: string,
     shift: 'malam' | 'pagi' | 'sore',
-    canonicalCatatan: string,
+    catatan: CatatanKolomInput,
 ): Promise<CatatanUpsertResult> {
     const sheets = getSheetsClient();
     let tab = await resolveCatatanTab(sheets);
@@ -694,9 +729,9 @@ export async function upsertCatatanOperasional(
     const readRows = async (): Promise<string[][]> => {
         const res = await withRetry(() => sheets.spreadsheets.values.get({
             spreadsheetId: CATATAN_SPREADSHEET_ID,
-            range: `${quoteTab(tab)}!B1:D`,
+            range: `${quoteTab(tab)}!B1:H`,
             valueRenderOption: 'FORMATTED_VALUE',
-        }), `get catatan ${tab}!B1:D`);
+        }), `get catatan ${tab}!B1:H`);
         return (res.data.values ?? []) as string[][];
     };
 
@@ -714,7 +749,7 @@ export async function upsertCatatanOperasional(
     // Mulai dari B1 tanpa asumsi jumlah header — baris header gagal parse tanggal.
     const shiftLabel = CATATAN_SHIFT_LABEL[shift];
     let matchRow: number | null = null; // 1-based sheet row
-    let matchCell = '';
+    let matchCells: string[] = [];
     let lastNonEmptyB = 0;              // 1-based sheet row; 0 = kolom B kosong semua
     for (let i = 0; i < rows.length; i++) {
         const b = (rows[i][0] ?? '').trim();
@@ -723,29 +758,41 @@ export async function upsertCatatanOperasional(
             && parseCatatanSheetDate(b) === isoDate
             && (rows[i][1] ?? '').trim().toLowerCase() === shiftLabel.toLowerCase()) {
             matchRow = i + 1;
-            matchCell = rows[i][2] ?? '';
+            matchCells = rows[i];
         }
     }
 
-    if (matchRow !== null) {
-        const { next, changed } = mergeCatatanCell(matchCell, canonicalCatatan);
-        if (!changed) return { action: 'skipped', tab, rowIndex: matchRow, reason: 'tidak ada perubahan' };
-        // RAW: teks catatan tidak boleh ditafsirkan formula/angka oleh Sheets.
-        await withRetry(() => sheets.spreadsheets.values.update({
+    // RAW: teks catatan tidak boleh ditafsirkan formula/angka oleh Sheets.
+    const tulis = async (data: { range: string; values: string[][] }[], label: string) => {
+        await withRetry(() => sheets.spreadsheets.values.batchUpdate({
             spreadsheetId: CATATAN_SPREADSHEET_ID,
-            range: `${quoteTab(tab)}!D${matchRow}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [[next]] },
-        }), `update catatan ${tab}!D${matchRow}`);
-        return { action: 'updated', tab, rowIndex: matchRow };
+            requestBody: { valueInputOption: 'RAW', data },
+        }), label);
+    };
+
+    if (matchRow !== null) {
+        // Tiap kolom di-merge sendiri: ember kosong → mergeCatatanCell no-op → sel
+        // tidak masuk daftar tulis sama sekali.
+        const data: { range: string; values: string[][] }[] = [];
+        const kolom: string[] = [];
+        for (const k of CATATAN_KOLOM) {
+            const { next, changed } = mergeCatatanCell(matchCells[k.offset] ?? '', catatan[k.key]);
+            if (!changed) continue;
+            data.push({ range: `${quoteTab(tab)}!${k.huruf}${matchRow}`, values: [[next]] });
+            kolom.push(k.huruf);
+        }
+        if (data.length === 0) return { action: 'skipped', tab, rowIndex: matchRow, reason: 'tidak ada perubahan' };
+        await tulis(data, `batchUpdate catatan ${tab} baris ${matchRow} (${kolom.join(',')})`);
+        return { action: 'updated', tab, rowIndex: matchRow, kolom };
     }
 
-    if (!canonicalCatatan.trim()) return { action: 'skipped', tab, reason: 'catatan kosong' };
+    const adaIsi = CATATAN_KOLOM.some(k => catatan[k.key].trim() !== '');
+    if (!adaIsi) return { action: 'skipped', tab, reason: 'catatan kosong' };
 
     const newRow = (lastNonEmptyB || rows.length) + 1;
     const [y, m, d] = isoDate.split('-');
-    // B:C dulu, D belakangan — kalau tulis D gagal, save berikutnya match baris ini
-    // dan mengisi D (self-healing). USER_ENTERED supaya B jadi date serial yang
+    // B:C dulu, isi belakangan — kalau tulis isi gagal, save berikutnya match baris
+    // ini dan mengisinya (self-healing). USER_ENTERED supaya B jadi date serial yang
     // dirender format kolom ("12 Juni 2026"); bukan values.append karena append
     // menebak luas tabel dari kolom lain dan bisa salah taruh baris.
     await withRetry(() => sheets.spreadsheets.values.update({
@@ -754,13 +801,16 @@ export async function upsertCatatanOperasional(
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [[`${d}/${m}/${y}`, shiftLabel]] },
     }), `update catatan ${tab}!B${newRow}:C${newRow}`);
-    await withRetry(() => sheets.spreadsheets.values.update({
-        spreadsheetId: CATATAN_SPREADSHEET_ID,
-        range: `${quoteTab(tab)}!D${newRow}`,
-        valueInputOption: 'RAW',
-        requestBody: { values: [[buildCatatanBlock(canonicalCatatan)]] },
-    }), `update catatan ${tab}!D${newRow}`);
-    return { action: 'created', tab, rowIndex: newRow };
+    const dataBaru: { range: string; values: string[][] }[] = [];
+    const kolomBaru: string[] = [];
+    for (const k of CATATAN_KOLOM) {
+        const isi = catatan[k.key].trim();
+        if (!isi) continue;
+        dataBaru.push({ range: `${quoteTab(tab)}!${k.huruf}${newRow}`, values: [[buildCatatanBlock(isi)]] });
+        kolomBaru.push(k.huruf);
+    }
+    await tulis(dataBaru, `batchUpdate catatan ${tab} baris ${newRow} (${kolomBaru.join(',')})`);
+    return { action: 'created', tab, rowIndex: newRow, kolom: kolomBaru };
 }
 
 // ─── EVAL CM (Total PA/SA coal mill per boiler, shift pagi) ───────────────────

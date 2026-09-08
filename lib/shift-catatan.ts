@@ -33,6 +33,10 @@ export function mergeShiftCatatan(mainCatatan: string | null | undefined, statio
 }
 
 // Baris aktivitas dari tabel: kedatangan/permintaan solar & unloading fly ash.
+// PENTING: kalimat di bawah punya DUA salinan lain yang harus ikut kalau diubah —
+// pratinjau klien di components/input-shift/TabCatatanOperasional.tsx
+// (buildAutoCatatanLines) dan pola RE_FLY_ASH/RE_SOLAR di bawah berkas ini yang
+// dipakai memisahkan baris ke kolom sheet-nya masing-masing.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildActivityLines(internal: { ash?: any[]; solarIn?: any[]; solarOut?: any[] } | undefined): string[] {
     const lines: string[] = [];
@@ -162,4 +166,68 @@ export async function getShiftCatatanCanonical(supabase: SupabaseClient, shiftRo
     const coal = Array.isArray(shiftRow.shift_coal_bunker) ? (shiftRow.shift_coal_bunker as any[])[0] : (shiftRow.shift_coal_bunker ?? null);
     const bunkerLines = computeBunkerBerasapLines(coal, date, shift, berasapSince);
     return buildOperationalCatatan(shiftRow, internal, bunkerLines);
+}
+
+// ─── Partisi per kolom sheet Catatan ─────────────────────────────────────────
+//
+// Sheet Catatan (gid 457458234) berkolom per kategori, bukan satu kolom teks:
+//   D = Operasional · E = Switch Equipment · F = Unloading Fly Ash
+//   G = In-Out Solar · H = In-Out Batubara
+// Dulu semuanya ditumpuk di kolom D. Pemisahan dilakukan di TEKS KANONIK yang
+// sudah jadi, bukan di buildActivityLines, karena baris fly ash/solar biasanya
+// sudah disuntikkan ke textarea catatan oleh app/input-laporan/page.tsx sebelum
+// submit — jadi saat sampai sini ia sudah menyatu dengan catatan manual.
+// Mempartisi (bukan membangun ulang dari tabel ash_unloadings) juga menjaga
+// catatan fly ash yang diketik operator sendiri tanpa entri tabel tetap terbawa.
+
+/** Pola baris yang punya kolom sendiri. Dicocokkan SETELAH prefiks bullet dilepas.
+ *  Diturunkan dari template di buildActivityLines — ubah di sana, ubah juga di sini. */
+const RE_FLY_ASH = /^unloading fly ash\b/i;
+const RE_SOLAR = /^(kedatangan solar\b|permintaan solar\b)/i;
+
+export interface CatatanPerKolom {
+    /** Kolom D — catatan manual operator + bunker berasap + sisanya. */
+    operasional: string;
+    /** Kolom F — Unloading Fly Ash. */
+    flyAsh: string;
+    /** Kolom G — In-Out Solar. */
+    solar: string;
+}
+
+/** Kolom tujuan satu baris catatan. Dipakai partisi di bawah DAN skrip pemindahan
+ *  baris lama, supaya keduanya memakai aturan yang sama persis. */
+export function klasifikasiBarisCatatan(line: string): keyof CatatanPerKolom {
+    // Lepas bullet (dan sisa penanda zero-width) supaya pola bisa dianchor ke
+    // awal kalimat.
+    const bare = (line ?? '').replace(/[⁠​‌]/g, '').trim().replace(/^•\s*/, '');
+    if (RE_FLY_ASH.test(bare)) return 'flyAsh';
+    if (RE_SOLAR.test(bare)) return 'solar';
+    return 'operasional';
+}
+
+/** Pecah catatan kanonik jadi tiga ember sesuai kolomnya di sheet. LOSSLESS:
+ *  tiap baris non-kosong masuk tepat satu ember, tidak ada yang dibuang, dan
+ *  urutan baris dalam tiap ember tetap seperti aslinya. */
+export function partisiCatatanPerKolom(canonical: string): CatatanPerKolom {
+    const ember: Record<keyof CatatanPerKolom, string[]> = { operasional: [], flyAsh: [], solar: [] };
+    for (const raw of (canonical ?? '').split('\n')) {
+        const line = raw.trim();
+        if (!line) continue;
+        ember[klasifikasiBarisCatatan(line)].push(line);
+    }
+    const { operasional, flyAsh, solar } = ember;
+    // toBullets idempoten — baris yang sudah ber-bullet dibiarkan apa adanya.
+    return {
+        operasional: toBullets(operasional.join('\n')),
+        flyAsh: toBullets(flyAsh.join('\n')),
+        solar: toBullets(solar.join('\n')),
+    };
+}
+
+/** Catatan shift, sudah terpisah per kolom sheet. Dibangun di atas
+ *  getShiftCatatanCanonical supaya dedup manual-vs-otomatis, urutan station, dan
+ *  baris bunker berasap tetap berlaku sama persis. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getShiftCatatanPerKolom(supabase: SupabaseClient, shiftRow: any): Promise<CatatanPerKolom> {
+    return partisiCatatanPerKolom(await getShiftCatatanCanonical(supabase, shiftRow));
 }

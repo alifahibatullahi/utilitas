@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift, upsertCatatanOperasional, upsertEvalCmAir, type EvalCmUpdateResult } from '@/lib/google-sheets';
-import { getShiftCatatanCanonical } from '@/lib/shift-catatan';
+import { getShiftCatatanPerKolom } from '@/lib/shift-catatan';
 import { upsertLogsheetBoiler, type LogsheetShift, type LogsheetBunker, type LogsheetLab, type LogsheetPersonnel } from '@/lib/logsheet-boiler';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
 import { dailyReportToRow, type SolarSummary, type ChemicalSummary, type CoalSummary } from '@/lib/daily-sheets-mapper';
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
         }
     }
 
-    // ─── Catatan Operasional (spreadsheet catatan, kolom B/C/D) ───────────────
+    // ─── Catatan Operasional (spreadsheet catatan, kolom B/C + D/F/G) ─────────
     if (type === 'catatan_operasional') {
         const { date, shift } = data as { date: string; shift: 'malam' | 'pagi' | 'sore' };
         if (!date || !shift || !['malam', 'pagi', 'sore'].includes(shift)) {
@@ -282,10 +282,12 @@ export async function POST(req: NextRequest) {
             if (!row) {
                 return NextResponse.json({ action: 'skipped', reason: `shift report ${date}/${shift} tidak ditemukan` });
             }
-            // Catatan kanonik dari DB (catatan utama + semua station + auto-lines);
-            // skip-kosong & anti-wipe ditangani di upsertCatatanOperasional.
-            const canonical = await getShiftCatatanCanonical(supabase, row);
-            const result = await upsertCatatanOperasional(date, shift, canonical);
+            // Catatan kanonik dari DB (catatan utama + semua station + auto-lines),
+            // sudah dipartisi ke kolom sheet-nya: Operasional (D), Unloading Fly Ash
+            // (F), In-Out Solar (G). Skip-kosong & anti-wipe per kolom ditangani di
+            // upsertCatatanOperasional.
+            const perKolom = await getShiftCatatanPerKolom(supabase, row);
+            const result = await upsertCatatanOperasional(date, shift, perKolom);
             console.log(`[sheets/write] catatan_operasional ${date}/${shift} →`, result);
             return NextResponse.json(result);
         } catch (err) {

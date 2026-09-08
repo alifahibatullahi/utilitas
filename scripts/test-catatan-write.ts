@@ -87,15 +87,62 @@ async function main() {
     console.log('  sisa tag lama       :', tagTersisa, '(harus false)');
     console.log('  blok terlihat bersih:', JSON.stringify(m4.next.replace(/[\u2060\u200B\u200C]/g, '')));
 
-    // 5. Upsert nyata (opsional, --write): tanggal tes kemarin supaya tidak tabrakan
+    // 4b-2. Regresi: operator sering mengetik kalimat yang sama TANPA bullet di
+    //       kolom Unloading Fly Ash / In-Out Solar. Dedup harus mengenalinya,
+    //       kalau tidak blok aplikasi mendobel kalimat yang sudah ada di sel.
+    const ketikanManusia = 'Unloading fly ash Silo B sebanyak 4rit ke Npk2';
+    const versiApp = `• ${ketikanManusia}`;
+    const m5 = mergeCatatanCell(ketikanManusia, versiApp);
+    console.log('\n[dry-run] kalimat sama tanpa bullet → changed =', m5.changed, '(harus false)');
+    const m6 = mergeCatatanCell(ketikanManusia, `${versiApp}\n• Unloading fly ash Silo A sebanyak 1rit ke Dowa`);
+    console.log('  hanya baris yang benar-benar baru ditambahkan:',
+        !m6.next.match(/Npk2[\s\S]*Npk2/), '(harus true)');
+
+    // 4c. Partisi per kolom sheet (tanpa jaringan). Blob kanonik campuran harus
+    //     terpecah ke ember yang benar, dan gabungan ulang ketiganya harus sama
+    //     persis dengan input — bukti tidak ada baris yang hilang.
+    const { partisiCatatanPerKolom } = await import('../lib/shift-catatan');
+    const blob = [
+        '• Turbin : 08.45 kurangi flow steam pabrik 3A',
+        '• Kedatangan solar dari PT X sebanyak 5.000 L',
+        '• Unloading fly ash Silo B sebanyak 5rit ke NPK 1',
+        '• Bunker E berasap sejak 12/06 Shift Pagi',
+        '• Permintaan solar ke Bengkel sebanyak 200 L',
+        '• Unloading fly ash Silo A sebanyak 2rit ke Dowa',
+    ].join('\n');
+    const p = partisiCatatanPerKolom(blob);
+    console.log('\n[dry-run] partisi per kolom');
+    console.log('  D Operasional     :', JSON.stringify(p.operasional));
+    console.log('  F Unloading FlyAsh:', JSON.stringify(p.flyAsh));
+    console.log('  G In-Out Solar    :', JSON.stringify(p.solar));
+    const gabung = [p.operasional, p.solar, p.flyAsh].filter(Boolean).join('\n').split('\n').sort().join('\n');
+    const asli = blob.split('\n').sort().join('\n');
+    console.log('  lossless (gabungan == input):', gabung === asli, '(harus true)');
+    console.log('  jumlah baris D/F/G:', [p.operasional, p.flyAsh, p.solar].map(s => (s ? s.split('\n').length : 0)).join(' / '), '(harus 2 / 2 / 2)');
+
+    // 5. Upsert nyata (opsional, --write): tanggal sentinel supaya tidak tabrakan
+    //    dengan baris produksi. Kosongkan barisnya setelah tes.
     if (process.argv.includes('--write')) {
-        const isoDate = '2000-01-01'; // tanggal sentinel — hapus barisnya manual setelah tes
-        const r1 = await upsertCatatanOperasional(isoDate, 'pagi', '• baris tes 1');
-        console.log('\nupsert #1:', r1);
-        const r2 = await upsertCatatanOperasional(isoDate, 'pagi', '• baris tes 1');
+        const isoDate = '2000-01-01';
+        const isi = (operasional: string, flyAsh: string, solar: string) => ({ operasional, flyAsh, solar });
+        const r1 = await upsertCatatanOperasional(isoDate, 'pagi', isi('• baris tes 1', '• Unloading fly ash Silo B sebanyak 5rit ke Tes', '• Kedatangan solar dari Tes sebanyak 100 L'));
+        console.log('\nupsert #1 (harus created, kolom D,F,G):', r1);
+        const r2 = await upsertCatatanOperasional(isoDate, 'pagi', isi('• baris tes 1', '• Unloading fly ash Silo B sebanyak 5rit ke Tes', '• Kedatangan solar dari Tes sebanyak 100 L'));
         console.log('upsert #2 (identik, harus skipped):', r2);
-        const r3 = await upsertCatatanOperasional(isoDate, 'pagi', '• baris tes 1\n• baris tes 2');
-        console.log('upsert #3 (berubah, harus updated):', r3);
+        const r3 = await upsertCatatanOperasional(isoDate, 'pagi', isi('• baris tes 1\n• baris tes 2', '• Unloading fly ash Silo B sebanyak 5rit ke Tes', '• Kedatangan solar dari Tes sebanyak 100 L'));
+        console.log('upsert #3 (hanya D berubah, kolom harus ["D"]):', r3);
+        // Ember fly ash kosong TIDAK boleh menghapus kolom F (anti-wipe per kolom).
+        const r4 = await upsertCatatanOperasional(isoDate, 'pagi', isi('• baris tes 1\n• baris tes 2', '', ''));
+        console.log('upsert #4 (fly ash & solar kosong, harus skipped):', r4);
+        const cek = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${q}!B${r1.rowIndex}:H${r1.rowIndex}`,
+            valueRenderOption: 'FORMATTED_VALUE',
+        });
+        const v = (cek.data.values ?? [])[0] ?? [];
+        console.log('\nisi baris sentinel setelah 4 upsert:');
+        ['B tanggal', 'C shift', 'D operasional', 'E switch', 'F fly ash', 'G solar', 'H batubara']
+            .forEach((label, i) => console.log(`  ${label.padEnd(15)}:`, JSON.stringify(String(v[i] ?? '').replace(/[⁠​‌]/g, ''))));
     }
 }
 

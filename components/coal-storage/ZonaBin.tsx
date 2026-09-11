@@ -10,7 +10,7 @@ import {
 // Pakai persen supaya kemiringannya ikut proporsional saat isinya rendah.
 const PILE_CLIP = 'polygon(0% 100%, 0% 20%, 13% 0%, 87% 0%, 100% 20%, 100% 100%)';
 
-export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, highlight, onSelect, onHover, melebar }: {
+export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, highlight, onSelect }: {
     area: CoalArea;
     zonaId: string;
     index: number;
@@ -19,11 +19,6 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
     warna: Record<string, string>;
     highlight: Sorotan | null;
     onSelect: (index: number) => void;
-    /** Petak yang sedang disentuh kursor/fokus. Dilaporkan ke AreaDenah, bukan
-     *  disimpan sendiri, karena sel persen di baris bawah harus melebar SINKRON
-     *  dengan petak ini — dan sel itu sibling, bukan anak. */
-    onHover: (index: number | null) => void;
-    melebar: boolean;
 }) {
     const zLots = lotsZona(lots, zonaId);
     const total = zLots.reduce((t, l) => t + l.ton, 0);
@@ -42,21 +37,7 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
         : 'left-1/2 -translate-x-1/2';
 
     return (
-        // Petak yang disentuh kursor melebar dan mendorong tetangganya menyempit.
-        // Digerbangi lg: layar sentuh tidak pernah melebar — di HP onMouseEnter ikut
-        // menyala saat diketuk dan petaknya akan tersangkut lebar; HP tetap memakai
-        // kartu detail di bawah denah. Transisinya ditulis eksplisit karena aturan
-        // global `*` hanya mencakup background/border/shadow.
-        <div
-            className={`cs-lebar group relative flex-1 min-w-0 hover:z-10 focus-within:z-10
-                transition-[flex-grow] duration-200 ease-out ${melebar ? 'lg:flex-[3]' : ''}`}
-            onMouseEnter={() => onHover(index)}
-            onMouseLeave={() => onHover(null)}
-            // onFocus/onBlur di React ikut menggelembung dari tombol di dalamnya,
-            // jadi petak juga melebar saat dicapai lewat keyboard.
-            onFocus={() => onHover(index)}
-            onBlur={() => onHover(null)}
-        >
+        <div className="group relative flex-1 min-w-0 hover:z-10 focus-within:z-10">
             {/* Detail hover — hanya layar lebar; di HP dipakai kartu di bawah denah. */}
             {/* Selalu ter-render di layar lebar tapi transparan, supaya munculnya bisa
                 dianimasikan (display tidak bisa ditransisikan). Posisinya absolute,

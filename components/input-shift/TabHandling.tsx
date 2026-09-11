@@ -25,7 +25,6 @@ export interface CoalArrivalEntry {
     batch_id: string;        // sama untuk pengiriman yang berlanjut antar shift
     supplier: string;
     zona: string;
-    asal: 'darat' | 'laut';
     ton: number | null;
     tanggal_masuk: string;   // 'YYYY-MM-DD' — hari batubara MULAI masuk storage
     status: 'progres' | 'selesai';
@@ -40,7 +39,6 @@ export interface OpenArrival {
     batch_id: string;
     supplier: string;
     zona: string;
-    asal: 'darat' | 'laut';
     tonSejauhIni: number;
     tanggal_masuk: string;
 }
@@ -244,8 +242,8 @@ export default function TabHandling({
 
     const [showArrivalModal, setShowArrivalModal] = useState(false);
     const [arrivalForm, setArrivalForm] = useState<CoalArrivalEntry | null>(null);
-    // Terisi saat dropdown "Pengiriman" dipakai untuk melanjutkan: supplier/pilar/asal/
-    // tanggal dikunci mengikuti induknya supaya tumpukan di denah tidak terbelah.
+    // Terisi saat dropdown "Pengiriman" dipakai untuk melanjutkan: supplier, pilar,
+    // dan tanggal dikunci mengikuti induknya supaya tumpukan di denah tidak terbelah.
     const [lanjutanDari, setLanjutanDari] = useState<OpenArrival | null>(null);
 
     const saveSolar = () => {
@@ -299,7 +297,6 @@ export default function TabHandling({
             batch_id: induk?.batch_id ?? newBatchId(),
             supplier: induk?.supplier ?? '',
             zona: induk?.zona ?? '',
-            asal: induk?.asal ?? 'darat',
             ton: null,
             tanggal_masuk: induk?.tanggal_masuk ?? reportDate,
             status: 'progres',
@@ -477,12 +474,12 @@ export default function TabHandling({
                                         ...savedCoalArrivalEntries.map((e, i) => ({
                                             key: `saved-${e.id ?? i}`, id: e.id, accent: 'border-emerald-500',
                                             utama: <>{(e.ton || 0).toLocaleString('id-ID')} <span className="text-[10px] text-emerald-400">ton</span></>,
-                                            sub: `${e.supplier} · ${labelZonaPendek(e.zona)} · ${e.asal}${e.status === 'progres' ? ' · masih progres' : ''}`,
+                                            sub: `${e.supplier} · ${labelZonaPendek(e.zona)}${e.status === 'progres' ? ' · masih progres' : ''}`,
                                         })),
                                         ...coalArrivalEntries.map((e, i) => ({
                                             key: `pending-${i}`, accent: 'border-emerald-500', baru: true,
                                             utama: <>{(e.ton || 0).toLocaleString('id-ID')} <span className="text-[10px] text-emerald-400">ton</span></>,
-                                            sub: `${e.supplier} · ${labelZonaPendek(e.zona)} · ${e.asal}${e.status === 'progres' ? ' · masih progres' : ''}`,
+                                            sub: `${e.supplier} · ${labelZonaPendek(e.zona)}${e.status === 'progres' ? ' · masih progres' : ''}`,
                                         })),
                                     ]}
                                 />
@@ -618,15 +615,6 @@ export default function TabHandling({
                                 {ZONA_OPTIONS.map(z => (
                                     <option key={z.value} value={z.value} className="text-white bg-[#101822] font-bold">{z.label}</option>
                                 ))}
-                            </select>
-                        </div>
-                        <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Asal</label>
-                            <select value={arrivalForm.asal} disabled={!!lanjutanDari}
-                                onChange={e => setArrivalForm({ ...arrivalForm, asal: e.target.value as 'darat' | 'laut' })}
-                                className={`${selectClass(true, 'focus:ring-emerald-500')} disabled:opacity-60`}>
-                                <option value="darat" className="text-white bg-[#101822] font-bold">Darat</option>
-                                <option value="laut" className="text-white bg-[#101822] font-bold">Laut</option>
                             </select>
                         </div>
                         {/* Tanggal batubara MULAI masuk storage — tanpa jam. Untuk lanjutan

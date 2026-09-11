@@ -59,10 +59,4 @@
     }
     .cs-pile { height: var(--cs-tinggi); }
     .cs-bar  { width: var(--cs-w); }
-
-    /* Petak yang di-hover tetap melebar — itu inti bacaannya — tapi perpindahan
-       lebarnya seketika, tidak meluncur. */
-    .cs-lebar {
-        transition: none !important;
-    }
 }

@@ -736,7 +736,6 @@ export interface CoalArrivalRow {
     shift: string;
     supplier: string;
     zona: string;
-    asal: string;            // 'darat' | 'laut'
     ton: number;
     tanggal_masuk: string;
     status: string;          // 'progres' | 'selesai'

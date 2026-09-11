@@ -31,7 +31,6 @@ import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TA
 // berbeda diam-diam.
 const toCoalArrivalEntry = (r: CoalArrivalRow): CoalArrivalEntry => ({
     id: r.id, batch_id: r.batch_id, supplier: r.supplier, zona: r.zona,
-    asal: r.asal === 'laut' ? 'laut' : 'darat',
     ton: r.ton, tanggal_masuk: r.tanggal_masuk,
     status: r.status === 'selesai' ? 'selesai' : 'progres',
 });
@@ -666,7 +665,7 @@ function InputShiftPageInner() {
 
         supabase
             .from('coal_arrivals')
-            .select('id, batch_id, supplier, zona, asal, ton, tanggal_masuk, status')
+            .select('id, batch_id, supplier, zona, ton, tanggal_masuk, status')
             .eq('date', selectedDate)
             .eq('shift', shiftMap[selectedShift])
             .order('created_at', { ascending: true })
@@ -678,7 +677,7 @@ function InputShiftPageInner() {
         // daripada window function lewat RPC, dan jumlah baris per hari kecil.
         supabase
             .from('coal_arrivals')
-            .select('batch_id, supplier, zona, asal, ton, tanggal_masuk, status, created_at')
+            .select('batch_id, supplier, zona, ton, tanggal_masuk, status, created_at')
             .order('created_at', { ascending: true })
             .limit(200)
             .then(({ data }) => {
@@ -689,7 +688,6 @@ function InputShiftPageInner() {
                         batch_id: r.batch_id,
                         supplier: r.supplier,
                         zona: r.zona,
-                        asal: r.asal === 'laut' ? 'laut' : 'darat',
                         // tanggal masuk = kedatangan pertama, supaya umur tumpukan benar
                         tanggal_masuk: prev?.tanggal_masuk ?? r.tanggal_masuk,
                         tonSejauhIni: (prev?.tonSejauhIni ?? 0) + Number(r.ton ?? 0),
@@ -700,7 +698,7 @@ function InputShiftPageInner() {
                     .filter(b => b.status === 'progres')
                     .map(b => ({
                         batch_id: b.batch_id, supplier: b.supplier, zona: b.zona,
-                        asal: b.asal, tonSejauhIni: b.tonSejauhIni, tanggal_masuk: b.tanggal_masuk,
+                        tonSejauhIni: b.tonSejauhIni, tanggal_masuk: b.tanggal_masuk,
                     })));
             });
     }, [selectedDate, selectedShift, shiftGate, needsCoal]);
@@ -1514,7 +1512,6 @@ function InputShiftPageInner() {
                     shift: shiftMap[selectedShift],
                     supplier: entry.supplier,
                     zona: entry.zona,
-                    asal: entry.asal,
                     ton: entry.ton,
                     tanggal_masuk: entry.tanggal_masuk || selectedDate,
                     status: entry.status,
@@ -1600,7 +1597,7 @@ function InputShiftPageInner() {
                         setCoalZonas(rows.map(r => r.zona));
                     });
 
-                spb.from('coal_arrivals').select('id, batch_id, supplier, zona, asal, ton, tanggal_masuk, status')
+                spb.from('coal_arrivals').select('id, batch_id, supplier, zona, ton, tanggal_masuk, status')
                     .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
                     .order('created_at', { ascending: true })
                     .then(({ data }) => setSavedCoalArrivalEntries(((data ?? []) as CoalArrivalRow[]).map(toCoalArrivalEntry)));

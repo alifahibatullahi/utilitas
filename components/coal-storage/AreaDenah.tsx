@@ -29,11 +29,6 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
     highlight: Sorotan | null;
 }) {
     const [selected, setSelected] = useState<number | null>(null);
-    // Petak yang sedang di-hover. Tinggal di sini, bukan di ZonaBin, karena petak yang
-    // melebar harus diikuti sel persen di baris kedua dengan lebar yang SAMA — kalau
-    // tidak, nomor pilar dan persen tidak lagi lurus di bawah petaknya. Sel itu sibling
-    // ZonaBin, bukan anaknya, jadi tidak bisa dijangkau group-hover.
-    const [hover, setHover] = useState<number | null>(null);
     const zonas = zonaIds(area);
     const total = tonArea(lots, area);
     const pct = (total / area.kapasitasTon) * 100;
@@ -104,8 +99,6 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
                                     warna={warna}
                                     highlight={highlight}
                                     onSelect={setSelected}
-                                    onHover={setHover}
-                                    melebar={hover === i}
                                 />
                             </Fragment>
                         ))}
@@ -132,12 +125,9 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
                                     </div>
                                 )}
                                 {/* Persen menyusul gundukan di kolom yang sama, jadi angkanya
-                                    terbaca tepat setelah tumpukannya selesai tumbuh. Lebarnya
-                                    HARUS ikut petak di atasnya — kalau tidak, begitu satu petak
-                                    melebar, seluruh label bergeser dari kolomnya. */}
+                                    terbaca tepat setelah tumpukannya selesai tumbuh. */}
                                 <div
-                                    className={`cs-fade-up cs-lebar flex-1 min-w-0 text-center text-xs leading-4 font-semibold text-slate-900
-                                        transition-[flex-grow] duration-200 ease-out ${hover === i ? 'lg:flex-[3]' : ''}`}
+                                    className="cs-fade-up flex-1 min-w-0 text-center text-xs leading-4 font-semibold text-slate-900"
                                     style={{ animationDelay: `${delayZona(i) + 220}ms` }}
                                 >
                                     {tonZona(lots, zonaId) > 0 ? `${persenZona(lots, zonaId)}%` : '—'}

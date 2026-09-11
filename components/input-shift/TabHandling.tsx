@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Card, InputField, Modal, SectionLabel } from './SharedComponents';
-import { COAL_AREAS, labelZonaPendek, zonaIds } from '@/lib/coal-storage';
+import { COAL_AREAS, TON_PER_SHOVEL, formatTon, labelZonaPendek, zonaIds } from '@/lib/coal-storage';
 
 export interface SolarEntry {
     id?: string;
@@ -19,14 +19,6 @@ export interface OutSolarEntry {
     tujuan: string;
 }
 
-/** Satu kali pengambilan batubara dari satu pilar → baris tabel coal_loadings. */
-export interface CoalLoadingEntry {
-    id?: string;
-    zona: string;            // 'O1' … 'C12'
-    shovel: number | null;
-    hopper: string;          // 'A' = darat | 'B' = laut | 'AB'
-}
-
 /** Satu kali kedatangan batubara → baris tabel coal_arrivals. */
 export interface CoalArrivalEntry {
     id?: string;
@@ -35,8 +27,7 @@ export interface CoalArrivalEntry {
     zona: string;
     asal: 'darat' | 'laut';
     ton: number | null;
-    tanggal_masuk: string;   // 'YYYY-MM-DD'
-    jam?: string;
+    tanggal_masuk: string;   // 'YYYY-MM-DD' — hari batubara MULAI masuk storage
     status: 'progres' | 'selesai';
 }
 
@@ -62,14 +53,6 @@ export interface OpenArrival {
 const ZONA_OPTIONS = COAL_AREAS.flatMap(area =>
     zonaIds(area).map(zona => ({ value: zona, label: labelZonaPendek(zona) })),
 );
-
-const HOPPER_OPTIONS: { value: string; label: string }[] = [
-    { value: 'A', label: 'Hopper A — Darat' },
-    { value: 'B', label: 'Hopper B — Laut' },
-    { value: 'AB', label: 'Hopper AB' },
-];
-
-const EMPTY_COAL_LOADING: CoalLoadingEntry = { zona: '', shovel: null, hopper: 'A' };
 
 /**
  * Id pengiriman baru. Di luar komponen supaya aturan kemurnian React tidak
@@ -156,10 +139,12 @@ interface TabHandlingProps {
     canEditCoal?: boolean;
     /** Tanggal laporan — jadi default "tanggal masuk" kedatangan. */
     reportDate?: string;
-    coalLoadingEntries?: CoalLoadingEntry[];
-    onCoalLoadingEntriesChange?: (entries: CoalLoadingEntry[]) => void;
-    savedCoalLoadingEntries?: CoalLoadingEntry[];
-    onDeleteSavedCoalLoading?: (id: string) => void;
+    /**
+     * Pilar mana saja yang dikeruk shift ini. Operator hanya memilih pilarnya;
+     * jumlah shovel per pilar adalah Total Loading dibagi rata, dihitung saat simpan.
+     */
+    coalZonas?: string[];
+    onCoalZonasChange?: (zonas: string[]) => void;
     coalArrivalEntries?: CoalArrivalEntry[];
     onCoalArrivalEntriesChange?: (entries: CoalArrivalEntry[]) => void;
     savedCoalArrivalEntries?: CoalArrivalEntry[];
@@ -246,8 +231,7 @@ export default function TabHandling({
     savedSolarEntries = [], savedOutSolarEntries = [],
     onDeleteSavedSolar, onDeleteSavedOutSolar,
     canEditCoal = false, reportDate = '',
-    coalLoadingEntries = [], onCoalLoadingEntriesChange,
-    savedCoalLoadingEntries = [], onDeleteSavedCoalLoading,
+    coalZonas = [], onCoalZonasChange,
     coalArrivalEntries = [], onCoalArrivalEntriesChange,
     savedCoalArrivalEntries = [], onDeleteSavedCoalArrival,
     openArrivals = [], supplierOptions = [],
@@ -258,12 +242,10 @@ export default function TabHandling({
     const [outForm, setOutForm] = useState<OutSolarEntry>(EMPTY_OUT);
     const [tujuanMode, setTujuanMode] = useState<'Boiler A+B' | 'Bengkel' | 'SA/SU 3B' | 'Lainnya'>('Bengkel');
 
-    const [showCoalLoadModal, setShowCoalLoadModal] = useState(false);
-    const [coalLoadForm, setCoalLoadForm] = useState<CoalLoadingEntry>(EMPTY_COAL_LOADING);
     const [showArrivalModal, setShowArrivalModal] = useState(false);
     const [arrivalForm, setArrivalForm] = useState<CoalArrivalEntry | null>(null);
-    // Terisi saat "Lanjutkan" ditekan: supplier/zona/asal dikunci mengikuti
-    // pengiriman induknya supaya tumpukan di denah tidak terbelah.
+    // Terisi saat dropdown "Pengiriman" dipakai untuk melanjutkan: supplier/pilar/asal/
+    // tanggal dikunci mengikuti induknya supaya tumpukan di denah tidak terbelah.
     const [lanjutanDari, setLanjutanDari] = useState<OpenArrival | null>(null);
 
     const saveSolar = () => {
@@ -290,14 +272,15 @@ export default function TabHandling({
     const totalOutSolar = allOutSolar.reduce((s, e) => s + (e.jumlah || 0), 0);
 
     // ── Batubara ──────────────────────────────────────────────────────────────
-    const allCoalLoading = [...savedCoalLoadingEntries, ...coalLoadingEntries];
-    const totalShovelRincian = allCoalLoading.reduce((s, e) => s + (e.shovel || 0), 0);
+    // Operator hanya memilih PILAR-nya; jumlah shovel per pilar adalah Total Loading
+    // dibagi rata. Sengaja tidak dibulatkan — 40 shovel dari 3 pilar memang 13,33.
     const totalDiketik = Number(espValues.loading);
-    // Catatan selisih sengaja hanya INFORMATIF: kolom shift_esp_handling.loading tetap
-    // milik angka yang diketik operator (itu yang dibaca Sheets & /logbook), sedangkan
-    // rincian pilar hanya dibaca halaman /coal-storage. Dua pembaca, dua angka.
-    const adaSelisih = allCoalLoading.length > 0 && Number.isFinite(totalDiketik)
-        && Math.round(totalShovelRincian) !== Math.round(totalDiketik);
+    const adaTotal = Number.isFinite(totalDiketik) && totalDiketik > 0;
+    const shovelPerPilar = adaTotal && coalZonas.length > 0 ? totalDiketik / coalZonas.length : 0;
+
+    const toggleZona = (zona: string) => onCoalZonasChange?.(
+        coalZonas.includes(zona) ? coalZonas.filter(z => z !== zona) : [...coalZonas, zona],
+    );
 
     const allArrivals = [...savedCoalArrivalEntries, ...coalArrivalEntries];
     const totalTonDatang = allArrivals.reduce((s, e) => s + (e.ton || 0), 0);
@@ -305,41 +288,26 @@ export default function TabHandling({
         [...supplierOptions, ...allArrivals.map(a => a.supplier)].filter(Boolean),
     )].sort((a, b) => a.localeCompare(b, 'id'));
 
-    const openCoalLoadModal = () => {
-        // Hopper entri mengikuti "Hopper Aktif" kartu sebagai tebakan awal — itu yang
-        // sudah dipilih operator untuk shift ini — tapi tetap bisa ditimpa per pilar.
-        setCoalLoadForm({ ...EMPTY_COAL_LOADING, hopper: (espValues.hopper as string) || 'A' });
-        setShowCoalLoadModal(true);
-    };
-
-    const saveCoalLoad = () => {
-        if (!coalLoadForm.zona || !coalLoadForm.shovel) return;
-        onCoalLoadingEntriesChange?.([...coalLoadingEntries, coalLoadForm]);
-        setCoalLoadForm(EMPTY_COAL_LOADING);
-        setShowCoalLoadModal(false);
-    };
-
-    // Baris tersimpan dihapus lewat id di DB; baris baru cukup dibuang dari state.
-    const removeCoalLoad = (row: { id?: string; key: string }) => {
-        if (row.id) return onDeleteSavedCoalLoading?.(row.id);
-        const idx = Number(row.key.split('-')[1]);
-        onCoalLoadingEntriesChange?.(coalLoadingEntries.filter((_, i) => i !== idx));
-    };
-
-    const openArrivalModal = (induk?: OpenArrival) => {
-        setLanjutanDari(induk ?? null);
+    /**
+     * Isi ulang form kedatangan. Tanpa induk = pengiriman baru; dengan induk =
+     * lanjutan yang mewarisi batch_id DAN tanggal masuknya, supaya tumpukannya tetap
+     * satu dan umurnya dihitung sejak batubara pertama kali menyentuh lapangan.
+     */
+    const setArrivalMode = (induk: OpenArrival | null) => {
+        setLanjutanDari(induk);
         setArrivalForm({
-            // Lanjutan mewarisi batch_id DAN tanggal masuk induknya supaya tumpukannya
-            // tetap satu dan umurnya dihitung dari kedatangan pertama.
             batch_id: induk?.batch_id ?? newBatchId(),
             supplier: induk?.supplier ?? '',
             zona: induk?.zona ?? '',
             asal: induk?.asal ?? 'darat',
             ton: null,
             tanggal_masuk: induk?.tanggal_masuk ?? reportDate,
-            jam: '',
             status: 'progres',
         });
+    };
+
+    const openArrivalModal = () => {
+        setArrivalMode(null);
         setShowArrivalModal(true);
     };
 
@@ -389,59 +357,56 @@ export default function TabHandling({
                             </select>
                         </div>
 
-                        {/* Rincian per pilar — tambahan opsional. Tiga field di atas tidak
-                            berubah sama sekali: itu yang dibaca Sheets, /logbook, dan gate
-                            kelengkapan tab. Yang di bawah ini hanya dibaca /coal-storage. */}
+                        {/* Diambil dari pilar mana — tambahan opsional. Tiga field di atas
+                            tidak berubah sama sekali: itu yang dibaca Sheets, /logbook, dan
+                            gate kelengkapan tab. Pilihan di bawah ini hanya dibaca
+                            /coal-storage, dan operator cukup menunjuk pilarnya: jumlah
+                            shovel per pilar adalah Total Loading dibagi rata. */}
                         <div>
-                            <SectionLabel label="Rincian per pilar" badge="opsional" />
-                            {allCoalLoading.length > 0 && (
-                                <div className="mb-2">
-                                    <CoalEntryList
-                                        canEdit={canEditCoal}
-                                        onRemove={removeCoalLoad}
-                                        rows={[
-                                            ...savedCoalLoadingEntries.map((e, i) => ({
-                                                key: `saved-${e.id ?? i}`, id: e.id, accent: 'border-orange-500',
-                                                utama: <>{e.shovel ?? 0} <span className="text-[10px] text-orange-400">shovel</span></>,
-                                                sub: `${labelZonaPendek(e.zona)} · hopper ${e.hopper}`,
-                                            })),
-                                            ...coalLoadingEntries.map((e, i) => ({
-                                                key: `pending-${i}`, accent: 'border-orange-500', baru: true,
-                                                utama: <>{e.shovel ?? 0} <span className="text-[10px] text-orange-400">shovel</span></>,
-                                                sub: `${labelZonaPendek(e.zona)} · hopper ${e.hopper}`,
-                                            })),
-                                        ]}
-                                    />
-                                    <div className="flex justify-between items-center px-1 mt-2 mb-1">
-                                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total rincian</span>
-                                        <span className="text-sm font-mono font-bold text-orange-300">{totalShovelRincian} shovel</span>
-                                    </div>
-                                    {adaSelisih && (
-                                        <p className="text-[10px] text-slate-500 px-1 mb-1">
-                                            Rincian pilar {totalShovelRincian} dari total {Math.round(totalDiketik)} shovel yang diketik.
-                                        </p>
-                                    )}
-                                    <div className="h-px bg-slate-700/40 mb-3" />
-                                </div>
-                            )}
+                            <SectionLabel label="Diambil dari pilar" badge="opsional" />
+                            <div className="flex flex-wrap gap-1.5">
+                                {ZONA_OPTIONS.map(z => {
+                                    const aktif = coalZonas.includes(z.value);
+                                    return (
+                                        <button
+                                            key={z.value}
+                                            type="button"
+                                            disabled={!canEditCoal}
+                                            onClick={() => toggleZona(z.value)}
+                                            aria-pressed={aktif}
+                                            className={`px-2 py-1 rounded-lg border text-[10px] font-bold transition-colors
+                                                ${!canEditCoal
+                                                    ? 'border-slate-700/60 bg-slate-800/40 text-slate-600 cursor-not-allowed'
+                                                    : aktif
+                                                        ? 'border-orange-500 bg-orange-500/25 text-orange-200 cursor-pointer'
+                                                        : 'border-slate-700/80 bg-[#101822] text-slate-400 hover:border-orange-500/50 hover:text-orange-300 cursor-pointer'}`}
+                                        >
+                                            {z.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
                             {canEditCoal ? (
-                                <button type="button" onClick={openCoalLoadModal}
-                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-orange-500/40 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 text-sm font-bold transition-colors">
-                                    <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                                    Tambah Pilar
-                                </button>
+                                <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                                    {coalZonas.length === 0
+                                        ? 'Belum ada pilar dipilih.'
+                                        : !adaTotal
+                                            ? `${coalZonas.length} pilar dipilih — isi Total Loading dulu untuk melihat pembagiannya.`
+                                            : <>
+                                                {totalDiketik} shovel ÷ {coalZonas.length} pilar ={' '}
+                                                <span className="text-orange-300 font-bold">
+                                                    ±{shovelPerPilar.toLocaleString('id-ID', { maximumFractionDigits: 2 })} shovel
+                                                    {' '}({formatTon(shovelPerPilar * TON_PER_SHOVEL)} ton)
+                                                </span>{' '}
+                                                per pilar
+                                            </>}
+                                </p>
                             ) : (
-                                <>
-                                    <button type="button" disabled
-                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-700/60 bg-slate-800/40 text-slate-500 text-sm font-bold cursor-not-allowed">
-                                        <span className="material-symbols-outlined text-[18px]">lock</span>
-                                        Tambah Pilar
-                                    </button>
-                                    <TerkunciNote>
-                                        Sedang disiapkan — menunggu pendataan kondisi nyata tiap pilar di storage.
-                                        Total loading di atas tetap diisi seperti biasa.
-                                    </TerkunciNote>
-                                </>
+                                <TerkunciNote>
+                                    Sedang disiapkan — menunggu pendataan kondisi nyata tiap pilar di storage.
+                                    Total loading di atas tetap diisi seperti biasa.
+                                </TerkunciNote>
                             )}
                         </div>
                     </Card>
@@ -529,34 +494,8 @@ export default function TabHandling({
                             </div>
                         )}
 
-                        {/* Pengiriman yang shift lalu ditandai belum selesai. Dilanjutkan dari
-                            sini supaya baris barunya mewarisi batch_id — satu pengiriman tetap
-                            satu tumpukan di denah, bukan terbelah per shift. */}
-                        {canEditCoal && openArrivals.length > 0 && (
-                            <div className="mb-1">
-                                <SectionLabel label="Masih berlangsung" />
-                                <div className="flex flex-col gap-2">
-                                    {openArrivals.map(o => (
-                                        <div key={o.batch_id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#101822] border border-amber-500/30">
-                                            <div className="flex flex-col min-w-0 flex-1">
-                                                <span className="text-xs font-bold text-amber-300 truncate">{o.supplier}</span>
-                                                <span className="text-[10px] text-slate-400 truncate">
-                                                    {labelZonaPendek(o.zona)} · {o.tonSejauhIni.toLocaleString('id-ID')} ton sejauh ini
-                                                </span>
-                                            </div>
-                                            <button type="button" onClick={() => openArrivalModal(o)}
-                                                className="shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-500/15 text-amber-300 hover:bg-amber-500/30 text-[11px] font-bold transition-colors">
-                                                Lanjutkan
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="h-px bg-slate-700/40 mt-3 mb-3" />
-                            </div>
-                        )}
-
                         {canEditCoal ? (
-                            <button type="button" onClick={() => openArrivalModal()}
+                            <button type="button" onClick={openArrivalModal}
                                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-sm font-bold transition-colors">
                                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
                                 Tambah Kedatangan
@@ -627,45 +566,35 @@ export default function TabHandling({
                 </button>
             </Modal>
 
-            {/* Modal Rincian Loading per Pilar */}
-            <Modal open={showCoalLoadModal} onClose={() => { setShowCoalLoadModal(false); setCoalLoadForm(EMPTY_COAL_LOADING); }} title="Loading dari Pilar" color="orange">
-                <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Diambil dari</label>
-                    <select value={coalLoadForm.zona} onChange={e => setCoalLoadForm({ ...coalLoadForm, zona: e.target.value })}
-                        className={selectClass(!!coalLoadForm.zona, 'focus:ring-orange-500')}>
-                        <option value="" className="text-slate-400 bg-[#101822]">Pilih pilar...</option>
-                        {ZONA_OPTIONS.map(z => (
-                            <option key={z.value} value={z.value} className="text-white bg-[#101822] font-bold">{z.label}</option>
-                        ))}
-                    </select>
-                </div>
-                <InputField label="Jumlah Shovel" unit="shovel" color="orange" name="coal_shovel" value={coalLoadForm.shovel}
-                    onChange={(_, v) => setCoalLoadForm({ ...coalLoadForm, shovel: typeof v === 'string' ? parseFloat(v) || null : v as number | null })} />
-                <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Hopper</label>
-                    <select value={coalLoadForm.hopper} onChange={e => setCoalLoadForm({ ...coalLoadForm, hopper: e.target.value })}
-                        className={selectClass(true, 'focus:ring-orange-500')}>
-                        {HOPPER_OPTIONS.map(h => (
-                            <option key={h.value} value={h.value} className="text-white bg-[#101822] font-bold">{h.label}</option>
-                        ))}
-                    </select>
-                </div>
-                <button type="button" onClick={saveCoalLoad} disabled={!coalLoadForm.zona || !coalLoadForm.shovel}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm transition-colors mt-1">
-                    <span className="material-symbols-outlined text-[18px]">save</span>
-                    Simpan
-                </button>
-            </Modal>
-
             {/* Modal Kedatangan Batubara */}
             <Modal open={showArrivalModal && !!arrivalForm} onClose={closeArrivalModal}
                 title={lanjutanDari ? 'Lanjutan Kedatangan' : 'Kedatangan Batubara'} color="emerald">
                 {arrivalForm && (
                     <>
+                        {/* Field pertama: pengiriman baru atau lanjutan. Memilih lanjutan
+                            mewarisi batch_id + tanggal masuk induknya, jadi pengiriman yang
+                            memakan beberapa shift tetap terbaca sebagai SATU tumpukan. */}
+                        {openArrivals.length > 0 && (
+                            <div className="space-y-1.5 w-full">
+                                <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Pengiriman</label>
+                                <select
+                                    value={lanjutanDari?.batch_id ?? ''}
+                                    onChange={e => setArrivalMode(openArrivals.find(o => o.batch_id === e.target.value) ?? null)}
+                                    className={selectClass(true, 'focus:ring-emerald-500')}
+                                >
+                                    <option value="" className="text-white bg-[#101822] font-bold">Baru</option>
+                                    {openArrivals.map(o => (
+                                        <option key={o.batch_id} value={o.batch_id} className="text-white bg-[#101822] font-bold">
+                                            Lanjutan — {o.supplier} · {labelZonaPendek(o.zona)} · {o.tonSejauhIni.toLocaleString('id-ID')} t sejauh ini
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         {lanjutanDari && (
                             <p className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 leading-relaxed">
                                 Melanjutkan pengiriman {lanjutanDari.supplier} di {labelZonaPendek(lanjutanDari.zona)}.
-                                Supplier dan pilar dikunci supaya tetap terhitung satu tumpukan.
+                                Supplier, pilar, dan tanggal masuk dikunci supaya tetap terhitung satu tumpukan.
                             </p>
                         )}
                         <div className="space-y-1.5 w-full">
@@ -700,14 +629,14 @@ export default function TabHandling({
                                 <option value="laut" className="text-white bg-[#101822] font-bold">Laut</option>
                             </select>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Tanggal masuk</label>
-                                <input type="date" value={arrivalForm.tanggal_masuk} disabled={!!lanjutanDari}
-                                    onChange={e => setArrivalForm({ ...arrivalForm, tanggal_masuk: e.target.value })}
-                                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-emerald-500 text-sm transition-all disabled:opacity-60" />
-                            </div>
-                            {timeInput(arrivalForm.jam ?? '', arrivalForm.jam ?? '', v => setArrivalForm({ ...arrivalForm, jam: v }))}
+                        {/* Tanggal batubara MULAI masuk storage — tanpa jam. Untuk lanjutan
+                            ia mewarisi tanggal kedatangan pertama, jadi umur tumpukan di denah
+                            dihitung sejak batubara pertama kali menyentuh lapangan. */}
+                        <div className="space-y-1.5 w-full">
+                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Mulai masuk storage</label>
+                            <input type="date" value={arrivalForm.tanggal_masuk} disabled={!!lanjutanDari}
+                                onChange={e => setArrivalForm({ ...arrivalForm, tanggal_masuk: e.target.value })}
+                                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-emerald-500 text-sm transition-all disabled:opacity-60" />
                         </div>
                         <div className="space-y-1.5 w-full">
                             <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Status</label>

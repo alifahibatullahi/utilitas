@@ -725,6 +725,9 @@ export interface CoalLoadingRow {
  * Kedatangan batubara. Satu baris = tonase yang masuk DI SHIFT ITU; pengiriman yang
  * berlanjut ke shift/hari berikutnya memakai batch_id yang sama supaya di denah tetap
  * terbaca sebagai satu tumpukan dengan tanggal masuk paling awal.
+ *
+ * tanggal_masuk = hari batubara MULAI masuk storage (tanpa jam); untuk baris lanjutan
+ * ia diwarisi dari kedatangan pertama, jadi umur tumpukan dihitung sejak saat itu.
  */
 export interface CoalArrivalRow {
     id: string;
@@ -736,7 +739,6 @@ export interface CoalArrivalRow {
     asal: string;            // 'darat' | 'laut'
     ton: number;
     tanggal_masuk: string;
-    jam: string | null;
     status: string;          // 'progres' | 'selesai'
     keterangan: string | null;
     operator_id: string | null;

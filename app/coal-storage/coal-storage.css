@@ -60,10 +60,9 @@
     .cs-pile { height: var(--cs-tinggi); }
     .cs-bar  { width: var(--cs-w); }
 
-    /* Sorotan hover tetap boleh berganti warna & bayangan — itu yang menjelaskan
-       zona mana yang sedang dibaca — tapi angka persennya berhenti membesar. */
-    .cs-hover-scale {
-        transform: none !important;
+    /* Petak yang di-hover tetap melebar — itu inti bacaannya — tapi perpindahan
+       lebarnya seketika, tidak meluncur. */
+    .cs-lebar {
         transition: none !important;
     }
 }

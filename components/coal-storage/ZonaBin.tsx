@@ -10,7 +10,7 @@ import {
 // Pakai persen supaya kemiringannya ikut proporsional saat isinya rendah.
 const PILE_CLIP = 'polygon(0% 100%, 0% 20%, 13% 0%, 87% 0%, 100% 20%, 100% 100%)';
 
-export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, highlight, onSelect, onHover }: {
+export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, highlight, onSelect, onHover, melebar }: {
     area: CoalArea;
     zonaId: string;
     index: number;
@@ -19,9 +19,11 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
     warna: Record<string, string>;
     highlight: Sorotan | null;
     onSelect: (index: number) => void;
-    /** Petak yang sedang disentuh kursor/fokus — dipakai AreaDenah untuk ikut
-     *  menyalakan dua pilar pengapitnya, yang merupakan SIBLING petak ini. */
+    /** Petak yang sedang disentuh kursor/fokus. Dilaporkan ke AreaDenah, bukan
+     *  disimpan sendiri, karena sel persen di baris bawah harus melebar SINKRON
+     *  dengan petak ini — dan sel itu sibling, bukan anak. */
     onHover: (index: number | null) => void;
+    melebar: boolean;
 }) {
     const zLots = lotsZona(lots, zonaId);
     const total = zLots.reduce((t, l) => t + l.ton, 0);
@@ -40,12 +42,18 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
         : 'left-1/2 -translate-x-1/2';
 
     return (
+        // Petak yang disentuh kursor melebar dan mendorong tetangganya menyempit.
+        // Digerbangi lg: layar sentuh tidak pernah melebar — di HP onMouseEnter ikut
+        // menyala saat diketuk dan petaknya akan tersangkut lebar; HP tetap memakai
+        // kartu detail di bawah denah. Transisinya ditulis eksplisit karena aturan
+        // global `*` hanya mencakup background/border/shadow.
         <div
-            className="group relative flex-1 min-w-0 hover:z-10 focus-within:z-10"
+            className={`cs-lebar group relative flex-1 min-w-0 hover:z-10 focus-within:z-10
+                transition-[flex-grow] duration-200 ease-out ${melebar ? 'lg:flex-[3]' : ''}`}
             onMouseEnter={() => onHover(index)}
             onMouseLeave={() => onHover(null)}
             // onFocus/onBlur di React ikut menggelembung dari tombol di dalamnya,
-            // jadi sorotan pilar juga menyala saat petak dicapai lewat keyboard.
+            // jadi petak juga melebar saat dicapai lewat keyboard.
             onFocus={() => onHover(index)}
             onBlur={() => onHover(null)}
         >
@@ -73,14 +81,9 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
                 aria-label={`${namaZona(index, jml)} — ${Math.round(pct)}% terisi`}
                 // Sorotan hover pakai ring, bukan border-2: menebalkan border menggeser
                 // isi petak 1px tiap kali kursor lewat, sedangkan ring tidak menyentuh layout.
-                // Petak sengaja TIDAK diangkat (-translate-y): alasnya menempel di garis
-                // lantai milik baris flex induk, jadi geseran sekecil apa pun membuka celah
-                // putih di atas lantai dan terbaca sebagai cacat, bukan sebagai terangkat.
-                // Kesan timbulnya diambil dari bayangan + ring saja.
                 className={`relative block w-full h-[78px] rounded-[3px] border overflow-hidden cursor-pointer
                     ring-2 ring-transparent transition-[opacity,box-shadow] duration-300
-                    group-hover:ring-sky-600 group-hover:shadow-[0_8px_16px_-8px_rgba(15,23,42,0.5)]
-                    focus-visible:outline-none focus-visible:ring-sky-600
+                    group-hover:ring-sky-600 focus-visible:outline-none focus-visible:ring-sky-600
                     ${kosong ? 'border-dashed border-slate-300 bg-slate-50' : 'border-slate-300 bg-[#eff3f8]'}
                     ${dim ? 'opacity-20' : 'opacity-100'}`}
             >
@@ -101,15 +104,6 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
                                 style={{ height: `${(lot.ton / total) * 100}%`, background: ambilWarna(warna, lot.supplier) }}
                             />
                         ))}
-                        {/* Kilau hover: satu lapis putih tipis di atas seluruh gundukan.
-                            Ikut terpotong PILE_CLIP karena anak dari .cs-pile, jadi bentuk
-                            trapesiumnya tetap. Dibuat dari opacity, bukan mengubah warna
-                            supplier, supaya perbandingan warna antar lot tidak bergeser.
-                            Absolute → tidak ikut flex-col-reverse, jadi tinggi lot utuh. */}
-                        <span
-                            aria-hidden="true"
-                            className="absolute inset-0 bg-white opacity-0 transition-opacity duration-300 group-hover:opacity-[0.18]"
-                        />
                     </span>
                 )}
             </button>

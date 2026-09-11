@@ -7,7 +7,7 @@ import TabBoiler from '@/components/input-shift/TabBoiler';
 import TabTurbin from '@/components/input-shift/TabTurbin';
 import TabGenerator from '@/components/input-shift/TabGenerator';
 import TabDistribusiSteam from '@/components/input-shift/TabDistribusiSteam';
-import TabHandling from '@/components/input-shift/TabHandling';
+import TabHandling, { type CoalArrivalEntry, type CoalLoadingEntry, type OpenArrival } from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
@@ -15,7 +15,7 @@ import TabCatatanOperasional, { buildAutoCatatanLines } from '@/components/input
 import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory, useBoilerShutdownHistory, useLatestBoilerStatus } from '@/hooks/useShiftReport';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
-import type { ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
+import type { CoalArrivalRow, CoalLoadingRow, ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
 import StationPickerModal, { type StationSetupSelection } from '@/components/ui/StationPickerModal';
@@ -25,6 +25,20 @@ import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, detectDefaultReport, type OperatorStation } from '@/lib/constants';
+
+// Baris DB batubara → bentuk yang dipakai form. Dipakai di dua tempat (muat awal &
+// muat ulang setelah simpan), jadi diangkat ke modul supaya keduanya tidak bisa
+// berbeda diam-diam.
+const toCoalLoadingEntry = (r: CoalLoadingRow): CoalLoadingEntry => ({
+    id: r.id, zona: r.zona, shovel: r.shovel, hopper: r.hopper ?? 'A',
+});
+
+const toCoalArrivalEntry = (r: CoalArrivalRow): CoalArrivalEntry => ({
+    id: r.id, batch_id: r.batch_id, supplier: r.supplier, zona: r.zona,
+    asal: r.asal === 'laut' ? 'laut' : 'darat',
+    ton: r.ton, tanggal_masuk: r.tanggal_masuk, jam: r.jam ?? '',
+    status: r.status === 'selesai' ? 'selesai' : 'progres',
+});
 
 function getGroupMalamOnDate(dateStr: string): string {
     for (const g of ['A', 'B', 'C', 'D'] as const) {
@@ -284,6 +298,8 @@ function InputShiftPageInner() {
     const needsAsh = !station || ['ESP', 'Handling', 'Catatan Operasional'].some(t => stationShiftTabs!.includes(t));
     const needsSolar = !station || ['Handling', 'Catatan Operasional'].some(t => stationShiftTabs!.includes(t));
     const needsChemStock = !station || stationShiftTabs!.includes('Lab');
+    // Rincian loading per pilar & kedatangan batubara hanya hidup di tab Handling.
+    const needsCoal = !station || stationShiftTabs!.includes('Handling');
 
     // Auto-pick tab pertama yang visible saat mount kalau activeTab default ('Boiler A')
     // tidak ada di visibleTabs (mis. station=esp).
@@ -355,6 +371,14 @@ function InputShiftPageInner() {
     const [savedOutSolarEntries, setSavedOutSolarEntries] = useState<{ id?: string; tanggal: string; jumlah: number | null; tujuan: string }[]>([]);
     const [ashEntries, setAshEntries] = useState<AshUnloadingEntry[]>([]);
     const [savedAshEntries, setSavedAshEntries] = useState<AshUnloadingEntry[]>([]);
+    // Batubara: rincian loading per pilar + kedatangan. Tabel berdiri sendiri
+    // (coal_loadings / coal_arrivals) dengan kunci (date, shift), persis pola
+    // solar_unloadings / ash_unloadings — bukan child dari shift_reports.
+    const [coalLoadingEntries, setCoalLoadingEntries] = useState<CoalLoadingEntry[]>([]);
+    const [savedCoalLoadingEntries, setSavedCoalLoadingEntries] = useState<CoalLoadingEntry[]>([]);
+    const [coalArrivalEntries, setCoalArrivalEntries] = useState<CoalArrivalEntry[]>([]);
+    const [savedCoalArrivalEntries, setSavedCoalArrivalEntries] = useState<CoalArrivalEntry[]>([]);
+    const [openArrivals, setOpenArrivals] = useState<OpenArrival[]>([]);
     const [lastStock, setLastStock] = useState<{ phosphate: number | null; amine: number | null; hydrazine: number | null }>({ phosphate: null, amine: null, hydrazine: null });
     const [catatan, setCatatan] = useState<string>('');
 
@@ -618,6 +642,63 @@ function InputShiftPageInner() {
 
     }, [selectedDate, selectedShift, shiftGate, needsAsh, needsSolar]);
 
+    // Fetch rincian loading per pilar + kedatangan batubara untuk tanggal+shift ini,
+    // plus daftar pengiriman yang masih berjalan (lintas tanggal, jadi TANPA filter
+    // date — itu justru gunanya: pengiriman kemarin yang belum selesai).
+    useEffect(() => {
+        if (shiftGate || !needsCoal) return;
+        const supabase = createClient();
+
+        supabase
+            .from('coal_loadings')
+            .select('id, zona, shovel, hopper')
+            .eq('date', selectedDate)
+            .eq('shift', shiftMap[selectedShift])
+            .order('created_at', { ascending: true })
+            .then(({ data }) => setSavedCoalLoadingEntries(
+                ((data ?? []) as CoalLoadingRow[]).map(toCoalLoadingEntry)));
+
+        supabase
+            .from('coal_arrivals')
+            .select('id, batch_id, supplier, zona, asal, ton, tanggal_masuk, jam, status')
+            .eq('date', selectedDate)
+            .eq('shift', shiftMap[selectedShift])
+            .order('created_at', { ascending: true })
+            .then(({ data }) => setSavedCoalArrivalEntries(
+                ((data ?? []) as CoalArrivalRow[]).map(toCoalArrivalEntry)));
+
+        // Sebuah pengiriman dianggap masih berjalan kalau baris TERAKHIRnya berstatus
+        // 'progres'. Dihitung di klien dari 200 baris terbaru — jauh lebih sederhana
+        // daripada window function lewat RPC, dan jumlah baris per hari kecil.
+        supabase
+            .from('coal_arrivals')
+            .select('batch_id, supplier, zona, asal, ton, tanggal_masuk, status, created_at')
+            .order('created_at', { ascending: true })
+            .limit(200)
+            .then(({ data }) => {
+                const per = new Map<string, OpenArrival & { status: string }>();
+                for (const r of (data ?? []) as CoalArrivalRow[]) {
+                    const prev = per.get(r.batch_id);
+                    per.set(r.batch_id, {
+                        batch_id: r.batch_id,
+                        supplier: r.supplier,
+                        zona: r.zona,
+                        asal: r.asal === 'laut' ? 'laut' : 'darat',
+                        // tanggal masuk = kedatangan pertama, supaya umur tumpukan benar
+                        tanggal_masuk: prev?.tanggal_masuk ?? r.tanggal_masuk,
+                        tonSejauhIni: (prev?.tonSejauhIni ?? 0) + Number(r.ton ?? 0),
+                        status: r.status,
+                    });
+                }
+                setOpenArrivals([...per.values()]
+                    .filter(b => b.status === 'progres')
+                    .map(b => ({
+                        batch_id: b.batch_id, supplier: b.supplier, zona: b.zona,
+                        asal: b.asal, tonSejauhIni: b.tonSejauhIni, tanggal_masuk: b.tanggal_masuk,
+                    })));
+            });
+    }, [selectedDate, selectedShift, shiftGate, needsCoal]);
+
     // Fetch last known chemical stock (latest shift report with non-null stock).
     // Konsumennya hanya tab Lab → skip untuk station tanpa tab Lab & di mode harian.
     useEffect(() => {
@@ -647,6 +728,20 @@ function InputShiftPageInner() {
         const { error } = await supabase.from('ash_unloadings').delete().eq('id', id);
         if (error) { showToast('Gagal hapus: ' + error.message, 'error'); return; }
         setSavedAshEntries(prev => prev.filter(e => e.id !== id));
+    };
+    const handleDeleteSavedCoalLoading = async (id: string) => {
+        if (!confirm('Hapus rincian loading pilar ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('coal_loadings').delete().eq('id', id);
+        if (error) { showToast('Gagal hapus: ' + error.message, 'error'); return; }
+        setSavedCoalLoadingEntries(prev => prev.filter(e => e.id !== id));
+    };
+    const handleDeleteSavedCoalArrival = async (id: string) => {
+        if (!confirm('Hapus data kedatangan batubara ini?')) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('coal_arrivals').delete().eq('id', id);
+        if (error) { showToast('Gagal hapus: ' + error.message, 'error'); return; }
+        setSavedCoalArrivalEntries(prev => prev.filter(e => e.id !== id));
     };
     const handleDeleteSavedSolar = async (id: string) => {
         if (!confirm('Hapus data kedatangan solar ini?')) return;
@@ -783,6 +878,8 @@ function InputShiftPageInner() {
         setSolarEntries([]);
         setOutSolarEntries([]);
         setAshEntries([]);
+        setCoalLoadingEntries([]);
+        setCoalArrivalEntries([]);
         setSupervisor('');
         setForemanBoiler('');
         setForemanTurbin('');
@@ -1366,6 +1463,44 @@ function InputShiftPageInner() {
                 if (ashErr) showToast('Unloading fly ash GAGAL tersimpan: ' + ashErr.message + '. Mohon simpan ulang.', 'error');
             }
 
+            // Rincian loading per pilar — OPSIONAL. Daftar kosong → tidak ada insert
+            // sama sekali, dan shift_esp_handling.loading tetap apa yang diketik operator.
+            const validCoalLoadings = coalLoadingEntries.filter(e => e.zona && e.shovel);
+            if (validCoalLoadings.length > 0) {
+                const supabase = createClient();
+                const coalInserts = validCoalLoadings.map(entry => ({
+                    date: selectedDate,
+                    shift: shiftMap[selectedShift],
+                    zona: entry.zona,
+                    shovel: entry.shovel,
+                    hopper: entry.hopper || null,
+                    operator_id: operator?.supabaseId ?? null,
+                }));
+                const { error: coalLoadErr } = await supabase.from('coal_loadings').insert(coalInserts as any[]);
+                if (coalLoadErr) showToast('Rincian loading pilar GAGAL tersimpan: ' + coalLoadErr.message + '. Mohon simpan ulang.', 'error');
+            }
+
+            // Kedatangan batubara — OPSIONAL, sama perlakuannya.
+            const validCoalArrivals = coalArrivalEntries.filter(e => e.supplier && e.zona && e.ton);
+            if (validCoalArrivals.length > 0) {
+                const supabase = createClient();
+                const arrivalInserts = validCoalArrivals.map(entry => ({
+                    batch_id: entry.batch_id,
+                    date: selectedDate,
+                    shift: shiftMap[selectedShift],
+                    supplier: entry.supplier,
+                    zona: entry.zona,
+                    asal: entry.asal,
+                    ton: entry.ton,
+                    tanggal_masuk: entry.tanggal_masuk || selectedDate,
+                    jam: entry.jam || null,
+                    status: entry.status,
+                    operator_id: operator?.supabaseId ?? null,
+                }));
+                const { error: arrivalErr } = await supabase.from('coal_arrivals').insert(arrivalInserts as any[]);
+                if (arrivalErr) showToast('Kedatangan batubara GAGAL tersimpan: ' + arrivalErr.message + '. Mohon simpan ulang.', 'error');
+            }
+
             clearInterval(progressInterval);
             setSaveProgress(100);
             setTimeout(() => setSaveProgress(null), 800);
@@ -1433,9 +1568,21 @@ function InputShiftPageInner() {
                     .order('created_at', { ascending: true })
                     .then(({ data }) => setSavedOutSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, tujuan: r.tujuan }))));
 
+                spb.from('coal_loadings').select('id, zona, shovel, hopper')
+                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
+                    .order('created_at', { ascending: true })
+                    .then(({ data }) => setSavedCoalLoadingEntries(((data ?? []) as CoalLoadingRow[]).map(toCoalLoadingEntry)));
+
+                spb.from('coal_arrivals').select('id, batch_id, supplier, zona, asal, ton, tanggal_masuk, jam, status')
+                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
+                    .order('created_at', { ascending: true })
+                    .then(({ data }) => setSavedCoalArrivalEntries(((data ?? []) as CoalArrivalRow[]).map(toCoalArrivalEntry)));
+
                 setAshEntries([]);
                 setSolarEntries([]);
                 setOutSolarEntries([]);
+                setCoalLoadingEntries([]);
+                setCoalArrivalEntries([]);
             }
         } catch (err) {
             clearInterval(progressInterval);
@@ -2202,7 +2349,13 @@ function InputShiftPageInner() {
                                     {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} onAutoFieldChange={makeAutoNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet as number | null} prevTotalizerCondensate={prevTurbin.totalizer_condensate as number | null} />}
                                     {activeTab === 'Generator' && <TabGenerator generatorValues={generatorGi} powerValues={powerDist} onGeneratorChange={makeNumberHandler(setGeneratorGi)} onPowerChange={makeNumberHandler(setPowerDist)} onAutoGeneratorChange={makeAutoNumberHandler(setGeneratorGi)} onAutoPowerChange={makeAutoNumberHandler(setPowerDist)} prevPowerDist={prevPowerDist} genLoad={Number(generatorGi.gen_load) || null} isTurbinShutdown={turbin.status_turbin === 'shutdown'} />}
                                     {activeTab === 'Distribusi Steam' && <TabDistribusiSteam values={steamDist} onFieldChange={makeNumberHandler(setSteamDist)} prevTotalizerPabrik1={prevSteamDist.pabrik1_totalizer} prevTotalizerPabrik2={prevSteamDist.pabrik2_totalizer} prevTotalizerPabrik3={prevSteamDist.pabrik3a_totalizer} />}
-                                    {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} onDeleteSavedSolar={handleDeleteSavedSolar} onDeleteSavedOutSolar={handleDeleteSavedOutSolar} />}
+                                    {activeTab === 'Handling' && <TabHandling espValues={espHandling} tankyardValues={tankyard} onEspChange={makeMixedHandler(setEspHandling)} onTankyardChange={makeNumberHandler(setTankyard)} solarEntries={solarEntries} onSolarEntriesChange={setSolarEntries} outSolarEntries={outSolarEntries} onOutSolarEntriesChange={setOutSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} onDeleteSavedSolar={handleDeleteSavedSolar} onDeleteSavedOutSolar={handleDeleteSavedOutSolar}
+                                        canEditCoal={operator?.role === 'admin'} reportDate={selectedDate}
+                                        coalLoadingEntries={coalLoadingEntries} onCoalLoadingEntriesChange={setCoalLoadingEntries}
+                                        savedCoalLoadingEntries={savedCoalLoadingEntries} onDeleteSavedCoalLoading={handleDeleteSavedCoalLoading}
+                                        coalArrivalEntries={coalArrivalEntries} onCoalArrivalEntriesChange={setCoalArrivalEntries}
+                                        savedCoalArrivalEntries={savedCoalArrivalEntries} onDeleteSavedCoalArrival={handleDeleteSavedCoalArrival}
+                                        openArrivals={openArrivals} />}
                                     {activeTab === 'ESP' && <TabESP values={espHandling} onFieldChange={makeMixedHandler(setEspHandling)} ashEntries={ashEntries} onAshEntriesChange={setAshEntries} savedAshEntries={savedAshEntries} onDeleteSavedAsh={handleDeleteSavedAsh} />}
                                     {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
                                     {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} />}

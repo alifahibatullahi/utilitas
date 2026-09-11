@@ -29,6 +29,13 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
     highlight: Sorotan | null;
 }) {
     const [selected, setSelected] = useState<number | null>(null);
+    // Petak yang sedang di-hover. Tinggal di sini, bukan di ZonaBin, karena yang ikut
+    // menyala adalah dua PILAR pengapitnya — dan pilar adalah sibling ZonaBin, bukan
+    // anaknya, jadi tidak bisa dijangkau lewat group-hover.
+    const [hover, setHover] = useState<number | null>(null);
+    // Pilar ke-i berdiri di antara zona i-1 dan zona i (lihat susunan Fragment di bawah),
+    // jadi ia menyala kalau salah satu dari keduanya sedang disorot.
+    const pilarAktif = (i: number) => hover === i - 1 || hover === i;
     const zonas = zonaIds(area);
     const total = tonArea(lots, area);
     const pct = (total / area.kapasitasTon) * 100;
@@ -87,7 +94,10 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
                             <Fragment key={zonaId}>
                                 {i > 0 && (
                                     <div className="w-[7px] shrink-0">
-                                        <div className="w-[7px] h-[90px] -mt-3 rounded-sm bg-slate-600" />
+                                        <div
+                                            className={`w-[7px] h-[90px] -mt-3 rounded-sm transition-colors duration-200
+                                                ${pilarAktif(i) ? 'bg-sky-600' : 'bg-slate-600'}`}
+                                        />
                                     </div>
                                 )}
                                 <ZonaBin
@@ -99,6 +109,7 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
                                     warna={warna}
                                     highlight={highlight}
                                     onSelect={setSelected}
+                                    onHover={setHover}
                                 />
                             </Fragment>
                         ))}
@@ -116,7 +127,8 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
                                             tidak boleh menempel di elemen yang sama. */}
                                         <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
                                             <span
-                                                className="cs-fade-up inline-block rounded bg-slate-100 px-[3px] text-[11px] leading-4 text-slate-500"
+                                                className={`cs-fade-up inline-block rounded px-[3px] text-[11px] leading-4 transition-colors duration-200
+                                                    ${pilarAktif(i) ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'}`}
                                                 style={{ animationDelay: `${delayZona(i)}ms` }}
                                             >
                                                 {i}
@@ -125,12 +137,22 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
                                     </div>
                                 )}
                                 {/* Persen menyusul gundukan di kolom yang sama, jadi angkanya
-                                    terbaca tepat setelah tumpukannya selesai tumbuh. */}
+                                    terbaca tepat setelah tumpukannya selesai tumbuh.
+                                    Pembesaran saat hover dipasang di span dalam, bukan di div
+                                    ber-.cs-fade-up: keyframes fade-up menulis ulang transform
+                                    dan isian `both` menahannya, jadi scale di elemen yang sama
+                                    tidak akan pernah terlihat. */}
                                 <div
-                                    className="cs-fade-up flex-1 min-w-0 text-center text-xs leading-4 font-semibold text-slate-900"
+                                    className={`cs-fade-up flex-1 min-w-0 text-center text-xs leading-4 font-semibold transition-colors duration-200
+                                        ${hover === i ? 'text-sky-700' : 'text-slate-900'}`}
                                     style={{ animationDelay: `${delayZona(i) + 220}ms` }}
                                 >
-                                    {tonZona(lots, zonaId) > 0 ? `${persenZona(lots, zonaId)}%` : '—'}
+                                    <span
+                                        className={`cs-hover-scale inline-block transition-transform duration-200
+                                            ${hover === i ? 'scale-110' : 'scale-100'}`}
+                                    >
+                                        {tonZona(lots, zonaId) > 0 ? `${persenZona(lots, zonaId)}%` : '—'}
+                                    </span>
                                 </div>
                             </Fragment>
                         ))}

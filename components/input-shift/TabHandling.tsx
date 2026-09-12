@@ -65,16 +65,6 @@ function newBatchId(): string {
 const selectClass = (filled: boolean, ring: string) =>
     `w-full bg-[#101822] border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 ${ring} text-sm font-bold transition-all ${filled ? 'text-white' : 'text-slate-400'}`;
 
-/** Label bergembok untuk kartu yang belum dibuka bagi peran ini. */
-function TerkunciNote({ children }: { children: React.ReactNode }) {
-    return (
-        <p className="flex items-start gap-1.5 text-[10px] text-slate-500 leading-relaxed">
-            <span className="material-symbols-outlined text-[13px] leading-4 shrink-0">lock</span>
-            <span>{children}</span>
-        </p>
-    );
-}
-
 /**
  * Daftar entri batubara (loading / kedatangan). Ditulis terpisah dari EntryList
  * milik solar karena barisnya punya bentuk yang berbeda — dua baris teks bebas
@@ -384,7 +374,7 @@ export default function TabHandling({
                                 })}
                             </div>
 
-                            {canEditCoal ? (
+                            {canEditCoal && (
                                 <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
                                     {coalZonas.length === 0
                                         ? 'Belum ada pilar dipilih.'
@@ -399,12 +389,6 @@ export default function TabHandling({
                                                 per pilar
                                             </>}
                                 </p>
-                            ) : (
-                                <TerkunciNote>
-                                    Coming soon — pilihan pilar ditampilkan lebih dulu supaya terbiasa,
-                                    tapi belum bisa diisi; sementara ini khusus admin. Total Loading di
-                                    atas tetap diisi seperti biasa.
-                                </TerkunciNote>
                             )}
                         </div>
                     </Card>
@@ -499,18 +483,11 @@ export default function TabHandling({
                                 Tambah Kedatangan
                             </button>
                         ) : (
-                            <>
-                                <button type="button" disabled
-                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-700/60 bg-slate-800/40 text-slate-500 text-sm font-bold cursor-not-allowed">
-                                    <span className="material-symbols-outlined text-[18px]">lock</span>
-                                    Tambah Kedatangan
-                                </button>
-                                <TerkunciNote>
-                                    Coming soon — kartu ini ditampilkan lebih dulu supaya terbiasa, tapi
-                                    belum bisa diisi; sementara ini khusus admin. Nanti isian di sini yang
-                                    membuat denah di menu Storage Batubara ikut bergerak.
-                                </TerkunciNote>
-                            </>
+                            <button type="button" disabled
+                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-700/60 bg-slate-800/40 text-slate-500 text-sm font-bold cursor-not-allowed">
+                                <span className="material-symbols-outlined text-[18px]">lock</span>
+                                Tambah Kedatangan
+                            </button>
                         )}
                     </Card>
 

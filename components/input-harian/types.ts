@@ -40,6 +40,9 @@ export interface DailyTabProps {
     solarUnloadings?: { id?: string; date: string; liters: number; supplier: string; shift?: string | null }[];
     solarUsages?: { id?: string; date: string; shift: string; liters: number; tujuan: string }[];
     ashUnloadings?: { id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[];
+    /** Kedatangan batubara hari itu (coal_arrivals) — ringkasan BACA-SAJA di tab Handling,
+     *  cermin dari laporan shift. Tanpa handler edit/hapus: sumbernya laporan shift. */
+    coalArrivals?: { id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[];
     onDeleteSolarUnloading?: (id: string) => void;
     onDeleteSolarUsage?: (id: string) => void;
     onEditSolarUnloading?: (id: string, fields: { liters: number; supplier: string }) => void;

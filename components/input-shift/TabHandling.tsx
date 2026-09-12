@@ -360,7 +360,7 @@ export default function TabHandling({
                             /coal-storage, dan operator cukup menunjuk pilarnya: jumlah
                             shovel per pilar adalah Total Loading dibagi rata. */}
                         <div>
-                            <SectionLabel label="Diambil dari pilar" badge="opsional" />
+                            <SectionLabel label="Diambil dari pilar" badge="coming soon" />
                             <div className="flex flex-wrap gap-1.5">
                                 {ZONA_OPTIONS.map(z => {
                                     const aktif = coalZonas.includes(z.value);
@@ -401,8 +401,9 @@ export default function TabHandling({
                                 </p>
                             ) : (
                                 <TerkunciNote>
-                                    Sedang disiapkan — menunggu pendataan kondisi nyata tiap pilar di storage.
-                                    Total loading di atas tetap diisi seperti biasa.
+                                    Coming soon — pilihan pilar ditampilkan lebih dulu supaya terbiasa,
+                                    tapi belum bisa diisi; sementara ini khusus admin. Total Loading di
+                                    atas tetap diisi seperti biasa.
                                 </TerkunciNote>
                             )}
                         </div>
@@ -463,7 +464,7 @@ export default function TabHandling({
                     {/* Kedatangan Batubara — kartu baru, opsional */}
                     <Card
                         title="Kedatangan Batubara" icon="dock" color="emerald"
-                        headerRight={<span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-300 font-medium">opsional</span>}
+                        headerRight={<span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-300 font-medium">coming soon</span>}
                     >
                         {allArrivals.length > 0 && (
                             <div className="mb-1">
@@ -505,8 +506,9 @@ export default function TabHandling({
                                     Tambah Kedatangan
                                 </button>
                                 <TerkunciNote>
-                                    Sedang disiapkan — menunggu pendataan kondisi nyata storage. Nanti
-                                    isian di sini yang membuat denah di menu Storage Batubara ikut bergerak.
+                                    Coming soon — kartu ini ditampilkan lebih dulu supaya terbiasa, tapi
+                                    belum bisa diisi; sementara ini khusus admin. Nanti isian di sini yang
+                                    membuat denah di menu Storage Batubara ikut bergerak.
                                 </TerkunciNote>
                             </>
                         )}

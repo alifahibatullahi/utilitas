@@ -133,6 +133,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const harianStationTabs = station ? STATION_HARIAN_TABS[station] : null;
     const needsSolar = !station || harianStationTabs!.includes('Handling');
     const needsAsh = !station || harianStationTabs!.includes('Silo & Fly Ash');
+    // Kedatangan batubara cuma dibaca kartu ringkasan di tab Handling.
+    const needsCoalArrivals = !station || harianStationTabs!.includes('Handling');
 
     const [activeTab, setActiveTab] = useState<HarianTabId>(() => {
         if (station) {
@@ -184,6 +186,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string; shift?: string | null }[]>([]);
     const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
     const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
+    const [coalArrivals, setCoalArrivals] = useState<{ id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[]>([]);
 
     // Mode station: select di-narrow ke child table milik station (hemat DB & payload).
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date, station);
@@ -228,7 +231,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         // Di-gate per station: solar hanya utk tab Handling, ash hanya utk tab
         // Silo & Fly Ash (esp) — station lain tidak menarik data ini.
         useEffect(() => {
-            if (!needsSolar && !needsAsh) return;
+            if (!needsSolar && !needsAsh && !needsCoalArrivals) return;
             const supabase = createClient();
 
             if (needsSolar) supabase
@@ -283,7 +286,29 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         }))
                     );
                 });
-        }, [date, needsSolar, needsAsh]);
+
+            // Kedatangan batubara — BACA-SAJA, cuma untuk kartu ringkasan di tab Handling.
+            // Disaring `date` (tanggal laporan shift, konvensi ENDING: malam = hari submit),
+            // sama seperti solar & ash di atas — bukan `tanggal_masuk` yang bisa jauh lebih
+            // awal untuk pengiriman yang sudah berhari-hari berjalan.
+            if (needsCoalArrivals) supabase
+                .from('coal_arrivals')
+                .select('id, shift, supplier, zona, ton, status')
+                .eq('date', date)
+                .order('created_at', { ascending: false })
+                .then(({ data }) => {
+                    setCoalArrivals(
+                        (data ?? []).map(r => ({
+                            id: r.id as string,
+                            shift: (r.shift as string) || '',
+                            supplier: (r.supplier as string) || '',
+                            zona: (r.zona as string) || '',
+                            ton: Number(r.ton) || 0,
+                            status: (r.status as string) || '',
+                        }))
+                    );
+                });
+        }, [date, needsSolar, needsAsh, needsCoalArrivals]);
 
     // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DW = stock batubara
     // (stock_batubara_rendal). Hanya form penuh — tab Stock BB tidak ada di station
@@ -1394,6 +1419,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     ashUnloadings,
                                     onDeleteAshUnloading: handleDeleteAshUnloading,
                                     onEditAshUnloading: handleEditAshUnloading,
+                                    coalArrivals,
                                 };
                                 return (
                                     <>

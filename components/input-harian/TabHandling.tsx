@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, Modal } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
+import { formatTon, labelZonaPendek } from '@/lib/coal-storage';
 
 import { SolarOriginBadge } from './SolarOriginBadge';
 
@@ -17,6 +18,7 @@ export default function TabHandling({
     onStockTankChange, onTotalizerChange,
     solarUnloadings = [],
     solarUsages = [],
+    coalArrivals = [],
     onDeleteSolarUnloading,
     onDeleteSolarUsage,
     onEditSolarUnloading,
@@ -48,6 +50,11 @@ export default function TabHandling({
     const konsService = selisih('tot_service');
     const konsHarianRCW = (konsHydrant ?? 0) + (konsBasin ?? 0) + (konsService ?? 0);
     const hasRCWKons = konsHydrant !== null || konsBasin !== null || konsService !== null;
+
+    // Satu pengiriman yang memakan beberapa shift tercatat sebagai beberapa BARIS dengan
+    // batch_id sama, jadi jumlah baris bukan jumlah pengiriman — badge menulis "entri".
+    // Totalnya tetap SUM(ton) dan itu memang benar.
+    const totalTonBatubara = coalArrivals.reduce((s, e) => s + e.ton, 0);
 
     const totalKedatangan = solarUnloadings.reduce((s, e) => s + e.liters, 0);
     const totalPermintaan = solarUsages.reduce((s, e) => s + e.liters, 0);
@@ -278,6 +285,32 @@ export default function TabHandling({
                         <CalculatedField label="SA/SU 3B" value={fmt(sasuTotal / 1000)} unit="m³" variant="secondary" />
                     </div>
                     <p className="text-[10px] text-slate-500 mt-2">Bengkel & SA/SU 3B dihitung dari total permintaan solar per tujuan (Liter → m³ ÷ 1000)</p>
+                </div>
+
+                {/* Kedatangan Batubara — cermin baca-saja dari laporan shift Handling; tidak ada
+                    tambah/edit/hapus di sini karena sumbernya operator shift. Ditaruh SETELAH
+                    Penggunaan Solar Harian: blok itu penutup rangkaian solar di atasnya
+                    (kedatangan → permintaan → total pemakaian), jadi menyisipkan batubara di
+                    tengahnya akan memutus pasangannya. */}
+                <div className="mt-4 pt-4 border-t border-slate-700/50">
+                    <SectionLabel label="Kedatangan Batubara" badge={`${coalArrivals.length} entri · ${formatTon(totalTonBatubara)} ton`} />
+                    {coalArrivals.length > 0 ? (
+                        <div className="space-y-2">
+                            {coalArrivals.map((item, i) => (
+                                <div key={item.id ?? i} className="flex items-center gap-2 bg-[#101822]/50 border border-emerald-500/30 rounded-lg px-3 py-2 min-w-0">
+                                    <span className="material-symbols-outlined text-emerald-400 text-[15px]">dock</span>
+                                    <span className="text-white font-medium text-sm font-mono">{formatTon(item.ton)} <span className="text-emerald-400 text-xs">ton</span></span>
+                                    <SolarOriginBadge shift={item.shift} />
+                                    <span className="text-[10px] text-slate-400 truncate">{item.supplier} · {labelZonaPendek(item.zona)}</span>
+                                    {item.status === 'progres' && (
+                                        <span className="ml-auto shrink-0 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-medium">masih progres</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-[11px] text-slate-500 italic">Belum ada kedatangan batubara hari ini</p>
+                    )}
                 </div>
             </Card>
 

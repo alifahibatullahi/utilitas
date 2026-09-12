@@ -702,6 +702,48 @@ export interface AshUnloadingRow {
     created_at: string;
 }
 
+/**
+ * Pengambilan batubara oleh payloader, per pilar. Satu shift boleh punya beberapa
+ * baris karena payloader bisa berpindah pilar dalam satu shift.
+ *
+ * Berdiri sendiri dengan kunci (date, shift) seperti solar_unloadings/ash_unloadings —
+ * BUKAN child dari shift_reports — jadi tidak menyentuh peta ownership station.
+ * `zona` memakai kode internal 'O1'…'C12' dari lib/coal-storage.ts.
+ */
+export interface CoalLoadingRow {
+    id: string;
+    date: string;
+    shift: string;
+    zona: string;
+    shovel: number;
+    hopper: string | null;
+    operator_id: string | null;
+    created_at: string;
+}
+
+/**
+ * Kedatangan batubara. Satu baris = tonase yang masuk DI SHIFT ITU; pengiriman yang
+ * berlanjut ke shift/hari berikutnya memakai batch_id yang sama supaya di denah tetap
+ * terbaca sebagai satu tumpukan dengan tanggal masuk paling awal.
+ *
+ * tanggal_masuk = hari batubara MULAI masuk storage (tanpa jam); untuk baris lanjutan
+ * ia diwarisi dari kedatangan pertama, jadi umur tumpukan dihitung sejak saat itu.
+ */
+export interface CoalArrivalRow {
+    id: string;
+    batch_id: string;
+    date: string;
+    shift: string;
+    supplier: string;
+    zona: string;
+    ton: number;
+    tanggal_masuk: string;
+    status: string;          // 'progres' | 'selesai'
+    keterangan: string | null;
+    operator_id: string | null;
+    created_at: string;
+}
+
 export interface TankLevelRow {
     id: string;
     tank_id: 'DEMIN' | 'RCW' | 'SOLAR';

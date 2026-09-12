@@ -67,7 +67,11 @@ export default function TabHandling({
     // Review pengurangan level solar: bandingkan level kemarin (LHUBB hari sebelumnya) vs hari ini.
     const levelKemarin = prevStockTank?.solar_tank_a != null ? n(prevStockTank.solar_tank_a) : null;
     const levelHariIni = stockTank.solar_tank_a != null ? n(stockTank.solar_tank_a) : null;
-    const adaPengurangan = levelKemarin != null && levelHariIni != null && levelKemarin > levelHariIni;
+    // Dua arah: level solar tidak cuma berkurang dipakai, tapi juga bertambah saat ada
+    // kedatangan. Sama persis dengan kemarin → tidak ada yang perlu diberitahukan.
+    const selisihLevel = levelKemarin != null && levelHariIni != null ? levelHariIni - levelKemarin : null;
+    const adaPerubahan = selisihLevel != null && selisihLevel !== 0;
+    const naik = (selisihLevel ?? 0) > 0;
 
     const saveEditUn = async () => {
         if (!editUn) return;
@@ -105,30 +109,23 @@ export default function TabHandling({
                 <CalculatedField label="Pemakaian Solar Boiler A+B" value={stockTank.solar_boiler != null ? fmt(boilerUsage) : '—'} unit="m³" variant="small" />
                 <p className="-mt-1 text-[10px] text-slate-500">Diisi saat review oleh supervisor (kolom Sheets CL). Read-only di sini.</p>
 
-                {/* Review pengurangan level solar — cuma konfirmasi (tanpa validasi angka) */}
-                {adaPengurangan && (
-                    <div className="mt-3 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2.5">
+                {/* Perubahan level solar — sekadar pemberitahuan, tanpa validasi angka dan
+                    tanpa rincian pemakaian: ketiga angka itu sudah tampil utuh di blok
+                    Penggunaan Solar Harian pada kartu Summary. Warna ikut arah supaya
+                    kenaikan (ada kedatangan) tidak terbaca sebagai peringatan. */}
+                {adaPerubahan && (
+                    <div className={`mt-3 rounded-lg border px-3 py-2.5 ${naik ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-orange-500/30 bg-orange-500/10'}`}>
                         <div className="flex items-center gap-1.5 mb-1">
-                            <span className="material-symbols-outlined text-orange-400 text-[15px]">trending_down</span>
-                            <span className="text-[11px] font-bold text-orange-300 uppercase tracking-wider">Konfirmasi Pengurangan Solar</span>
+                            <span className={`material-symbols-outlined text-[15px] ${naik ? 'text-emerald-400' : 'text-orange-400'}`}>
+                                {naik ? 'trending_up' : 'trending_down'}
+                            </span>
+                            <span className={`text-[11px] font-bold uppercase tracking-wider ${naik ? 'text-emerald-300' : 'text-orange-300'}`}>
+                                Perubahan Level Solar
+                            </span>
                         </div>
                         <p className="text-[12px] text-slate-200 leading-relaxed">
-                            Level solar berkurang dari <b className="text-white">{fmt(levelKemarin!)} m³</b> ke <b className="text-white">{fmt(levelHariIni!)} m³</b> untuk:
+                            Level solar {naik ? 'bertambah' : 'berkurang'} dari <b className="text-white">{fmt(levelKemarin!)} m³</b> ke <b className="text-white">{fmt(levelHariIni!)} m³</b>
                         </p>
-                        <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
-                            <div className="rounded-md bg-[#101822]/60 py-1.5">
-                                <p className="text-[9px] text-slate-400 uppercase">Boiler AB</p>
-                                <p className="text-sm font-mono font-bold text-orange-300">{fmt(boilerUsage)} <span className="text-[9px]">m³</span></p>
-                            </div>
-                            <div className="rounded-md bg-[#101822]/60 py-1.5">
-                                <p className="text-[9px] text-slate-400 uppercase">Bengkel</p>
-                                <p className="text-sm font-mono font-bold text-orange-300">{fmt(bengkelTotal / 1000)} <span className="text-[9px]">m³</span></p>
-                            </div>
-                            <div className="rounded-md bg-[#101822]/60 py-1.5">
-                                <p className="text-[9px] text-slate-400 uppercase">SA/SU 3B</p>
-                                <p className="text-sm font-mono font-bold text-orange-300">{fmt(sasuTotal / 1000)} <span className="text-[9px]">m³</span></p>
-                            </div>
-                        </div>
                     </div>
                 )}
             </Card>

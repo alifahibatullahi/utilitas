@@ -323,8 +323,12 @@ export interface NavItem {
     roles: OperatorRole[] | 'all';
 }
 
-// Which roles can input shift data
-export const SHIFT_INPUT_ROLES: OperatorRole[] = ['group_a', 'group_b', 'group_c', 'group_d', 'foreman_boiler', 'foreman_turbin'];
+// Which roles can input shift data.
+// `handling` ikut di sini karena operator handling memang mengisi laporan shift station
+// Handling. Hari ini tidak ada efeknya — satu-satunya pemakai konstanta ini, canInputShift
+// di hooks/useOperator.tsx, belum dipakai di mana pun — tapi kalau suatu saat dijadikan
+// penjaga, tanpa baris ini mereka akan terkunci dari station-nya sendiri.
+export const SHIFT_INPUT_ROLES: OperatorRole[] = ['group_a', 'group_b', 'group_c', 'group_d', 'foreman_boiler', 'foreman_turbin', 'handling'];
 
 // ─── Operator Stations ────────────────────────────────────────────────────────
 // Setiap shift, tugas pengisian laporan dibagi per "station". Link reminder WA
@@ -400,7 +404,9 @@ export const STATION_ORDER: OperatorStation[] = [
 export const NAV_ITEMS: NavItem[] = [
     { id: 'home', label: 'Home', icon: 'home', path: '/home', roles: 'all' },
     { id: 'tank-level', label: 'Tank Level', icon: 'tank', path: '/tank-level', roles: 'all' },
-    { id: 'input-laporan', label: 'Input Laporan', icon: 'edit', path: '/input-laporan', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'] },
+    // Disamakan dengan HOME_MENU_ITEMS: tanpa ini operator handling di HP tetap tidak
+    // menemukan pintunya di tab bar, satu-satunya navigasi lain yang tersisa.
+    { id: 'input-laporan', label: 'Input Laporan', icon: 'edit', path: '/input-laporan', roles: 'all' },
     { id: 'critical', label: 'Critical & Maint', icon: 'warning', path: '/critical', roles: 'all' },
     { id: 'laporan-shift', label: 'Laporan Shift', icon: 'report', path: '/laporan-shift', roles: 'all' },
     { id: 'laporan-harian', label: 'Laporan Harian', icon: 'daily', path: '/laporan-harian', roles: 'all' },
@@ -422,7 +428,11 @@ export interface HomeMenuItem extends NavItem {
 // menu lain menyusul saat sudah siap dipakai.
 export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     { id: 'tank-level', label: 'Tank Level', description: 'Monitoring level tangki DEMIN, RCW & Solar', icon: 'tank', path: '/tank-level', roles: 'all', featured: true },
-    { id: 'input-laporan', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-laporan', roles: [...SHIFT_INPUT_ROLES, 'supervisor', 'admin'], featured: true },
+    // roles 'all', bukan daftar peran: dulu hanya SHIFT_INPUT_ROLES + supervisor/admin,
+    // dan itu diam-diam menutup pintunya bagi operator `handling` — padahal mereka punya
+    // station Handling sendiri di mode shift maupun harian. Halaman tujuannya juga tidak
+    // punya penjaga peran sama sekali, jadi tidak ada gunanya disaring di sini.
+    { id: 'input-laporan', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-laporan', roles: 'all', featured: true },
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
     // Viewer berbasis Google Sheets (input tetap di spreadsheet).
     { id: 'critical-maintenance', label: 'Critical Maintenance', description: 'Daftar critical equipment & riwayat maintenance', icon: 'warning', path: '/critical-maintenance', roles: 'all', featured: true },

@@ -14,7 +14,7 @@ export default function TabPIU({
     return (
         <div className="flex-1 flex flex-col gap-6 w-full overflow-y-auto">
             <Card title="Totalizer Power PIU" icon="electric_meter" color="blue">
-                <p className="text-[10px] text-slate-500 -mt-1">Tulis tanpa koma — contoh: 32375</p>
+                <p className="text-xs text-white -mt-1">Tulis tanpa koma — contoh: 32375</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <InputField
@@ -31,7 +31,6 @@ export default function TabPIU({
                             <SelisihInfo
                                 prev={Number(ptm?.totalizer_import) || 0}
                                 current={Number(tm.totalizer_import) || 0}
-                                minZero
                                 plain
                             />
                         )}
@@ -51,7 +50,6 @@ export default function TabPIU({
                             <SelisihInfo
                                 prev={Number(ptm?.totalizer_export) || 0}
                                 current={Number(tm.totalizer_export) || 0}
-                                minZero
                                 plain
                             />
                         )}

@@ -18,7 +18,7 @@ import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import PersonnelConfirmModal, { type PersonnelConfirmField } from '@/components/ui/PersonnelConfirmModal';
-import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
+import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif } from '@/lib/report-validation';
 import {
     type DailyState,
     isBoilerComplete, isTurbinComplete, isPowerComplete,
@@ -653,7 +653,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
             }
             // PIU dimiliki station lapangan_turbin (tab terpisah), bukan panel_turbin.
-            if (ownsTab('PIU')) { const w = checkMaxMW('PIU', power.power_pie); if (w) warnings.push(w); }
+            // Selisih totalizer sengaja tidak diklamp — di layar tampil apa adanya
+            // (boleh minus), di sini operator diberi pilihan perbaiki atau tetap simpan.
+            if (ownsTab('PIU')) {
+                const w = checkMaxMW('PIU', power.power_pie); if (w) warnings.push(w);
+                const wI = checkSelisihNegatif('Delivered (Import)', turbineMisc.totalizer_import, prevTurbineMisc?.totalizer_import); if (wI) warnings.push(wI);
+                const wE = checkSelisihNegatif('Received (Export)',  turbineMisc.totalizer_export, prevTurbineMisc?.totalizer_export); if (wE) warnings.push(wE);
+            }
             if (warnings.length > 0) {
                 const ok = await confirmWarnings(warnings);
                 if (!ok) return;

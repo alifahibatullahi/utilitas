@@ -247,9 +247,10 @@ export const SectionLabel = ({ label, badge }: { label: string; badge?: string }
     </div>
 );
 
-export const SelisihInfo = ({ prev, current, minZero, plain }: { prev: number; current: number; minZero?: boolean; plain?: boolean }) => {
-    // minZero: totalizer sifatnya naik terus, jadi selisih minimal 0 (tidak minus).
-    const diff = minZero ? Math.max(0, current - prev) : current - prev;
+export const SelisihInfo = ({ prev, current, plain }: { prev: number; current: number; plain?: boolean }) => {
+    // Selisih tampil apa adanya (boleh minus) — anomali justru harus kelihatan.
+    // Penjagaannya ada saat simpan lewat checkSelisihNegatif().
+    const diff = current - prev;
     // plain: tanpa pemisah ribuan, biar sama persis dengan angka di kolom isian.
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : plain ? String(v) : v.toLocaleString('id-ID');
     return prev > 0 ? (

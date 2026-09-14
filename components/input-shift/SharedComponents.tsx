@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands, integer }: {
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands, plainInteger }: {
     label?: string;
     placeholder?: string;
     unit?: string;
@@ -15,8 +15,9 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     readOnly?: boolean;
     textMode?: boolean;
     thousands?: boolean;
-    /** Hanya bilangan bulat (berlaku di mode `thousands`) — desimal/koma ditolak. */
-    integer?: boolean;
+    /** Bilangan bulat polos — tanpa pemisah ribuan & tanpa desimal; memakai mode
+     *  input teks numerik yang sama dengan `thousands`. */
+    plainInteger?: boolean;
 }) => {
     // Local state for textMode to handle intermediate values like "-" or "1."
     const [rawText, setRawText] = useState('');
@@ -28,9 +29,9 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
         if (v == null || v === '') return '';
         const num = Number(v);
         if (isNaN(num)) return '';
-        // Mode integer: bulatkan dulu supaya tidak pernah muncul koma desimal
-        // (di locale id-ID koma adalah pemisah desimal, titik pemisah ribuan).
-        if (integer) return Math.round(num).toLocaleString('id-ID', { maximumFractionDigits: 0 });
+        // Mode polos: tampil apa adanya — tanpa titik ribuan & tanpa koma desimal,
+        // jadi angka yang terlihat persis sama dengan yang diketik operator.
+        if (plainInteger) return String(Math.round(num));
         return num.toLocaleString('id-ID', { maximumFractionDigits: 3 });
     };
 
@@ -52,10 +53,10 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     }, [value, textMode]);
 
     useEffect(() => {
-        if (thousands && !thuFocused.current) {
+        if ((thousands || plainInteger) && !thuFocused.current) {
             setThuText(value != null && value !== '' ? fmtThu(value) : '');
         }
-    }, [value, thousands]);
+    }, [value, thousands, plainInteger]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
@@ -74,8 +75,8 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
         </label>
     );
 
-    // ── Thousands separator mode ───────────────────────────────────────────────
-    if (thousands) {
+    // ── Thousands separator mode (juga dipakai mode polos `plainInteger`) ──────
+    if (thousands || plainInteger) {
         const isEmpty = !thuText;
         return (
             <div className="space-y-1.5 w-full">
@@ -93,7 +94,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                             thuFocused.current = true;
                             // Show raw number for easy editing
                             const num = value != null && value !== '' ? Number(value) : null;
-                            setThuText(num != null && !isNaN(num) ? String(integer ? Math.round(num) : num) : '');
+                            setThuText(num != null && !isNaN(num) ? String(plainInteger ? Math.round(num) : num) : '');
                         }}
                         onBlur={() => {
                             thuFocused.current = false;
@@ -102,13 +103,13 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                         onChange={e => {
                             if (readOnly) return;
                             const raw = e.target.value;
-                            if (raw !== '' && !(integer ? /^-?\d*$/ : /^-?\d*\.?\d*$/).test(raw)) return;
+                            if (raw !== '' && !(plainInteger ? /^-?\d*$/ : /^-?\d*\.?\d*$/).test(raw)) return;
                             setThuText(raw);
                             if (raw === '' || raw === '-' || raw.endsWith('.')) {
                                 if (raw === '') onChange?.(name || label || '', null);
                                 return;
                             }
-                            const num = integer ? parseInt(raw, 10) : parseFloat(raw);
+                            const num = plainInteger ? parseInt(raw, 10) : parseFloat(raw);
                             if (!isNaN(num)) onChange?.(name || label || '', num);
                         }}
                         onKeyDown={handleKeyDown}
@@ -246,10 +247,11 @@ export const SectionLabel = ({ label, badge }: { label: string; badge?: string }
     </div>
 );
 
-export const SelisihInfo = ({ prev, current, minZero }: { prev: number; current: number; minZero?: boolean }) => {
+export const SelisihInfo = ({ prev, current, minZero, plain }: { prev: number; current: number; minZero?: boolean; plain?: boolean }) => {
     // minZero: totalizer sifatnya naik terus, jadi selisih minimal 0 (tidak minus).
     const diff = minZero ? Math.max(0, current - prev) : current - prev;
-    const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
+    // plain: tanpa pemisah ribuan, biar sama persis dengan angka di kolom isian.
+    const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : plain ? String(v) : v.toLocaleString('id-ID');
     return prev > 0 ? (
         <div className="mt-1.5 text-[10px] text-slate-500 space-y-0.5">
             <p>Prev: <span className="text-slate-400 font-medium">{fmt(prev)}</span></p>

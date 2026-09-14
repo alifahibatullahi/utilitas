@@ -24,11 +24,13 @@ export default function TabPIU({
                             value={tm.totalizer_import}
                             onChange={onTurbineMiscChange}
                             thousands
+                            integer
                         />
                         {prevTurbineMisc && (
                             <SelisihInfo
                                 prev={Number(ptm?.totalizer_import) || 0}
                                 current={Number(tm.totalizer_import) || 0}
+                                minZero
                             />
                         )}
                     </div>
@@ -41,11 +43,13 @@ export default function TabPIU({
                             value={tm.totalizer_export}
                             onChange={onTurbineMiscChange}
                             thousands
+                            integer
                         />
                         {prevTurbineMisc && (
                             <SelisihInfo
                                 prev={Number(ptm?.totalizer_export) || 0}
                                 current={Number(tm.totalizer_export) || 0}
+                                minZero
                             />
                         )}
                     </div>

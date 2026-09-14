@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands }: {
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands, integer }: {
     label?: string;
     placeholder?: string;
     unit?: string;
@@ -15,6 +15,8 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     readOnly?: boolean;
     textMode?: boolean;
     thousands?: boolean;
+    /** Hanya bilangan bulat (berlaku di mode `thousands`) — desimal/koma ditolak. */
+    integer?: boolean;
 }) => {
     // Local state for textMode to handle intermediate values like "-" or "1."
     const [rawText, setRawText] = useState('');
@@ -26,6 +28,9 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
         if (v == null || v === '') return '';
         const num = Number(v);
         if (isNaN(num)) return '';
+        // Mode integer: bulatkan dulu supaya tidak pernah muncul koma desimal
+        // (di locale id-ID koma adalah pemisah desimal, titik pemisah ribuan).
+        if (integer) return Math.round(num).toLocaleString('id-ID', { maximumFractionDigits: 0 });
         return num.toLocaleString('id-ID', { maximumFractionDigits: 3 });
     };
 
@@ -88,7 +93,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                             thuFocused.current = true;
                             // Show raw number for easy editing
                             const num = value != null && value !== '' ? Number(value) : null;
-                            setThuText(num != null && !isNaN(num) ? String(num) : '');
+                            setThuText(num != null && !isNaN(num) ? String(integer ? Math.round(num) : num) : '');
                         }}
                         onBlur={() => {
                             thuFocused.current = false;
@@ -97,13 +102,13 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                         onChange={e => {
                             if (readOnly) return;
                             const raw = e.target.value;
-                            if (raw !== '' && !/^-?\d*\.?\d*$/.test(raw)) return;
+                            if (raw !== '' && !(integer ? /^-?\d*$/ : /^-?\d*\.?\d*$/).test(raw)) return;
                             setThuText(raw);
                             if (raw === '' || raw === '-' || raw.endsWith('.')) {
                                 if (raw === '') onChange?.(name || label || '', null);
                                 return;
                             }
-                            const num = parseFloat(raw);
+                            const num = integer ? parseInt(raw, 10) : parseFloat(raw);
                             if (!isNaN(num)) onChange?.(name || label || '', num);
                         }}
                         onKeyDown={handleKeyDown}
@@ -241,8 +246,9 @@ export const SectionLabel = ({ label, badge }: { label: string; badge?: string }
     </div>
 );
 
-export const SelisihInfo = ({ prev, current }: { prev: number; current: number }) => {
-    const diff = current - prev;
+export const SelisihInfo = ({ prev, current, minZero }: { prev: number; current: number; minZero?: boolean }) => {
+    // minZero: totalizer sifatnya naik terus, jadi selisih minimal 0 (tidak minus).
+    const diff = minZero ? Math.max(0, current - prev) : current - prev;
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : v.toLocaleString('id-ID');
     return prev > 0 ? (
         <div className="mt-1.5 text-[10px] text-slate-500 space-y-0.5">

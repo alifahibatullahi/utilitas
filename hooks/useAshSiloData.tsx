@@ -4,17 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ShiftType } from '@/lib/supabase/types';
 import { SiloId } from '@/lib/ash-silo';
+import { fetchLatestSiloLevels, type EspSiloRow, type SiloLevelInfo } from '@/lib/ash-silo-query';
 
 function isSupabaseConfigured(): boolean {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     return !!url && !url.includes('YOUR_PROJECT_ID');
 }
 
-export interface SiloLevelInfo {
-    pct: number;            // 0 adalah nilai valid — null berarti belum ada data
-    reportDate: string;     // shift_reports.date
-    reportShift: ShiftType;
-}
+export type { SiloLevelInfo };
 
 export interface SiloTrendPoint {
     ts: number;   // epoch ms — akhir shift (konvensi ENDING)
@@ -43,27 +40,12 @@ const MIN_REFETCH_GAP_MS = 60 * 1000;
 // cache module-level supaya tetap satu round-trip ke Supabase.
 const DEDUP_WINDOW_MS = 15 * 1000;
 
-// Konvensi ENDING: dalam satu tanggal DB, shift malam berakhir 07:00, pagi
-// 15:00, sore 23:00 — jadi urutan kronologis dalam satu tanggal adalah
-// malam < pagi < sore (BUKAN urutan enum DB pagi<sore<malam).
-const SHIFT_RANK: Record<ShiftType, number> = { malam: 0, pagi: 1, sore: 2 };
-
-interface EspRow {
-    silo_a: number | null;
-    silo_b: number | null;
-    created_at: string;
-    shift_reports: { date: string; shift: ShiftType };
-}
-
 async function queryAshData(): Promise<AshData> {
     const supabase = createClient();
-    const [levelRes, unloadRes] = await Promise.all([
-        supabase
-            .from('shift_esp_handling')
-            .select('silo_a, silo_b, created_at, shift_reports!inner(date, shift)')
-            .or('silo_a.not.is.null,silo_b.not.is.null')
-            .order('created_at', { ascending: false })
-            .limit(12),
+    // Level terakhir & urutan ENDING-nya dipakai bersama notifikasi WA dan
+    // laporan harian → satu implementasi di lib/ash-silo-query.
+    const [siloLevels, unloadRes] = await Promise.all([
+        fetchLatestSiloLevels(supabase),
         supabase
             .from('ash_unloadings')
             .select('id, date, shift, silo, perusahaan, tujuan, ritase')
@@ -72,29 +54,10 @@ async function queryAshData(): Promise<AshData> {
             .limit(40),
     ]);
 
-    if (levelRes.error) throw levelRes.error;
     if (unloadRes.error) throw unloadRes.error;
 
-    const rows = (levelRes.data ?? []) as unknown as EspRow[];
-    // "Terbaru" ditentukan client-side: tanggal desc → rank shift (ENDING)
-    // desc → created_at desc. created_at saja salah untuk laporan backfill;
-    // urutan enum shift di DB tidak kronologis.
-    rows.sort((a, b) =>
-        b.shift_reports.date.localeCompare(a.shift_reports.date)
-        || SHIFT_RANK[b.shift_reports.shift] - SHIFT_RANK[a.shift_reports.shift]
-        || b.created_at.localeCompare(a.created_at));
-
-    const pick = (col: 'silo_a' | 'silo_b'): SiloLevelInfo | null => {
-        const row = rows.find(r => r[col] !== null);
-        return row ? {
-            pct: Number(row[col]),
-            reportDate: row.shift_reports.date,
-            reportShift: row.shift_reports.shift,
-        } : null;
-    };
-
     return {
-        siloLevels: { A: pick('silo_a'), B: pick('silo_b') },
+        siloLevels,
         unloadings: (unloadRes.data ?? []).map(d => ({
             id: d.id,
             date: d.date,
@@ -121,8 +84,8 @@ async function queryTrendHistory(): Promise<Record<SiloId, SiloTrendPoint[]>> {
         .limit(400);
     if (res.error) throw res.error;
 
-    const rows = (res.data ?? []) as unknown as EspRow[];
-    const toTs = (r: EspRow) => new Date(
+    const rows = (res.data ?? []) as unknown as EspSiloRow[];
+    const toTs = (r: EspSiloRow) => new Date(
         `${r.shift_reports.date}T${String(SHIFT_END_HOUR[r.shift_reports.shift]).padStart(2, '0')}:00:00`
     ).getTime();
     const build = (col: 'silo_a' | 'silo_b'): SiloTrendPoint[] => rows

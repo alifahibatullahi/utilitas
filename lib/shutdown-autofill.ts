@@ -13,6 +13,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getInheritedUnitStatus } from './unit-status';
 import { getGroupForShift } from './constants';
+import { postSheets } from './sheets-sync';
 
 // Mirror daftar field auto-zero di TabBoiler.tsx / TabTurbin.tsx.
 const NON_TOTALIZER_BOILER_FIELDS = [
@@ -30,20 +31,6 @@ type ShiftKind = 'pagi' | 'sore' | 'malam';
 
 function zeros(keys: string[]): Record<string, number> {
     return Object.fromEntries(keys.map(k => [k, 0]));
-}
-
-async function postSheets(type: string, data: Record<string, unknown>): Promise<void> {
-    const base = process.env.NEXT_PUBLIC_APP_URL;
-    if (!base) return; // tanpa URL publik, lewati sync (DB tetap tersimpan)
-    try {
-        await fetch(`${base.replace(/\/$/, '')}/api/sheets/write`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, data }),
-        });
-    } catch (e) {
-        console.warn('[shutdown-autofill] sheets sync gagal:', e);
-    }
 }
 
 /** Pastikan baris shift_reports (draft) ada; kembalikan id-nya. */

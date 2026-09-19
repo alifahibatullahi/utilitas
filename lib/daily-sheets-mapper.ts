@@ -423,11 +423,17 @@ export function dailyReportToRow(
     }
 
     if (stock) {
-        set(row, COL.silo_a_pct,          stock.silo_a_pct);          // CU
-        set(row, COL.silo_b_pct,          stock.silo_b_pct);          // CV
-        set(row, COL.unloading_fly_ash_a, stock.unloading_fly_ash_a); // CW
-        set(row, COL.unloading_fly_ash_b, stock.unloading_fly_ash_b); // CX
+        // Level silo: kosong ≠ 0 — kalau belum ada pembacaan, sel dibiarkan.
+        set(row, COL.silo_a_pct, stock.silo_a_pct); // CU
+        set(row, COL.silo_b_pct, stock.silo_b_pct); // CV
     }
+
+    // Unloading fly ash SELALU angka: nihil unloading = 0, bukan sel kosong (sel
+    // kosong ambigu "tidak ada" vs "belum diisi"). Ditulis di luar blok `stock`
+    // karena nilainya berasal dari DB (route daily_report membaca ulang Supabase),
+    // jadi tidak mungkin menimpa isian station lain.
+    setNum0(row, COL.unloading_fly_ash_a, stock?.unloading_fly_ash_a); // CW
+    setNum0(row, COL.unloading_fly_ash_b, stock?.unloading_fly_ash_b); // CX
 
     // ── Coal Transfer ─────────────────────────────────────────────────────────
     if (transfer) {

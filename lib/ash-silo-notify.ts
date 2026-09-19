@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendWaText, logNotification, formatTanggalIndo, nowWIB } from '@/lib/whatsapp';
+import { fetchLatestSiloLevels } from '@/lib/ash-silo-query';
 
 // Kirim "Level Ash Silo UBB" ke grup WA tiap hari sekitar 07:00 WIB. Dipanggil dari
 // endpoint cron notify-shift (di-ping scheduler eksternal ~15 mnt sekali); fungsi
@@ -11,18 +12,6 @@ import { sendWaText, logNotification, formatTanggalIndo, nowWIB } from '@/lib/wh
 const ASH_SILO_GROUP = '120363025310720659@g.us';
 const SEND_HOUR = 7; // 07:00 WIB
 const KIND = 'ash_silo_update';
-
-// Konvensi ENDING: dalam satu tanggal DB, shift malam berakhir 07:00, pagi 15:00,
-// sore 23:00 — jadi urutan kronologis dalam satu tanggal adalah malam < pagi < sore
-// (BUKAN urutan enum DB). Dipakai untuk menentukan pembacaan "terbaru".
-const SHIFT_RANK: Record<string, number> = { malam: 0, pagi: 1, sore: 2 };
-
-interface EspRow {
-    silo_a: number | null;
-    silo_b: number | null;
-    created_at: string;
-    shift_reports: { date: string; shift: string };
-}
 
 function fmt(v: number | null): string {
     if (v == null) return '-';
@@ -53,29 +42,16 @@ export async function notifyAshSiloDaily(supabase: SupabaseClient) {
         return { skipped: 'already_sent' as const };
     }
 
-    // 3. Ambil level terakhir per silo (sama seperti /tank-level). "Terbaru"
-    //    ditentukan client-side: tanggal desc → rank shift (ENDING) desc →
-    //    created_at desc. created_at saja salah untuk laporan backfill.
-    const { data, error } = await supabase
-        .from('shift_esp_handling')
-        .select('silo_a, silo_b, created_at, shift_reports!inner(date, shift)')
-        .or('silo_a.not.is.null,silo_b.not.is.null')
-        .order('created_at', { ascending: false })
-        .limit(12);
-    if (error) return { error: error.message };
-
-    const rows = (data ?? []) as unknown as EspRow[];
-    rows.sort((a, b) =>
-        b.shift_reports.date.localeCompare(a.shift_reports.date)
-        || (SHIFT_RANK[b.shift_reports.shift] ?? 0) - (SHIFT_RANK[a.shift_reports.shift] ?? 0)
-        || b.created_at.localeCompare(a.created_at));
-
-    const pick = (col: 'silo_a' | 'silo_b'): number | null => {
-        const row = rows.find(r => r[col] !== null);
-        return row ? Number(row[col]) : null;
-    };
-    const a = pick('silo_a');
-    const b = pick('silo_b');
+    // 3. Ambil level terakhir per silo (sama seperti /tank-level & laporan harian
+    //    — satu implementasi di lib/ash-silo-query, urutan ENDING).
+    let levels;
+    try {
+        levels = await fetchLatestSiloLevels(supabase);
+    } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+    }
+    const a = levels.A?.pct ?? null;
+    const b = levels.B?.pct ?? null;
 
     // 4. Belum pernah ada data sama sekali → jangan kirim pesan kosong.
     if (a == null && b == null) return { skipped: 'no_data' as const };

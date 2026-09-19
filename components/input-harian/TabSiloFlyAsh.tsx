@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { InputField, Card, Modal } from '@/components/input-shift/SharedComponents';
+import { isSiloA, isSiloB, sumAshRitasePerSilo } from '@/lib/ash-silo-query';
 import type { DailyTabProps } from './types';
 
 type EditFields = { id: string; silo: string; shift: string; perusahaan: string; tujuan: string; ritase: number };
@@ -31,11 +32,8 @@ export default function TabSiloFlyAsh({
         setEditItem(null);
     };
 
-    const isSiloA = (s: string) => s === 'A' || s === 'Silo A';
-    const isSiloB = (s: string) => s === 'B' || s === 'Silo B';
     const siloLabel = (s: string) => isSiloA(s) ? 'Silo A' : isSiloB(s) ? 'Silo B' : s;
-    const totalA = ashUnloadings.filter(e => isSiloA(e.silo)).reduce((s, e) => s + e.ritase, 0);
-    const totalB = ashUnloadings.filter(e => isSiloB(e.silo)).reduce((s, e) => s + e.ritase, 0);
+    const { A: totalA, B: totalB } = sumAshRitasePerSilo(ashUnloadings);
 
     return (
         <div className="flex-1 w-full">

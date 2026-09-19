@@ -7,6 +7,8 @@ import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import type { Operator } from '@/lib/constants';
 import { isValidStation, STATION_HARIAN_TABS, STATION_LABELS, type OperatorStation } from '@/lib/constants';
+import { fetchLatestSiloLevels, sumAshRitasePerSilo, type SiloLevelInfo } from '@/lib/ash-silo-query';
+import type { SiloId } from '@/lib/ash-silo';
 import TabBoiler from './TabBoiler';
 import TabCoalBunker from './TabCoalBunker';
 import TabTurbin from './TabTurbin';
@@ -186,6 +188,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string; shift?: string | null }[]>([]);
     const [solarUsages, setSolarUsages] = useState<{ id?: string; date: string; shift: string; liters: number; tujuan: string }[]>([]);
     const [ashUnloadings, setAshUnloadings] = useState<{ id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[]>([]);
+    // Level silo terakhir (pembacaan ESP ≤ tanggal ini) — dipakai sebagai DEFAULT
+    // kolom Level Silo A/B kalau laporan harian belum punya isian sendiri.
+    const [lastSiloLevels, setLastSiloLevels] = useState<Record<SiloId, SiloLevelInfo | null>>({ A: null, B: null });
     const [coalArrivals, setCoalArrivals] = useState<{ id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[]>([]);
 
     // Mode station: select di-narrow ke child table milik station (hemat DB & payload).
@@ -286,6 +291,12 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         }))
                     );
                 });
+
+            // Level silo terakhir utk default kolom CU/CV. Dibatasi ≤ tanggal
+            // laporan supaya tanggal lama memakai level yang berlaku saat itu.
+            if (needsAsh) fetchLatestSiloLevels(supabase, { maxDate: date })
+                .then(setLastSiloLevels)
+                .catch(e => console.warn('[harian] level silo terakhir gagal dimuat', e));
 
             // Kedatangan batubara — BACA-SAJA, cuma untuk kartu ringkasan di tab Handling.
             // Disaring `date` (tanggal laporan shift, konvensi ENDING: malam = hari submit),
@@ -510,6 +521,22 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (transferData) setCoalTransfer(extractFields(transferData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report, prevReport]);
+
+    // Default Level Silo A/B (kolom CU/CV LHUBB) = pembacaan ESP terakhir. Hanya
+    // mengisi yang masih kosong — isian tersimpan maupun ketikan operator menang.
+    // Ditaruh SESUDAH effect di atas dan ikut bergantung pada report/prevReport:
+    // effect itu me-reset stockTank tiap kali salah satunya datang (sering LEBIH
+    // LAMBAT dari level silo), jadi default harus dipasang ulang sesudahnya.
+    useEffect(() => {
+        if (!needsAsh) return;
+        setStockTank(prev => {
+            const patch: Record<string, number> = {};
+            const kosong = (v: number | null | undefined) => v == null || (v as unknown as string) === '';
+            if (kosong(prev.silo_a_pct) && lastSiloLevels.A) patch.silo_a_pct = lastSiloLevels.A.pct;
+            if (kosong(prev.silo_b_pct) && lastSiloLevels.B) patch.silo_b_pct = lastSiloLevels.B.pct;
+            return Object.keys(patch).length > 0 ? { ...prev, ...patch } : prev;
+        });
+    }, [needsAsh, lastSiloLevels, report, prevReport]);
 
     // Inherit status boiler A/B & turbin dari laporan terakhir sebelum harian ini, pakai
     // hook walkback bersama dgn laporan shift. Cycle: malam(0)→pagi(1)→sore(2)→harian(3)→
@@ -752,17 +779,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             const bfwConsA = prevBfwA > 0 ? N(stockTank.bfw_boiler_a) - prevBfwA : N(stockTank.bfw_boiler_a);
             const bfwConsB = prevBfwB > 0 ? N(stockTank.bfw_boiler_b) - prevBfwB : N(stockTank.bfw_boiler_b);
 
-            const isSiloA = (s: string) => s === 'A' || s === 'Silo A';
-            const isSiloB = (s: string) => s === 'B' || s === 'Silo B';
-            const unloadingA = ashUnloadings.filter(e => isSiloA(e.silo)).reduce((s, e) => s + (e.ritase || 0), 0);
-            const unloadingB = ashUnloadings.filter(e => isSiloB(e.silo)).reduce((s, e) => s + (e.ritase || 0), 0);
+            // Ritase unloading fly ash (kolom CW/CX LHUBB): nihil = 0, BUKAN null —
+            // sel kosong di sheet ambigu "tidak ada unloading" vs "belum diisi".
+            const ritase = sumAshRitasePerSilo(ashUnloadings);
 
             const tankWithCalcs = {
                 ...stockTank,
                 solar_tank_total: N(stockTank.solar_tank_a) + N(stockTank.solar_tank_b),
                 bfw_total: bfwConsA + bfwConsB,
-                unloading_fly_ash_a: unloadingA || null,
-                unloading_fly_ash_b: unloadingB || null,
+                unloading_fly_ash_a: ritase.A,
+                unloading_fly_ash_b: ritase.B,
             };
 
             // Total tidak lagi dihitung app. Kolom total PB2/PB3/Darat (DC–DF, DI–DJ, DL)

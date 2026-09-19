@@ -14,6 +14,7 @@ import {
 } from '@/lib/whatsapp';
 import { getGroupForShift, getGroupShiftOnDate } from '@/lib/constants';
 import { autofillShutdownShift, autofillShutdownDaily } from '@/lib/shutdown-autofill';
+import { autofillSiloDaily } from '@/lib/silo-autofill';
 import { autopublishPastDeadline } from '@/lib/auto-publish';
 import { notifyAshSiloDaily } from '@/lib/ash-silo-notify';
 import { syncFullIfStale, syncTail } from '@/lib/critical-sheet-sync';
@@ -163,7 +164,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {
-    const { schedule, date } = job;
+    const { schedule, date, nowMinutesShifted } = job;
 
     // 0. Auto-isi unit SHUTDOWN (idempotent) lalu picu cek "siap publish".
     //    Selama unit shutdown, operator tidak perlu buka station tiap shift/harian:
@@ -175,6 +176,14 @@ async function runJob(supabase: ReturnType<typeof createAdminClient>, job: Remin
             await triggerReady(supabase, 'shift', date, schedule.shift);
         } else if (schedule.kind === 'daily_reminder') {
             await autofillShutdownDaily(supabase, date);
+            // Silo & fly ash LHUBB: level silo terakhir + total ritase hari itu.
+            // Hanya pada tick SESUDAH tengah malam (window LHUBB 22:30 → 02:00) —
+            // LHUBB adalah logsheet jam 24:00, dan pada tick 22:30 shift sore
+            // (berakhir 23:00) belum melapor sehingga level terakhir masih milik
+            // shift pagi.
+            if (nowMinutesShifted >= 24 * 60) {
+                await autofillSiloDaily(supabase, date);
+            }
             await triggerReady(supabase, 'daily', date, null);
         }
     } catch (e) {

@@ -163,7 +163,9 @@ export async function POST(req: NextRequest) {
             }
             const sumByTujuan = (t: string) =>
                 (solarOut.data ?? []).filter((r: { tujuan: string }) => r.tujuan === t).reduce((s, r) => s + (Number(r.liters) || 0), 0);
-            // Boiler A+B (CL) TIDAK diagregasi di sini — diambil mapper dari daily_report_stock_tank.solar_boiler (manual supervisor).
+            // Boiler A+B (CL) TIDAK diagregasi di sini — mapper mengambilnya dari
+            // daily_report_stock_tank.solar_boiler (isian supervisor), dan bila kosong
+            // menghitungnya dari neraca level tanki (lib/solar-balance.ts).
             const solarSummary: SolarSummary = {
                 kedatangan: (solarIn.data ?? []).reduce((s, r) => s + (Number(r.liters) || 0), 0),
                 bengkel:    sumByTujuan('Bengkel'),

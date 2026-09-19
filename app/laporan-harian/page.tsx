@@ -6,6 +6,8 @@ import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { useAppSettings, useStreamDays } from '@/hooks/useAppSettings';
 import { todayWIB } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+import { defaultSolarBoiler } from '@/lib/solar-balance';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -131,6 +133,30 @@ export default function LaporanHarianPage() {
         if (!operator) router.push('/');
     }, [operator, router]);
 
+    // Agregat entri solar (Liter → m³). Kolom m³ di daily_report_stock_tank sering
+    // dibiarkan kosong oleh supervisor; LHUBB memakai agregat entri sebagai default,
+    // jadi halaman ini harus memakai fallback yang sama supaya angkanya tidak beda.
+    const [solarAgg, setSolarAgg] = useState({ kedatangan: 0, bengkel: 0, sasu: 0 });
+    useEffect(() => {
+        let stale = false;
+        const supabase = createClient();
+        Promise.all([
+            supabase.from('solar_unloadings').select('liters').eq('date', selectedDate),
+            supabase.from('solar_usages').select('liters, tujuan').eq('date', selectedDate),
+        ]).then(([un, us]) => {
+            if (stale) return;
+            const totalM3 = (rows: { liters: number | null }[] | null) =>
+                (rows ?? []).reduce((s, r) => s + (Number(r.liters) || 0), 0) / 1000;
+            const usages = (us.data ?? []) as { liters: number | null; tujuan: string }[];
+            setSolarAgg({
+                kedatangan: totalM3(un.data as { liters: number | null }[] | null),
+                bengkel: totalM3(usages.filter(r => r.tujuan === 'Bengkel')),
+                sasu: totalM3(usages.filter(r => r.tujuan === 'SA/SU 3B')),
+            });
+        });
+        return () => { stale = true; };
+    }, [selectedDate]);
+
     if (!operator) return null;
 
     // Helper: safe numeric value with fallback
@@ -155,6 +181,18 @@ export default function LaporanHarianPage() {
     const pTank = prevReport?.daily_report_stock_tank?.[0];
     const pTransfer = prevReport?.daily_report_coal_transfer?.[0];
     const pTotalizer = prevReport?.daily_report_totalizer?.[0];
+
+    // Solar (m³) — nilai form menang, kalau kosong pakai agregat entri; Boiler A+B tak
+    // punya entri sendiri sehingga jatuh ke neraca tanki. Urutan fallback ini SAMA dengan
+    // yang dipakai mapper saat menulis CK/CL/CM/CN ke LHUBB (lib/solar-balance.ts).
+    const solarKedatangan = tank?.kedatangan_solar != null ? n(tank.kedatangan_solar) : solarAgg.kedatangan;
+    const solarBengkelM3  = tank?.solar_bengkel    != null ? n(tank.solar_bengkel)    : solarAgg.bengkel;
+    const solarSasuM3     = tank?.solar_3b         != null ? n(tank.solar_3b)         : solarAgg.sasu;
+    const solarBoilerM3   = tank?.solar_boiler     != null ? n(tank.solar_boiler)     : (defaultSolarBoiler({
+        prevLevel: pTank?.solar_tank_a ?? null,
+        level: tank?.solar_tank_a ?? null,
+        kedatangan: solarKedatangan, bengkel: solarBengkelM3, sasu: solarSasuM3,
+    }) ?? 0);
 
     // Build the display data from Supabase report, with DAILY_DATA as fallback
     const r = report ? {
@@ -184,7 +222,7 @@ export default function LaporanHarianPage() {
         deltaInternalUbb: (n(stm?.inlet_turbine_24) - n(stm?.fully_condens_24)) - (n(pStm?.inlet_turbine_24) - n(pStm?.fully_condens_24)),
 
         // Konsumsi Bahan Baku
-        loading: n(tank?.kedatangan_solar),
+        loading: solarKedatangan,
         bfw: n(tank?.bfw_total),
         deltaBfw: delta(tank?.bfw_total, pTank?.bfw_total),
         phosphat: n(tank?.chemical_phosphat),
@@ -196,10 +234,10 @@ export default function LaporanHarianPage() {
         stockPhosphat: 0, stockAmine: 0, stockHydrazine: 0,
 
         // Solar
-        solarLoading: n(tank?.kedatangan_solar),
-        solarBengkel: n(tank?.solar_bengkel),
-        solarPemakaian: n(tank?.solar_boiler),
-        solarRevamp: n(tank?.solar_3b),
+        solarLoading: solarKedatangan,
+        solarBengkel: solarBengkelM3,
+        solarPemakaian: solarBoilerM3,
+        solarRevamp: solarSasuM3,
 
         // Power 24 Jam (MWh) & Jam 00 (MW)
         powerTG: n(pwr?.gen_24),

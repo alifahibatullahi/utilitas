@@ -14,6 +14,7 @@
  */
 
 import { toIndonesianDate } from './google-sheets';
+import { defaultSolarBoiler } from './solar-balance';
 import type {
     DailyReportSteamRow,
     DailyReportPowerRow,
@@ -232,7 +233,9 @@ export type SolarSummary = {
     kedatangan: number; // total Liter dari solar_unloadings → CK
     bengkel:    number; // total Liter dari solar_usages tujuan=Bengkel → CM
     sasu:       number; // total Liter dari solar_usages tujuan=SA/SU 3B → CN
-    // Boiler A+B (CL) TIDAK dari sini — input manual supervisor di daily_report_stock_tank.solar_boiler.
+    // Boiler A+B (CL) TIDAK dari sini — tidak ada entri permintaan untuk boiler. Sumbernya
+    // daily_report_stock_tank.solar_boiler (isian supervisor), dan bila kosong dihitung dari
+    // neraca tanki memakai ketiga angka di atas (lib/solar-balance.ts).
 };
 
 export type CoalSummary = {
@@ -397,9 +400,6 @@ export function dailyReportToRow(
         set(row, COL.solar_tank_a, stock.solar_tank_a); // CH
         set(row, COL.solar_tank_b, stock.solar_tank_a); // CI (sama dengan CH)
         // CJ(87) = formula: solar_tank_total — skip
-        // CL — Pemakaian Boiler A+B: input manual supervisor (m³) dari solar_boiler. Default 0
-        // (konsisten dgn CK/CM/CN) supaya nilai bisa dikosongkan & tidak menyisakan angka lama.
-        setNum0(row, COL.solar_boiler, stock.solar_boiler); // CL — m³
         // CK/CM/CN — yang tersimpan = NILAI FORM (kolom m³ daily_report_stock_tank). Bila belum
         // diisi supervisor, default = agregat entri (catatan) solar_unloadings/solar_usages (Liter→m³).
         const kedM3     = stock.kedatangan_solar != null ? Number(stock.kedatangan_solar) : (solar ? (solar.kedatangan || 0) / 1000 : 0);
@@ -408,6 +408,18 @@ export function dailyReportToRow(
         setNum0(row, COL.kedatangan_solar, kedM3);     // CK — m³ kedatangan
         setNum0(row, COL.solar_bengkel,    bengkelM3); // CM — m³ bengkel
         setNum0(row, COL.solar_3b,         sasuM3);    // CN — m³ SA/SU 3B
+        // CL — Pemakaian Boiler A+B (m³). Boiler tak punya entri permintaan sendiri, jadi
+        // nilainya = sisa neraca tanki (lihat lib/solar-balance.ts). Nilai form supervisor
+        // menang; null = otomatis, pola yang sama dgn CK/CM/CN di atas. Tanpa level kemarin
+        // (laporan paling awal) neraca tak bisa dihitung → 0 seperti perilaku lama.
+        const boilerM3 = stock.solar_boiler != null
+            ? Number(stock.solar_boiler)
+            : (defaultSolarBoiler({
+                prevLevel: prev?.stock?.solar_tank_a != null ? Number(prev.stock.solar_tank_a) : null,
+                level:     stock.solar_tank_a != null ? Number(stock.solar_tank_a) : null,
+                kedatangan: kedM3, bengkel: bengkelM3, sasu: sasuM3,
+            }) ?? 0);
+        setNum0(row, COL.solar_boiler, boilerM3); // CL — m³
         const ps2 = prev?.stock;
         set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO
         set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b)); // CP

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Card, InputField, Modal, SectionLabel } from '@/components/input-shift/SharedComponents';
 import { SolarOriginBadge } from './SolarOriginBadge';
+import { hitungNeracaSolar } from '@/lib/solar-balance';
 import type { SolarReviewProps } from './types';
 
 const n = (v: number | string | null | undefined) => Number(v) || 0;
@@ -14,8 +15,9 @@ type EditUs = { id?: string; liters: number; tujuan: string; shift: string; tuju
 /** Review Solar (supervisor):
  *  - Level sekarang (input) & kemarin (display)
  *  - Kedatangan: input form total m³ (default = total entri) + daftar entri (catatan, CRUD)
- *  - Pemakaian: input form Boiler A+B / Bengkel / SA·SU 3B (default Bengkel/SA·SU = total entri)
- *    + daftar permintaan (catatan, CRUD)
+ *  - Pemakaian: input form Boiler A+B / Bengkel / SA·SU 3B + daftar permintaan (catatan, CRUD).
+ *    Default Bengkel/SA·SU = total entri; Boiler A+B tak punya entri sendiri → default =
+ *    sisa neraca tanki (lib/solar-balance.ts), rumus yang sama dipakai mapper saat menulis CL.
  *  Nilai FORM = yang tersimpan ke Sheets; entri hanya catatan & sumber default. */
 export default function TabSolarReview({
     solarUnloadings = [], solarUsages = [],
@@ -30,18 +32,24 @@ export default function TabSolarReview({
 
     const levelKemarin = prevSolarLevel != null ? n(prevSolarLevel) : null;
     const levelSekarang = solarLevel != null ? n(solarLevel) : null;
-    // Level tercantum = isi 1 tanki; total volume = selisih level × 2 tanki.
-    const deltaVolume = (levelSekarang != null && levelKemarin != null)
-        ? (levelSekarang - levelKemarin) * 2
-        : null;
     // Default form (m³) dari agregat entri (catatan), Liter → m³.
     const aggKedatangan = solarUnloadings.reduce((s, e) => s + n(e.liters), 0) / 1000;
     const aggBengkel = solarUsages.filter(e => e.tujuan === 'Bengkel').reduce((s, e) => s + n(e.liters), 0) / 1000;
     const aggSasu = solarUsages.filter(e => e.tujuan === 'SA/SU 3B').reduce((s, e) => s + n(e.liters), 0) / 1000;
-    // Nilai input = override form bila ada, else default agregat (kecuali Boiler A+B yg murni manual).
+    // Nilai input = override form bila ada, else default agregat.
     const kedatanganVal = kedatangan != null ? kedatangan : aggKedatangan;
     const bengkelVal = bengkel != null ? bengkel : aggBengkel;
     const sasuVal = sasu != null ? sasu : aggSasu;
+    // Boiler A+B tak punya entri permintaan sendiri: defaultnya sisa neraca tanki —
+    // penurunan volume yang tak terjelaskan kedatangan & pemakaian lain.
+    const neraca = hitungNeracaSolar({
+        prevLevel: levelKemarin, level: levelSekarang,
+        kedatangan: kedatanganVal, bengkel: bengkelVal, sasu: sasuVal,
+    });
+    const boilerVal = boilerAB != null ? boilerAB : (neraca ? neraca.boiler : null);
+    // Level tercantum = isi 1 tanki; total volume = level × 2 tanki (neraca.turun
+    // sudah memakai faktor yang sama, tinggal dibalik arahnya).
+    const deltaVolume = neraca ? -neraca.turun : null;
 
     const saveUn = async () => {
         if (!editUn) return;
@@ -145,8 +153,19 @@ export default function TabSolarReview({
             {/* ═══ Pemakaian Solar ═══ */}
             <Card title="Pemakaian Solar" icon="local_gas_station" color="rose" className="lg:col-span-2">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <InputField label="Boiler A+B" name="solar_boiler" value={boilerAB} unit="m³" color="rose"
-                        onChange={(_, v) => onValueChange?.('solar_boiler', numOrNull(v))} />
+                    <div>
+                        <InputField label="Boiler A+B" name="solar_boiler" value={boilerVal} unit="m³" color="rose"
+                            onChange={(_, v) => onValueChange?.('solar_boiler', numOrNull(v))} />
+                        {/* Asal angkanya harus kelihatan: supervisor perlu tahu ini turunan
+                            neraca (bukan catatan lapangan) sebelum memutuskan menimpanya. */}
+                        <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+                            {boilerAB != null
+                                ? 'Diisi manual — kosongkan untuk kembali ke hitungan neraca.'
+                                : neraca
+                                    ? <>Neraca: turun <b className="text-slate-300">{fmt(neraca.turun)}</b> + datang <b className="text-slate-300">{fmt(neraca.kedatangan)}</b> − keluar lain <b className="text-slate-300">{fmt(neraca.keluarLain)}</b> = <b className="text-rose-300">{fmt(neraca.boiler)} m³</b></>
+                                    : 'Level kemarin/hari ini belum ada — isi manual.'}
+                        </p>
+                    </div>
                     <InputField label="Bengkel" name="solar_bengkel" value={bengkelVal} unit="m³" color="rose"
                         onChange={(_, v) => onValueChange?.('solar_bengkel', numOrNull(v))} />
                     <InputField label="SA/SU 3B" name="solar_3b" value={sasuVal} unit="m³" color="rose"

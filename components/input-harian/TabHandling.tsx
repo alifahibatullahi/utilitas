@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, Modal } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 import { formatTon, labelZonaPendek } from '@/lib/coal-storage';
+import { hitungNeracaSolar } from '@/lib/solar-balance';
 
 import { SolarOriginBadge } from './SolarOriginBadge';
 
@@ -60,13 +61,22 @@ export default function TabHandling({
     const totalPermintaan = solarUsages.reduce((s, e) => s + e.liters, 0);
     const bengkelTotal = solarUsages.filter(e => e.tujuan === 'Bengkel').reduce((s, e) => s + e.liters, 0);
     const sasuTotal = solarUsages.filter(e => e.tujuan === 'SA/SU 3B').reduce((s, e) => s + e.liters, 0);
-    // Pemakaian Boiler A+B (m³) = nilai reviewed supervisor (daily_report_stock_tank.solar_boiler).
-    // Read-only di form operator — operator tak mengisi konsumsi boiler.
-    const boilerUsage = n(stockTank.solar_boiler);
-
     // Review pengurangan level solar: bandingkan level kemarin (LHUBB hari sebelumnya) vs hari ini.
     const levelKemarin = prevStockTank?.solar_tank_a != null ? n(prevStockTank.solar_tank_a) : null;
     const levelHariIni = stockTank.solar_tank_a != null ? n(stockTank.solar_tank_a) : null;
+
+    // Pemakaian Boiler A+B (m³) = nilai reviewed supervisor (daily_report_stock_tank.solar_boiler),
+    // dan bila belum diisi = sisa neraca tanki — rumus & sumber angka yang sama persis dengan
+    // yang ditulis mapper ke kolom CL. Read-only di sini; operator tak mengisi konsumsi boiler.
+    const kedM3     = stockTank.kedatangan_solar != null ? n(stockTank.kedatangan_solar) : totalKedatangan / 1000;
+    const bengkelM3 = stockTank.solar_bengkel    != null ? n(stockTank.solar_bengkel)    : bengkelTotal / 1000;
+    const sasuM3    = stockTank.solar_3b         != null ? n(stockTank.solar_3b)         : sasuTotal / 1000;
+    const neracaSolar = hitungNeracaSolar({
+        prevLevel: levelKemarin, level: levelHariIni,
+        kedatangan: kedM3, bengkel: bengkelM3, sasu: sasuM3,
+    });
+    const boilerManual = stockTank.solar_boiler != null;
+    const boilerUsage = boilerManual ? n(stockTank.solar_boiler) : (neracaSolar ? neracaSolar.boiler : null);
     // Dua arah: level solar tidak cuma berkurang dipakai, tapi juga bertambah saat ada
     // kedatangan. Sama persis dengan kemarin → tidak ada yang perlu diberitahukan.
     const selisihLevel = levelKemarin != null && levelHariIni != null ? levelHariIni - levelKemarin : null;
@@ -106,8 +116,12 @@ export default function TabHandling({
                     </div>
                     <InputField label="Level Tank Solar (Hari Ini)" name="solar_tank_a" value={stockTank.solar_tank_a} onChange={onStockTankChange} unit="m³" color="orange" />
                 </div>
-                <CalculatedField label="Pemakaian Solar Boiler A+B" value={stockTank.solar_boiler != null ? fmt(boilerUsage) : '—'} unit="m³" variant="small" />
-                <p className="-mt-1 text-[10px] text-slate-500">Diisi saat review oleh supervisor (kolom Sheets CL). Read-only di sini.</p>
+                <CalculatedField label="Pemakaian Solar Boiler A+B" value={boilerUsage != null ? fmt(boilerUsage) : '—'} unit="m³" variant="small" />
+                <p className="-mt-1 text-[10px] text-slate-500">
+                    {boilerManual
+                        ? 'Diisi saat review oleh supervisor (kolom Sheets CL). Read-only di sini.'
+                        : 'Otomatis dari neraca level solar (kolom Sheets CL) — supervisor bisa menimpanya saat review. Read-only di sini.'}
+                </p>
 
                 {/* Perubahan level solar — sekadar pemberitahuan, tanpa validasi angka dan
                     tanpa rincian pemakaian: ketiga angka itu sudah tampil utuh di blok
@@ -277,11 +291,11 @@ export default function TabHandling({
                 <div className="mt-4 pt-4 border-t border-slate-700/50">
                     <SectionLabel label="Penggunaan Solar Harian" />
                     <div className="grid grid-cols-3 gap-3">
-                        <CalculatedField label="BOILER A+B" value={fmt(boilerUsage)} unit="m³" variant="primary" />
-                        <CalculatedField label="BENGKEL" value={fmt(bengkelTotal / 1000)} unit="m³" variant="secondary" />
-                        <CalculatedField label="SA/SU 3B" value={fmt(sasuTotal / 1000)} unit="m³" variant="secondary" />
+                        <CalculatedField label="BOILER A+B" value={boilerUsage != null ? fmt(boilerUsage) : '—'} unit="m³" variant="primary" />
+                        <CalculatedField label="BENGKEL" value={fmt(bengkelM3)} unit="m³" variant="secondary" />
+                        <CalculatedField label="SA/SU 3B" value={fmt(sasuM3)} unit="m³" variant="secondary" />
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-2">Bengkel & SA/SU 3B dihitung dari total permintaan solar per tujuan (Liter → m³ ÷ 1000)</p>
+                    <p className="text-[10px] text-slate-500 mt-2">Bengkel & SA/SU 3B dari total permintaan solar per tujuan (Liter → m³ ÷ 1000), kecuali sudah ditimpa supervisor saat review. Boiler A+B dari neraca level.</p>
                 </div>
 
                 {/* Kedatangan Batubara — cermin baca-saja dari laporan shift Handling; tidak ada

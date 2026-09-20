@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import Stepper from '@/components/ui/Stepper';
 import { parseSheetNumber } from '@/lib/utils';
 import TabStockBatubara from '@/components/input-harian/TabStockBatubara';
 import TabSolarReview from '@/components/input-harian/TabSolarReview';
@@ -15,6 +16,10 @@ interface ReviewStep {
     id: string;
     label: string;
     icon: string;
+    /** Keterangan singkat isi langkah — tampil di stepper. */
+    description?: string;
+    /** Pengingat spesifik langkah ini (banner amber). Kosong = pakai kalimat generik. */
+    hint?: string;
     render: () => React.ReactNode;
 }
 
@@ -148,6 +153,9 @@ export function PublishReportModal({
 }: Props) {
     // Step aktif di panel berlangkah. 0 = step pertama; step terakhir selalu 'publish'.
     const [stepIdx, setStepIdx] = useState(0);
+    // Step terjauh yang pernah dibuka — dipakai stepper supaya langkah yang sudah
+    // dilihat lalu ditinggal (user klik "Kembali") tidak terbaca sebagai "belum dibuka".
+    const [furthestIdx, setFurthestIdx] = useState(0);
     const [text, setText] = useState('');
     // Structured summary untuk step publish. Union karena kind shift vs daily struktur beda.
     const [summary, setSummary] = useState<ShiftReviewSummary | DailyReviewSummary | null>(null);
@@ -295,7 +303,7 @@ export function PublishReportModal({
     }, [open, loadingText, stepIdx, autoSizeTextarea]);
 
     // Reset ke step pertama tiap kali panel dibuka.
-    useEffect(() => { if (open) { setStepIdx(0); } }, [open]);
+    useEffect(() => { if (open) { setStepIdx(0); setFurthestIdx(0); } }, [open]);
 
     // Reusable: re-fetch template body dari server. Dipanggil saat modal open AND
     // setiap kali dropdown supervisor/foreman berubah supaya template auto-refresh.
@@ -483,6 +491,13 @@ export function PublishReportModal({
     };
 
     if (!open) return null;
+
+    /** Pindah langkah + catat langkah terjauh yang pernah dibuka (dipakai stepper). */
+    const goToStep = (i: number) => {
+        const next = Math.max(0, i);
+        setStepIdx(next);
+        setFurthestIdx(prev => Math.max(prev, next));
+    };
 
     const copyToClipboard = () => {
         if (!text) return;
@@ -684,6 +699,8 @@ export function PublishReportModal({
             id: 'batubara',
             label: 'In/Out Batubara',
             icon: 'local_shipping',
+            description: 'Kedatangan & pemindahan batubara 24 jam',
+            hint: 'Periksa kedatangan (darat/laut) dan pemindahan ke Pabrik 2 & 3. Nilai 0 tetap tersimpan ke Sheets.',
             // Form langsung (default 0, editable). Bukan gate Ya/Tidak.
             render: () => (
                 <TabStockBatubara
@@ -697,6 +714,8 @@ export function PublishReportModal({
             id: 'solar',
             label: 'Review Solar',
             icon: 'local_gas_station',
+            description: 'Level tanki, kedatangan, dan pemakaian solar',
+            hint: 'Cocokkan level tanki dengan entri kedatangan & permintaan, lalu isi Pemakaian Boiler A+B.',
             render: () => (
                 <TabSolarReview
                     solarUnloadings={solarUnloadings}
@@ -719,7 +738,13 @@ export function PublishReportModal({
             ),
         });
     }
-    steps.push({ id: 'publish', label: 'Review & Publish', icon: 'fact_check', render: renderPublishStep });
+    steps.push({
+        id: 'publish',
+        label: 'Review & Publish',
+        icon: 'fact_check',
+        description: 'Periksa ringkasan, lalu kirim ke Washift',
+        render: renderPublishStep,
+    });
     const safeStepIdx = Math.min(stepIdx, steps.length - 1);
     const isLast = safeStepIdx === steps.length - 1;
 
@@ -767,30 +792,16 @@ export function PublishReportModal({
                     </div>
                 </div>
 
-                {/* Step indicator — tampil bila ada > 1 step (mis. harian: Batubara → Publish) */}
+                {/* Stepper navigasi — tampil bila ada > 1 step (mis. harian: Batubara → Solar → Publish) */}
                 {steps.length > 1 && (
                     <div className="px-4 sm:px-6 pt-4">
-                        <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80 flex gap-2">
-                            {steps.map((s, i) => {
-                                const active = i === safeStepIdx;
-                                return (
-                                    <button
-                                        key={s.id}
-                                        type="button"
-                                        onClick={() => setStepIdx(i)}
-                                        disabled={sending}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-2 sm:px-4 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 relative
-                                            ${active
-                                                ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)] cursor-pointer'
-                                                : 'text-emerald-300 hover:text-emerald-200 hover:bg-slate-900/40 cursor-pointer'}`}
-                                    >
-                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${active ? 'bg-white/20' : 'bg-slate-800/80'}`}>{i + 1}</span>
-                                        <span className="hidden sm:inline">{s.label}</span>
-                                        <span className="material-symbols-outlined text-base sm:hidden">{s.icon}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <Stepper
+                            steps={steps.map(s => ({ id: s.id, label: s.label, icon: s.icon, description: s.description }))}
+                            current={safeStepIdx}
+                            furthest={Math.max(furthestIdx, safeStepIdx)}
+                            onSelect={goToStep}
+                            disabled={sending}
+                        />
                     </div>
                 )}
 
@@ -803,12 +814,14 @@ export function PublishReportModal({
                         {steps.map(s => (
                             <div key={s.id} className="h-full overflow-y-auto" style={{ width: `${100 / steps.length}%` }}>
                                 <div className="p-4 sm:p-6">
-                                    {/* Pengingat review — tampil di tab pra-publish (In/Out Batubara & Solar) */}
+                                    {/* Pengingat review — spesifik per langkah pra-publish (In/Out Batubara & Solar) */}
                                     {s.id !== 'publish' && (
                                         <div className="flex items-start gap-2.5 mb-4 px-3.5 py-3 rounded-2xl border border-amber-500/30 bg-amber-500/10">
                                             <span className="material-symbols-outlined text-[18px] text-amber-400 shrink-0 mt-0.5">info</span>
                                             <p className="text-[11.5px] sm:text-xs text-amber-200/90 leading-relaxed">
-                                                Harap review <span className="font-bold text-amber-200">In/Out Batubara</span> dan <span className="font-bold text-amber-200">Solar</span> dengan teliti sebelum lanjut publish laporan.
+                                                {s.hint ?? (
+                                                    <>Harap review <span className="font-bold text-amber-200">In/Out Batubara</span> dan <span className="font-bold text-amber-200">Solar</span> dengan teliti sebelum lanjut publish laporan.</>
+                                                )}
                                             </p>
                                         </div>
                                     )}
@@ -834,7 +847,7 @@ export function PublishReportModal({
                     <div className="flex items-center gap-2">
                         {safeStepIdx > 0 && (
                             <button
-                                onClick={() => setStepIdx(i => Math.max(0, i - 1))}
+                                onClick={() => goToStep(safeStepIdx - 1)}
                                 disabled={sending}
                                 className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white rounded-xl hover:bg-slate-800/50 transition-all border border-slate-800 cursor-pointer disabled:opacity-30"
                             >
@@ -857,11 +870,14 @@ export function PublishReportModal({
                         // Step pra-publish (form In/Out batubara, Review Solar): data tersimpan
                         // tiap perubahan. Tombol lanjut selalu tampil (bukan gate).
                         <button
-                            onClick={() => setStepIdx(i => Math.min(steps.length - 1, i + 1))}
+                            onClick={() => goToStep(Math.min(steps.length - 1, safeStepIdx + 1))}
                             disabled={sending}
-                            className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
+                            className="flex items-center gap-2 px-5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
                         >
-                            Lanjut
+                            <span>
+                                Lanjut
+                                <span className="hidden sm:inline normal-case tracking-normal font-semibold opacity-80"> · {steps[safeStepIdx + 1]?.label}</span>
+                            </span>
                             <span className="material-symbols-outlined text-sm">arrow_forward</span>
                         </button>
                     ) : (

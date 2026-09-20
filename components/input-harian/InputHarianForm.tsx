@@ -20,7 +20,8 @@ import TabStockBatubara from './TabStockBatubara';
 import TabSiloFlyAsh from './TabSiloFlyAsh';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import PersonnelConfirmModal, { type PersonnelConfirmField } from '@/components/ui/PersonnelConfirmModal';
-import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif } from '@/lib/report-validation';
+import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif, checkSelisihTidakWajar } from '@/lib/report-validation';
+import { fetchKonsumsiBaseline, KONSUMSI_TOTALIZER_ROWS, type KonsumsiBaselineMap } from '@/lib/konsumsi-baseline';
 import {
     type DailyState,
     isBoilerComplete, isTurbinComplete, isPowerComplete,
@@ -137,6 +138,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const needsAsh = !station || harianStationTabs!.includes('Silo & Fly Ash');
     // Kedatangan batubara cuma dibaca kartu ringkasan di tab Handling.
     const needsCoalArrivals = !station || harianStationTabs!.includes('Handling');
+    // Histori konsumsi 60 hari — pembanding peringatan selisih totalizer tab Handling.
+    const needsKonsumsiBaseline = !station || harianStationTabs!.includes('Handling');
 
     const [activeTab, setActiveTab] = useState<HarianTabId>(() => {
         if (station) {
@@ -191,6 +194,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // Level silo terakhir (pembacaan ESP ≤ tanggal ini) — dipakai sebagai DEFAULT
     // kolom Level Silo A/B kalau laporan harian belum punya isian sendiri.
     const [lastSiloLevels, setLastSiloLevels] = useState<Record<SiloId, SiloLevelInfo | null>>({ A: null, B: null });
+    // Kebiasaan konsumsi harian per totalizer (median & tertinggi 60 hari) — hanya
+    // dipakai saat simpan untuk menilai selisih yang melonjak. Kosong = cek dilewati.
+    const [konsumsiBaseline, setKonsumsiBaseline] = useState<KonsumsiBaselineMap>({});
     const [coalArrivals, setCoalArrivals] = useState<{ id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[]>([]);
 
     // Mode station: select di-narrow ke child table milik station (hemat DB & payload).
@@ -236,8 +242,14 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         // Di-gate per station: solar hanya utk tab Handling, ash hanya utk tab
         // Silo & Fly Ash (esp) — station lain tidak menarik data ini.
         useEffect(() => {
-            if (!needsSolar && !needsAsh && !needsCoalArrivals) return;
+            if (!needsSolar && !needsAsh && !needsCoalArrivals && !needsKonsumsiBaseline) return;
             const supabase = createClient();
+
+            // Pembanding konsumsi tab Handling. Non-blocking: gagal muat cuma mematikan
+            // peringatan lonjakan, cek selisih negatif tetap jalan tanpa data ini.
+            if (needsKonsumsiBaseline) fetchKonsumsiBaseline(supabase, { date })
+                .then(setKonsumsiBaseline)
+                .catch(e => console.warn('[harian] histori konsumsi gagal dimuat', e));
 
             if (needsSolar) supabase
                 .from('solar_unloadings')
@@ -319,7 +331,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         }))
                     );
                 });
-        }, [date, needsSolar, needsAsh, needsCoalArrivals]);
+        }, [date, needsSolar, needsAsh, needsCoalArrivals, needsKonsumsiBaseline]);
 
     // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DW = stock batubara
     // (stock_batubara_rendal). Hanya form penuh — tab Stock BB tidak ada di station
@@ -686,6 +698,19 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 const w = checkMaxMW('PIU', power.power_pie); if (w) warnings.push(w);
                 const wI = checkSelisihNegatif('Delivered (Import)', turbineMisc.totalizer_import, prevTurbineMisc?.totalizer_import); if (wI) warnings.push(wI);
                 const wE = checkSelisihNegatif('Received (Export)',  turbineMisc.totalizer_export, prevTurbineMisc?.totalizer_export); if (wE) warnings.push(wE);
+            }
+            // Konsumsi air harian = selisih totalizer. Dua kesalahan yang mungkin:
+            // angkanya turun (mustahil, totalizer kumulatif) atau melonjak jauh dari
+            // kebiasaan parameter itu sendiri. Keduanya saling eksklusif — selisih tak
+            // bisa negatif dan besar sekaligus — jadi tiap parameter paling banyak
+            // menyumbang satu baris dan pop-up tidak membengkak jadi 14 baris.
+            if (ownsTab('Handling')) {
+                for (const { label, name } of KONSUMSI_TOTALIZER_ROWS) {
+                    const prev = prevTotalizerData?.[name];
+                    const w = checkSelisihNegatif(label, totalizer[name], prev)
+                        ?? checkSelisihTidakWajar(label, totalizer[name], prev, konsumsiBaseline[name]);
+                    if (w) warnings.push(w);
+                }
             }
             if (warnings.length > 0) {
                 const ok = await confirmWarnings(warnings);

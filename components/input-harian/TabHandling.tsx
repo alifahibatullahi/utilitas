@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, Modal } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
 import { formatTon, labelZonaPendek } from '@/lib/coal-storage';
+import { KONSUMSI_TOTALIZER_ROWS } from '@/lib/konsumsi-baseline';
 import { hitungNeracaSolar } from '@/lib/solar-balance';
 
 import { SolarOriginBadge } from './SolarOriginBadge';
@@ -30,15 +31,9 @@ export default function TabHandling({
     const [editUn, setEditUn] = useState<EditUn | null>(null);
     const [editUs, setEditUs] = useState<EditUs | null>(null);
 
-    const konsumsiRows = [
-        { label: 'RCW 1A', name: 'tot_rcw_1a' },
-        { label: 'Demin', name: 'tot_demin' },
-        { label: 'Demin PB1', name: 'tot_demin_pb1' },
-        { label: 'Demin PB3', name: 'tot_demin_pb3' },
-        { label: 'Hydrant', name: 'tot_hydrant' },
-        { label: 'Basin', name: 'tot_basin' },
-        { label: 'Service', name: 'tot_service' },
-    ];
+    // Daftar bersama dengan validasi simpan — kalau dipisah, kolom yang tampil dan
+    // kolom yang dicek bisa diam-diam berbeda.
+    const konsumsiRows = KONSUMSI_TOTALIZER_ROWS;
 
     const selisih = (name: string) => {
         const cur = n(totalizer[name]);

@@ -8,6 +8,7 @@ import { useAppSettings, useStreamDays } from '@/hooks/useAppSettings';
 import { todayWIB } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { defaultSolarBoiler } from '@/lib/solar-balance';
+import { hitungKonsumsiAir } from '@/lib/konsumsi-baseline';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -182,6 +183,18 @@ export default function LaporanHarianPage() {
     const pTransfer = prevReport?.daily_report_coal_transfer?.[0];
     const pTotalizer = prevReport?.daily_report_totalizer?.[0];
 
+    // Kartu air (DP–DT di LHUBB) murni turunan: selisih totalizer hari ini − H-1.
+    // Kolom DB-nya (konsumsi_demin dst) tidak pernah ada penulisnya, jadi dihitung di
+    // sini dengan rumus yang SAMA persis dengan yang dipakai mapper saat menulis ke
+    // Sheets — sumbernya pun sama (laporan H-1, tanpa filter status). Sengaja tidak
+    // disimpan ke DB: nilainya ikut berubah kalau totalizer H-1 dikoreksi, dan
+    // snapshot hasil submit akan basi persis seperti angka 0 yang diperbaiki di sini.
+    //
+    // Fallback ke kolom DB dipertahankan untuk baris hasil migrasi Sheets: di sana
+    // penerimaan_* terisi dari kolom DR–DT tapi totalizer mentahnya tidak ikut
+    // dipindahkan, sehingga tidak ada yang bisa dihitung ulang.
+    const konsAir = hitungKonsumsiAir(totalizer, pTotalizer);
+
     // Solar (m³) — nilai form menang, kalau kosong pakai agregat entri; Boiler A+B tak
     // punya entri sendiri sehingga jatuh ke neraca tanki. Urutan fallback ini SAMA dengan
     // yang dipakai mapper saat menulis CK/CL/CM/CN ke LHUBB (lib/solar-balance.ts).
@@ -297,11 +310,11 @@ export default function LaporanHarianPage() {
         crB: n(turb?.consumption_rate_b, 0),
 
         // Totalizer Demin & RCW (m3)
-        konsHarianDemin: n(totalizer?.konsumsi_demin),
-        konsHarianRCW: n(totalizer?.konsumsi_rcw),
-        penerimaanDemin3A: n(totalizer?.penerimaan_demin_3a),
-        penerimaanDemin1B: n(totalizer?.penerimaan_demin_1b),
-        penerimaanRCW1A: n(totalizer?.penerimaan_rcw_1a),
+        konsHarianDemin: n(konsAir.konsumsi_demin ?? totalizer?.konsumsi_demin),
+        konsHarianRCW: n(konsAir.konsumsi_rcw ?? totalizer?.konsumsi_rcw),
+        penerimaanDemin3A: n(konsAir.penerimaan_demin_3a ?? totalizer?.penerimaan_demin_3a),
+        penerimaanDemin1B: n(konsAir.penerimaan_demin_1b ?? totalizer?.penerimaan_demin_1b),
+        penerimaanRCW1A: n(konsAir.penerimaan_rcw_1a ?? totalizer?.penerimaan_rcw_1a),
 
         // Tank Level Jam 00.00 (m3 / %)
         rcwTank: n(tank?.rcw_level_00, 3800),

@@ -29,6 +29,85 @@ export const KONSUMSI_TOTALIZER_ROWS = [
 
 const KOLOM: string[] = KONSUMSI_TOTALIZER_ROWS.map(r => r.name);
 
+// ─── Selisih totalizer & konsumsi air harian ─────────────────────────────────
+// Rumus tunggal konsumsi air: dipakai mapper saat menulis DP–DT ke Sheets DAN oleh
+// halaman /laporan-harian saat menampilkannya. Sebelumnya rumusnya disalin — sel()
+// di daily-sheets-mapper dan selD() di InputHarianForm — sementara kelima kolom
+// turunannya di daily_report_totalizer tak punya satu pun penulis, jadi laporan
+// terbit menampilkan 0 padahal Sheets benar. Disatukan di sini supaya layar dan
+// Sheets mustahil berbeda angka.
+//
+// computeKonsumsiBaseline di bawah sengaja TIDAK memakai helper ini: pembanding
+// median melewati (skip) pasangan hari yang tak terbaca, bukan menghitungnya, dan
+// syaratnya lebih ketat (prev <= 0 ikut dibuang).
+
+/** Pembacaan totalizer air satu hari. Longgar (string diterima) karena state form
+ *  menyimpan angka sebagai teks sebelum di-submit. */
+export interface TotalizerAirReadings {
+    tot_rcw_1a?:    number | string | null;
+    tot_demin?:     number | string | null;
+    tot_demin_pb1?: number | string | null;
+    tot_demin_pb3?: number | string | null;
+    tot_hydrant?:   number | string | null;
+    tot_basin?:     number | string | null;
+    tot_service?:   number | string | null;
+}
+
+/** Lima angka turunan kartu air — namanya sama dengan kolom daily_report_totalizer. */
+export interface KonsumsiAir {
+    konsumsi_demin:      number | null; // Sheets DP
+    konsumsi_rcw:        number | null; // DQ
+    penerimaan_demin_3a: number | null; // DR
+    penerimaan_demin_1b: number | null; // DS
+    penerimaan_rcw_1a:   number | null; // DT
+}
+
+/**
+ * Selisih: hari ini − kemarin. null = tidak ada pembanding kemarin (laporan H-1 tak
+ * ada, kolomnya kosong, atau 0) — dibedakan dari "konsumsi nol" yang angkanya 0.
+ *
+ * Totalizer bersifat kumulatif (monoton naik), jadi selisih TIDAK MUNGKIN negatif —
+ * hasil <0 selalu anomali (meter reset, salah ketik, atau unit shutdown yang raw-nya
+ * belum dibawa). Di-lantai ke 0 supaya tak pernah tampil konsumsi negatif.
+ */
+export function selisihTotalizer(
+    today:     number | string | null | undefined,
+    yesterday: number | string | null | undefined,
+): number | null {
+    const t = today != null ? Number(today) : null;
+    const y = yesterday != null ? Number(yesterday) : null;
+    if (t === null || y === null || y === 0) return null;
+    return Math.max(0, t - y);
+}
+
+/**
+ * Lima angka kartu air dari pembacaan totalizer hari ini + H-1.
+ *
+ * RCW = hydrant + basin + service. Komponen yang tak punya pembanding dihitung 0,
+ * TAPI kalau ketiganya sama-sama tanpa pembanding hasilnya null (bukan 0) — supaya
+ * hari tanpa data sama sekali tidak menyamar jadi "pemakaian RCW nol".
+ */
+export function hitungKonsumsiAir(
+    tot:     TotalizerAirReadings | null | undefined,
+    prevTot: TotalizerAirReadings | null | undefined,
+): KonsumsiAir {
+    const sel = (k: keyof TotalizerAirReadings) => selisihTotalizer(tot?.[k], prevTot?.[k]);
+
+    const hydrant = sel('tot_hydrant');
+    const basin   = sel('tot_basin');
+    const service = sel('tot_service');
+
+    return {
+        konsumsi_demin: sel('tot_demin'),
+        konsumsi_rcw: (hydrant !== null || basin !== null || service !== null)
+            ? (hydrant ?? 0) + (basin ?? 0) + (service ?? 0)
+            : null,
+        penerimaan_demin_3a: sel('tot_demin_pb3'),
+        penerimaan_demin_1b: sel('tot_demin_pb1'),
+        penerimaan_rcw_1a:   sel('tot_rcw_1a'),
+    };
+}
+
 export interface KonsumsiBaseline {
     med: number;  // median konsumsi harian
     max: number;  // konsumsi harian tertinggi

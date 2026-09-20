@@ -21,7 +21,7 @@ import TabSiloFlyAsh from './TabSiloFlyAsh';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import PersonnelConfirmModal, { type PersonnelConfirmField } from '@/components/ui/PersonnelConfirmModal';
 import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif, checkSelisihTidakWajar } from '@/lib/report-validation';
-import { fetchKonsumsiBaseline, KONSUMSI_TOTALIZER_ROWS, type KonsumsiBaselineMap } from '@/lib/konsumsi-baseline';
+import { fetchKonsumsiBaseline, KONSUMSI_TOTALIZER_ROWS, selisihTotalizer as selD, type KonsumsiBaselineMap } from '@/lib/konsumsi-baseline';
 import {
     type DailyState,
     isBoilerComplete, isTurbinComplete, isPowerComplete,
@@ -731,16 +731,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             const prevB24 = prevSteam ? N(prevSteam.prod_boiler_b_24) : 0;
             const prodA24 = prevA24 > 0 ? Math.max(0, N(steam.prod_boiler_a_24) - prevA24) : N(steam.prod_boiler_a_24);
             const prodB24 = prevB24 > 0 ? Math.max(0, N(steam.prod_boiler_b_24) - prevB24) : N(steam.prod_boiler_b_24);
-
-            // Helper hitung selisih (today_raw − yesterday_raw). Return null kalau salah
-            // satu missing/0 (mirror perilaku daily-sheets-mapper.sel()). Totalizer
-            // kumulatif → selisih tak mungkin negatif, di-lantai 0 (samakan dgn sel()).
-            const selD = (cur: number | string | null | undefined, prev: number | null | undefined): number | null => {
-                const c = cur != null ? Number(cur) : null;
-                const p = prev != null ? Number(prev) : null;
-                if (c === null || p === null || p === 0) return null;
-                return Math.max(0, c - p);
-            };
 
             const steamWithCalcs = {
                 ...steam,

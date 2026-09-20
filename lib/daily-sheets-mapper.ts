@@ -15,6 +15,7 @@
 
 import { toIndonesianDate } from './google-sheets';
 import { defaultSolarBoiler } from './solar-balance';
+import { selisihTotalizer as sel, hitungKonsumsiAir } from './konsumsi-baseline';
 import type {
     DailyReportSteamRow,
     DailyReportPowerRow,
@@ -213,20 +214,6 @@ function setNum0(
     val: string | number | null | undefined,
 ): void {
     row[idx] = Number(val) || 0;
-}
-
-/** Selisih: today − yesterday. Returns null if no valid yesterday data.
- *  Totalizer bersifat kumulatif (monoton naik), jadi selisih TIDAK MUNGKIN negatif —
- *  hasil <0 selalu anomali (meter reset, salah ketik, atau unit shutdown yang raw-nya
- *  belum dibawa). Di-lantai ke 0 supaya Sheets tak pernah menampilkan konsumsi negatif. */
-function sel(
-    today:     number | null | undefined,
-    yesterday: number | null | undefined,
-): number | null {
-    const t = today != null ? Number(today) : null;
-    const y = yesterday != null ? Number(yesterday) : null;
-    if (t === null || y === null || y === 0) return null;
-    return Math.max(0, t - y);
 }
 
 export type SolarSummary = {
@@ -491,26 +478,16 @@ export function dailyReportToRow(
     if (totalizer) {
         set(row, COL.keterangan, totalizer.keterangan); // DO
 
-        // DP–DT: konsumsi dihitung dari selisih totalizer hari ini − kemarin
-        const pt = prev?.totalizer;
-        const konsDemin  = sel(totalizer.tot_demin,      pt?.tot_demin);
-        const konsHydrant = sel(totalizer.tot_hydrant,   pt?.tot_hydrant);
-        const konsBasin   = sel(totalizer.tot_basin,     pt?.tot_basin);
-        const konsService = sel(totalizer.tot_service,   pt?.tot_service);
-        const konsDemPb3  = sel(totalizer.tot_demin_pb3, pt?.tot_demin_pb3);
-        const konsDemPb1  = sel(totalizer.tot_demin_pb1, pt?.tot_demin_pb1);
-        const konsRcw1a   = sel(totalizer.tot_rcw_1a,    pt?.tot_rcw_1a);
-
-        const konsRcwTotal =
-            (konsHydrant !== null || konsBasin !== null || konsService !== null)
-                ? (konsHydrant ?? 0) + (konsBasin ?? 0) + (konsService ?? 0)
-                : null;
-
-        if (konsDemin !== null)    row[COL.konsumsi_demin]      = konsDemin;    // DP
-        if (konsRcwTotal !== null) row[COL.konsumsi_rcw]        = konsRcwTotal; // DQ
-        if (konsDemPb3  !== null)  row[COL.penerimaan_demin_3a] = konsDemPb3;   // DR
-        if (konsDemPb1  !== null)  row[COL.penerimaan_demin_1b] = konsDemPb1;   // DS
-        if (konsRcw1a   !== null)  row[COL.penerimaan_rcw_1a]   = konsRcw1a;    // DT
+        // DP–DT: konsumsi air = selisih totalizer hari ini − kemarin. Rumus dipakai
+        // bersama halaman /laporan-harian lewat hitungKonsumsiAir() supaya layar
+        // dan Sheets tidak bisa berbeda angka. set() melewati null (= tak ada
+        // pembanding H-1), jadi selnya dibiarkan apa adanya, bukan ditulis 0.
+        const kons = hitungKonsumsiAir(totalizer, prev?.totalizer);
+        set(row, COL.konsumsi_demin,      kons.konsumsi_demin);      // DP
+        set(row, COL.konsumsi_rcw,        kons.konsumsi_rcw);        // DQ
+        set(row, COL.penerimaan_demin_3a, kons.penerimaan_demin_3a); // DR
+        set(row, COL.penerimaan_demin_1b, kons.penerimaan_demin_1b); // DS
+        set(row, COL.penerimaan_rcw_1a,   kons.penerimaan_rcw_1a);   // DT
 
         set(row, COL.group_name,            totalizer.group_name);            // DU
         set(row, COL.kasi_name,             totalizer.kasi_name);             // DV

@@ -6,9 +6,10 @@ import {
 } from '@/lib/coal-storage';
 
 /**
- * Isi kartu detail satu zona. Dipakai dua kali: sebagai popover hover di
- * layar lebar, dan sebagai kartu di bawah denah saat petak diketuk di HP
- * (popover absolut ikut terpotong oleh pembungkus scroll denah).
+ * Isi kartu detail satu zona — popover hover di layar lebar, baca-saja.
+ *
+ * Penyuntingan tidak di sini: popover hilang begitu kursor keluar, jadi form di
+ * dalamnya mustahil dipakai. Petak yang diketuk membuka ZonaEditor.
  */
 export default function ZonaDetail({ area, zonaId, index, lots, warna }: {
     area: CoalArea;
@@ -47,9 +48,18 @@ export default function ZonaDetail({ area, zonaId, index, lots, warna }: {
                         <p className="text-[11px] text-slate-500">
                             est. {formatTon(lot.ton)} t · masuk {formatTanggal(lot.tanggal_masuk)}
                         </p>
+                        {/* Tonase hasil opname adalah pernyataan seseorang, bukan turunan
+                            laporan shift — bedanya perlu terlihat tanpa membuka editor. */}
+                        {lot.sumber === 'opname' && lot.diubahOleh && (
+                            <p className="text-[10px] text-sky-700">opname · {lot.diubahOleh}</p>
+                        )}
                     </div>
                 </div>
             ))}
+
+            <p className="text-[10px] text-slate-400 mt-2 pt-1.5 border-t border-slate-100">
+                Klik petak untuk mengubah isi
+            </p>
         </>
     );
 }

@@ -74,6 +74,24 @@ export interface CoalLot {
     supplier: string;
     ton: number;           // estimasi
     tanggal_masuk: string; // 'YYYY-MM-DD'
+
+    // ── Semua di bawah OPSIONAL: diisi lib/coal-storage-query.ts saat merakit
+    // tumpukan dari DB. Komponen lama yang cuma butuh empat field di atas tetap
+    // jalan apa adanya.
+    /** lot_id — sama dengan coal_arrivals.batch_id, atau UUID baru untuk tumpukan manual. */
+    id?: string;
+    /**
+     * Basis waktu: loading yang rank-nya di bawah ini TIDAK boleh mengurangi tumpukan
+     * ini, karena sudah tercermin pada angka yang dinyatakan operator saat opname.
+     * Kosong = tanpa batas, yaitu perilaku murni-kejadian seperti sebelum ada koreksi.
+     */
+    minRank?: number;
+    /** 'opname' = tonasenya pernyataan operator; 'kedatangan' = murni dari laporan shift. */
+    sumber?: 'kedatangan' | 'opname';
+    diubahOleh?: string;
+    diubahPada?: string;   // ISO timestamp
+    /** Batch terakhirnya masih 'progres' — kedatangan berikutnya akan menambah tumpukan ini. */
+    adaPengirimanBerjalan?: boolean;
 }
 
 export function jumlahZona(area: CoalArea): number {
@@ -296,8 +314,8 @@ export function daftarUmurStok(
 // ── Loading: pengambilan batubara dari storage ke hopper ────────────────────
 
 /**
- * Satu kali pengambilan oleh payloader. Bentuk barisnya sengaja disamakan
- * dengan calon sumbernya di laporan shift handling (lihat lib/coal-loading-data.ts).
+ * Satu kali pengambilan oleh payloader. Barisnya berasal dari tabel coal_loadings
+ * yang diisi form Handling laporan shift (lihat lib/coal-storage-query.ts).
  */
 export interface CoalLoading {
     tanggal: string;           // 'YYYY-MM-DD'
@@ -328,21 +346,48 @@ export function tonKeluarZona(loadings: CoalLoading[], zonaId: string): number {
  * Pengurangannya FIFO per zona — tumpukan tertua di zona itu habis lebih dulu,
  * sesuai cara payloader mengeruk. Lot yang tersisa nol dibuang dari hasil, dan
  * loading yang melebihi isi zona di-clamp (tidak pernah membuat sisa negatif).
+ *
+ * Jalannya KRONOLOGIS, bukan sekadar menjumlahkan seluruh loading per zona: satu
+ * loading cuma boleh memakan tumpukan yang sudah ada saat itu (rank >= minRank-nya).
+ * Tanpa ini, tumpukan yang baru masuk hari ini ikut dikurangi loading bulan lalu —
+ * tak kelihatan pada data contoh yang rapi, tapi salah begitu datanya mengalir terus.
  */
 export function lotsSisa(lots: CoalLot[], loadings: CoalLoading[]): CoalLot[] {
-    const jatah = new Map<string, number>();
-    for (const l of loadings) {
-        jatah.set(l.zona, (jatah.get(l.zona) ?? 0) + l.shovel * TON_PER_SHOVEL);
+    // Satu salinan per lot supaya sisanya bisa dikurangi tanpa menyentuh masukan.
+    const salinan = lots.map(lot => ({ ...lot }));
+
+    const perZona = new Map<string, typeof salinan>();
+    for (const lot of salinan) {
+        const daftar = perZona.get(lot.zona) ?? [];
+        daftar.push(lot);
+        perZona.set(lot.zona, daftar);
+    }
+    // FIFO: di dalam satu zona, tumpukan tertua dikeruk lebih dulu.
+    for (const daftar of perZona.values()) {
+        daftar.sort((a, b) => a.tanggal_masuk.localeCompare(b.tanggal_masuk));
     }
 
-    const sisa: CoalLot[] = [];
-    for (const lot of [...lots].sort((a, b) => a.tanggal_masuk.localeCompare(b.tanggal_masuk))) {
-        const keluar = jatah.get(lot.zona) ?? 0;
-        const diambil = Math.min(keluar, lot.ton);
-        jatah.set(lot.zona, keluar - diambil);
-        if (lot.ton - diambil > 0) sisa.push({ ...lot, ton: lot.ton - diambil });
+    const urut = [...loadings].sort(
+        (a, b) => rankShift(a.tanggal, a.shift) - rankShift(b.tanggal, b.shift));
+
+    for (const l of urut) {
+        const daftar = perZona.get(l.zona);
+        if (!daftar) continue;
+        const rank = rankShift(l.tanggal, l.shift);
+        let jatah = l.shovel * TON_PER_SHOVEL;
+        for (const lot of daftar) {
+            if (jatah <= 0) break;
+            // Tumpukan yang basisnya lebih baru dari loading ini dilewati: tonasenya
+            // dinyatakan operator SETELAH loading itu terjadi, jadi sudah memperhitungkannya.
+            if (lot.minRank !== undefined && rank < lot.minRank) continue;
+            const diambil = Math.min(jatah, lot.ton);
+            lot.ton -= diambil;
+            jatah -= diambil;
+        }
+        // Sisa jatah sengaja dibuang: loading yang melebihi isi zona tidak boleh negatif.
     }
-    return sisa;
+
+    return salinan.filter(lot => lot.ton > 0);
 }
 
 export interface LoadingInfo {
@@ -353,10 +398,29 @@ export interface LoadingInfo {
     ton: number;              // shovel × TON_PER_SHOVEL
     supplier: string | null;  // batubara siapa yang terkeruk di sana
     warna: string | null;
+    /**
+     * false = loading ini lebih tua dari opname terakhir di zonanya, jadi sudah tidak
+     * mengurangi apa pun di denah. Barisnya tetap ditampilkan (itu kejadian nyata yang
+     * dilaporkan shift), hanya diredupkan supaya tidak dikira masih berpengaruh.
+     */
+    berlaku: boolean;
 }
 
 // Urutan kronologis dalam satu tanggal laporan: malam (23:00 D-1 → 07:00 D) lalu pagi, lalu sore.
-const URUT_SHIFT: Record<ShiftKey, number> = { malam: 0, pagi: 1, sore: 2 };
+export const URUT_SHIFT: Record<ShiftKey, number> = { malam: 0, pagi: 1, sore: 2 };
+
+/**
+ * Urutan kronologis MUTLAK sebuah (tanggal, shift) dalam satu skala angka, supaya
+ * kedatangan, loading, dan basis opname bisa dibandingkan langsung tanpa memisah
+ * perbandingan tanggal dan shift. Tanggal jadi nomor hari dikali 3, shift jadi
+ * offset 0–2 di dalam hari itu.
+ */
+export function rankShift(tanggal: string, shift: ShiftKey): number {
+    const [y, m, d] = tanggal.split('-').map(Number);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return 0;
+    const hari = Math.round(Date.UTC(y, m - 1, d) / 86_400_000);
+    return hari * 3 + (URUT_SHIFT[shift] ?? 0);
+}
 
 /**
  * Riwayat loading, terbaru di atas.
@@ -377,11 +441,22 @@ export function daftarLoading(
         if (!tertua.has(lot.zona)) tertua.set(lot.zona, lot.supplier);
     }
 
+    // Basis paling longgar di tiap zona: kalau SATU tumpukan pun masih bisa dikeruk
+    // oleh loading serank itu, loadingnya masih berlaku. Zona tanpa tumpukan hidup
+    // tidak punya batas, jadi barisnya tidak diredupkan tanpa alasan.
+    const basisZona = new Map<string, number>();
+    for (const lot of lots) {
+        if (lot.minRank === undefined) { basisZona.set(lot.zona, -Infinity); continue; }
+        const kini = basisZona.get(lot.zona);
+        if (kini === undefined || lot.minRank < kini) basisZona.set(lot.zona, lot.minRank);
+    }
+
     return [...loadings]
         .sort((a, b) =>
             b.tanggal.localeCompare(a.tanggal) || URUT_SHIFT[b.shift] - URUT_SHIFT[a.shift])
         .map(loading => {
             const supplier = tertua.get(loading.zona) ?? null;
+            const basis = basisZona.get(loading.zona);
             return {
                 loading,
                 area: areaOfZona(loading.zona),
@@ -390,6 +465,77 @@ export function daftarLoading(
                 ton: loading.shovel * TON_PER_SHOVEL,
                 supplier,
                 warna: supplier ? ambilWarna(peta, supplier) : null,
+                berlaku: basis === undefined
+                    || rankShift(loading.tanggal, loading.shift) >= basis,
             };
         });
+}
+
+// ── Penyuntingan isi zona dari denah ────────────────────────────────────────
+
+/**
+ * Ruang yang masih kosong di sebuah zona, dalam ton.
+ *
+ * `kecualiLotId` dipakai saat MENGUBAH satu tumpukan: tumpukan yang sedang disunting
+ * harus dikeluarkan dulu dari hitungan, kalau tidak tonasenya sendiri terhitung dua
+ * kali dan operator dapat peringatan kapasitas palsu.
+ */
+export function sisaRuangZona(lots: CoalLot[], zonaId: string, kecualiLotId?: string): number {
+    const terpakai = lotsZona(lots, zonaId)
+        .filter(l => kecualiLotId === undefined || l.id !== kecualiLotId)
+        .reduce((t, l) => t + l.ton, 0);
+    return kapasitasZona(zonaId) - terpakai;
+}
+
+export interface PeriksaTumpukan {
+    /** Memblokir simpan. */
+    galat: string[];
+    /** Boleh dilanjutkan operator — cuma diminta memastikan. */
+    peringatan: string[];
+}
+
+/**
+ * Aturan validasi satu tumpukan sebelum disimpan.
+ *
+ * Kapasitas zona SENGAJA cuma jadi peringatan, bukan galat: kapasitasZona() membagi
+ * rata kapasitas area (lihat catatan di kepala berkas ini), sedangkan zona ujung di
+ * lapangan kemungkinan lebih kecil — memblokir di angka yang kita sendiri belum yakin
+ * berarti melarang operator mencatat kenyataan.
+ */
+export function periksaTumpukan(
+    input: { supplier: string; ton: number; tanggal_masuk: string; zona: string; lotId?: string },
+    lots: CoalLot[],
+    acuan?: Date,
+): PeriksaTumpukan {
+    const galat: string[] = [];
+    const peringatan: string[] = [];
+
+    if (!input.supplier.trim()) galat.push('Nama supplier belum diisi.');
+    if (!Number.isFinite(input.ton) || input.ton <= 0) galat.push('Tonase harus lebih dari 0.');
+    if (!input.tanggal_masuk) galat.push('Tanggal masuk belum diisi.');
+
+    const kapasitas = kapasitasZona(input.zona);
+    if (Number.isFinite(input.ton) && input.ton > kapasitas * 2) {
+        galat.push(`Tonase ${formatTon(input.ton)} t lebih dari dua kali kapasitas zona `
+            + `(${formatTon(kapasitas)} t) — sepertinya salah ketik.`);
+    }
+
+    const umur = input.tanggal_masuk ? umurHari(input.tanggal_masuk, acuan) : 0;
+    if (umur < 0) galat.push('Tanggal masuk ada di masa depan.');
+    else if (umur > 365) peringatan.push(`Tanggal masuk ${umur} hari lalu — yakin?`);
+
+    const ruang = sisaRuangZona(lots, input.zona, input.lotId);
+    if (Number.isFinite(input.ton) && input.ton > ruang) {
+        const total = kapasitas - ruang + input.ton;
+        peringatan.push(`Zona ini jadi ${Math.round((total / kapasitas) * 100)}% dari kapasitas `
+            + `(${formatTon(total)} t dari ${formatTon(kapasitas)} t).`);
+    }
+
+    const lot = input.lotId ? lots.find(l => l.id === input.lotId) : undefined;
+    if (lot?.adaPengirimanBerjalan) {
+        peringatan.push('Pengiriman ini masih berjalan; kedatangan berikutnya akan '
+            + 'DITAMBAHKAN ke angka yang kamu tulis.');
+    }
+
+    return { galat, peringatan };
 }

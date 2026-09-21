@@ -18,7 +18,7 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
     lots: CoalLot[];
     warna: Record<string, string>;
     highlight: Sorotan | null;
-    onSelect: (index: number) => void;
+    onSelect: (zonaId: string) => void;
 }) {
     const zLots = lotsZona(lots, zonaId);
     const total = zLots.reduce((t, l) => t + l.ton, 0);
@@ -38,7 +38,9 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
 
     return (
         <div className="group relative flex-1 min-w-0 hover:z-10 focus-within:z-10">
-            {/* Detail hover — hanya layar lebar; di HP dipakai kartu di bawah denah. */}
+            {/* Detail hover — hanya layar lebar, dan sengaja tetap BACA-SAJA: form di
+                dalam popover tidak bisa dipakai karena hilang begitu kursor keluar.
+                Untuk menyunting, petaknya diketuk dan ZonaEditor yang terbuka. */}
             {/* Selalu ter-render di layar lebar tapi transparan, supaya munculnya bisa
                 dianimasikan (display tidak bisa ditransisikan). Posisinya absolute,
                 jadi tidak menyentuh layout; pointer-events dimatikan saat tersembunyi.
@@ -58,8 +60,8 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
 
             <button
                 type="button"
-                onClick={() => onSelect(index)}
-                aria-label={`${namaZona(index, jml)} — ${Math.round(pct)}% terisi`}
+                onClick={() => onSelect(zonaId)}
+                aria-label={`${namaZona(index, jml)} — ${Math.round(pct)}% terisi, ketuk untuk mengubah isi`}
                 // Sorotan hover pakai ring, bukan border-2: menebalkan border menggeser
                 // isi petak 1px tiap kali kursor lewat, sedangkan ring tidak menyentuh layout.
                 className={`relative block w-full h-[78px] rounded-[3px] border overflow-hidden cursor-pointer

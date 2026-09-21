@@ -68,7 +68,13 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
                                     onMouseLeave={() => onSorot(null)}
                                     onFocus={() => onSorot({ tipe: 'zona', nilai: r.loading.zona })}
                                     onBlur={() => onSorot(null)}
-                                    className="border-t border-slate-100 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none transition-colors"
+                                    // Loading yang lebih tua dari opname terakhir di zonanya sudah
+                                    // tidak mengurangi denah. Barisnya tetap ditampilkan — itu
+                                    // kejadian nyata yang dilaporkan shift — hanya diredupkan.
+                                    title={r.berlaku ? undefined
+                                        : 'Sudah tercakup dalam opname zona ini, jadi tidak lagi mengurangi denah'}
+                                    className={`border-t border-slate-100 hover:bg-slate-50 focus-visible:bg-slate-50
+                                        focus-visible:outline-none transition-colors ${r.berlaku ? '' : 'opacity-45'}`}
                                 >
                                     <td className="py-1.5 pr-2 align-top whitespace-nowrap">
                                         <span className="font-semibold text-slate-900">{formatTanggalPendek(r.loading.tanggal)}</span>

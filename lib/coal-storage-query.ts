@@ -3,11 +3,13 @@
 // dan matematika stok) supaya komponen visual tidak ikut menarik kode query; di
 // sini Supabase diimpor type-only, jadi yang masuk bundle cuma logika perakitan.
 //
-// Tiga sumber, satu hasil:
-//   coal_arrivals    kedatangan per shift; satu pengiriman yang berlanjut memakai
-//                    batch_id yang sama, jadi satu batch = SATU tumpukan di denah
-//   coal_lot_koreksi koreksi manual dari denah; baris TERBARU per lot_id yang berlaku
-//   coal_loadings    pengerukan payloader; dikurangkan FIFO oleh lotsSisa()
+// Empat sumber, satu hasil:
+//   coal_arrivals      kedatangan per shift; satu pengiriman yang berlanjut memakai
+//                      batch_id yang sama, jadi satu batch = SATU tumpukan di denah
+//   coal_lot_koreksi   koreksi manual dari denah; baris TERBARU per lot_id yang berlaku
+//   coal_loadings      pengerukan payloader per pilar; dikurangkan FIFO oleh lotsSisa()
+//   shift_esp_handling Total Loading yang diketik operator tiap shift — belum ada
+//                      pilarnya, jadi cuma mengisi Riwayat Loading, tidak mengurangi stok
 //
 // TIDAK memakai realtime. Tabel nyasar di publication supabase_realtime pernah
 // membuat compute Supabase jenuh sampai API balas 522 (insiden 3 Jun 2026);
@@ -52,6 +54,26 @@ export interface KoreksiInput {
     keterangan?: string | null;
     operatorId?: string | null;
     operatorName: string;
+}
+
+/** Baris Total Loading dari laporan shift, lengkap dengan kepala laporannya. */
+interface BarisLoadingShift {
+    loading: string | null;   // kolom TEXT; isinya angka shovel
+    hopper: string | null;
+    shift_reports: { date: string; shift: string; group_name: string | null };
+}
+
+function kunciShift(r: { date: string; shift: string }): string {
+    return `${r.date}|${r.shift}`;
+}
+
+/**
+ * Hopper dari laporan shift tidak selalu rapi (ada 'a' huruf kecil, ada yang kosong).
+ * Yang tidak dikenali jadi null — ditampilkan "—", bukan ditebak jadi Darat.
+ */
+function normalHopper(nilai: string | null): HopperKey | null {
+    const h = (nilai ?? '').trim().toUpperCase();
+    return h === 'A' || h === 'B' || h === 'AB' ? h : null;
 }
 
 function iso(d: Date): string {
@@ -147,20 +169,61 @@ export async function fetchDenah(supabase: SupabaseClient): Promise<DenahData> {
         ? tanggalTumpukanTertua
         : iso(lantai);
 
-    const hasilLoading = await supabase
-        .from('coal_loadings')
-        .select('*')
-        .gte('date', batas)
-        .order('date', { ascending: true });
+    // Dua sumber sekaligus: coal_loadings (sudah dipecah per pilar) dan Total Loading
+    // yang diketik operator di laporan shift. Yang kedua cuma untuk riwayat — tanpa
+    // pilar ia tidak ikut FIFO — jadi jendelanya cukup lantai tampilan, bukan `batas`.
+    const [hasilLoading, hasilShift] = await Promise.all([
+        supabase
+            .from('coal_loadings')
+            .select('*')
+            .gte('date', batas)
+            .order('date', { ascending: true }),
+        supabase
+            .from('shift_esp_handling')
+            .select('loading, hopper, shift_reports!inner(date, shift, group_name)')
+            .gte('shift_reports.date', iso(lantai))
+            .not('loading', 'is', null),
+    ]);
     if (hasilLoading.error) throw hasilLoading.error;
+    if (hasilShift.error) throw hasilShift.error;
 
-    const loadings: CoalLoading[] = ((hasilLoading.data ?? []) as CoalLoadingRow[]).map(r => ({
+    const barisShift = (hasilShift.data ?? []) as unknown as BarisLoadingShift[];
+    // Grup asli per shift — dipinjamkan juga ke baris coal_loadings, yang tidak punya
+    // kolom grup, supaya tidak perlu ditebak dari jadwal regu.
+    const grupShift = new Map<string, string>();
+    for (const r of barisShift) {
+        if (r.shift_reports.group_name) grupShift.set(kunciShift(r.shift_reports), r.shift_reports.group_name);
+    }
+
+    const barisPilar = (hasilLoading.data ?? []) as CoalLoadingRow[];
+    const loadings: CoalLoading[] = barisPilar.map(r => ({
         tanggal: r.date,
         shift: r.shift as ShiftKey,
+        grup: grupShift.get(kunciShift(r)),
         zona: r.zona,
         shovel: Number(r.shovel ?? 0),
-        hopper: (r.hopper ?? 'A') as HopperKey,
+        hopper: normalHopper(r.hopper),
     }));
+
+    // JANGAN hitung dobel: baris coal_loadings sebuah shift adalah PECAHAN dari Total
+    // Loading shift yang sama (dibagi rata ke pilar terpilih saat simpan, lihat
+    // app/input-laporan/page.tsx). Shift yang sudah dipecah per pilar diwakili pecahannya;
+    // Total Loading-nya hanya dipakai untuk shift yang belum dipecah.
+    const sudahDipecah = new Set(barisPilar.map(kunciShift));
+    for (const r of barisShift) {
+        const sr = r.shift_reports;
+        if (sudahDipecah.has(kunciShift(sr))) continue;
+        const shovel = Number(String(r.loading).replace(',', '.'));
+        if (!Number.isFinite(shovel) || shovel <= 0) continue;
+        loadings.push({
+            tanggal: sr.date,
+            shift: sr.shift as ShiftKey,
+            grup: sr.group_name ?? undefined,
+            zona: null,
+            shovel,
+            hopper: normalHopper(r.hopper),
+        });
+    }
 
     // ── "Terakhir diubah" ───────────────────────────────────────────────────
     // Koreksi manual menang karena itu pernyataan seseorang; kalau belum pernah ada,

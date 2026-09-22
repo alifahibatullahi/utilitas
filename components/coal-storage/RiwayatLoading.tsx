@@ -60,14 +60,19 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
                         <tbody>
                             {/* Index ikut jadi kunci: satu shift bisa saja tercatat dua kali
                                 di zona yang sama, dan urutannya sudah deterministik. */}
-                            {tampil.map((r, i) => (
+                            {tampil.map((r, i) => {
+                                // Baris tanpa pilar tidak punya petak untuk disorot di denah.
+                                const zona = r.loading.zona;
+                                const sorot = zona ? () => onSorot({ tipe: 'zona', nilai: zona }) : undefined;
+                                const lepas = zona ? () => onSorot(null) : undefined;
+                                return (
                                 <tr
-                                    key={`${r.loading.tanggal}-${r.loading.shift}-${r.loading.zona}-${i}`}
+                                    key={`${r.loading.tanggal}-${r.loading.shift}-${zona ?? 'total'}-${i}`}
                                     tabIndex={0}
-                                    onMouseEnter={() => onSorot({ tipe: 'zona', nilai: r.loading.zona })}
-                                    onMouseLeave={() => onSorot(null)}
-                                    onFocus={() => onSorot({ tipe: 'zona', nilai: r.loading.zona })}
-                                    onBlur={() => onSorot(null)}
+                                    onMouseEnter={sorot}
+                                    onMouseLeave={lepas}
+                                    onFocus={sorot}
+                                    onBlur={lepas}
                                     // Loading yang lebih tua dari opname terakhir di zonanya sudah
                                     // tidak mengurangi denah. Barisnya tetap ditampilkan — itu
                                     // kejadian nyata yang dilaporkan shift — hanya diredupkan.
@@ -83,23 +88,39 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
                                         </span>
                                     </td>
                                     <td className="py-1.5 pr-2 align-top">
-                                        <span className="flex items-center gap-1.5">
-                                            {r.warna && <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: r.warna }} />}
-                                            <span className="font-semibold text-slate-900 truncate">{r.supplier ?? r.area.singkat}</span>
-                                        </span>
-                                        <span className="block pl-3.5 text-[11px] text-slate-500 truncate">{r.labelZona}</span>
+                                        {r.area ? (
+                                            <>
+                                                <span className="flex items-center gap-1.5">
+                                                    {r.warna && <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: r.warna }} />}
+                                                    <span className="font-semibold text-slate-900 truncate">{r.supplier ?? r.area.singkat}</span>
+                                                </span>
+                                                <span className="block pl-3.5 text-[11px] text-slate-500 truncate">{r.labelZona}</span>
+                                            </>
+                                        ) : (
+                                            // Total Loading dari laporan shift: form shift belum
+                                            // menanyakan pilarnya, jadi jujur dikosongkan.
+                                            <span className="text-[11px] text-slate-400">Pilar belum dicatat</span>
+                                        )}
                                     </td>
                                     <td className="py-1.5 pr-2 text-right align-top whitespace-nowrap">
-                                        <span className="font-semibold text-slate-900 tabular-nums">{r.loading.shovel}</span>
+                                        {/* Pecahan per pilar bisa berkoma panjang (95 ÷ 3), jadi dibatasi. */}
+                                        <span className="font-semibold text-slate-900 tabular-nums">
+                                            {r.loading.shovel.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
+                                        </span>
                                         <span className="block text-[11px] text-slate-500 tabular-nums">± {formatTon(r.ton)} t</span>
                                     </td>
                                     <td className="py-1.5 align-top">
-                                        <span className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${HOPPER_CHIP[r.loading.hopper]}`}>
-                                            {HOPPER_LABEL[r.loading.hopper]}
-                                        </span>
+                                        {r.loading.hopper ? (
+                                            <span className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${HOPPER_CHIP[r.loading.hopper]}`}>
+                                                {HOPPER_LABEL[r.loading.hopper]}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[11px] text-slate-400">—</span>
+                                        )}
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

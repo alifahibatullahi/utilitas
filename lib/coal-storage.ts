@@ -253,6 +253,11 @@ export function formatTanggalPendek(iso: string): string {
     return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
 }
 
+/**
+ * Terima tanggal 'YYYY-MM-DD' maupun timestamp ISO utuh, ditampilkan di zona waktu
+ * lokal. Timestamp JANGAN dipotong .slice(0, 10) dulu: potongannya tanggal UTC, jadi
+ * yang disimpan 00:00–07:00 WIB tampil mundur sehari.
+ */
 export function formatTanggal(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
@@ -314,16 +319,19 @@ export function daftarUmurStok(
 // ── Loading: pengambilan batubara dari storage ke hopper ────────────────────
 
 /**
- * Satu kali pengambilan oleh payloader. Barisnya berasal dari tabel coal_loadings
- * yang diisi form Handling laporan shift (lihat lib/coal-storage-query.ts).
+ * Satu kali pengambilan oleh payloader. Dua sumber (dirakit lib/coal-storage-query.ts):
+ *   - coal_loadings: loading yang sudah dipecah per pilar lewat chip di form Handling;
+ *   - shift_esp_handling: Total Loading yang diketik operator tiap shift. Belum ada
+ *     pilarnya, jadi zona = null — tampil di riwayat tapi tidak mengurangi tumpukan
+ *     mana pun, karena tak ada yang tahu tumpukan mana yang dikeruk.
  */
 export interface CoalLoading {
     tanggal: string;           // 'YYYY-MM-DD'
     shift: ShiftKey;
     grup?: string;             // 'A'…'D'; kalau kosong diturunkan dari jadwal regu
-    zona: string;              // 'O3' | 'C7' — pilar asal
+    zona: string | null;       // 'O3' | 'C7' — pilar asal; null = pilar belum dicatat
     shovel: number;            // jumlah shovel payloader
-    hopper: HopperKey;         // A = darat, B = laut, AB = keduanya
+    hopper: HopperKey | null;  // A = darat, B = laut, AB = keduanya; null = tak diisi
 }
 
 export type HopperKey = 'A' | 'B' | 'AB';
@@ -371,6 +379,9 @@ export function lotsSisa(lots: CoalLot[], loadings: CoalLoading[]): CoalLot[] {
         (a, b) => rankShift(a.tanggal, a.shift) - rankShift(b.tanggal, b.shift));
 
     for (const l of urut) {
+        // Loading tanpa pilar tidak boleh memakan tumpukan mana pun: menebak zonanya
+        // berarti mengarang stok.
+        if (!l.zona) continue;
         const daftar = perZona.get(l.zona);
         if (!daftar) continue;
         const rank = rankShift(l.tanggal, l.shift);
@@ -392,16 +403,20 @@ export function lotsSisa(lots: CoalLot[], loadings: CoalLoading[]): CoalLot[] {
 
 export interface LoadingInfo {
     loading: CoalLoading;
-    area: CoalArea;
-    labelZona: string;        // 'Closed · pilar 4–5'
+    area: CoalArea | null;    // null = pilar belum dicatat
+    labelZona: string;        // 'Closed · pilar 4–5' | 'pilar belum dicatat'
     grup: string;             // 'A'…'D'
     ton: number;              // shovel × TON_PER_SHOVEL
     supplier: string | null;  // batubara siapa yang terkeruk di sana
     warna: string | null;
     /**
-     * false = loading ini lebih tua dari opname terakhir di zonanya, jadi sudah tidak
-     * mengurangi apa pun di denah. Barisnya tetap ditampilkan (itu kejadian nyata yang
-     * dilaporkan shift), hanya diredupkan supaya tidak dikira masih berpengaruh.
+     * false = loading ini lebih tua dari opname terakhir di zonanya, jadi sudah tertutup
+     * opname itu. Barisnya tetap ditampilkan (itu kejadian nyata yang dilaporkan shift),
+     * hanya diredupkan supaya tidak dikira masih berpengaruh.
+     *
+     * Loading tanpa pilar selalu true: tidak ada opname yang bisa menutupnya. Ia memang
+     * tidak mengurangi denah, tapi karena tak ada pilarnya, bukan karena tertutup opname —
+     * dan meredupkannya akan meredupkan hampir seluruh isi tabel.
      */
     berlaku: boolean;
 }
@@ -428,7 +443,8 @@ export function rankShift(tanggal: string, shift: ShiftKey): number {
  * Supplier per baris ditebak dari lot TERTUA di zona itu — sama dengan urutan
  * FIFO yang dipakai lotsSisa, jadi titik warnanya sejalan dengan gundukan yang
  * memang berkurang di denah. Zona yang tak punya penempatan sama sekali
- * dibiarkan tanpa supplier (titik warnanya tidak digambar).
+ * dibiarkan tanpa supplier (titik warnanya tidak digambar), begitu juga loading
+ * yang pilarnya belum dicatat.
  */
 export function daftarLoading(
     lots: CoalLot[],
@@ -455,12 +471,13 @@ export function daftarLoading(
         .sort((a, b) =>
             b.tanggal.localeCompare(a.tanggal) || URUT_SHIFT[b.shift] - URUT_SHIFT[a.shift])
         .map(loading => {
-            const supplier = tertua.get(loading.zona) ?? null;
-            const basis = basisZona.get(loading.zona);
+            const zona = loading.zona;
+            const supplier = zona ? tertua.get(zona) ?? null : null;
+            const basis = zona ? basisZona.get(zona) : undefined;
             return {
                 loading,
-                area: areaOfZona(loading.zona),
-                labelZona: labelZonaPendek(loading.zona),
+                area: zona ? areaOfZona(zona) : null,
+                labelZona: zona ? labelZonaPendek(zona) : 'pilar belum dicatat',
                 grup: loading.grup ?? getGroupForShift(loading.tanggal, loading.shift),
                 ton: loading.shovel * TON_PER_SHOVEL,
                 supplier,

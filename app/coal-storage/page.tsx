@@ -99,7 +99,7 @@ function GuardedPage() {
     const subjudul = galat ? 'gagal memuat data'
         : memuat && !data ? 'memuat…'
         : data?.diubahPada
-            ? `data per ${formatTanggal(data.diubahPada.slice(0, 10))}`
+            ? `data per ${formatTanggal(data.diubahPada)}`
                 + (data.diubahOleh ? ` · terakhir diubah ${data.diubahOleh}` : '')
             : 'belum ada data';
 

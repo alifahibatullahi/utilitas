@@ -15,10 +15,14 @@ import TumpukanForm, { ISI_KOSONG, type IsiTumpukan } from './TumpukanForm';
 /**
  * Penyunting isi satu zona, dibuka dengan mengetuk petak di denah.
  *
- * Sheet, bukan modal di tengah: di layar lebar ia menempel di kanan supaya denahnya
- * tetap kelihatan dan operator bisa menonton petaknya berubah sambil mengetik; di HP
- * ia jadi bottom sheet. Di-portal ke <body> karena AppShell memasang zoom 1.25 di
- * monitor besar, dan `position: fixed` di dalam subtree ter-zoom meleset di Chrome.
+ * Popup terang di tengah layar, jadi bottom sheet di HP — geometrinya sengaja sama
+ * dengan Modal milik form shift (components/input-shift/SharedComponents.tsx) supaya
+ * operator mengenali perilakunya, hanya warnanya yang terang. Konsekuensinya denah
+ * tertutup backdrop selama menyunting; setelah simpan, daftar di popup ini ikut segar
+ * karena onTersimpan memanggil refetch halaman.
+ *
+ * Di-portal ke <body> karena AppShell memasang zoom 1.25 di monitor besar, dan
+ * `position: fixed` di dalam subtree ter-zoom meleset di Chrome.
  *
  * Semua operator yang login boleh menyunting — tidak ada gerbang peran di sini. Yang
  * menjaga bukan kunci, melainkan jejak: tiap simpan menulis baris baru bernama di
@@ -143,17 +147,17 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
     }
 
     return createPortal(
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-stretch sm:justify-end">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div
-                className="absolute inset-0 bg-slate-900/40"
+                className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
                 onClick={onTutup}
                 aria-hidden="true"
             />
 
             <div
                 role="dialog" aria-modal="true" aria-label={`Isi ${namaZona(index, jml)}`}
-                className="relative w-full sm:w-[400px] max-h-[88dvh] sm:max-h-none sm:h-full
-                    rounded-t-2xl sm:rounded-none bg-white shadow-2xl flex flex-col"
+                className="relative w-full sm:max-w-md max-h-[88dvh] rounded-t-2xl sm:rounded-2xl
+                    bg-white border border-slate-200 shadow-2xl flex flex-col overflow-hidden"
             >
                 {/* Kepala */}
                 <div className="flex items-start gap-3 px-4 py-3 border-b border-slate-200 shrink-0">
@@ -196,7 +200,7 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
                                     {lot.sumber === 'opname' && lot.diubahOleh && (
                                         <p className="text-[10px] text-sky-700 mt-0.5">
                                             opname · {lot.diubahOleh}
-                                            {lot.diubahPada && ` · ${formatTanggal(lot.diubahPada.slice(0, 10))}`}
+                                            {lot.diubahPada && ` · ${formatTanggal(lot.diubahPada)}`}
                                         </p>
                                     )}
                                     {lot.adaPengirimanBerjalan && (
@@ -267,7 +271,7 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
                                     ) : riwayat.map(r => (
                                         <p key={r.id} className="text-[11px] text-slate-500 leading-relaxed">
                                             <span className="font-semibold text-slate-700">{r.operator_name}</span>
-                                            {' · '}{formatTanggal(r.created_at.slice(0, 10))}
+                                            {' · '}{formatTanggal(r.created_at)}
                                             {' · '}{r.dihapus ? 'menghapus' : `${formatTon(Number(r.ton_dasar))} t`}
                                             {r.keterangan && <span className="block text-slate-400">“{r.keterangan}”</span>}
                                         </p>

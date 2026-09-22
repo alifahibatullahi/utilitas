@@ -1,17 +1,25 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useOperator } from '@/hooks/useOperator';
+import { createClient } from '@/lib/supabase/client';
 import { COAL_AREAS, formatTanggal, lotsSisa, petaWarnaSupplier, Sorotan } from '@/lib/coal-storage';
-import { COAL_LOTS, COAL_LOTS_UPDATED_AT } from '@/lib/coal-storage-data';
-import { COAL_LOADINGS } from '@/lib/coal-loading-data';
+import { fetchDenah, type DenahData } from '@/lib/coal-storage-query';
+import Toast from '@/components/ui/Toast';
 import RingkasanEstimasi from '@/components/coal-storage/RingkasanEstimasi';
 import AreaDenah from '@/components/coal-storage/AreaDenah';
 import SupplierLegend from '@/components/coal-storage/SupplierLegend';
 import UmurStok from '@/components/coal-storage/UmurStok';
 import RiwayatLoading from '@/components/coal-storage/RiwayatLoading';
+import ZonaEditor from '@/components/coal-storage/ZonaEditor';
 import './coal-storage.css';
+
+// Jeda minimum antar refetch otomatis saat tab dibuka lagi. Halaman ini sengaja
+// tidak memakai realtime (tabel nyasar di publication pernah bikin API 522), jadi
+// ini penggantinya: denah yang ditinggal semalam di layar kontrol ikut segar saat
+// orangnya kembali, tanpa memukuli Supabase tiap kali jendela berpindah.
+const JEDA_REFETCH_MS = 60_000;
 
 // Penjaga login memakai useSearchParams → butuh Suspense.
 export default function CoalStorageRoute() {
@@ -27,13 +35,49 @@ function GuardedPage() {
     const searchParams = useSearchParams();
     const { operator, loading } = useOperator();
     const [highlight, setHighlight] = useState<Sorotan | null>(null);
+    const [zonaTerpilih, setZonaTerpilih] = useState<string | null>(null);
+
+    const [data, setData] = useState<DenahData | null>(null);
+    const [memuat, setMemuat] = useState(true);
+    const [galat, setGalat] = useState<string | null>(null);
+    const [toast, setToast] = useState<string | null>(null);
+    const terakhirFetch = useRef(0);
+
+    const muat = useCallback(async () => {
+        setMemuat(true);
+        setGalat(null);
+        try {
+            setData(await fetchDenah(createClient()));
+            terakhirFetch.current = Date.now();
+        } catch (e) {
+            // Sengaja TIDAK jatuh ke data contoh: denah yang salah tapi tampak
+            // meyakinkan lebih berbahaya daripada denah yang jujur kosong.
+            setGalat(e instanceof Error ? e.message : 'Gagal memuat data denah.');
+        } finally {
+            setMemuat(false);
+        }
+    }, []);
+
+    useEffect(() => { if (operator) muat(); }, [operator, muat]);
+
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return;
+            if (Date.now() - terakhirFetch.current < JEDA_REFETCH_MS) return;
+            muat();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [muat]);
+
+    const lots = useMemo(() => data?.lots ?? [], [data]);
     // Satu peta warna untuk seluruh halaman supaya denah, kartu detail, dan
     // legend memakai warna yang sama persis per supplier. Sengaja dihitung dari
     // daftar lot PENUH, bukan sisa: kalau tidak, warna supplier lain ikut
     // bergeser begitu satu supplier habis diambil.
-    const warna = useMemo(() => petaWarnaSupplier(COAL_LOTS), []);
+    const warna = useMemo(() => petaWarnaSupplier(lots), [lots]);
     // Yang ditampilkan di denah adalah stok nyata: penempatan masuk − loading.
-    const sisa = useMemo(() => lotsSisa(COAL_LOTS, COAL_LOADINGS), []);
+    const sisa = useMemo(() => lotsSisa(lots, data?.loadings ?? []), [lots, data]);
 
     // Belum login → ke halaman pilih operator dengan tujuan dititipkan di ?next=,
     // supaya link dari WA tetap mendarat di sini (pola /critical-maintenance).
@@ -51,6 +95,13 @@ function GuardedPage() {
             </div>
         );
     }
+
+    const subjudul = galat ? 'gagal memuat data'
+        : memuat && !data ? 'memuat…'
+        : data?.diubahPada
+            ? `data per ${formatTanggal(data.diubahPada)}`
+                + (data.diubahOleh ? ` · terakhir diubah ${data.diubahOleh}` : '')
+            : 'belum ada data';
 
     return (
         // AppShell membungkus halaman ini dengan bg gelap, jadi latar terangnya
@@ -73,8 +124,8 @@ function GuardedPage() {
                         <div className="hidden sm:block h-8 w-px bg-neutral-200 shrink-0" />
                         <div className="min-w-0 flex-1">
                             <h1 className="text-base sm:text-xl font-bold text-slate-900 leading-tight">Storage Batubara</h1>
-                            <p className="text-[11px] text-neutral-400 font-medium">
-                                Estimasi penempatan supplier · data per {formatTanggal(COAL_LOTS_UPDATED_AT)}
+                            <p className="text-[11px] text-neutral-400 font-medium truncate">
+                                Estimasi penempatan supplier · {subjudul}
                             </p>
                         </div>
                         <button
@@ -87,26 +138,77 @@ function GuardedPage() {
                         </button>
                     </div>
 
-                    <div className="cs-fade-up" style={{ animationDelay: '80ms' }}>
-                        <RingkasanEstimasi lots={sisa} />
-                    </div>
+                    {galat ? (
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center">
+                            <p className="text-sm font-semibold text-red-800">Denah gagal dimuat</p>
+                            <p className="text-[11px] text-red-600 mt-1">{galat}</p>
+                            <button
+                                type="button" onClick={muat}
+                                className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs
+                                    font-bold text-red-700 hover:bg-red-100 cursor-pointer transition-colors"
+                            >
+                                Coba lagi
+                            </button>
+                        </div>
+                    ) : memuat && !data ? (
+                        <DenahSkeleton />
+                    ) : (
+                        <>
+                            <div className="cs-fade-up" style={{ animationDelay: '80ms' }}>
+                                <RingkasanEstimasi lots={sisa} />
+                            </div>
 
-                    {COAL_AREAS.map((area, i) => (
-                        <AreaDenah key={area.key} area={area} areaIndex={i} lots={sisa} warna={warna} highlight={highlight} />
-                    ))}
+                            {COAL_AREAS.map((area, i) => (
+                                <AreaDenah
+                                    key={area.key} area={area} areaIndex={i} lots={sisa}
+                                    warna={warna} highlight={highlight} onPilihZona={setZonaTerpilih}
+                                />
+                            ))}
 
-                    <SupplierLegend lots={sisa} warna={warna} onSorot={setHighlight} />
+                            <SupplierLegend lots={sisa} warna={warna} onSorot={setHighlight} />
 
-                    {/* Dua tabel bersanding di bawah denah: kondisi sekarang (umur tiap
-                        tumpukan) dan apa yang sudah diambil (riwayat loading). Riwayat
-                        dapat daftar lot PENUH supaya tumpukan yang sudah habis pun masih
-                        bisa dikenali suppliernya. */}
-                    <div className="grid gap-3 lg:grid-cols-2 mt-6">
-                        <UmurStok lots={sisa} warna={warna} onSorot={setHighlight} />
-                        <RiwayatLoading lots={COAL_LOTS} loadings={COAL_LOADINGS} warna={warna} onSorot={setHighlight} />
-                    </div>
+                            {/* Dua tabel bersanding di bawah denah: kondisi sekarang (umur tiap
+                                tumpukan) dan apa yang sudah diambil (riwayat loading). Riwayat
+                                dapat daftar lot PENUH supaya tumpukan yang sudah habis pun masih
+                                bisa dikenali suppliernya. */}
+                            <div className="grid gap-3 lg:grid-cols-2 mt-6">
+                                <UmurStok lots={sisa} warna={warna} onSorot={setHighlight} />
+                                <RiwayatLoading lots={lots} loadings={data?.loadings ?? []} warna={warna} onSorot={setHighlight} />
+                            </div>
+                        </>
+                    )}
                 </div>
             </main>
+
+            <ZonaEditor
+                zonaId={zonaTerpilih}
+                lots={sisa}
+                warna={warna}
+                operator={{ name: operator.name, supabaseId: operator.supabaseId }}
+                onTutup={() => setZonaTerpilih(null)}
+                onTersimpan={async (pesan) => { setToast(pesan); await muat(); }}
+            />
+
+            {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+        </div>
+    );
+}
+
+/** Rangka denah selagi data ditarik — supaya header tidak berkedip sendirian. */
+function DenahSkeleton() {
+    return (
+        <div className="animate-pulse space-y-6" aria-hidden="true">
+            <div className="h-16 rounded-xl bg-slate-100" />
+            {[7, 12].map((n, area) => (
+                <div key={area}>
+                    <div className="h-14 rounded-xl bg-slate-200 mb-3" />
+                    <div className="flex gap-px">
+                        {Array.from({ length: n }, (_, i) => (
+                            <div key={i} className="flex-1 h-[78px] rounded-[3px] bg-slate-100" />
+                        ))}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }

@@ -7,7 +7,15 @@ import {
     daftarLoading, formatTanggalPendek, formatTon,
 } from '@/lib/coal-storage';
 
-const TAMPIL_AWAL = 5;
+// Per halaman, bukan "tampilkan semua": riwayatnya ratusan baris (3 shift × 60 hari),
+// dan membentangkan semuanya membuat halaman memanjang jauh ke bawah.
+const PER_HALAMAN = 10;
+
+// ±40px nyata di HP supaya mudah diketuk (ditulis 44px karena body ber-zoom 90%),
+// ringkas mulai `sm:`.
+const tombolHalaman = `w-11 h-11 sm:w-8 sm:h-8 rounded-lg border border-slate-300 bg-white flex items-center
+    justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-35 disabled:cursor-not-allowed
+    cursor-pointer transition-colors`;
 
 const SHIFT_LABEL: Record<ShiftKey, string> = { pagi: 'Pagi', sore: 'Sore', malam: 'Malam' };
 
@@ -23,7 +31,7 @@ const HOPPER_CHIP: Record<HopperKey, string> = {
  * Tabel riwayat pengambilan batubara: shift mana mengeruk pilar berapa, berapa
  * shovel, lewat hopper darat atau laut.
  *
- * Tonasenya turunan dari jumlah shovel (1 shovel ± 10 ton), jadi selalu ditulis
+ * Tonasenya turunan dari jumlah shovel (TON_PER_SHOVEL), jadi selalu ditulis
  * dengan "±" — yang dicatat operator adalah shovel, bukan timbangan.
  */
 export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
@@ -32,10 +40,15 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
     warna: Record<string, string>;
     onSorot: (s: Sorotan | null) => void;
 }) {
-    const [semua, setSemua] = useState(false);
+    const [halaman, setHalaman] = useState(0);
 
     const data = daftarLoading(lots, loadings, warna);
-    const tampil = semua ? data : data.slice(0, TAMPIL_AWAL);
+    const jumlahHalaman = Math.max(1, Math.ceil(data.length / PER_HALAMAN));
+    // Di-clamp saat dibaca, bukan lewat effect: kalau data menyusut setelah refetch,
+    // halaman yang tersimpan tak boleh mendarat di halaman kosong.
+    const hal = Math.min(halaman, jumlahHalaman - 1);
+    const awal = hal * PER_HALAMAN;
+    const tampil = data.slice(awal, awal + PER_HALAMAN);
 
     return (
         <section className="cs-fade-up rounded-xl border border-slate-200 bg-white p-3.5" style={{ animationDelay: '480ms' }}>
@@ -60,15 +73,26 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
                         <tbody>
                             {/* Index ikut jadi kunci: satu shift bisa saja tercatat dua kali
                                 di zona yang sama, dan urutannya sudah deterministik. */}
-                            {tampil.map((r, i) => (
+                            {tampil.map((r, i) => {
+                                // Baris tanpa pilar tidak punya petak untuk disorot di denah.
+                                const zona = r.loading.zona;
+                                const sorot = zona ? () => onSorot({ tipe: 'zona', nilai: zona }) : undefined;
+                                const lepas = zona ? () => onSorot(null) : undefined;
+                                return (
                                 <tr
-                                    key={`${r.loading.tanggal}-${r.loading.shift}-${r.loading.zona}-${i}`}
+                                    key={`${r.loading.tanggal}-${r.loading.shift}-${zona ?? 'total'}-${i}`}
                                     tabIndex={0}
-                                    onMouseEnter={() => onSorot({ tipe: 'zona', nilai: r.loading.zona })}
-                                    onMouseLeave={() => onSorot(null)}
-                                    onFocus={() => onSorot({ tipe: 'zona', nilai: r.loading.zona })}
-                                    onBlur={() => onSorot(null)}
-                                    className="border-t border-slate-100 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none transition-colors"
+                                    onMouseEnter={sorot}
+                                    onMouseLeave={lepas}
+                                    onFocus={sorot}
+                                    onBlur={lepas}
+                                    // Loading yang lebih tua dari opname terakhir di zonanya sudah
+                                    // tidak mengurangi denah. Barisnya tetap ditampilkan — itu
+                                    // kejadian nyata yang dilaporkan shift — hanya diredupkan.
+                                    title={r.berlaku ? undefined
+                                        : 'Sudah tercakup dalam opname zona ini, jadi tidak lagi mengurangi denah'}
+                                    className={`border-t border-slate-100 hover:bg-slate-50 focus-visible:bg-slate-50
+                                        focus-visible:outline-none transition-colors ${r.berlaku ? '' : 'opacity-45'}`}
                                 >
                                     <td className="py-1.5 pr-2 align-top whitespace-nowrap">
                                         <span className="font-semibold text-slate-900">{formatTanggalPendek(r.loading.tanggal)}</span>
@@ -77,37 +101,68 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
                                         </span>
                                     </td>
                                     <td className="py-1.5 pr-2 align-top">
-                                        <span className="flex items-center gap-1.5">
-                                            {r.warna && <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: r.warna }} />}
-                                            <span className="font-semibold text-slate-900 truncate">{r.supplier ?? r.area.singkat}</span>
-                                        </span>
-                                        <span className="block pl-3.5 text-[11px] text-slate-500 truncate">{r.labelZona}</span>
+                                        {r.area ? (
+                                            <>
+                                                <span className="flex items-center gap-1.5">
+                                                    {r.warna && <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: r.warna }} />}
+                                                    <span className="font-semibold text-slate-900 truncate">{r.supplier ?? r.area.singkat}</span>
+                                                </span>
+                                                <span className="block pl-3.5 text-[11px] text-slate-500 truncate">{r.labelZona}</span>
+                                            </>
+                                        ) : (
+                                            // Total Loading dari laporan shift: form shift belum
+                                            // menanyakan pilarnya, jadi jujur dikosongkan.
+                                            <span className="text-[11px] text-slate-400">Pilar belum dicatat</span>
+                                        )}
                                     </td>
                                     <td className="py-1.5 pr-2 text-right align-top whitespace-nowrap">
-                                        <span className="font-semibold text-slate-900 tabular-nums">{r.loading.shovel}</span>
+                                        {/* Pecahan per pilar bisa berkoma panjang (95 ÷ 3), jadi dibatasi. */}
+                                        <span className="font-semibold text-slate-900 tabular-nums">
+                                            {r.loading.shovel.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
+                                        </span>
                                         <span className="block text-[11px] text-slate-500 tabular-nums">± {formatTon(r.ton)} t</span>
                                     </td>
                                     <td className="py-1.5 align-top">
-                                        <span className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${HOPPER_CHIP[r.loading.hopper]}`}>
-                                            {HOPPER_LABEL[r.loading.hopper]}
-                                        </span>
+                                        {r.loading.hopper ? (
+                                            <span className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${HOPPER_CHIP[r.loading.hopper]}`}>
+                                                {HOPPER_LABEL[r.loading.hopper]}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[11px] text-slate-400">—</span>
+                                        )}
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
             )}
 
-            {data.length > TAMPIL_AWAL && (
-                <button
-                    type="button"
-                    onClick={() => setSemua(s => !s)}
-                    className="mt-2.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold
-                        text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors"
-                >
-                    {semua ? 'Ringkas lagi' : `Tampilkan semua (${data.length})`}
-                </button>
+            {data.length > PER_HALAMAN && (
+                <nav className="flex items-center justify-center gap-3 mt-2.5" aria-label="Halaman riwayat loading">
+                    <button
+                        type="button"
+                        onClick={() => setHalaman(hal - 1)}
+                        disabled={hal === 0}
+                        aria-label="Halaman sebelumnya"
+                        className={tombolHalaman}
+                    >
+                        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">chevron_left</span>
+                    </button>
+                    <span className="text-[11px] text-slate-500 tabular-nums min-w-[96px] text-center">
+                        {awal + 1}–{awal + tampil.length} dari {data.length}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setHalaman(hal + 1)}
+                        disabled={hal >= jumlahHalaman - 1}
+                        aria-label="Halaman berikutnya"
+                        className={tombolHalaman}
+                    >
+                        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">chevron_right</span>
+                    </button>
+                </nav>
             )}
         </section>
     );

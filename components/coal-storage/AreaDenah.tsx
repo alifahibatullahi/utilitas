@@ -1,8 +1,7 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment } from 'react';
 import ZonaBin from './ZonaBin';
-import ZonaDetail from './ZonaDetail';
 import {
     CoalArea, CoalLot, DENAH_MIN_WIDTH_PX, formatTon, jumlahZona,
     persenZona, Sorotan, tonArea, tonZona, zonaIds,
@@ -20,15 +19,19 @@ import {
  *
  * areaIndex hanya menentukan urutan animasi masuk: area kedua menyusul setelah
  * area pertama, lalu zona di dalamnya tumbuh berurutan kiri → kanan.
+ *
+ * Zona yang diketuk dilaporkan ke atas, bukan disimpan di sini: penyuntingnya satu
+ * untuk seluruh halaman, jadi mengetuk zona di Closed harus menutup zona Open yang
+ * sedang terbuka — mustahil kalau tiap area memegang pilihannya sendiri.
  */
-export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
+export default function AreaDenah({ area, areaIndex, lots, warna, highlight, onPilihZona }: {
     area: CoalArea;
     areaIndex: number;
     lots: CoalLot[];
     warna: Record<string, string>;
     highlight: Sorotan | null;
+    onPilihZona: (zonaId: string) => void;
 }) {
-    const [selected, setSelected] = useState<number | null>(null);
     const zonas = zonaIds(area);
     const total = tonArea(lots, area);
     const pct = (total / area.kapasitasTon) * 100;
@@ -98,7 +101,7 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
                                     lots={lots}
                                     warna={warna}
                                     highlight={highlight}
-                                    onSelect={setSelected}
+                                    onSelect={onPilihZona}
                                 />
                             </Fragment>
                         ))}
@@ -138,20 +141,6 @@ export default function AreaDenah({ area, areaIndex, lots, warna, highlight }: {
                 </div>
             </div>
 
-            {selected !== null && (
-                // key per zona: pindah petak memasang ulang kartunya, jadi animasinya ikut mengulang.
-                <div key={selected} className="cs-fade-up lg:hidden mt-3 rounded-lg border border-slate-300 bg-white px-3 py-2.5 relative">
-                    <button
-                        type="button"
-                        onClick={() => setSelected(null)}
-                        aria-label="Tutup detail zona"
-                        className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:bg-slate-100 cursor-pointer"
-                    >
-                        <span aria-hidden="true" className="material-symbols-outlined text-base">close</span>
-                    </button>
-                    <ZonaDetail area={area} zonaId={zonas[selected]} index={selected} lots={lots} warna={warna} />
-                </div>
-            )}
         </section>
     );
 }

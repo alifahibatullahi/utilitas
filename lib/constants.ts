@@ -436,7 +436,8 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
     // Viewer berbasis Google Sheets (input tetap di spreadsheet).
     { id: 'critical-maintenance', label: 'Critical Maintenance', description: 'Daftar critical equipment & riwayat maintenance', icon: 'warning', path: '/critical-maintenance', roles: 'all', featured: true },
-    // Peta baca-saja; data penempatan masih dummy di lib/coal-storage-data.ts.
+    // Denah stok batubara dari Supabase; tiap operator bisa menyunting isi per zona
+    // langsung di petanya (koreksi tercatat di coal_lot_koreksi, lihat lib/coal-storage-query.ts).
     { id: 'coal-storage', label: 'Storage Batubara', description: 'Peta penempatan supplier di open & closed storage', icon: 'storage', path: '/coal-storage', roles: 'all', featured: true },
     // Sengaja bernama samar: isinya gambar isometrik jalur pipa air di /piping,
     // yang rutenya masih rangka menunggu koreksi lapangan. Halamannya sudah bisa

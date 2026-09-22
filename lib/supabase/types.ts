@@ -744,6 +744,37 @@ export interface CoalArrivalRow {
     created_at: string;
 }
 
+/**
+ * Koreksi manual satu tumpukan batubara di denah /coal-storage.
+ *
+ * Tabel APPEND-ONLY: satu baris = satu pernyataan operator, dan yang berlaku hanya
+ * baris TERBARU per lot_id. Baris lama tidak pernah di-UPDATE/DELETE, jadi tabelnya
+ * sekaligus jejak audit — semua operator boleh mengedit denah, jadi "siapa mengubah
+ * apa" harus bisa ditelusuri tanpa tabel log terpisah.
+ *
+ * lot_id = coal_arrivals.batch_id untuk tumpukan yang lahir dari laporan shift, atau
+ * UUID baru untuk tumpukan yang dicatat langsung dari denah (tanpa baris kedatangan).
+ *
+ * (sejak_tanggal, sejak_shift) adalah BASIS: hanya kedatangan & loading yang lebih baru
+ * dari itu yang masih mengubah ton_dasar — yang lebih lama sudah tercermin pada angka
+ * yang dilihat operator di lapangan. Lihat lib/coal-storage-query.ts.
+ */
+export interface CoalLotKoreksiRow {
+    id: string;
+    lot_id: string;
+    zona: string;
+    supplier: string;
+    tanggal_masuk: string;
+    ton_dasar: number;
+    sejak_tanggal: string;
+    sejak_shift: string;     // 'pagi' | 'sore' | 'malam'
+    dihapus: boolean;
+    keterangan: string | null;
+    operator_id: string | null;
+    operator_name: string;   // wajib: supabaseId kosong saat operator jatuh ke konstanta
+    created_at: string;
+}
+
 export interface TankLevelRow {
     id: string;
     tank_id: 'DEMIN' | 'RCW' | 'SOLAR';

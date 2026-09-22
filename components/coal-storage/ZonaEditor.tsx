@@ -7,10 +7,16 @@ import { detectCurrentShift } from '@/lib/constants';
 import type { CoalLotKoreksiRow } from '@/lib/supabase/types';
 import { riwayatLot, simpanKoreksi } from '@/lib/coal-storage-query';
 import {
-    ambilWarna, areaOfZona, formatTanggal, formatTon, jumlahZona, kapasitasZona,
-    indexZona, lotsZona, namaZona, persenZona, sisaRuangZona, umurHari, type CoalLot,
+    ambilWarna, areaOfZona, formatTanggal, formatTon, jumlahZona,
+    indexZona, lotsZona, namaZona, umurHari, type CoalLot,
 } from '@/lib/coal-storage';
 import TumpukanForm, { ISI_KOSONG, type IsiTumpukan } from './TumpukanForm';
+
+// Tombol per baris tumpukan: ±40px NYATA di HP supaya mudah diketuk jari — ditulis
+// 44px karena body ber-zoom 90% (app/globals.css). Kembali ringkas mulai `sm:`
+// karena di layar lebar yang dipakai kursor.
+const tombolBaris = `min-h-11 sm:min-h-0 rounded-lg px-3 sm:px-2 sm:py-1 text-xs sm:text-[11px]
+    font-semibold cursor-pointer transition-colors`;
 
 /**
  * Penyunting isi satu zona, dibuka dengan mengetuk petak di denah.
@@ -88,12 +94,9 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
     const area = areaOfZona(zonaId);
     const index = indexZona(zonaId);
     const jml = jumlahZona(area);
-    const pct = persenZona(lots, zonaId);
-    const ruang = sisaRuangZona(lots, zonaId);
 
     async function simpan(input: {
-        lotId: string; supplier: string; ton: number; tanggalMasuk: string;
-        keterangan?: string | null; dihapus?: boolean;
+        lotId: string; supplier: string; ton: number; tanggalMasuk: string; dihapus?: boolean;
     }) {
         setMenyimpan(true);
         setGalatSimpan(null);
@@ -110,7 +113,6 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
                 sejakTanggal: kini.date,
                 sejakShift: kini.shift,
                 dihapus: input.dihapus,
-                keterangan: input.keterangan,
                 operatorId: operator.supabaseId ?? null,
                 operatorName: operator.name,
             });
@@ -131,7 +133,6 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
             supplier: isi.supplier,
             ton,
             tanggalMasuk: isi.tanggal_masuk,
-            keterangan: isi.keterangan,
         });
     }
 
@@ -159,18 +160,27 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
                 className="relative w-full sm:max-w-md max-h-[88dvh] rounded-t-2xl sm:rounded-2xl
                     bg-white border border-slate-200 shadow-2xl flex flex-col overflow-hidden"
             >
-                {/* Kepala */}
-                <div className="flex items-start gap-3 px-4 py-3 border-b border-slate-200 shrink-0">
+                {/* Pegangan — di HP popup ini panel bawah, garis ini isyaratnya. */}
+                <div className="sm:hidden flex justify-center pt-2 shrink-0" aria-hidden="true">
+                    <span className="h-1 w-10 rounded-full bg-slate-300" />
+                </div>
+
+                {/* Kepala: areanya dulu (Open/Closed), baru zonanya. Ikon & warnanya sama
+                    dengan pita judul area di denah, jadi keduanya terbaca sekilas. */}
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 shrink-0">
+                    <span
+                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: area.theme.pita }}
+                    >
+                        <span aria-hidden="true" className="material-symbols-outlined text-white text-xl">{area.icon}</span>
+                    </span>
                     <div className="min-w-0 flex-1">
-                        <h2 className="text-sm font-bold text-slate-900 leading-tight">{namaZona(index, jml)}</h2>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                            {area.nama} · terisi {pct}% · ruang {formatTon(Math.max(0, ruang))} t
-                            {' '}dari {formatTon(kapasitasZona(zonaId))} t
-                        </p>
+                        <h2 className="text-sm font-bold text-slate-900 leading-tight">{area.nama}</h2>
+                        <p className="text-[12px] text-slate-500 mt-0.5">{namaZona(index, jml)}</p>
                     </div>
                     <button
                         type="button" onClick={onTutup} aria-label="Tutup"
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400
+                        className="w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-400
                             hover:bg-slate-100 cursor-pointer transition-colors shrink-0"
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-lg">close</span>
@@ -231,28 +241,22 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
                                                 supplier: lot.supplier,
                                                 ton: String(Math.round(lot.ton)),
                                                 tanggal_masuk: lot.tanggal_masuk,
-                                                keterangan: '',
                                             });
                                         }}
-                                        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px]
-                                            font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors"
+                                        className={`${tombolBaris} border border-slate-300 bg-white text-slate-600 hover:bg-slate-50`}
                                     >
                                         Ubah
                                     </button>
                                     <button
                                         type="button" onClick={() => hapus(lot)} disabled={menyimpan}
-                                        className="rounded-lg border border-red-200 bg-white px-2 py-1 text-[11px]
-                                            font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40
-                                            cursor-pointer transition-colors"
+                                        className={`${tombolBaris} border border-red-200 bg-white text-red-600 hover:bg-red-50 disabled:opacity-40`}
                                     >
                                         Hapus
                                     </button>
                                     {lot.id && (
                                         <button
                                             type="button" onClick={() => bukaRiwayat(lot.id!)}
-                                            className="ml-auto rounded-lg px-2 py-1 text-[11px] font-semibold
-                                                text-slate-400 hover:text-slate-600 hover:bg-slate-50
-                                                cursor-pointer transition-colors"
+                                            className={`${tombolBaris} ml-auto text-slate-400 hover:text-slate-600 hover:bg-slate-50`}
                                         >
                                             {riwayatUntuk === lot.id ? 'Tutup riwayat' : 'Riwayat'}
                                         </button>
@@ -310,7 +314,7 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
                                 cursor-pointer transition-colors"
                         >
                             <span aria-hidden="true" className="material-symbols-outlined text-[18px]">add_circle</span>
-                            Tambah tumpukan
+                            Tambah Batubara
                         </button>
                     </div>
                 )}

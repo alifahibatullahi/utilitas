@@ -337,7 +337,7 @@ export interface CoalLoading {
 export type HopperKey = 'A' | 'B' | 'AB';
 
 /** Kapasitas satu shovel payloader — ESTIMASI, makanya tonasenya selalu ditulis "±". */
-export const TON_PER_SHOVEL = 10;
+export const TON_PER_SHOVEL = 3;
 
 /** Hopper disimpan sebagai A/B/AB (ikut kolom laporan shift), ditampilkan sebagai lokasinya. */
 export const HOPPER_LABEL: Record<HopperKey, string> = { A: 'Darat', B: 'Laut', AB: 'D+L' };

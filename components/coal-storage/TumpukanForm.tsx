@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { formatTon, kapasitasZona, periksaTumpukan, type CoalLot } from '@/lib/coal-storage';
+import { periksaTumpukan, type CoalLot } from '@/lib/coal-storage';
 
 export interface IsiTumpukan {
     supplier: string;
@@ -130,11 +130,6 @@ export default function TumpukanForm({
                     />
                 </div>
             </div>
-
-            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                Kapasitas zona ± {formatTon(kapasitasZona(zonaId))} t. Angka yang kamu tulis berlaku
-                mulai shift ini — kedatangan dan loading setelahnya tetap dihitung otomatis.
-            </p>
 
             {tersentuh && galat.map(g => (
                 <p key={g} className="flex items-start gap-1.5 text-[11px] text-red-700 mt-1.5">

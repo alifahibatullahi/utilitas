@@ -43,7 +43,7 @@ export default function SupplierLegend({ lots, warna, onSorot }: {
                             style={{ background: s.warna }}
                         />
                         <span className="font-semibold">{s.nama}</span>
-                        <span className="text-slate-400">est. {formatTon(s.ton)} t · {s.jumlahZona} zona</span>
+                        <span className="text-slate-400">{formatTon(s.ton)} t · {s.jumlahZona} zona</span>
                     </button>
                 ))}
             </div>

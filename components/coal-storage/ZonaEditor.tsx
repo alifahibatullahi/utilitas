@@ -204,15 +204,9 @@ export default function ZonaEditor({ zonaId, lots, warna, operator, onTutup, onT
                                 <div className="min-w-0 flex-1">
                                     <p className="text-[12px] font-semibold text-slate-900 truncate">{lot.supplier}</p>
                                     <p className="text-[11px] text-slate-500">
-                                        est. {formatTon(lot.ton)} t · masuk {formatTanggal(lot.tanggal_masuk)}
+                                        {formatTon(lot.ton)} t · masuk {formatTanggal(lot.tanggal_masuk)}
                                         {' '}· {umurHari(lot.tanggal_masuk)} hari
                                     </p>
-                                    {lot.sumber === 'opname' && lot.diubahOleh && (
-                                        <p className="text-[10px] text-sky-700 mt-0.5">
-                                            opname · {lot.diubahOleh}
-                                            {lot.diubahPada && ` · ${formatTanggal(lot.diubahPada)}`}
-                                        </p>
-                                    )}
                                     {lot.adaPengirimanBerjalan && (
                                         <span className="inline-block mt-1 rounded px-1.5 py-0.5 text-[10px]
                                             font-semibold bg-emerald-100 text-emerald-800">

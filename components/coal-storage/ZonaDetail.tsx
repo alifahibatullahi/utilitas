@@ -46,13 +46,8 @@ export default function ZonaDetail({ area, zonaId, index, lots, warna }: {
                             {lot.supplier} — {Math.round((lot.ton / kapasitas) * 100)}%
                         </p>
                         <p className="text-[11px] text-slate-500">
-                            est. {formatTon(lot.ton)} t · masuk {formatTanggal(lot.tanggal_masuk)}
+                            {formatTon(lot.ton)} t · masuk {formatTanggal(lot.tanggal_masuk)}
                         </p>
-                        {/* Tonase hasil opname adalah pernyataan seseorang, bukan turunan
-                            laporan shift — bedanya perlu terlihat tanpa membuka editor. */}
-                        {lot.sumber === 'opname' && lot.diubahOleh && (
-                            <p className="text-[10px] text-sky-700">opname · {lot.diubahOleh}</p>
-                        )}
                     </div>
                 </div>
             ))}

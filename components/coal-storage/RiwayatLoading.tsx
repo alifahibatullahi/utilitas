@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { SHIFT_OPTIONS, type ShiftKey } from '@/lib/constants';
 import {
     CoalLoading, CoalLot, HOPPER_LABEL, HopperKey, Sorotan, TON_PER_SHOVEL,
-    daftarLoading, formatTanggalPendek, formatTon,
+    daftarLoadingPerShift, formatTanggalPendek, formatTon,
 } from '@/lib/coal-storage';
+
+const TERCAKUP_OPNAME = 'Sudah tercakup dalam opname zona ini, jadi tidak lagi mengurangi denah';
 
 // Per halaman, bukan "tampilkan semua": riwayatnya ratusan baris (3 shift × 60 hari),
 // dan membentangkan semuanya membuat halaman memanjang jauh ke bawah.
@@ -39,8 +41,9 @@ const HOPPER_CHIP: Record<HopperKey, string> = {
 };
 
 /**
- * Tabel riwayat pengambilan batubara: shift & grup mana mengeruk pilar berapa,
- * berapa shovel, lewat hopper darat, laut, atau keduanya.
+ * Tabel riwayat pengambilan batubara, satu baris per shift: shift & grup mana,
+ * mengeruk pilar mana saja (bisa lebih dari satu), berapa shovel, lewat hopper
+ * darat, laut, atau keduanya.
  *
  * Tonasenya turunan dari jumlah shovel (TON_PER_SHOVEL), jadi selalu ditulis
  * dengan "±" — yang dicatat operator adalah shovel, bukan timbangan.
@@ -53,7 +56,7 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
 }) {
     const [halaman, setHalaman] = useState(0);
 
-    const data = daftarLoading(lots, loadings, warna);
+    const data = daftarLoadingPerShift(lots, loadings, warna);
     const jumlahHalaman = Math.max(1, Math.ceil(data.length / PER_HALAMAN));
     // Di-clamp saat dibaca, bukan lewat effect: kalau data menyusut setelah refetch,
     // halaman yang tersimpan tak boleh mendarat di halaman kosong.
@@ -75,63 +78,74 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
                     <table className="w-full mt-2 text-xs">
                         <thead>
                             <tr className="text-left text-[11px] text-slate-400">
-                                <th className="font-medium py-1.5 pr-2 w-[124px]">Shift</th>
+                                {/* w-px: kolom selebar isinya (semua nowrap), sisa lebar jatuh ke
+                                    "Diambil dari" — supaya muat di HP tanpa gulir samping. */}
+                                <th className="font-medium py-1.5 pr-2 w-px">Shift</th>
                                 <th className="font-medium py-1.5 pr-2">Diambil dari</th>
-                                <th className="font-medium py-1.5 pr-2 text-right w-[84px]">Shovel</th>
-                                <th className="font-medium py-1.5">Hopper</th>
+                                <th className="font-medium py-1.5 pr-2 text-right w-px">Shovel</th>
+                                <th className="font-medium py-1.5 w-px">Hopper</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Index ikut jadi kunci: satu shift bisa saja tercatat dua kali
-                                di zona yang sama, dan urutannya sudah deterministik. */}
-                            {tampil.map((r, i) => {
+                            {tampil.map(r => {
                                 // Baris tanpa pilar tidak punya petak untuk disorot di denah.
-                                const zona = r.loading.zona;
-                                const sorot = zona ? () => onSorot({ tipe: 'zona', nilai: zona }) : undefined;
-                                const lepas = zona ? () => onSorot(null) : undefined;
+                                const zonas = r.pilar.flatMap(p => (p.loading.zona ? [p.loading.zona] : []));
+                                const sorot = zonas.length > 0 ? () => onSorot({ tipe: 'zona', nilai: zonas }) : undefined;
+                                const lepas = zonas.length > 0 ? () => onSorot(null) : undefined;
+                                // Loading yang lebih tua dari opname terakhir di zonanya sudah tidak
+                                // mengurangi denah. Tetap ditampilkan — itu kejadian nyata yang
+                                // dilaporkan shift — hanya diredupkan: per pilar, dan seluruh baris
+                                // baru redup kalau semua pilarnya tercakup.
+                                const tercakup = r.pilar.length > 0 && r.pilar.every(p => !p.berlaku);
                                 return (
                                 <tr
-                                    key={`${r.loading.tanggal}-${r.loading.shift}-${zona ?? 'total'}-${i}`}
+                                    key={`${r.tanggal}-${r.shift}`}
                                     tabIndex={0}
                                     onMouseEnter={sorot}
                                     onMouseLeave={lepas}
                                     onFocus={sorot}
                                     onBlur={lepas}
-                                    // Loading yang lebih tua dari opname terakhir di zonanya sudah
-                                    // tidak mengurangi denah. Barisnya tetap ditampilkan — itu
-                                    // kejadian nyata yang dilaporkan shift — hanya diredupkan.
-                                    title={r.berlaku ? undefined
-                                        : 'Sudah tercakup dalam opname zona ini, jadi tidak lagi mengurangi denah'}
+                                    title={tercakup ? TERCAKUP_OPNAME : undefined}
                                     className={`border-t border-slate-100 hover:bg-slate-50 focus-visible:bg-slate-50
-                                        focus-visible:outline-none transition-colors ${r.berlaku ? '' : 'opacity-45'}`}
+                                        focus-visible:outline-none transition-colors ${tercakup ? 'opacity-45' : ''}`}
                                 >
                                     {/* Shift & grup yang disorot; tanggal cuma keterangan. */}
-                                    <td className="py-1.5 pr-2 align-top whitespace-nowrap" title={SHIFT_JAM[r.loading.shift]}>
+                                    <td className="py-1.5 pr-2 align-top whitespace-nowrap" title={SHIFT_JAM[r.shift]}>
                                         <span className="flex items-center gap-1">
                                             <span
                                                 aria-hidden="true"
-                                                className={`material-symbols-outlined text-[15px] ${SHIFT_IKON[r.loading.shift].warna}`}
+                                                className={`material-symbols-outlined text-[15px] ${SHIFT_IKON[r.shift].warna}`}
                                             >
-                                                {SHIFT_IKON[r.loading.shift].ikon}
+                                                {SHIFT_IKON[r.shift].ikon}
                                             </span>
-                                            <span className="font-bold text-slate-900">{SHIFT_LABEL[r.loading.shift]}</span>
+                                            <span className="font-bold text-slate-900">{SHIFT_LABEL[r.shift]}</span>
                                             {r.grup && (
                                                 <span className="rounded bg-slate-100 px-1 text-[11px] font-bold text-slate-700">
                                                     Grup {r.grup}
                                                 </span>
                                             )}
                                         </span>
-                                        <span className="block pl-5 text-[11px] text-slate-500">{formatTanggalPendek(r.loading.tanggal)}</span>
+                                        <span className="block pl-5 text-[11px] text-slate-500">{formatTanggalPendek(r.tanggal)}</span>
                                     </td>
-                                    <td className="py-1.5 pr-2 align-top">
-                                        {r.area ? (
-                                            <>
-                                                <span className="flex items-center gap-1.5">
-                                                    {r.warna && <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: r.warna }} />}
-                                                    <span className="font-semibold text-slate-900 truncate">{r.supplier ?? r.area.singkat}</span>
-                                                </span>
-                                                <span className="block pl-3.5 text-[11px] text-slate-500 truncate">{r.labelZona}</span>
-                                            </>
+                                    {/* Semua pilar shift itu didaftar ke bawah dan dibiarkan turun
+                                        baris — tidak di-truncate, supaya tak ada yang terpotong. */}
+                                    <td className="py-1.5 pr-2 align-top break-words">
+                                        {r.pilar.length > 0 ? (
+                                            <ul className="space-y-1">
+                                                {r.pilar.map((p, j) => (
+                                                    <li
+                                                        key={`${p.loading.zona}-${j}`}
+                                                        title={!tercakup && !p.berlaku ? TERCAKUP_OPNAME : undefined}
+                                                        className={!tercakup && !p.berlaku ? 'opacity-45' : undefined}
+                                                    >
+                                                        <span className="flex items-start gap-1.5">
+                                                            {p.warna && <span className="w-2 h-2 mt-1 rounded-[2px] shrink-0" style={{ background: p.warna }} />}
+                                                            <span className="font-semibold text-slate-900">{p.supplier ?? p.area?.singkat}</span>
+                                                        </span>
+                                                        <span className="block pl-3.5 text-[11px] text-slate-500">{p.labelZona}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         ) : (
                                             // Total Loading dari laporan shift: form shift belum
                                             // menanyakan pilarnya, jadi jujur dikosongkan.
@@ -139,17 +153,19 @@ export default function RiwayatLoading({ lots, loadings, warna, onSorot }: {
                                         )}
                                     </td>
                                     <td className="py-1.5 pr-2 text-right align-top whitespace-nowrap">
-                                        {/* Pecahan per pilar bisa berkoma panjang (95 ÷ 3), jadi dibatasi. */}
+                                        {/* Jumlah pecahan per pilar bisa menyisakan koma (95 ÷ 3 × 3), jadi dibatasi. */}
                                         <span className="font-semibold text-slate-900 tabular-nums">
-                                            {r.loading.shovel.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
+                                            {r.shovel.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
                                         </span>
                                         <span className="text-slate-500"> shovel</span>
                                         <span className="block text-[11px] text-slate-500 tabular-nums">± {formatTon(r.ton)} t</span>
                                     </td>
                                     <td className="py-1.5 align-top whitespace-nowrap">
-                                        {r.loading.hopper ? (
-                                            <span className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] ${HOPPER_CHIP[r.loading.hopper]}`}>
-                                                Hopper: <span className="font-bold">{HOPPER_LABEL[r.loading.hopper]}</span>
+                                        {r.hopper ? (
+                                            // Di HP "Hopper:" ditumpuk di atas lokasinya supaya kolomnya sempit.
+                                            <span className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] ${HOPPER_CHIP[r.hopper]}`}>
+                                                <span className="block sm:inline">Hopper:</span>{' '}
+                                                <span className="font-bold">{HOPPER_LABEL[r.hopper]}</span>
                                             </span>
                                         ) : (
                                             <span className="text-[11px] text-slate-400">—</span>

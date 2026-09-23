@@ -61,12 +61,12 @@ export const TOTAL_KAPASITAS_TON = COAL_AREAS.reduce((t, a) => t + a.kapasitasTo
 
 /**
  * Apa yang sedang disorot di denah. Legend menyorot satu supplier (sebarannya
- * bisa lintas zona), sedangkan baris tabel di bawah denah menyorot satu zona.
+ * bisa lintas zona), sedangkan baris tabel di bawah denah menyorot zona-zonanya —
+ * bisa lebih dari satu, karena satu shift loading bisa mengeruk beberapa pilar.
  */
-export interface Sorotan {
-    tipe: 'supplier' | 'zona';
-    nilai: string;
-}
+export type Sorotan =
+    | { tipe: 'supplier'; nilai: string }
+    | { tipe: 'zona'; nilai: string[] };
 
 /** Satu tumpukan batubara milik satu supplier di satu zona. */
 export interface CoalLot {
@@ -486,6 +486,49 @@ export function daftarLoading(
                     || rankShift(loading.tanggal, loading.shift) >= basis,
             };
         });
+}
+
+/** Satu shift loading: semua pilar yang dikeruknya digabung jadi satu baris. */
+export interface LoadingShiftInfo {
+    tanggal: string;
+    shift: ShiftKey;
+    grup: string;
+    shovel: number;            // jumlah semua pecahan = Total Loading shift itu
+    ton: number;
+    hopper: HopperKey | null;
+    pilar: LoadingInfo[];      // kosong = pilar belum dicatat
+}
+
+/**
+ * Riwayat loading per SHIFT, terbaru di atas.
+ *
+ * Satu shift yang mengeruk N pilar tersimpan sebagai N baris coal_loadings berisi
+ * pecahan (Total Loading ÷ N). Pecahan itu hasil bagi rata, bukan yang diketik
+ * operator — jadi ditampilkan sebagai satu baris dengan totalnya dan daftar pilarnya.
+ * Shift tanpa pilar sudah pasti cuma satu baris (lihat lib/coal-storage-query.ts).
+ */
+export function daftarLoadingPerShift(
+    lots: CoalLot[],
+    loadings: CoalLoading[],
+    petaWarna?: Record<string, string>,
+): LoadingShiftInfo[] {
+    const perShift = new Map<string, LoadingShiftInfo>();
+    // daftarLoading sudah terurut terbaru di atas; Map menjaga urutan kemunculan.
+    for (const info of daftarLoading(lots, loadings, petaWarna)) {
+        const { tanggal, shift, hopper } = info.loading;
+        const kunci = `${tanggal}|${shift}`;
+        let baris = perShift.get(kunci);
+        if (!baris) {
+            baris = { tanggal, shift, grup: info.grup, shovel: 0, ton: 0, hopper: null, pilar: [] };
+            perShift.set(kunci, baris);
+        }
+        baris.shovel += info.loading.shovel;
+        baris.ton += info.ton;
+        // Semua pecahan satu shift mewarisi hopper yang sama; kalau toh berbeda, gabungkan.
+        if (hopper) baris.hopper = baris.hopper && baris.hopper !== hopper ? 'AB' : hopper;
+        if (info.loading.zona) baris.pilar.push(info);
+    }
+    return [...perShift.values()];
 }
 
 // ── Penyuntingan isi zona dari denah ────────────────────────────────────────

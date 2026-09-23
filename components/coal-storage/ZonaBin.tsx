@@ -25,9 +25,9 @@ export default function ZonaBin({ area, zonaId, index, delayMs, lots, warna, hig
     const pct = Math.min(100, (total / kapasitasZona(zonaId)) * 100);
     const kosong = total === 0;
     // Sorotan supplier menyalakan semua petak yang memuatnya; sorotan zona
-    // (dari tabel di bawah denah) cuma menyalakan satu petak.
+    // (dari tabel di bawah denah) cuma menyalakan petak-petak yang disebut.
     const dim = !!highlight && (highlight.tipe === 'zona'
-        ? highlight.nilai !== zonaId
+        ? !highlight.nilai.includes(zonaId)
         : !zLots.some(l => l.supplier === highlight.nilai));
     const jml = jumlahZona(area);
 

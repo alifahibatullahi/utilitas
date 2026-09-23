@@ -73,9 +73,9 @@ export default function UmurStok({ lots, warna, onSorot }: {
                                 <tr
                                     key={`${t.lot.zona}-${t.lot.supplier}-${t.lot.tanggal_masuk}-${i}`}
                                     tabIndex={0}
-                                    onMouseEnter={() => onSorot({ tipe: 'zona', nilai: t.lot.zona })}
+                                    onMouseEnter={() => onSorot({ tipe: 'zona', nilai: [t.lot.zona] })}
                                     onMouseLeave={() => onSorot(null)}
-                                    onFocus={() => onSorot({ tipe: 'zona', nilai: t.lot.zona })}
+                                    onFocus={() => onSorot({ tipe: 'zona', nilai: [t.lot.zona] })}
                                     onBlur={() => onSorot(null)}
                                     className="border-t border-slate-100 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none transition-colors"
                                 >

@@ -155,7 +155,7 @@ function GuardedPage() {
                     ) : (
                         <>
                             <div className="cs-fade-up" style={{ animationDelay: '80ms' }}>
-                                <RingkasanEstimasi lots={sisa} />
+                                <RingkasanEstimasi lots={sisa} pemakaian={data?.pemakaian ?? null} />
                             </div>
 
                             {COAL_AREAS.map((area, i) => (

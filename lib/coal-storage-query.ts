@@ -3,13 +3,15 @@
 // dan matematika stok) supaya komponen visual tidak ikut menarik kode query; di
 // sini Supabase diimpor type-only, jadi yang masuk bundle cuma logika perakitan.
 //
-// Empat sumber, satu hasil:
+// Lima sumber, satu hasil:
 //   coal_arrivals      kedatangan per shift; satu pengiriman yang berlanjut memakai
 //                      batch_id yang sama, jadi satu batch = SATU tumpukan di denah
 //   coal_lot_koreksi   koreksi manual dari denah; baris TERBARU per lot_id yang berlaku
 //   coal_loadings      pengerukan payloader per pilar; dikurangkan FIFO oleh lotsSisa()
 //   shift_esp_handling Total Loading yang diketik operator tiap shift — belum ada
 //                      pilarnya, jadi cuma mengisi Riwayat Loading, tidak mengurangi stok
+//   daily_report_coal  pemakaian boiler A + B per hari (totalizer feeder) — laju untuk
+//                      "stok cukup berapa hari", tidak menyentuh stok
 //
 // TIDAK memakai realtime. Tabel nyasar di publication supabase_realtime pernah
 // membuat compute Supabase jenuh sampai API balas 522 (insiden 3 Jun 2026);
@@ -18,7 +20,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CoalArrivalRow, CoalLoadingRow, CoalLotKoreksiRow } from './supabase/types';
 import { type ShiftKey } from './constants';
-import { type CoalLoading, type CoalLot, type HopperKey, rankShift } from './coal-storage';
+import {
+    type CoalLoading, type CoalLot, type HopperKey, type PemakaianHarian,
+    rankShift, rataRataPemakaian,
+} from './coal-storage';
 
 /**
  * Lantai riwayat loading yang ditarik, dalam hari.
@@ -30,6 +35,13 @@ import { type CoalLoading, type CoalLot, type HopperKey, rankShift } from './coa
  */
 const LANTAI_RIWAYAT_HARI = 60;
 
+/**
+ * Seberapa jauh ke belakang mencari laporan harian untuk laju pemakaian boiler. Lebih
+ * lebar dari 7 supaya jeda berhenti beberapa hari tidak membuat angka hilang, tapi
+ * tetap pendek: laju dari sebulan lalu bukan gambaran pemakaian sekarang.
+ */
+const JENDELA_PEMAKAIAN_HARI = 14;
+
 export interface DenahData {
     /** Tumpukan PENUH — belum dikurangi loading. Kurangi dengan lotsSisa(). */
     lots: CoalLot[];
@@ -38,6 +50,8 @@ export interface DenahData {
     diubahPada: string | null;
     /** null = belum pernah dikoreksi manual (angkanya murni dari laporan shift). */
     diubahOleh: string | null;
+    /** Laju pemakaian boiler (A + B); null = tak ada data dalam jendela, atau gagal ditarik. */
+    pemakaian: PemakaianHarian | null;
 }
 
 export interface KoreksiInput {
@@ -54,6 +68,13 @@ export interface KoreksiInput {
     keterangan?: string | null;
     operatorId?: string | null;
     operatorName: string;
+}
+
+/** Pemakaian batubara per laporan harian, dari totalizer feeder tiap boiler. */
+interface BarisPemakaian {
+    total_boiler_a_24: number | null;
+    total_boiler_b_24: number | null;
+    daily_reports: { date: string };
 }
 
 /** Baris Total Loading dari laporan shift, lengkap dengan kepala laporannya. */
@@ -89,12 +110,28 @@ function iso(d: Date): string {
  * tumpukan mana yang hidup kita tahu sejauh mana loading perlu ditarik.
  */
 export async function fetchDenah(supabase: SupabaseClient): Promise<DenahData> {
-    const [kedatangan, koreksi] = await Promise.all([
+    const jendela = new Date();
+    jendela.setDate(jendela.getDate() - JENDELA_PEMAKAIAN_HARI);
+
+    const [kedatangan, koreksi, hasilPemakaian] = await Promise.all([
         supabase.from('coal_arrivals').select('*').order('created_at', { ascending: true }),
         supabase.from('coal_lot_koreksi').select('*').order('created_at', { ascending: true }),
+        supabase
+            .from('daily_report_coal')
+            .select('total_boiler_a_24, total_boiler_b_24, daily_reports!inner(date)')
+            .gte('daily_reports.date', iso(jendela)),
     ]);
     if (kedatangan.error) throw kedatangan.error;
     if (koreksi.error) throw koreksi.error;
+
+    // Galat di sini SENGAJA tidak dilempar: stok di denah tetap benar tanpa laju
+    // pemakaian — yang hilang cuma angka "cukup berapa hari".
+    const pemakaian = hasilPemakaian.error ? null : rataRataPemakaian(
+        ((hasilPemakaian.data ?? []) as unknown as BarisPemakaian[]).map(r => ({
+            tanggal: r.daily_reports.date,
+            ton: Number(r.total_boiler_a_24 ?? 0) + Number(r.total_boiler_b_24 ?? 0),
+        })),
+    );
 
     const barisKedatangan = (kedatangan.data ?? []) as CoalArrivalRow[];
     const barisKoreksi = (koreksi.data ?? []) as CoalLotKoreksiRow[];
@@ -241,7 +278,7 @@ export async function fetchDenah(supabase: SupabaseClient): Promise<DenahData> {
         diubahPada = kedatanganTerakhir;
     }
 
-    return { lots, loadings, diubahPada, diubahOleh };
+    return { lots, loadings, diubahPada, diubahOleh, pemakaian };
 }
 
 /**

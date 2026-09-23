@@ -351,7 +351,7 @@ export function PublishReportModal({
             });
     }, [open, kind, reportId]);
 
-    // Nilai read-only dari Sheets LHUBB: DW(126)=stock batubara.
+    // Nilai read-only dari Sheets LHUBB: DZ(129)=stock batubara (rumus sheet).
     useEffect(() => {
         if (!open || kind !== 'daily' || !reportDate) return;
         let stale = false;
@@ -365,7 +365,7 @@ export function PublishReportModal({
                     const v = raw == null ? '' : String(raw).trim();
                     return v && v !== '-' ? v : null;
                 };
-                setStockBatubaraSheet(pick(126));
+                setStockBatubaraSheet(pick(129));
             })
             .catch(() => { /* non-blocking */ });
         return () => { stale = true; };

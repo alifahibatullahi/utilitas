@@ -11,6 +11,10 @@
  *   BW(74)= consumption_rate_a   BX(75)= consumption_rate_b   BY(76)= consumption_rate_avg
  *   CE(82)= stock_batubara       CJ(87)= solar_tank_total      CQ(94)= bfw_total
  *   DN(117)= laut_total_ton
+ *   DZ(129)= stock batubara rendal (=DZ kemarin − BG + DM) — BUKAN input web. Dulu
+ *            ditulis balik dari daily_report_totalizer.stock_batubara_rendal dan itu
+ *            membekukan rumusnya jadi angka; sekarang tidak ditulis sama sekali.
+ *   EA–EC(130–132) = box bottom ash & total loading (rumus)
  */
 
 import { toIndonesianDate } from './google-sheets';
@@ -178,23 +182,26 @@ const COL = {
     laut_24_ton:     116,
     // DN(117) = formula (laut_total_ton)
 
-    // KETERANGAN & AIR — DO(118)..DT(123)
-    keterangan:           118,
-    konsumsi_demin:       119,
-    konsumsi_rcw:         120,
-    penerimaan_demin_3a:  121,
-    penerimaan_demin_1b:  122,
-    penerimaan_rcw_1a:    123,
+    // KETERANGAN & AIR — DO(118)..DW(126). DQ–DS (komponen RCW) disisipkan user
+    // Sep 2026; kolom sesudahnya bergeser +3.
+    keterangan:           118, // DO
+    konsumsi_demin:       119, // DP
+    konsumsi_hydrant:     120, // DQ
+    konsumsi_basin:       121, // DR
+    konsumsi_service:     122, // DS
+    konsumsi_rcw:         123, // DT = DQ + DR + DS
+    penerimaan_demin_3a:  124, // DU
+    penerimaan_demin_1b:  125, // DV
+    penerimaan_rcw_1a:    126, // DW
 
-    // GROUP & KASI — DU(124) DV(125)
-    group_name: 124,
-    kasi_name:  125,
+    // GROUP & KASI — DX(127) DY(128)
+    group_name: 127,
+    kasi_name:  128,
 
-    // STOCK RENDAL — DW(126)
-    stock_batubara_rendal: 126,
+    // DZ(129) = stock batubara rendal — rumus sheet, tidak ditulis (lihat header).
 } as const;
 
-const TOTAL_COLS = 127;
+const TOTAL_COLS = 129; // A..DY — DZ ke kanan rumus, tak pernah disentuh
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -478,20 +485,22 @@ export function dailyReportToRow(
     if (totalizer) {
         set(row, COL.keterangan, totalizer.keterangan); // DO
 
-        // DP–DT: konsumsi air = selisih totalizer hari ini − kemarin. Rumus dipakai
+        // DP–DW: konsumsi air = selisih totalizer hari ini − kemarin. Rumus dipakai
         // bersama halaman /laporan-harian lewat hitungKonsumsiAir() supaya layar
         // dan Sheets tidak bisa berbeda angka. set() melewati null (= tak ada
         // pembanding H-1), jadi selnya dibiarkan apa adanya, bukan ditulis 0.
         const kons = hitungKonsumsiAir(totalizer, prev?.totalizer);
         set(row, COL.konsumsi_demin,      kons.konsumsi_demin);      // DP
-        set(row, COL.konsumsi_rcw,        kons.konsumsi_rcw);        // DQ
-        set(row, COL.penerimaan_demin_3a, kons.penerimaan_demin_3a); // DR
-        set(row, COL.penerimaan_demin_1b, kons.penerimaan_demin_1b); // DS
-        set(row, COL.penerimaan_rcw_1a,   kons.penerimaan_rcw_1a);   // DT
+        set(row, COL.konsumsi_hydrant,    kons.konsumsi_hydrant);    // DQ
+        set(row, COL.konsumsi_basin,      kons.konsumsi_basin);      // DR
+        set(row, COL.konsumsi_service,    kons.konsumsi_service);    // DS
+        set(row, COL.konsumsi_rcw,        kons.konsumsi_rcw);        // DT
+        set(row, COL.penerimaan_demin_3a, kons.penerimaan_demin_3a); // DU
+        set(row, COL.penerimaan_demin_1b, kons.penerimaan_demin_1b); // DV
+        set(row, COL.penerimaan_rcw_1a,   kons.penerimaan_rcw_1a);   // DW
 
-        set(row, COL.group_name,            totalizer.group_name);            // DU
-        set(row, COL.kasi_name,             totalizer.kasi_name);             // DV
-        set(row, COL.stock_batubara_rendal, totalizer.stock_batubara_rendal); // DW
+        set(row, COL.group_name, totalizer.group_name); // DX
+        set(row, COL.kasi_name,  totalizer.kasi_name);  // DY
     }
 
     return row;

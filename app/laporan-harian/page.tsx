@@ -183,7 +183,7 @@ export default function LaporanHarianPage() {
     const pTransfer = prevReport?.daily_report_coal_transfer?.[0];
     const pTotalizer = prevReport?.daily_report_totalizer?.[0];
 
-    // Kartu air (DP–DT di LHUBB) murni turunan: selisih totalizer hari ini − H-1.
+    // Kartu air (DP–DW di LHUBB) murni turunan: selisih totalizer hari ini − H-1.
     // Kolom DB-nya (konsumsi_demin dst) tidak pernah ada penulisnya, jadi dihitung di
     // sini dengan rumus yang SAMA persis dengan yang dipakai mapper saat menulis ke
     // Sheets — sumbernya pun sama (laporan H-1, tanpa filter status). Sengaja tidak

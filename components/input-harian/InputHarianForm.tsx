@@ -185,7 +185,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [totalizer, setTotalizer] = useState<Record<string, number | string | null>>({});
 
     // Nilai read-only dari Google Sheets untuk tanggal ini: Stock Batubara
-    // (kolom DW / stock_batubara_rendal).
+    // (kolom DZ / stock_batubara_rendal).
     const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
 
     const [solarUnloadings, setSolarUnloadings] = useState<{ id?: string; date: string; liters: number; supplier: string; shift?: string | null }[]>([]);
@@ -333,7 +333,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 });
         }, [date, needsSolar, needsAsh, needsCoalArrivals, needsKonsumsiBaseline]);
 
-    // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DW = stock batubara
+    // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DZ = stock batubara
     // (stock_batubara_rendal). Hanya form penuh — tab Stock BB tidak ada di station
     // manapun, dan stock_batubara_rendal di-strip ownsMap saat submit station.
     useEffect(() => {
@@ -349,7 +349,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     const v = raw == null ? '' : String(raw).trim();
                     return v && v !== '-' ? v : null;
                 };
-                setStockBatubaraSheet(pick(126));  // DW = stock_batubara_rendal
+                setStockBatubaraSheet(pick(129));  // DZ = stock_batubara_rendal
             })
             .catch(() => { /* non-blocking — biarkan tampil default */ });
         return () => { stale = true; };
@@ -913,8 +913,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     ...totalizer,
                     group_name: groupName || totalizer.group_name || null,
                     kasi_name: supervisorVal || totalizer.kasi_name || null,
-                    // Stock Batubara (kolom DW) — diambil dari Sheets LHUBB, disimpan ke
-                    // Supabase supaya muncul di review In/Out & ditulis balik ke DW.
+                    // Stock Batubara (kolom DZ) — diambil dari Sheets LHUBB, disimpan ke
+                    // Supabase supaya muncul di review In/Out. TIDAK ditulis balik: DZ
+                    // rumus sheet, bukan input web.
                     stock_batubara_rendal:
                         parseSheetNum(stockBatubaraSheet)
                         ?? (totalizer.stock_batubara_rendal as number | null | undefined)

@@ -30,7 +30,7 @@ export const KONSUMSI_TOTALIZER_ROWS = [
 const KOLOM: string[] = KONSUMSI_TOTALIZER_ROWS.map(r => r.name);
 
 // ─── Selisih totalizer & konsumsi air harian ─────────────────────────────────
-// Rumus tunggal konsumsi air: dipakai mapper saat menulis DP–DT ke Sheets DAN oleh
+// Rumus tunggal konsumsi air: dipakai mapper saat menulis DP–DW ke Sheets DAN oleh
 // halaman /laporan-harian saat menampilkannya. Sebelumnya rumusnya disalin — sel()
 // di daily-sheets-mapper dan selD() di InputHarianForm — sementara kelima kolom
 // turunannya di daily_report_totalizer tak punya satu pun penulis, jadi laporan
@@ -53,13 +53,18 @@ export interface TotalizerAirReadings {
     tot_service?:   number | string | null;
 }
 
-/** Lima angka turunan kartu air — namanya sama dengan kolom daily_report_totalizer. */
+/** Angka turunan kartu air. Lima yang pertama namanya sama dengan kolom
+ *  daily_report_totalizer; tiga komponen RCW (hydrant/basin/service) tidak punya
+ *  kolom DB — hanya ditulis ke Sheets. */
 export interface KonsumsiAir {
     konsumsi_demin:      number | null; // Sheets DP
-    konsumsi_rcw:        number | null; // DQ
-    penerimaan_demin_3a: number | null; // DR
-    penerimaan_demin_1b: number | null; // DS
-    penerimaan_rcw_1a:   number | null; // DT
+    konsumsi_hydrant:    number | null; // DQ
+    konsumsi_basin:      number | null; // DR
+    konsumsi_service:    number | null; // DS
+    konsumsi_rcw:        number | null; // DT
+    penerimaan_demin_3a: number | null; // DU
+    penerimaan_demin_1b: number | null; // DV
+    penerimaan_rcw_1a:   number | null; // DW
 }
 
 /**
@@ -81,7 +86,7 @@ export function selisihTotalizer(
 }
 
 /**
- * Lima angka kartu air dari pembacaan totalizer hari ini + H-1.
+ * Angka kartu air dari pembacaan totalizer hari ini + H-1.
  *
  * RCW = hydrant + basin + service. Komponen yang tak punya pembanding dihitung 0,
  * TAPI kalau ketiganya sama-sama tanpa pembanding hasilnya null (bukan 0) — supaya
@@ -99,6 +104,9 @@ export function hitungKonsumsiAir(
 
     return {
         konsumsi_demin: sel('tot_demin'),
+        konsumsi_hydrant: hydrant,
+        konsumsi_basin:   basin,
+        konsumsi_service: service,
         konsumsi_rcw: (hydrant !== null || basin !== null || service !== null)
             ? (hydrant ?? 0) + (basin ?? 0) + (service ?? 0)
             : null,

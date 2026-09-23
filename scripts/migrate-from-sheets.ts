@@ -171,7 +171,7 @@ const SC = {
     bfw_press_a_pagi:141, bfw_press_b_pagi:142,
 };
 
-// ─── DAILY (LHUBB) COL mapping (0-based, 127 cols) ───────────────────────────
+// ─── DAILY (LHUBB) COL mapping (0-based, 130 cols A..DZ) ─────────────────────
 const DC = {
     tanggal: 1,
     // Produksi Steam 24h (totalizer harian = selisih)
@@ -278,14 +278,15 @@ const DC = {
     // Keterangan & Air
     keterangan:118,
     konsumsi_demin:119,      // DP — selisih totalizer
-    konsumsi_rcw:120,        // DQ
-    penerimaan_demin_3a:121, // DR
-    penerimaan_demin_1b:122, // DS
-    penerimaan_rcw_1a:123,   // DT
+    // DQ–DS(120–122) = konsumsi hydrant/basin/service — turunan, tak punya kolom DB
+    konsumsi_rcw:123,        // DT
+    penerimaan_demin_3a:124, // DU
+    penerimaan_demin_1b:125, // DV
+    penerimaan_rcw_1a:126,   // DW
     // Group & Kasi
-    group_name:124,          // DU
-    kasi_name:125,           // DV
-    stock_batubara_rendal:126,// DW
+    group_name:127,          // DX
+    kasi_name:128,           // DY
+    stock_batubara_rendal:129,// DZ (rumus sheet)
 };
 
 // ─── Save SHIFT row ───────────────────────────────────────────────────────────

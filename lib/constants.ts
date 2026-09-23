@@ -249,6 +249,12 @@ export const OPERATORS: Operator[] = [
     { id: 51, name: 'Admin Sistem', role: 'admin' },
 ];
 
+// Kandidat Foreman Boiler/Turbin: semua organik UBB yang ikut grup shift, kecuali Supervisor.
+// Foreman Turbin boleh jadi Foreman Boiler dan sebaliknya; AVP/Junior AVP (tanpa grup) tidak ikut.
+export function isForemanCandidate(op: Operator): boolean {
+    return op.company === 'UBB' && !!op.group && op.jabatan !== 'Supervisor';
+}
+
 // ─── Shift Group Rotation ───
 // Pola 28 hari: M=Malam, P=Pagi, S=Sore, O=Off
 // Group A pos 0 = 9 Maret 2026; tiap grup offset 7 hari

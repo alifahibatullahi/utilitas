@@ -24,7 +24,7 @@ import SearchableSelect from '@/components/ui/SearchableSelect';
 import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
-import { getGroupForShift, getGroupShiftOnDate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, detectDefaultReport, type OperatorStation } from '@/lib/constants';
+import { getGroupForShift, getGroupShiftOnDate, isForemanCandidate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, detectDefaultReport, type OperatorStation } from '@/lib/constants';
 
 // Baris DB batubara → bentuk yang dipakai form. Dipakai di dua tempat (muat awal &
 // muat ulang setelah simpan), jadi diangkat ke modul supaya keduanya tidak bisa
@@ -508,14 +508,9 @@ function InputShiftPageInner() {
     const supervisorOptions = operators.filter(op =>
         op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman')
     );
-    // Foreman Boiler: organik UBB dengan jabatan Foreman Boiler atau operator biasa (tanpa jabatan)
-    const foremanBoilerOptions = operators.filter(op =>
-        op.company === 'UBB' && (op.jabatan === 'Foreman Boiler' || !op.jabatan)
-    );
-    // Foreman Turbin: organik UBB dengan jabatan Foreman Turbin atau operator biasa (tanpa jabatan)
-    const foremanTurbinOptions = operators.filter(op =>
-        op.company === 'UBB' && (op.jabatan === 'Foreman Turbin' || !op.jabatan)
-    );
+    // Foreman Boiler & Turbin: semua organik UBB kecuali Supervisor (lihat isForemanCandidate)
+    const foremanBoilerOptions = operators.filter(isForemanCandidate);
+    const foremanTurbinOptions = foremanBoilerOptions;
     // Operator Boiler (Lapangan) untuk dropdown LogSheet Boiler — semua operator.
     const labOperatorOptions = operators.map(op => ({ value: op.name, label: op.name }));
     const router = useRouter();

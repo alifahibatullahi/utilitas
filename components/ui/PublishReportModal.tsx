@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import Stepper from '@/components/ui/Stepper';
 import { parseSheetNumber } from '@/lib/utils';
+import { isForemanCandidate } from '@/lib/constants';
 import TabStockBatubara from '@/components/input-harian/TabStockBatubara';
 import TabSolarReview from '@/components/input-harian/TabSolarReview';
 import type { SolarUnloadingEntry, SolarUsageEntry } from '@/components/input-harian/types';
@@ -250,21 +251,14 @@ export function PublishReportModal({
     // (app/input-shift/page.tsx:381-392): filter jabatan saja, TANPA sort & TANPA label
     // grup — supaya pilihan supervisor/foreman di modal sama persis dgn header.
     // - Supervisor: jabatan Supervisor ATAU Foreman (semua foreman bisa jadi supervisor approval).
-    // - Foreman Boiler: UBB & jabatan 'Foreman Boiler' atau operator biasa (tanpa jabatan).
-    // - Foreman Turbin: UBB & jabatan 'Foreman Turbin' atau operator biasa.
+    // - Foreman Boiler & Turbin: semua organik UBB kecuali Supervisor (isForemanCandidate).
     const { operators } = useOperator();
     const supervisorOptions = useMemo(
         () => operators.filter(op => op.jabatan === 'Supervisor' || op.jabatan?.startsWith('Foreman')),
         [operators],
     );
-    const foremanBoilerOptions = useMemo(
-        () => operators.filter(op => op.company === 'UBB' && (op.jabatan === 'Foreman Boiler' || !op.jabatan)),
-        [operators],
-    );
-    const foremanTurbinOptions = useMemo(
-        () => operators.filter(op => op.company === 'UBB' && (op.jabatan === 'Foreman Turbin' || !op.jabatan)),
-        [operators],
-    );
+    const foremanBoilerOptions = useMemo(() => operators.filter(isForemanCandidate), [operators]);
+    const foremanTurbinOptions = foremanBoilerOptions;
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 

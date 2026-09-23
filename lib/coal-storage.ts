@@ -340,7 +340,7 @@ export type HopperKey = 'A' | 'B' | 'AB';
 export const TON_PER_SHOVEL = 3;
 
 /** Hopper disimpan sebagai A/B/AB (ikut kolom laporan shift), ditampilkan sebagai lokasinya. */
-export const HOPPER_LABEL: Record<HopperKey, string> = { A: 'Darat', B: 'Laut', AB: 'D+L' };
+export const HOPPER_LABEL: Record<HopperKey, string> = { A: 'Darat', B: 'Laut', AB: 'Darat + Laut' };
 
 export function tonKeluarZona(loadings: CoalLoading[], zonaId: string): number {
     return loadings

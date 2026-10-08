@@ -50,7 +50,9 @@ export default function UmurStok({ lots, warna, onSorot }: {
 
     return (
         <section className="cs-fade-up rounded-xl border border-slate-200 bg-white p-3.5" style={{ animationDelay: '420ms' }}>
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* data-sejajar: kepala, thead, lalu tiap baris — urutannya harus sama dengan
+                RiwayatLoading, lihat useBarisSejajar. */}
+            <div data-sejajar className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-[13px] font-bold text-slate-900">Umur stok</h3>
                 <span className="text-[11px] text-slate-400">{data.length} tumpukan</span>
                 <div className="ml-auto inline-flex rounded-lg border border-slate-300 overflow-hidden">
@@ -77,7 +79,7 @@ export default function UmurStok({ lots, warna, onSorot }: {
                 <div className="overflow-x-auto">
                     <table className="w-full mt-2 text-xs">
                         <thead>
-                            <tr className="text-left text-[11px] text-slate-400">
+                            <tr data-sejajar className="text-left text-[11px] text-slate-400">
                                 {/* w-px: kolom selebar isinya (semua nowrap), sisa lebar jatuh ke
                                     "Tumpukan" — supaya muat di HP tanpa gulir samping. */}
                                 <th className="font-medium py-1.5 pr-2 w-px">Umur</th>
@@ -91,6 +93,7 @@ export default function UmurStok({ lots, warna, onSorot }: {
                                 // satu petak, jadi yang menyala persis petak yang dimaksud baris ini.
                                 <tr
                                     key={t.lot.id ?? `${t.lot.zona}-${t.lot.supplier}-${t.lot.tanggal_masuk}-${awal + i}`}
+                                    data-sejajar
                                     tabIndex={0}
                                     onMouseEnter={() => onSorot({ tipe: 'zona', nilai: [t.lot.zona] })}
                                     onMouseLeave={() => onSorot(null)}

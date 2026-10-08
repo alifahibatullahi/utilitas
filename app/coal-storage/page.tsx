@@ -13,6 +13,7 @@ import SupplierLegend from '@/components/coal-storage/SupplierLegend';
 import UmurStok from '@/components/coal-storage/UmurStok';
 import RiwayatLoading from '@/components/coal-storage/RiwayatLoading';
 import ZonaEditor from '@/components/coal-storage/ZonaEditor';
+import { useBarisSejajar } from '@/components/coal-storage/useBarisSejajar';
 import './coal-storage.css';
 
 // Jeda minimum antar refetch otomatis saat tab dibuka lagi. Halaman ini sengaja
@@ -42,6 +43,7 @@ function GuardedPage() {
     const [galat, setGalat] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
     const terakhirFetch = useRef(0);
+    const wadahTabel = useBarisSejajar();
 
     const muat = useCallback(async () => {
         setMemuat(true);
@@ -170,8 +172,9 @@ function GuardedPage() {
                             {/* Dua tabel bersanding di bawah denah: kondisi sekarang (umur tiap
                                 tumpukan) dan apa yang sudah diambil (riwayat loading). Riwayat
                                 dapat daftar lot PENUH supaya tumpukan yang sudah habis pun masih
-                                bisa dikenali suppliernya. */}
-                            <div className="grid gap-3 lg:grid-cols-2 mt-6">
+                                bisa dikenali suppliernya. Di layar lebar baris keduanya
+                                disejajarkan per indeks (useBarisSejajar). */}
+                            <div ref={wadahTabel} className="grid gap-3 lg:grid-cols-2 mt-6">
                                 <UmurStok lots={sisa} warna={warna} onSorot={setHighlight} />
                                 <RiwayatLoading lots={lots} loadings={data?.loadings ?? []} warna={warna} onSorot={setHighlight} />
                             </div>

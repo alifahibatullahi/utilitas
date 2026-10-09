@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Operator } from '@/lib/constants';
 import { isValidStation, STATION_HARIAN_TABS, STATION_LABELS, type OperatorStation } from '@/lib/constants';
 import { fetchLatestSiloLevels, sumAshRitasePerSilo, type SiloLevelInfo } from '@/lib/ash-silo-query';
+import { fetchLoadingHarian, type LoadingShiftHarian } from '@/lib/coal-storage-query';
 import type { SiloId } from '@/lib/ash-silo';
 import TabBoiler from './TabBoiler';
 import TabCoalBunker from './TabCoalBunker';
@@ -198,6 +199,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // dipakai saat simpan untuk menilai selisih yang melonjak. Kosong = cek dilewati.
     const [konsumsiBaseline, setKonsumsiBaseline] = useState<KonsumsiBaselineMap>({});
     const [coalArrivals, setCoalArrivals] = useState<{ id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[]>([]);
+    const [coalLoadings, setCoalLoadings] = useState<LoadingShiftHarian[]>([]);
 
     // Mode station: select di-narrow ke child table milik station (hemat DB & payload).
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date, station);
@@ -331,6 +333,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         }))
                     );
                 });
+
+            // Loading batubara per shift — BACA-SAJA, kartu ringkasan di tab Handling.
+            // Total dari yang diketik operator (sumber yang sama dengan Sheets & /logbook),
+            // pilarnya dari coal_loadings. Gagal muat cuma mengosongkan kartunya.
+            if (needsCoalArrivals) fetchLoadingHarian(supabase, date)
+                .then(setCoalLoadings)
+                .catch(e => console.warn('[harian] loading batubara gagal dimuat', e));
         }, [date, needsSolar, needsAsh, needsCoalArrivals, needsKonsumsiBaseline]);
 
     // Baca nilai read-only dari Google Sheets (tanggal LHUBB ini): DZ = stock batubara
@@ -1468,6 +1477,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     onDeleteAshUnloading: handleDeleteAshUnloading,
                                     onEditAshUnloading: handleEditAshUnloading,
                                     coalArrivals,
+                                    coalLoadings,
                                 };
                                 return (
                                     <>

@@ -1,3 +1,5 @@
+import type { LoadingShiftHarian } from '@/lib/coal-storage-query';
+
 export interface DailyTabProps {
     // State objects
     steam: Record<string, number | null>;
@@ -43,6 +45,9 @@ export interface DailyTabProps {
     /** Kedatangan batubara hari itu (coal_arrivals) — ringkasan BACA-SAJA di tab Handling,
      *  cermin dari laporan shift. Tanpa handler edit/hapus: sumbernya laporan shift. */
     coalArrivals?: { id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[];
+    /** Loading batubara per shift hari itu — ringkasan BACA-SAJA di tab Handling, cermin
+     *  laporan shift (Total Loading + pilar asal). Urut Malam → Pagi → Sore. */
+    coalLoadings?: LoadingShiftHarian[];
     onDeleteSolarUnloading?: (id: string) => void;
     onDeleteSolarUsage?: (id: string) => void;
     onEditSolarUnloading?: (id: string, fields: { liters: number; supplier: string }) => void;
@@ -60,6 +65,7 @@ export interface DailyTabProps {
 export type CoalReviewProps = Pick<DailyTabProps,
     | 'coalTransfer'
     | 'onCoalTransferChange'
+    | 'coalArrivals'
 >;
 
 export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string; shift?: string | null }

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, Modal } from '@/components/input-shift/SharedComponents';
 import type { DailyTabProps } from './types';
-import { formatTon, labelZonaPendek } from '@/lib/coal-storage';
+import { formatTon, HOPPER_LABEL, labelZonaPendek, TON_PER_SHOVEL } from '@/lib/coal-storage';
 import { KONSUMSI_TOTALIZER_ROWS } from '@/lib/konsumsi-baseline';
 import { hitungNeracaSolar } from '@/lib/solar-balance';
 
@@ -21,6 +21,7 @@ export default function TabHandling({
     solarUnloadings = [],
     solarUsages = [],
     coalArrivals = [],
+    coalLoadings = [],
     onDeleteSolarUnloading,
     onDeleteSolarUsage,
     onEditSolarUnloading,
@@ -51,6 +52,7 @@ export default function TabHandling({
     // batch_id sama, jadi jumlah baris bukan jumlah pengiriman — badge menulis "entri".
     // Totalnya tetap SUM(ton) dan itu memang benar.
     const totalTonBatubara = coalArrivals.reduce((s, e) => s + e.ton, 0);
+    const totalShovel = coalLoadings.reduce((s, e) => s + (e.shovel ?? 0), 0);
 
     const totalKedatangan = solarUnloadings.reduce((s, e) => s + e.liters, 0);
     const totalPermintaan = solarUsages.reduce((s, e) => s + e.liters, 0);
@@ -305,7 +307,10 @@ export default function TabHandling({
                             {coalArrivals.map((item, i) => (
                                 <div key={item.id ?? i} className="flex items-center gap-2 bg-[#101822]/50 border border-emerald-500/30 rounded-lg px-3 py-2 min-w-0">
                                     <span className="material-symbols-outlined text-emerald-400 text-[15px]">dock</span>
-                                    <span className="text-white font-medium text-sm font-mono">{formatTon(item.ton)} <span className="text-emerald-400 text-xs">ton</span></span>
+                                    {/* Baris penutup (lanjutan bertonase 0) cuma menandai pengiriman tuntas. */}
+                                    {item.ton === 0 && item.status === 'selesai'
+                                        ? <span className="text-emerald-300 font-medium text-sm">Pengiriman selesai</span>
+                                        : <span className="text-white font-medium text-sm font-mono">{formatTon(item.ton)} <span className="text-emerald-400 text-xs">ton</span></span>}
                                     <SolarOriginBadge shift={item.shift} />
                                     <span className="text-[10px] text-slate-400 truncate">{item.supplier} · {labelZonaPendek(item.zona)}</span>
                                     {item.status === 'progres' && (
@@ -316,6 +321,43 @@ export default function TabHandling({
                         </div>
                     ) : (
                         <p className="text-[11px] text-slate-500 italic">Belum ada kedatangan batubara hari ini</p>
+                    )}
+                </div>
+
+                {/* Loading Batubara per pilar — cermin baca-saja dari laporan shift: Total
+                    Loading yang diketik operator + pilar asalnya (yang mengurangi stok di
+                    /coal-storage). Shift tanpa pilar ditandai supaya reviewer bisa menagih. */}
+                <div className="mt-4 pt-4 border-t border-slate-700/50">
+                    <SectionLabel label="Loading Batubara" badge={`${fmt(totalShovel)} shovel · ±${formatTon(totalShovel * TON_PER_SHOVEL)} ton`} />
+                    {coalLoadings.length > 0 ? (
+                        <div className="space-y-2">
+                            {coalLoadings.map(item => (
+                                <div key={item.shift} className="flex items-start gap-2 bg-[#101822]/50 border border-orange-500/30 rounded-lg px-3 py-2 min-w-0">
+                                    <span className="material-symbols-outlined text-orange-400 text-[15px] mt-0.5">local_shipping</span>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                            <span className="text-white font-medium text-sm font-mono">
+                                                {item.shovel != null ? fmt(item.shovel) : '—'} <span className="text-orange-400 text-xs">shovel</span>
+                                            </span>
+                                            {item.shovel != null && (
+                                                <span className="text-[10px] text-slate-400 font-mono">±{formatTon(item.shovel * TON_PER_SHOVEL)} t</span>
+                                            )}
+                                            <SolarOriginBadge shift={item.shift} />
+                                            {item.hopper && <span className="text-[10px] text-slate-400">Hopper: {HOPPER_LABEL[item.hopper]}</span>}
+                                        </div>
+                                        {item.zonas.length > 0 ? (
+                                            <p className="text-[10px] text-slate-300 mt-1 leading-relaxed">
+                                                {item.zonas.map(labelZonaPendek).join(' · ')}
+                                            </p>
+                                        ) : (item.shovel ?? 0) > 0 && (
+                                            <span className="inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-medium">pilar belum dicatat</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-[11px] text-slate-500 italic">Belum ada loading batubara hari ini</p>
                     )}
                 </div>
             </Card>

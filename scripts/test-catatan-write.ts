@@ -124,7 +124,7 @@ async function main() {
     //    dengan baris produksi. Kosongkan barisnya setelah tes.
     if (process.argv.includes('--write')) {
         const isoDate = '2000-01-01';
-        const isi = (operasional: string, flyAsh: string, solar: string) => ({ operasional, flyAsh, solar });
+        const isi = (operasional: string, flyAsh: string, solar: string) => ({ operasional, flyAsh, solar, batubara: '' });
         const r1 = await upsertCatatanOperasional(isoDate, 'pagi', isi('• baris tes 1', '• Unloading fly ash Silo B sebanyak 5rit ke Tes', '• Kedatangan solar dari Tes sebanyak 100 L'));
         console.log('\nupsert #1 (harus created, kolom D,F,G):', r1);
         const r2 = await upsertCatatanOperasional(isoDate, 'pagi', isi('• baris tes 1', '• Unloading fly ash Silo B sebanyak 5rit ke Tes', '• Kedatangan solar dari Tes sebanyak 100 L'));

@@ -8,8 +8,11 @@
 //                      batch_id yang sama, jadi satu batch = SATU tumpukan di denah
 //   coal_lot_koreksi   koreksi manual dari denah; baris TERBARU per lot_id yang berlaku
 //   coal_loadings      pengerukan payloader per pilar; dikurangkan FIFO oleh lotsSisa()
-//   shift_esp_handling Total Loading yang diketik operator tiap shift — belum ada
-//                      pilarnya, jadi cuma mengisi Riwayat Loading, tidak mengurangi stok
+//   shift_esp_handling Total Loading yang diketik operator tiap shift — kalau shift itu
+//                      tak punya pilar, cuma mengisi Riwayat Loading, tidak mengurangi stok
+//
+// fetchLoadingHarian & fetchInfoKedatangan di bawah melayani tab Handling laporan
+// harian & shift, bukan denah.
 //
 // TIDAK memakai realtime. Tabel nyasar di publication supabase_realtime pernah
 // membuat compute Supabase jenuh sampai API balas 522 (insiden 3 Jun 2026);
@@ -18,7 +21,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CoalArrivalRow, CoalLoadingRow, CoalLotKoreksiRow } from './supabase/types';
 import { type ShiftKey } from './constants';
-import { type CoalLoading, type CoalLot, type HopperKey, rankShift } from './coal-storage';
+import { type CoalLoading, type CoalLot, type HopperKey, rankShift, URUT_SHIFT } from './coal-storage';
 
 /**
  * Lantai riwayat loading yang ditarik, dalam hari.
@@ -266,6 +269,140 @@ export async function simpanKoreksi(supabase: SupabaseClient, input: KoreksiInpu
         operator_name: input.operatorName,
     });
     if (error) throw error;
+}
+
+/** Loading batubara satu shift untuk kartu ringkasan tab Handling laporan harian. */
+export interface LoadingShiftHarian {
+    shift: ShiftKey;
+    /** Total Loading yang diketik operator (shift_esp_handling.loading); null = kosong. */
+    shovel: number | null;
+    hopper: HopperKey | null;
+    /** Pilar asal dari coal_loadings; kosong = pilar belum dicatat. */
+    zonas: string[];
+}
+
+/**
+ * Loading batubara per shift pada satu tanggal laporan (konvensi ENDING: malam =
+ * hari submit), urut Malam → Pagi → Sore. Totalnya dari yang diketik operator —
+ * sumber yang sama dengan Sheets & /logbook — bukan jumlah pecahan coal_loadings;
+ * coal_loadings cuma menyumbang daftar pilarnya. Shift tanpa Total Loading dan tanpa
+ * pilar tidak dikembalikan.
+ */
+export async function fetchLoadingHarian(supabase: SupabaseClient, tanggal: string): Promise<LoadingShiftHarian[]> {
+    const [pilar, total] = await Promise.all([
+        supabase
+            .from('coal_loadings')
+            .select('shift, zona, hopper')
+            .eq('date', tanggal)
+            .order('created_at', { ascending: true }),
+        supabase
+            .from('shift_esp_handling')
+            .select('loading, hopper, shift_reports!inner(date, shift)')
+            .eq('shift_reports.date', tanggal),
+    ]);
+    if (pilar.error) throw pilar.error;
+    if (total.error) throw total.error;
+
+    const perShift = new Map<string, LoadingShiftHarian>();
+    const ambil = (shift: string): LoadingShiftHarian => {
+        let baris = perShift.get(shift);
+        if (!baris) {
+            baris = { shift: shift as ShiftKey, shovel: null, hopper: null, zonas: [] };
+            perShift.set(shift, baris);
+        }
+        return baris;
+    };
+
+    for (const r of (total.data ?? []) as unknown as BarisLoadingShift[]) {
+        const baris = ambil(r.shift_reports.shift);
+        const teks = String(r.loading ?? '').trim();
+        const shovel = Number(teks.replace(',', '.'));
+        if (teks !== '' && Number.isFinite(shovel)) baris.shovel = shovel;
+        baris.hopper = normalHopper(r.hopper);
+    }
+    for (const r of (pilar.data ?? []) as Pick<CoalLoadingRow, 'shift' | 'zona' | 'hopper'>[]) {
+        const baris = ambil(r.shift);
+        if (!baris.zonas.includes(r.zona)) baris.zonas.push(r.zona);
+        baris.hopper ??= normalHopper(r.hopper);
+    }
+
+    return [...perShift.values()]
+        .filter(b => b.shovel !== null || b.zonas.length > 0)
+        .sort((a, b) => (URUT_SHIFT[a.shift] ?? 0) - (URUT_SHIFT[b.shift] ?? 0));
+}
+
+/** Pengiriman yang baris TERAKHIRnya masih 'progres' — bentuknya sama dengan OpenArrival di form Handling. */
+export interface PengirimanBerjalan {
+    batch_id: string;
+    supplier: string;
+    zona: string;
+    tonSejauhIni: number;
+    tanggal_masuk: string;
+}
+
+/** Jendela kedatangan terbaru yang ditarik modal Kedatangan Batubara. */
+const JENDELA_KEDATANGAN = 200;
+
+/**
+ * Bahan modal Kedatangan Batubara di form Handling: pengiriman yang masih berjalan
+ * (dropdown "Pengiriman") dan nama supplier yang pernah dipakai (chip saran).
+ *
+ * Kedatangan ditarik 200 baris TERBARU lalu diproses kronologis. Pengiriman yang
+ * awalnya jatuh di luar jendela hanya kurang di `tonSejauhIni`; tanggal masuknya
+ * tetap benar karena baris lanjutan mewarisi tanggal induknya.
+ *
+ * Batch yang tumpukannya sudah DIHAPUS di denah dibuang dari daftar berjalan:
+ * fetchDenah melewati lot `dihapus`, jadi lanjutan ke sana akan lenyap tanpa jejak.
+ */
+export async function fetchInfoKedatangan(
+    supabase: SupabaseClient,
+): Promise<{ berjalan: PengirimanBerjalan[]; suppliers: string[] }> {
+    const [kedatangan, koreksi] = await Promise.all([
+        supabase
+            .from('coal_arrivals')
+            .select('batch_id, supplier, zona, ton, tanggal_masuk, status, created_at')
+            .order('created_at', { ascending: false })
+            .limit(JENDELA_KEDATANGAN),
+        supabase
+            .from('coal_lot_koreksi')
+            .select('lot_id, supplier, dihapus, created_at')
+            .order('created_at', { ascending: true }),
+    ]);
+    if (kedatangan.error) throw kedatangan.error;
+    if (koreksi.error) throw koreksi.error;
+
+    // Koreksi yang berlaku = baris terbaru per lot (data urut menaik).
+    const koreksiBerlaku = new Map<string, Pick<CoalLotKoreksiRow, 'supplier' | 'dihapus'>>();
+    for (const k of (koreksi.data ?? []) as CoalLotKoreksiRow[]) koreksiBerlaku.set(k.lot_id, k);
+
+    const perBatch = new Map<string, PengirimanBerjalan & { status: string }>();
+    const barisUrut = ((kedatangan.data ?? []) as CoalArrivalRow[]).slice().reverse();
+    for (const r of barisUrut) {
+        const prev = perBatch.get(r.batch_id);
+        perBatch.set(r.batch_id, {
+            batch_id: r.batch_id,
+            supplier: r.supplier,
+            zona: r.zona,
+            // tanggal masuk = kedatangan pertama, supaya umur tumpukan benar
+            tanggal_masuk: prev?.tanggal_masuk ?? r.tanggal_masuk,
+            tonSejauhIni: (prev?.tonSejauhIni ?? 0) + Number(r.ton ?? 0),
+            status: r.status,
+        });
+    }
+
+    const berjalan = [...perBatch.values()]
+        .filter(b => b.status === 'progres' && !koreksiBerlaku.get(b.batch_id)?.dihapus)
+        .map(b => ({
+            batch_id: b.batch_id, supplier: b.supplier, zona: b.zona,
+            tonSejauhIni: b.tonSejauhIni, tanggal_masuk: b.tanggal_masuk,
+        }));
+
+    const suppliers = [...new Set([
+        ...barisUrut.map(r => r.supplier),
+        ...[...koreksiBerlaku.values()].filter(k => !k.dihapus).map(k => k.supplier),
+    ].map(s => (s ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
+
+    return { berjalan, suppliers };
 }
 
 /** Seluruh riwayat perubahan satu tumpukan, terbaru di atas. */

@@ -558,9 +558,11 @@ export interface PeriksaTumpukan {
  * Aturan validasi satu tumpukan sebelum disimpan.
  *
  * Kapasitas zona SENGAJA cuma jadi peringatan, bukan galat: kapasitasZona() membagi
- * rata kapasitas area (lihat catatan di kepala berkas ini), sedangkan zona ujung di
- * lapangan kemungkinan lebih kecil — memblokir di angka yang kita sendiri belum yakin
- * berarti melarang operator mencatat kenyataan.
+ * rata kapasitas area (lihat catatan di kepala berkas ini) dan itu ESTIMASI — kata user
+ * (9 Okt 2026) isi nyata satu zona bisa lebih, satu tongkang ±7.500 t bisa masuk satu
+ * zona. Memblokir di angka yang kita sendiri belum yakin berarti melarang operator
+ * mencatat kenyataan. Yang tetap memblokir hanya tonase melebihi kapasitas SELURUH
+ * area — itu hampir pasti salah ketik (mis. kelebihan nol).
  */
 export function periksaTumpukan(
     input: { supplier: string; ton: number; tanggal_masuk: string; zona: string; lotId?: string },
@@ -575,9 +577,10 @@ export function periksaTumpukan(
     if (!input.tanggal_masuk) galat.push('Tanggal masuk belum diisi.');
 
     const kapasitas = kapasitasZona(input.zona);
-    if (Number.isFinite(input.ton) && input.ton > kapasitas * 2) {
-        galat.push(`Tonase ${formatTon(input.ton)} t lebih dari dua kali kapasitas zona `
-            + `(${formatTon(kapasitas)} t) — sepertinya salah ketik.`);
+    const area = areaOfZona(input.zona);
+    if (Number.isFinite(input.ton) && input.ton > area.kapasitasTon) {
+        galat.push(`Tonase ${formatTon(input.ton)} t melebihi kapasitas seluruh ${area.nama} `
+            + `(${formatTon(area.kapasitasTon)} t) — sepertinya salah ketik.`);
     }
 
     const umur = input.tanggal_masuk ? umurHari(input.tanggal_masuk, acuan) : 0;

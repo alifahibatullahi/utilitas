@@ -88,7 +88,8 @@ async function main() {
         const pindah: Record<'flyAsh' | 'solar', string[]> = { flyAsh: [], solar: [] };
         for (const baris of D.split('\n')) {
             const kelas = klasifikasiBarisCatatan(baris);
-            if (kelas === 'operasional') simpan.push(baris);
+            // Skrip ini hanya memindah fly ash & solar; baris batubara tetap di D.
+            if (kelas === 'operasional' || kelas === 'batubara') simpan.push(baris);
             else pindah[kelas].push(bersih(baris).trim());
         }
         if (!pindah.flyAsh.length && !pindah.solar.length) continue;

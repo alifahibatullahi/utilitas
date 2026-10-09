@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
         }
     }
 
-    // ─── Catatan Operasional (spreadsheet catatan, kolom B/C + D/F/G) ─────────
+    // ─── Catatan Operasional (spreadsheet catatan, kolom B/C + D/F/G/H) ───────
     if (type === 'catatan_operasional') {
         const { date, shift } = data as { date: string; shift: 'malam' | 'pagi' | 'sore' };
         if (!date || !shift || !['malam', 'pagi', 'sore'].includes(shift)) {
@@ -286,7 +286,8 @@ export async function POST(req: NextRequest) {
             }
             // Catatan kanonik dari DB (catatan utama + semua station + auto-lines),
             // sudah dipartisi ke kolom sheet-nya: Operasional (D), Unloading Fly Ash
-            // (F), In-Out Solar (G). Skip-kosong & anti-wipe per kolom ditangani di
+            // (F), In-Out Solar (G), In-Out Batubara (H, dari coal_arrivals — tidak
+            // ikut WA). Skip-kosong & anti-wipe per kolom ditangani di
             // upsertCatatanOperasional.
             const perKolom = await getShiftCatatanPerKolom(supabase, row);
             const result = await upsertCatatanOperasional(date, shift, perKolom);

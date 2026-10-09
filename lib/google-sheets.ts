@@ -550,12 +550,13 @@ export async function upsertTankLevelsShift(levels: TankLevelsInput, now?: Date)
 //   Kolom E = Switch Equipment     (manual — aplikasi tidak punya sumbernya)
 //   Kolom F = Unloading Fly Ash  ← ditulis aplikasi
 //   Kolom G = In-Out Solar       ← ditulis aplikasi
-//   Kolom H = In-Out Batubara      (manual)
+//   Kolom H = In-Out Batubara    ← ditulis aplikasi (kedatangan dari coal_arrivals,
+//                                  sejak 9 Okt 2026; TIDAK ikut WA)
 // Pembagian barisnya dilakukan partisiCatatanPerKolom di lib/shift-catatan.ts.
 // Konten dari aplikasi dibungkus penanda TAK TERLIHAT (karakter zero-width)
 // supaya terbedakan dari isian manual tanpa mengotori sel; teks di luar penanda
 // TIDAK PERNAH diubah. Tiap kolom punya blok penandanya sendiri.
-// Upsert per (tanggal, shift): baris existing → update kolom D/F/G yang berubah
+// Upsert per (tanggal, shift): baris existing → update kolom D/F/G/H yang berubah
 // saja; belum ada → baris baru di bawah baris terakhir yang kolom B-nya terisi.
 
 const CATATAN_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_CATATAN_ID || '1qbN1nrpJmVJ_WY2YPGB4TCJixLrf5cwAyycqqHZC1mw';
@@ -696,6 +697,7 @@ export interface CatatanKolomInput {
     operasional: string;
     flyAsh: string;
     solar: string;
+    batubara: string;
 }
 
 // Peta ember → kolom sheet. Offset dihitung dari kolom B karena rentang baca
@@ -704,15 +706,16 @@ const CATATAN_KOLOM: { key: keyof CatatanKolomInput; huruf: string; offset: numb
     { key: 'operasional', huruf: 'D', offset: 2 },
     { key: 'flyAsh', huruf: 'F', offset: 4 },
     { key: 'solar', huruf: 'G', offset: 5 },
+    { key: 'batubara', huruf: 'H', offset: 6 },
 ];
 
 /**
  * Upsert catatan operasional kanonik ke spreadsheet catatan.
- * Cari baris by (tanggal kolom B, shift kolom C); ketemu → merge kolom D/F/G
+ * Cari baris by (tanggal kolom B, shift kolom C); ketemu → merge kolom D/F/G/H
  * masing-masing (lihat mergeCatatanCell), tidak → tulis baris baru di bawah baris
  * terakhir ber-tanggal. Kolom yang embernya kosong TIDAK disentuh (anti-wipe dari
- * mergeCatatanCell), jadi isian manual di F/G aman saat shift itu tidak punya
- * aktivitas fly ash/solar. Kolom E & H tidak pernah ditulis aplikasi.
+ * mergeCatatanCell), jadi isian manual di F/G/H aman saat shift itu tidak punya
+ * aktivitas fly ash/solar/batubara. Kolom E tidak pernah ditulis aplikasi.
  * Kolom C adalah dropdown — values.update hanya menulis nilai, rule dropdown utuh.
  * Concurrency: read-modify-write bisa race antar station yang save hampir
  * bersamaan; karena blok dihitung ulang dari DB tiap tulis, last-writer-wins

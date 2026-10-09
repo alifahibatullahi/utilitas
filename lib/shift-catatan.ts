@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { labelZonaPendek } from './coal-storage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUMBER TUNGGAL "Catatan Operasional" shift. Dipakai oleh publish-shift (washift
@@ -51,6 +52,23 @@ export function buildActivityLines(internal: { ash?: any[]; solarIn?: any[]; sol
     for (const a of internal?.ash ?? []) {
         const ritase = Number(a.ritase);
         if (ritase > 0) lines.push(`Unloading fly ash Silo ${a.silo ?? '-'} sebanyak ${ritase}rit ke ${a.tujuan || '-'}`);
+    }
+    return lines;
+}
+
+// Baris kedatangan batubara dari coal_arrivals. SENGAJA tidak masuk buildActivityLines
+// maupun teks kanonik: permintaan user (9 Okt 2026) baris ini hanya ke kolom H sheet
+// Catatan, TIDAK ikut WA. Baris penutup (lanjutan bertonase 0) dilewati — ia cuma
+// menandai pengiriman selesai, tidak ada batubara yang datang. Pola RE_BATUBARA di
+// bawah diturunkan dari kalimat ini.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function buildCoalArrivalLines(rows: any[] | null | undefined): string[] {
+    const lines: string[] = [];
+    for (const r of rows ?? []) {
+        const ton = Number(r.ton);
+        if (!(ton > 0)) continue;
+        const lokasi = r.zona ? ` di ${labelZonaPendek(r.zona)}` : '';
+        lines.push(`Kedatangan batubara dari ${r.supplier || '-'} sebanyak ${ton.toLocaleString('id-ID')} ton${lokasi}`);
     }
     return lines;
 }
@@ -184,6 +202,7 @@ export async function getShiftCatatanCanonical(supabase: SupabaseClient, shiftRo
  *  Diturunkan dari template di buildActivityLines — ubah di sana, ubah juga di sini. */
 const RE_FLY_ASH = /^unloading fly ash\b/i;
 const RE_SOLAR = /^(kedatangan solar\b|permintaan solar\b)/i;
+const RE_BATUBARA = /^kedatangan batubara\b/i;
 
 export interface CatatanPerKolom {
     /** Kolom D — catatan manual operator + bunker berasap + sisanya. */
@@ -192,6 +211,8 @@ export interface CatatanPerKolom {
     flyAsh: string;
     /** Kolom G — In-Out Solar. */
     solar: string;
+    /** Kolom H — In-Out Batubara (kedatangan dari coal_arrivals; tidak ikut WA). */
+    batubara: string;
 }
 
 /** Kolom tujuan satu baris catatan. Dipakai partisi di bawah DAN skrip pemindahan
@@ -202,32 +223,46 @@ export function klasifikasiBarisCatatan(line: string): keyof CatatanPerKolom {
     const bare = (line ?? '').replace(/[⁠​‌]/g, '').trim().replace(/^•\s*/, '');
     if (RE_FLY_ASH.test(bare)) return 'flyAsh';
     if (RE_SOLAR.test(bare)) return 'solar';
+    if (RE_BATUBARA.test(bare)) return 'batubara';
     return 'operasional';
 }
 
-/** Pecah catatan kanonik jadi tiga ember sesuai kolomnya di sheet. LOSSLESS:
+/** Pecah catatan kanonik jadi empat ember sesuai kolomnya di sheet. LOSSLESS:
  *  tiap baris non-kosong masuk tepat satu ember, tidak ada yang dibuang, dan
- *  urutan baris dalam tiap ember tetap seperti aslinya. */
-export function partisiCatatanPerKolom(canonical: string): CatatanPerKolom {
-    const ember: Record<keyof CatatanPerKolom, string[]> = { operasional: [], flyAsh: [], solar: [] };
+ *  urutan baris dalam tiap ember tetap seperti aslinya. `tambahanBatubara` =
+ *  baris kedatangan dari tabel (buildCoalArrivalLines) yang tidak ada di teks
+ *  kanonik karena memang tidak boleh ikut WA; yang sudah ada di teks dilewati. */
+export function partisiCatatanPerKolom(canonical: string, tambahanBatubara: string[] = []): CatatanPerKolom {
+    const ember: Record<keyof CatatanPerKolom, string[]> = { operasional: [], flyAsh: [], solar: [], batubara: [] };
     for (const raw of (canonical ?? '').split('\n')) {
         const line = raw.trim();
         if (!line) continue;
         ember[klasifikasiBarisCatatan(line)].push(line);
     }
-    const { operasional, flyAsh, solar } = ember;
+    for (const line of tambahanBatubara) {
+        if (!(canonical ?? '').includes(line)) ember.batubara.push(line);
+    }
+    const { operasional, flyAsh, solar, batubara } = ember;
     // toBullets idempoten — baris yang sudah ber-bullet dibiarkan apa adanya.
     return {
         operasional: toBullets(operasional.join('\n')),
         flyAsh: toBullets(flyAsh.join('\n')),
         solar: toBullets(solar.join('\n')),
+        batubara: toBullets(batubara.join('\n')),
     };
 }
 
 /** Catatan shift, sudah terpisah per kolom sheet. Dibangun di atas
  *  getShiftCatatanCanonical supaya dedup manual-vs-otomatis, urutan station, dan
- *  baris bunker berasap tetap berlaku sama persis. */
+ *  baris bunker berasap tetap berlaku sama persis. Kedatangan batubara ditambahkan
+ *  DI SINI saja (kolom H), bukan di teks kanonik — teks kanonik itulah yang ke WA. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getShiftCatatanPerKolom(supabase: SupabaseClient, shiftRow: any): Promise<CatatanPerKolom> {
-    return partisiCatatanPerKolom(await getShiftCatatanCanonical(supabase, shiftRow));
+    const [canonical, { data: coalRows }] = await Promise.all([
+        getShiftCatatanCanonical(supabase, shiftRow),
+        supabase.from('coal_arrivals').select('supplier, zona, ton')
+            .eq('date', shiftRow.date).eq('shift', shiftRow.shift)
+            .order('created_at', { ascending: true }),
+    ]);
+    return partisiCatatanPerKolom(canonical, buildCoalArrivalLines(coalRows));
 }

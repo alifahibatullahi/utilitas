@@ -43,6 +43,9 @@ function useCountUp(target: number, durasiMs = 900) {
 export default function RingkasanEstimasi({ lots }: { lots: CoalLot[] }) {
     const total = lots.reduce((t, l) => t + l.ton, 0);
     const pct = (total / TOTAL_KAPASITAS_TON) * 100;
+    // Kapasitas cuma estimasi, jadi total sah melewatinya: persen tetap ditulis apa
+    // adanya, tapi bar tidak boleh menembus wadahnya dan ruang kosong tidak negatif.
+    const lebarBar = Math.min(100, pct);
     // Hanya angka utama yang dihitung naik; persen dan kapasitas dibiarkan diam
     // supaya kartunya tidak riuh oleh angka yang bergerak semua.
     const angkaRef = useCountUp(total);
@@ -63,11 +66,11 @@ export default function RingkasanEstimasi({ lots }: { lots: CoalLot[] }) {
                 <div className="h-[7px] rounded-full bg-orange-200">
                     <div
                         className="cs-bar h-[7px] rounded-full bg-orange-600"
-                        style={{ '--cs-w': `${pct}%`, width: `${pct}%` } as CSSProperties}
+                        style={{ '--cs-w': `${lebarBar}%`, width: `${lebarBar}%` } as CSSProperties}
                     />
                 </div>
                 <p className="text-[11px] font-medium text-orange-800 mt-1.5">
-                    ruang kosong {formatTon(TOTAL_KAPASITAS_TON - total)} ton
+                    ruang kosong {formatTon(Math.max(0, TOTAL_KAPASITAS_TON - total))} ton
                 </p>
             </div>
         </div>

@@ -62,6 +62,29 @@ function newBatchId(): string {
         ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+/**
+ * Baris penutup = lanjutan berstatus 'selesai' tanpa tonase tambahan. Gunanya cuma
+ * menandai pengiriman sudah tuntas (kalau tidak, ia nyangkut di dropdown "Pengiriman"
+ * selamanya); tonasenya 0, jadi tumpukan di denah tidak berubah.
+ */
+export function isBarisPenutup(e: Pick<CoalArrivalEntry, 'ton' | 'status'>): boolean {
+    return !e.ton && e.status === 'selesai';
+}
+
+function isiBarisKedatangan(e: CoalArrivalEntry): { utama: React.ReactNode; sub: string } {
+    const lokasi = `${e.supplier} · ${labelZonaPendek(e.zona)}`;
+    if (isBarisPenutup(e)) {
+        return { utama: <span className="text-emerald-300">Tandai selesai</span>, sub: lokasi };
+    }
+    return {
+        utama: <>{(e.ton || 0).toLocaleString('id-ID')} <span className="text-[10px] text-emerald-400">ton</span></>,
+        sub: `${lokasi}${e.status === 'progres' ? ' · masih progres' : ''}`,
+    };
+}
+
+/** Batas chip supplier yang ditampilkan sekaligus — sisanya tetap lewat datalist/ketik. */
+const MAKS_SARAN_SUPPLIER = 8;
+
 const selectClass = (filled: boolean, ring: string) =>
     `w-full bg-[#101822] border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 ${ring} text-sm font-bold transition-all ${filled ? 'text-white' : 'text-slate-400'}`;
 
@@ -119,10 +142,9 @@ interface TabHandlingProps {
 
     // ── Batubara: rincian loading per pilar + kedatangan ──────────────────────
     /**
-     * Gerbang rollout, BUKAN batas keamanan (RLS proyek ini allow-all dan semua
-     * tulis memang dari browser). Selama kondisi nyata tiap zona masih didata,
-     * hanya admin yang boleh mengisi; operator lain sudah melihat kartunya supaya
-     * tidak kaget saat dibuka.
+     * Semua operator yang login boleh mengisi (sejak 9 Okt 2026 — dulu gerbang
+     * rollout khusus admin). BUKAN batas keamanan: RLS proyek ini allow-all dan
+     * semua tulis memang dari browser.
      */
     canEditCoal?: boolean;
     /** Tanggal laporan — jadi default "tanggal masuk" kedatangan. */
@@ -265,6 +287,8 @@ export default function TabHandling({
     const totalDiketik = Number(espValues.loading);
     const adaTotal = Number.isFinite(totalDiketik) && totalDiketik > 0;
     const shovelPerPilar = adaTotal && coalZonas.length > 0 ? totalDiketik / coalZonas.length : 0;
+    // Aturan yang sama dengan gate kelengkapan tab Handling di app/input-laporan/page.tsx.
+    const pilarKurang = adaTotal && coalZonas.length === 0;
 
     const toggleZona = (zona: string) => onCoalZonasChange?.(
         coalZonas.includes(zona) ? coalZonas.filter(z => z !== zona) : [...coalZonas, zona],
@@ -304,11 +328,22 @@ export default function TabHandling({
         setLanjutanDari(null);
     };
 
+    // Tonase wajib, KECUALI lanjutan yang ditandai selesai: itu baris penutup dan boleh
+    // tanpa tonase tambahan. Pengiriman baru tanpa tonase tidak ada artinya.
+    const tonaseBolehKosong = !!lanjutanDari && arrivalForm?.status === 'selesai';
+    const arrivalValid = !!arrivalForm?.supplier && !!arrivalForm.zona
+        && ((arrivalForm.ton ?? 0) > 0 || tonaseBolehKosong);
+
     const saveArrival = () => {
-        if (!arrivalForm?.supplier || !arrivalForm.zona || !arrivalForm.ton) return;
-        onCoalArrivalEntriesChange?.([...coalArrivalEntries, arrivalForm]);
+        if (!arrivalForm || !arrivalValid) return;
+        onCoalArrivalEntriesChange?.([...coalArrivalEntries, { ...arrivalForm, ton: arrivalForm.ton ?? 0 }]);
         closeArrivalModal();
     };
+
+    const cariSupplier = (arrivalForm?.supplier ?? '').trim().toLowerCase();
+    const saranSupplier = daftarSupplier
+        .filter(s => s.toLowerCase().includes(cariSupplier))
+        .slice(0, MAKS_SARAN_SUPPLIER);
 
     const removeArrival = (row: { id?: string; key: string }) => {
         if (row.id) return onDeleteSavedCoalArrival?.(row.id);
@@ -344,13 +379,14 @@ export default function TabHandling({
                             </select>
                         </div>
 
-                        {/* Diambil dari pilar mana — tambahan opsional. Tiga field di atas
-                            tidak berubah sama sekali: itu yang dibaca Sheets, /logbook, dan
-                            gate kelengkapan tab. Pilihan di bawah ini hanya dibaca
-                            /coal-storage, dan operator cukup menunjuk pilarnya: jumlah
-                            shovel per pilar adalah Total Loading dibagi rata. */}
+                        {/* Diambil dari pilar mana. Tiga field di atas tidak berubah sama
+                            sekali: itu yang dibaca Sheets dan /logbook. Pilihan di bawah ini
+                            hanya dibaca /coal-storage, dan operator cukup menunjuk pilarnya:
+                            jumlah shovel per pilar adalah Total Loading dibagi rata. WAJIB
+                            begitu Total Loading > 0 (gate kelengkapan tab di page.tsx) —
+                            tanpa pilar, stok di denah tidak pernah berkurang. */}
                         <div>
-                            <SectionLabel label="Diambil dari pilar" badge="coming soon" />
+                            <SectionLabel label="Diambil dari pilar" />
                             <div className="flex flex-wrap gap-1.5">
                                 {ZONA_OPTIONS.map(z => {
                                     const aktif = coalZonas.includes(z.value);
@@ -375,9 +411,9 @@ export default function TabHandling({
                             </div>
 
                             {canEditCoal && (
-                                <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                                <p className={`text-[10px] mt-2 leading-relaxed ${pilarKurang ? 'text-red-400 font-bold' : 'text-slate-500'}`}>
                                     {coalZonas.length === 0
-                                        ? 'Belum ada pilar dipilih.'
+                                        ? (pilarKurang ? 'Wajib: pilih minimal satu pilar asal loading.' : 'Belum ada pilar dipilih.')
                                         : !adaTotal
                                             ? `${coalZonas.length} pilar dipilih — isi Total Loading dulu untuk melihat pembagiannya.`
                                             : <>
@@ -445,11 +481,8 @@ export default function TabHandling({
                         </button>
                     </Card>
 
-                    {/* Kedatangan Batubara — kartu baru, opsional */}
-                    <Card
-                        title="Kedatangan Batubara" icon="dock" color="emerald"
-                        headerRight={<span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-300 font-medium">coming soon</span>}
-                    >
+                    {/* Kedatangan Batubara — opsional, hanya diisi bila ada kedatangan */}
+                    <Card title="Kedatangan Batubara" icon="dock" color="emerald">
                         {allArrivals.length > 0 && (
                             <div className="mb-1">
                                 <CoalEntryList
@@ -458,13 +491,11 @@ export default function TabHandling({
                                     rows={[
                                         ...savedCoalArrivalEntries.map((e, i) => ({
                                             key: `saved-${e.id ?? i}`, id: e.id, accent: 'border-emerald-500',
-                                            utama: <>{(e.ton || 0).toLocaleString('id-ID')} <span className="text-[10px] text-emerald-400">ton</span></>,
-                                            sub: `${e.supplier} · ${labelZonaPendek(e.zona)}${e.status === 'progres' ? ' · masih progres' : ''}`,
+                                            ...isiBarisKedatangan(e),
                                         })),
                                         ...coalArrivalEntries.map((e, i) => ({
                                             key: `pending-${i}`, accent: 'border-emerald-500', baru: true,
-                                            utama: <>{(e.ton || 0).toLocaleString('id-ID')} <span className="text-[10px] text-emerald-400">ton</span></>,
-                                            sub: `${e.supplier} · ${labelZonaPendek(e.zona)}${e.status === 'progres' ? ' · masih progres' : ''}`,
+                                            ...isiBarisKedatangan(e),
                                         })),
                                     ]}
                                 />
@@ -582,9 +613,36 @@ export default function TabHandling({
                             <datalist id="coal-supplier-list">
                                 {daftarSupplier.map(s => <option key={s} value={s} />)}
                             </datalist>
+                            {/* Chip nama yang sudah dipakai (dari laporan shift & denah), sebab
+                                <datalist> tidak andal di browser HP. Nama yang konsisten itu
+                                penting: warna & pengelompokan di /coal-storage per nama supplier. */}
+                            {!lanjutanDari && saranSupplier.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {saranSupplier.map(s => {
+                                        const dipilih = s === arrivalForm.supplier;
+                                        return (
+                                            <button
+                                                key={s} type="button" aria-pressed={dipilih}
+                                                onClick={() => setArrivalForm({ ...arrivalForm, supplier: s })}
+                                                className={`px-2.5 py-1 rounded-full border text-[10px] font-bold transition-colors cursor-pointer
+                                                    ${dipilih
+                                                        ? 'border-emerald-500 bg-emerald-500/25 text-emerald-200'
+                                                        : 'border-slate-700/80 bg-[#101822] text-slate-400 hover:border-emerald-500/50 hover:text-emerald-300'}`}
+                                            >
+                                                {s}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
-                        <InputField label="Tonase" unit="ton" color="emerald" name="coal_ton" value={arrivalForm.ton} thousands
+                        <InputField label={tonaseBolehKosong ? 'Tonase (boleh kosong)' : 'Tonase'} unit="ton" color="emerald" name="coal_ton" value={arrivalForm.ton} thousands
                             onChange={(_, v) => setArrivalForm({ ...arrivalForm, ton: typeof v === 'string' ? parseFloat(v) || null : v as number | null })} />
+                        {tonaseBolehKosong && !arrivalForm.ton && (
+                            <p className="-mt-1 text-[10px] text-slate-400 leading-relaxed">
+                                Tanpa tonase = sekadar menandai pengiriman ini sudah selesai; tumpukan di denah tidak berubah.
+                            </p>
+                        )}
                         <div className="space-y-1.5 w-full">
                             <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Ditaruh di pilar</label>
                             <select value={arrivalForm.zona} disabled={!!lanjutanDari}
@@ -614,7 +672,7 @@ export default function TabHandling({
                                 <option value="selesai" className="text-white bg-[#101822] font-bold">Selesai</option>
                             </select>
                         </div>
-                        <button type="button" onClick={saveArrival} disabled={!arrivalForm.supplier || !arrivalForm.zona || !arrivalForm.ton}
+                        <button type="button" onClick={saveArrival} disabled={!arrivalValid}
                             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm transition-colors mt-1">
                             <span className="material-symbols-outlined text-[18px]">save</span>
                             Simpan

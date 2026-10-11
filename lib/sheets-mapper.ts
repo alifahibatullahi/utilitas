@@ -8,6 +8,7 @@
  */
 
 import { toIndonesianDate, fromIndonesianDate } from './google-sheets';
+import { kurangiTotalizer } from './totalizer-riset';
 
 // ─── Column index constants (mirrors import-csv.ts COL) ───────────────────────
 
@@ -141,13 +142,16 @@ export interface ShiftReportForSheets {
 
 export interface PrevBoilerTotalizer {
     totalizer_steam?: number | null;
+    /** Nilai akhir sebelum riset meter steam boiler ini, kalau riset di shift ini. */
+    nilai_akhir_riset?: number | null;
 }
 
-/** Hitung selisih totalizer. Jika prev null/0, kembalikan null (tidak ditulis ke sheet). */
-function diffTotalizer(current: number | null | undefined, prev: number | null | undefined): number | null {
+/** Hitung selisih totalizer. Jika prev null/0, kembalikan null (tidak ditulis ke sheet).
+ *  Meter riset: (nilai akhir sebelum riset − prev) + current (lib/totalizer-riset.ts). */
+function diffTotalizer(current: number | null | undefined, prev: number | null | undefined, nilaiAkhirRiset?: number | null): number | null {
     if (current == null) return null;
     if (prev == null || prev === 0) return null;
-    const d = current - prev;
+    const d = kurangiTotalizer(Number(current), Number(prev), nilaiAkhirRiset != null && Number(nilaiAkhirRiset) > 0 ? Number(nilaiAkhirRiset) : null);
     return d >= 0 ? d : null;
 }
 
@@ -295,7 +299,7 @@ export function shiftReportToRow(
     row[COL.boiler_temp_steam_a] = nSd(bA.temp_steam, isBoilerAShutdown);
     row[COL.boiler_flow_steam_a] = nSd(bA.flow_steam, isBoilerAShutdown);
     // Produksi (selisih totalizer) saat shutdown = 0 (meter tak bergerak) → tulis 0.
-    row[COL.boiler_totalizer_steam_a] = isBoilerAShutdown ? 0 : n(diffTotalizer(bA.totalizer_steam, prev?.boilerA?.totalizer_steam));
+    row[COL.boiler_totalizer_steam_a] = isBoilerAShutdown ? 0 : n(diffTotalizer(bA.totalizer_steam, prev?.boilerA?.totalizer_steam, prev?.boilerA?.nilai_akhir_riset));
     row[COL.boiler_flow_bfw_a] = nSd(bA.flow_bfw, isBoilerAShutdown);
     row[COL.boiler_temp_furnace_a] = nSd(bA.temp_furnace, isBoilerAShutdown);
     row[COL.boiler_temp_flue_gas_a] = nSd(bA.temp_flue_gas, isBoilerAShutdown);
@@ -309,7 +313,7 @@ export function shiftReportToRow(
     row[COL.boiler_press_steam_b] = nSd(bB.press_steam, isBoilerBShutdown);
     row[COL.boiler_temp_steam_b] = nSd(bB.temp_steam, isBoilerBShutdown);
     row[COL.boiler_flow_steam_b] = nSd(bB.flow_steam, isBoilerBShutdown);
-    row[COL.boiler_totalizer_steam_b] = isBoilerBShutdown ? 0 : n(diffTotalizer(bB.totalizer_steam, prev?.boilerB?.totalizer_steam));
+    row[COL.boiler_totalizer_steam_b] = isBoilerBShutdown ? 0 : n(diffTotalizer(bB.totalizer_steam, prev?.boilerB?.totalizer_steam, prev?.boilerB?.nilai_akhir_riset));
     row[COL.boiler_flow_bfw_b] = nSd(bB.flow_bfw, isBoilerBShutdown);
     // Temp BFW kolom bersama (BV): saat B shutdown nilai B = 0, jangan paksa 0 kalau
     // A masih running (fallback ke A). Hanya tulis 0 kalau KEDUA boiler shutdown.

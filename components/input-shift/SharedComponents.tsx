@@ -1,6 +1,8 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useRisetContext } from './TotalizerRiset';
+import { kurangiTotalizer, pilihSaran } from '@/lib/totalizer-riset';
 
 export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands, plainInteger }: {
     label?: string;
@@ -247,27 +249,118 @@ export const SectionLabel = ({ label, badge }: { label: string; badge?: string }
     </div>
 );
 
-export const SelisihInfo = ({ prev, current, plain }: { prev: number; current: number; plain?: boolean }) => {
+/**
+ * Prev + selisih di bawah isian totalizer. Dengan `meter` (kunci di lib/totalizer-riset.ts)
+ * dan berada di dalam RisetProvider, sekaligus menangani RISET (meter kembali ke 0):
+ *  - angka turun (0 < cur < prev) → tanya "Totalizer riset?"; kalau riset meter ini sudah
+ *    tercatat di laporan seri lain (shift ↔ harian), langsung dipakai otomatis;
+ *  - riset ditandai → isian nilai akhir sebelum riset + rumus (akhir − prev) + cur;
+ *  - selain itu tautan kecil "Riset?" untuk menandai manual (mis. pembacaan pasca-riset 0).
+ * Tanpa `meter`/provider tampil persis seperti dulu.
+ */
+export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; current: number; plain?: boolean; meter?: string }) => {
+    const ctx = useRisetContext();
+    const risetOn = !!(meter && ctx && Object.prototype.hasOwnProperty.call(ctx.riset, meter));
+    const nilaiAkhir = risetOn ? ctx!.riset[meter!] : null;
+    const saran = meter && ctx ? pilihSaran(ctx.saran[meter], prev) : null;
+    const turun = prev > 0 && current > 0 && current < prev;
+    const ditolak = !!(meter && ctx?.ditolak.has(meter));
+
+    // Riset sudah dicatat laporan seri lain & angka di sini ikut turun → laporan ini
+    // berada di sisi lain riset yang sama: pakai nilai akhirnya (operator bisa batalkan).
+    useEffect(() => {
+        if (!meter || !ctx || risetOn || !turun || !saran || ditolak) return;
+        ctx.setRiset(meter, saran.nilai);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [meter, risetOn, turun, saran?.nilai, ditolak]);
+
+    if (!(prev > 0)) return null;
+
+    // plain: tanpa pemisah ribuan, biar sama persis dengan angka di kolom isian.
+    const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : plain ? String(v) : v.toLocaleString('id-ID');
+
+    if (risetOn && meter && ctx) {
+        const L = nilaiAkhir != null && nilaiAkhir > 0 ? nilaiAkhir : null;
+        const sel = L != null ? kurangiTotalizer(current, prev, L) : null;
+        const dariSaran = saran && L === saran.nilai ? saran.sumber : null;
+        return (
+            <div className="mt-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 space-y-1.5 text-[10px] text-slate-400">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1 font-bold uppercase tracking-wider text-amber-300">
+                        <span className="material-symbols-outlined text-[14px]">restart_alt</span>
+                        Totalizer riset
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => { ctx.setRiset(meter, undefined); ctx.tolak(meter); }}
+                        className="text-slate-400 hover:text-white underline cursor-pointer"
+                    >
+                        Batal riset
+                    </button>
+                </div>
+                <InputField
+                    label="Nilai akhir sebelum riset"
+                    name={`riset_${meter}`}
+                    value={nilaiAkhir}
+                    onChange={(_, v) => ctx.setRiset(meter, typeof v === 'number' ? v : null)}
+                    placeholder={`≥ ${fmt(prev)}`}
+                    color="amber"
+                    thousands={!plain}
+                    plainInteger={!!plain}
+                />
+                {dariSaran && <p className="text-amber-200/80">Tercatat di {dariSaran}.</p>}
+                <p>Prev: <span className="text-slate-300 font-medium">{fmt(prev)}</span></p>
+                {sel != null ? (
+                    <p>
+                        Selisih: ({fmt(L!)} − {fmt(prev)}) + {fmt(current)} ={' '}
+                        <span className={`font-bold ${sel >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(sel)}</span>
+                    </p>
+                ) : (
+                    <p className="text-amber-300">Isi nilai totalizer terakhir sebelum kembali ke 0.</p>
+                )}
+            </div>
+        );
+    }
+
     // Selisih tampil apa adanya (boleh minus) — anomali justru harus kelihatan.
     // Penjagaannya ada saat simpan lewat checkSelisihNegatif().
     const diff = current - prev;
-    // plain: tanpa pemisah ribuan, biar sama persis dengan angka di kolom isian.
-    const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : plain ? String(v) : v.toLocaleString('id-ID');
-    return prev > 0 ? (
+    return (
         <div className="mt-1.5 text-[10px] text-slate-500 space-y-0.5">
             <p>Prev: <span className="text-slate-400 font-medium">{fmt(prev)}</span></p>
             <p>Selisih: <span className={`font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{diff >= 0 ? '+' : ''}{fmt(diff)}</span></p>
+            {meter && ctx && (turun ? (
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-amber-200">
+                    <span>Lebih kecil dari prev. Totalizer riset?</span>
+                    <button
+                        type="button"
+                        onClick={() => ctx.setRiset(meter, saran?.nilai ?? null)}
+                        className="rounded bg-amber-500/80 px-2 py-0.5 font-bold text-slate-900 hover:bg-amber-400 cursor-pointer"
+                    >
+                        Ya, riset
+                    </button>
+                </div>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => ctx.setRiset(meter, saran?.nilai ?? null)}
+                    className="text-slate-500 hover:text-amber-300 underline decoration-dotted cursor-pointer"
+                >
+                    Riset?
+                </button>
+            ))}
         </div>
-    ) : null;
+    );
 };
 
-export const TotalizerInput = ({ label, name, value, prev, onChange, unit, color }: {
+export const TotalizerInput = ({ label, name, value, prev, onChange, unit, color, meter }: {
     label: string; name: string; value: number | null; prev: number;
     onChange: (n: string, v: number | string | null) => void; unit: string; color: string;
+    meter?: string;
 }) => (
     <div>
         <InputField label={`Totalizer ${label}`} name={name} value={value} onChange={onChange} unit={unit} color={color} />
-        <SelisihInfo prev={prev} current={Number(value) || 0} />
+        <SelisihInfo prev={prev} current={Number(value) || 0} meter={meter} />
     </div>
 );
 

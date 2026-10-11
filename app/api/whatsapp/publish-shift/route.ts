@@ -11,6 +11,7 @@ import {
 } from '@/lib/whatsapp';
 import { htmlToPdf } from '@/lib/pdf';
 import { uploadToR2 } from '@/lib/r2';
+import { kurangiTotalizer, nilaiAkhirRiset } from '@/lib/totalizer-riset';
 import {
     computeBunkerBerasapLines,
     fetchBunkerBerasapSince,
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
     const { data: report, error } = await supabase
         .from('shift_reports')
         .select(`
-            id, date, shift, group_name, supervisor, catatan, station_catatan,
+            id, date, shift, group_name, supervisor, catatan, station_catatan, totalizer_riset,
             shift_turbin (flow_steam, press_steam, temp_steam, vacuum, stream_days, thrust_bearing),
             shift_generator_gi (gen_load, gen_tegangan, gen_frequensi, gi_sum_p),
             shift_boiler (boiler, press_steam, flow_steam, temp_steam, batubara_ton, temp_furnace, temp_flue_gas, totalizer_steam, status_boiler),
@@ -588,24 +589,25 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
 
     // Consumption rate = batubara_ton / produksi steam (selisih totalizer vs shift
     // sebelumnya). null kalau totalizer/prev tidak valid (mis. shift pertama / shutdown).
-    const consumptionRate = (b: { batubara_ton?: number | null; totalizer_steam?: number | null } | undefined, prevTot: number | null): number | null => {
+    // Meter steam yang riset di shift ini: (nilai akhir sebelum riset − prev) + sekarang.
+    const consumptionRate = (b: { batubara_ton?: number | null; totalizer_steam?: number | null } | undefined, prevTot: number | null, meter: string): number | null => {
         const batubara = Number(b?.batubara_ton);
         const now = Number(b?.totalizer_steam);
         const prev = Number(prevTot);
         if (!Number.isFinite(batubara) || !Number.isFinite(now) || !Number.isFinite(prev) || prev <= 0) return null;
-        const produksi = now - prev;
+        const produksi = kurangiTotalizer(now, prev, nilaiAkhirRiset(report.totalizer_riset, meter));
         return produksi > 0 ? batubara / produksi : null;
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const toBoilerSummary = (b: any | undefined, prevTot: number | null): BoilerSummary | null => b ? {
+    const toBoilerSummary = (b: any | undefined, prevTot: number | null, meter: string): BoilerSummary | null => b ? {
         flow: b.flow_steam ?? null,
         pressSteam: b.press_steam ?? null,
         tempSteam: b.temp_steam ?? null,
         tempFurnace: b.temp_furnace ?? null,
         tempFlueGas: b.temp_flue_gas ?? null,
         batubara: b.batubara_ton ?? null,
-        consumptionRate: consumptionRate(b, prevTot),
+        consumptionRate: consumptionRate(b, prevTot, meter),
         status: b.status_boiler ?? null,
     } : null;
 
@@ -619,8 +621,8 @@ function buildShiftReviewSummary(report: any, maintenance: any[], critical: any[
             foremanBoiler: personnel?.boiler_karu ?? null,
             foremanTurbin: personnel?.turbin_karu ?? null,
         },
-        boilerA: toBoilerSummary(boilerA, prevTotalizer.A),
-        boilerB: toBoilerSummary(boilerB, prevTotalizer.B),
+        boilerA: toBoilerSummary(boilerA, prevTotalizer.A, 'steam_a'),
+        boilerB: toBoilerSummary(boilerB, prevTotalizer.B, 'steam_b'),
         turbin: turbin ? {
             flowSteam: turbin.flow_steam ?? null,
             pressSteam: turbin.press_steam ?? null,

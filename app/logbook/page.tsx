@@ -6,6 +6,7 @@ import { useOperator } from '@/hooks/useOperator';
 import { useDailyReport } from '@/hooks/useDailyReport';
 import { createClient } from '@/lib/supabase/client';
 import { todayWIB } from '@/lib/utils';
+import { kurangiTotalizer, nilaiAkhirRiset } from '@/lib/totalizer-riset';
 import LogbookSheet, { type LogbookData, type BoilerCol, type BottomCol, type ChemCol, type TurbinCol, type GenCol } from '@/components/logbook/LogbookSheet';
 import './logbook.css';
 
@@ -17,7 +18,7 @@ const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padSta
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
 
-const SHIFT_SELECT = `date, shift,
+const SHIFT_SELECT = `date, shift, totalizer_riset,
     shift_boiler(boiler, press_steam, temp_steam, flow_steam, totalizer_steam, flow_bfw, temp_bfw, totalizer_bfw, bfw_press, temp_furnace, temp_flue_gas, air_heater_ti113, o2, batubara_ton, steam_drum_press, primary_air, secondary_air, feeder_a_flow, feeder_b_flow, feeder_c_flow, feeder_d_flow, feeder_e_flow, feeder_f_flow),
     shift_coal_bunker(feeder_a, feeder_b, feeder_c, feeder_d, feeder_e, feeder_f, bunker_a, bunker_b, bunker_c, bunker_d, bunker_e, bunker_f),
     shift_esp_handling(esp_a1, esp_a2, esp_a3, esp_b1, esp_b2, esp_b3, silo_a, silo_b, unloading_a, unloading_b, loading, hopper, conveyor),
@@ -28,8 +29,11 @@ const SHIFT_SELECT = `date, shift,
     shift_power_dist(power_ubb, power_ubb_totalizer, power_pabrik2, power_pabrik2_totalizer, power_pabrik3a, power_pabrik3a_totalizer, power_revamping, power_revamping_totalizer, power_pie, power_pie_totalizer, power_stg_ubb_totalizer),
     shift_water_quality(phosphate_level_tanki, phosphate_stroke_pompa, phosphate_penambahan_air, phosphate_penambahan_chemical, phosphate_b_level_tanki, phosphate_b_stroke_pompa, phosphate_b_penambahan_air, phosphate_b_penambahan_chemical, amine_level_tanki, amine_stroke_pompa, amine_penambahan_air, amine_penambahan_chemical, hydrazine_level_tanki, hydrazine_stroke_pompa, hydrazine_penambahan_air, hydrazine_penambahan_chemical, stock_phosphate, stock_amine, stock_hydrazine)`;
 
-function delta(cur: number | null | undefined, prev: number | null | undefined): number | null {
-    return (cur != null && prev != null) ? cur - prev : null;
+/** Selisih raw totalizer. `riset` = JSONB totalizer_riset laporan `cur` + kunci meternya
+ *  (lib/totalizer-riset.ts): meter yang riset → (nilai akhir sebelum riset − prev) + cur. */
+function delta(cur: number | null | undefined, prev: number | null | undefined, riset?: unknown, meter?: string): number | null {
+    if (cur == null || prev == null) return null;
+    return kurangiTotalizer(Number(cur), Number(prev), meter ? nilaiAkhirRiset(riset, meter) : undefined);
 }
 function boilerOf(row: Row, L: 'A' | 'B') {
     return row?.shift_boiler?.find((b: Row) => b.boiler === L) ?? null;
@@ -180,16 +184,18 @@ export default function LogbookPage() {
             const cb = first(row?.shift_coal_bunker);
             const pcb = first(prevRow?.shift_coal_bunker);
             const keys = L === 'A' ? ['a', 'b', 'c'] : ['d', 'e', 'f'];
+            const rs = row?.totalizer_riset;
+            const low = L.toLowerCase();
             return {
                 steam: [sb?.press_steam ?? null, sb?.temp_steam ?? null],
                 bfw: [sb?.bfw_press ?? null, sb?.temp_bfw ?? null],
                 furn: [sb?.temp_furnace ?? null, sb?.temp_flue_gas ?? null],
                 hotair: [sb?.air_heater_ti113 ?? null, sb?.o2 ?? null],
-                totSteam: { fq: sb?.totalizer_steam ?? null, ton: delta(sb?.totalizer_steam, psb?.totalizer_steam), flow: sb?.flow_steam ?? null },
-                totBfw: { fq: sb?.totalizer_bfw ?? null, ton: delta(sb?.totalizer_bfw, psb?.totalizer_bfw), flow: sb?.flow_bfw ?? null },
+                totSteam: { fq: sb?.totalizer_steam ?? null, ton: delta(sb?.totalizer_steam, psb?.totalizer_steam, rs, `steam_${low}`), flow: sb?.flow_steam ?? null },
+                totBfw: { fq: sb?.totalizer_bfw ?? null, ton: delta(sb?.totalizer_bfw, psb?.totalizer_bfw, rs, `bfw_${low}`), flow: sb?.flow_bfw ?? null },
                 feeders: keys.map((k) => ({
                     fq: cb?.[`feeder_${k}`] ?? null,
-                    ton: delta(cb?.[`feeder_${k}`], pcb?.[`feeder_${k}`]),
+                    ton: delta(cb?.[`feeder_${k}`], pcb?.[`feeder_${k}`], rs, `feeder_${k}`),
                     flow: sb?.[`feeder_${k}_flow`] ?? null,
                 })),
                 totalBatubara: sb?.batubara_ton ?? null,
@@ -217,7 +223,7 @@ export default function LogbookPage() {
                 },
                 // Total BFW 24h per-boiler = totaliser hari ini − kemarin (mirror produksi BFW
                 // di form harian; jumlah A+B = bfw_total). prevReport sudah di-fetch hook → no extra query.
-                totBfw: { fq: dTank?.[`bfw_boiler_${low}`] ?? null, ton: delta(dTank?.[`bfw_boiler_${low}`], dTankPrev?.[`bfw_boiler_${low}`]), flow: dTank?.[`flow_bfw_${low}`] ?? null },
+                totBfw: { fq: dTank?.[`bfw_boiler_${low}`] ?? null, ton: delta(dTank?.[`bfw_boiler_${low}`], dTankPrev?.[`bfw_boiler_${low}`], daily?.totalizer_riset, `bfw_${low}`), flow: dTank?.[`flow_bfw_${low}`] ?? null },
                 feeders: keys.map((k) => ({
                     fq: dCoal?.[`coal_${k}_24`] ?? null,
                     ton: dCoal?.[`selisih_coal_${k}`] ?? null,
@@ -306,16 +312,17 @@ export default function LogbookPage() {
             const pt = first(prevRow?.shift_turbin);
             const sd = first(row?.shift_steam_dist);
             const psd = first(prevRow?.shift_steam_dist);
+            const rs = row?.totalizer_riset;
             return {
-                steamTurbin: { fq: t?.totalizer_steam_inlet ?? null, ton: delta(t?.totalizer_steam_inlet, pt?.totalizer_steam_inlet), flow: t?.flow_steam ?? null },
-                mpsPb1: { fq: sd?.pabrik1_totalizer ?? null, ton: delta(sd?.pabrik1_totalizer, psd?.pabrik1_totalizer), flow: sd?.pabrik1_flow ?? null },
-                lpsPb2: { fq: sd?.pabrik2_totalizer ?? null, ton: delta(sd?.pabrik2_totalizer, psd?.pabrik2_totalizer), flow: sd?.pabrik2_flow ?? null },
+                steamTurbin: { fq: t?.totalizer_steam_inlet ?? null, ton: delta(t?.totalizer_steam_inlet, pt?.totalizer_steam_inlet, rs, 'turbin_inlet'), flow: t?.flow_steam ?? null },
+                mpsPb1: { fq: sd?.pabrik1_totalizer ?? null, ton: delta(sd?.pabrik1_totalizer, psd?.pabrik1_totalizer, rs, 'steam_pabrik1'), flow: sd?.pabrik1_flow ?? null },
+                lpsPb2: { fq: sd?.pabrik2_totalizer ?? null, ton: delta(sd?.pabrik2_totalizer, psd?.pabrik2_totalizer, rs, 'steam_pabrik2'), flow: sd?.pabrik2_flow ?? null },
                 // "Pabrik 3" di tab Distribusi Steam = pabrik3a → dipetakan ke MPS ke PB-3.
                 // LPS ke PB-3 tidak punya sumber shift (hanya ada di harian) → kosong.
                 lpsPb3: { fq: null, ton: null, flow: null },
-                mpsPb3: { fq: sd?.pabrik3a_totalizer ?? null, ton: delta(sd?.pabrik3a_totalizer, psd?.pabrik3a_totalizer), flow: sd?.pabrik3a_flow ?? null },
+                mpsPb3: { fq: sd?.pabrik3a_totalizer ?? null, ton: delta(sd?.pabrik3a_totalizer, psd?.pabrik3a_totalizer, rs, 'steam_pabrik3a'), flow: sd?.pabrik3a_flow ?? null },
                 mpsRevamp: { fq: null, ton: null, flow: null },
-                steamCond: { fq: t?.totalizer_condensate ?? null, ton: delta(t?.totalizer_condensate, pt?.totalizer_condensate), flow: t?.flow_cond ?? null },
+                steamCond: { fq: t?.totalizer_condensate ?? null, ton: delta(t?.totalizer_condensate, pt?.totalizer_condensate, rs, 'turbin_kondensat'), flow: t?.flow_cond ?? null },
                 hpo: t?.hpo_durasi ?? null,
             };
         };
@@ -341,9 +348,10 @@ export default function LogbookPage() {
             const g = first(row?.shift_generator_gi);
             const pd = first(row?.shift_power_dist);
             const ppd = first(prevRow?.shift_power_dist);
+            const rs = row?.totalizer_riset;
             const distTot = (k: string, mwKey: string) => ({
                 fq: pd?.[`power_${k}_totalizer`] ?? null,
-                ton: delta(pd?.[`power_${k}_totalizer`], ppd?.[`power_${k}_totalizer`]),
+                ton: delta(pd?.[`power_${k}_totalizer`], ppd?.[`power_${k}_totalizer`], rs, `power_${k}`),
                 flow: pd?.[mwKey] ?? null,
             });
             return {
@@ -354,7 +362,7 @@ export default function LogbookPage() {
                 pja: { fq: null, ton: null, flow: null },
                 revamping: distTot('revamping', 'power_revamping'),
                 piu: distTot('pie', 'power_pie'),
-                genOut: { fq: pd?.power_stg_ubb_totalizer ?? null, ton: delta(pd?.power_stg_ubb_totalizer, ppd?.power_stg_ubb_totalizer), flow: g?.gen_load ?? null },
+                genOut: { fq: pd?.power_stg_ubb_totalizer ?? null, ton: delta(pd?.power_stg_ubb_totalizer, ppd?.power_stg_ubb_totalizer, rs, 'power_stg_ubb'), flow: g?.gen_load ?? null },
                 current: g?.gen_ampere ?? null,
                 voltage: g?.gen_tegangan ?? null,
                 q: g?.gen_amp_react ?? null,

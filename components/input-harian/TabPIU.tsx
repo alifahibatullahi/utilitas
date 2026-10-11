@@ -32,6 +32,7 @@ export default function TabPIU({
                                 prev={Number(ptm?.totalizer_import) || 0}
                                 current={Number(tm.totalizer_import) || 0}
                                 plain
+                                meter="piu_import"
                             />
                         )}
                     </div>
@@ -51,6 +52,7 @@ export default function TabPIU({
                                 prev={Number(ptm?.totalizer_export) || 0}
                                 current={Number(tm.totalizer_export) || 0}
                                 plain
+                                meter="piu_export"
                             />
                         )}
                     </div>

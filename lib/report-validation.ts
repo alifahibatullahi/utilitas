@@ -10,6 +10,7 @@
  */
 
 import { BASELINE_HARI } from './konsumsi-baseline';
+import { kurangiTotalizer } from './totalizer-riset';
 
 export const CR_MIN = 0.15;
 export const CR_MAX = 0.25;
@@ -57,24 +58,32 @@ export function checkMaxMW(label: string, value: number | string | null | undefi
 }
 
 /**
- * Cek totalizer kumulatif tidak turun. Totalizer hanya bergerak naik, jadi nilai hari ini
- * yang lebih kecil dari kemarin selalu anomali — meter reset, salah ketik, atau angka
- * kemarin yang keliru. Selisihnya sengaja TIDAK diklamp di mana pun; operator yang
- * memutuskan mau memperbaiki isian atau tetap menyimpan.
- * Null = wajar, kosong, atau belum ada pembanding kemarin (sama dengan sel()/selD()
+ * Cek totalizer kumulatif tidak turun. Totalizer hanya bergerak naik, jadi nilai sekarang
+ * yang lebih kecil dari sebelumnya berarti meter RISET (kembali ke 0), salah ketik, atau
+ * angka sebelumnya yang keliru. Riset ditandai operator di bawah isian totalizer — kalau
+ * ditandai (`nilaiAkhirRiset` ada), yang dicek ganti: nilai akhir sebelum riset tidak boleh
+ * di bawah pembacaan sebelumnya.
+ * Null = wajar, kosong, atau belum ada pembanding sebelumnya (sama dengan sel()/selD()
  * yang memperlakukan prev 0 sebagai "tidak ada data kemarin").
  */
 export function checkSelisihNegatif(
     label: string,
     today: number | string | null | undefined,
     yesterday: number | string | null | undefined,
+    nilaiAkhirRiset?: number | null,
 ): string | null {
-    if (today == null || today === '' || yesterday == null || yesterday === '') return null;
-    const t = Number(today);
+    if (yesterday == null || yesterday === '') return null;
     const y = Number(yesterday);
-    if (!isFinite(t) || !isFinite(y) || y <= 0) return null;
-    if (t >= y) return null;
-    return `${label} = ${t} lebih kecil dari kemarin (${y}) — selisih ${t - y}. Totalizer seharusnya tidak turun.`;
+    if (!isFinite(y) || y <= 0) return null;
+    if (nilaiAkhirRiset != null) {
+        if (nilaiAkhirRiset >= y) return null;
+        return `${label}: nilai akhir sebelum riset (${nilaiAkhirRiset}) lebih kecil dari pembacaan sebelumnya (${y}). Periksa lagi nilai akhirnya.`;
+    }
+    if (today == null || today === '') return null;
+    const t = Number(today);
+    if (!isFinite(t) || t >= y) return null;
+    return `${label} = ${t} lebih kecil dari sebelumnya (${y}) — selisih ${t - y}. `
+        + `Kalau totalizer riset, tekan "Riset?" di bawah isian lalu isi nilai akhir sebelum riset.`;
 }
 
 /**
@@ -96,12 +105,13 @@ export function checkSelisihTidakWajar(
     today: number | string | null | undefined,
     yesterday: number | string | null | undefined,
     baseline: { med: number; max: number; n: number } | undefined,
+    nilaiAkhirRiset?: number | null,
 ): string | null {
     if (today == null || today === '' || yesterday == null || yesterday === '') return null;
     const t = Number(today);
     const y = Number(yesterday);
     if (!isFinite(t) || !isFinite(y) || y <= 0) return null;
-    const selisih = t - y;
+    const selisih = kurangiTotalizer(t, y, nilaiAkhirRiset);
     if (selisih <= 0) return null;
     if (!baseline || baseline.n < SELISIH_MIN_SAMPEL) return null;
     // max <= 0 berarti parameter ini menganggur sepanjang jendela — tak ada yang bisa

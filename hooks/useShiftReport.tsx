@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, ReportStatus } from '@/lib/supabase/types';
 import type { OperatorStation } from '@/lib/constants';
+import { METER_BY_KEY, type RisetMap, type RisetPatch } from '@/lib/totalizer-riset';
 
 // Determine the previous shift based on chronological report order:
 // 06.00 (malam) → prev is sore (22.00) from yesterday
@@ -413,6 +414,8 @@ export interface ShiftReportData {
     /** Catatan operasional per-station (panel_boiler/turbin), key = station id.
      *  Digabung dgn catatan utama jadi satu catatan shift saat publish. */
     station_catatan: Record<string, string> | null;
+    /** Penanda riset totalizer per meter (lib/totalizer-riset.ts). */
+    totalizer_riset?: RisetMap | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
     created_by: string;
@@ -856,9 +859,14 @@ export function useShiftReport(
         personnel?: Record<string, string | null>;
         coalBunker?: Record<string, number | string | null>;
         waterQuality?: Record<string, number | null>;
-        /** Prev boiler totalizer steam untuk menghitung selisih di Google Sheets */
-        prevBoilerA?: { totalizer_steam?: number | null };
-        prevBoilerB?: { totalizer_steam?: number | null };
+        /** Prev boiler totalizer steam untuk menghitung selisih di Google Sheets
+         *  (+ nilai akhir riset meter steam boiler itu, kalau riset di shift ini). */
+        prevBoilerA?: { totalizer_steam?: number | null; nilai_akhir_riset?: number | null };
+        prevBoilerB?: { totalizer_steam?: number | null; nilai_akhir_riset?: number | null };
+        /** Penanda riset totalizer yang DISENTUH operator (entry = set, null = hapus).
+         *  Di-merge per kunci ke shift_reports.totalizer_riset via RPC; difilter ke meter
+         *  yang kolom raw-nya boleh ditulis station ini (lib/totalizer-riset.ts). */
+        totalizer_riset_patch?: RisetPatch;
         /** Per-station filler — kalau diisi, di-merge ke station_fillers JSONB tanpa
          *  overwrite station lain. Dipakai saat operator submit dari station view. */
         station_filler?: { station: string; name: string };
@@ -1084,6 +1092,36 @@ export function useShiftReport(
 
         const reportId = (sr as Record<string, unknown>).id as string;
         console.log('[submitReport] reportId:', reportId);
+
+        // ─── Penanda riset totalizer (atomic JSONB merge per meter via RPC) ───
+        // Station hanya boleh menandai meter yang kolom raw-nya boleh ia tulis — aturan
+        // kepemilikan yang sama dengan tulis child table di bawah (tabel, baris boiler,
+        // kolom partial). Gagal = error terlihat: selisih tersimpan memakai riset, jadi
+        // penandanya wajib ikut tersimpan.
+        if (reportData.totalizer_riset_patch) {
+            const allowedBoilersRiset: ('A' | 'B')[] = isStationScoped
+                ? (STATION_OWNS_BOILER_ROW[stationKey!] ?? ['A', 'B'])
+                : ['A', 'B'];
+            const patch: RisetPatch = {};
+            for (const [k, v] of Object.entries(reportData.totalizer_riset_patch)) {
+                const lok = METER_BY_KEY[k]?.shift;
+                if (!lok || !canWriteTable(lok.tabel)) continue;
+                if (lok.boiler && !allowedBoilersRiset.includes(lok.boiler)) continue;
+                const partial = getPartialCols(lok.tabel);
+                if (partial && !partial.includes(lok.kolom)) continue;
+                patch[k] = v;
+            }
+            if (Object.keys(patch).length > 0) {
+                const { error: rpcErr } = await supabase.rpc('merge_shift_totalizer_riset', {
+                    p_report_id: reportId,
+                    p_patch: patch,
+                });
+                if (rpcErr) {
+                    console.error('[submitReport] merge_shift_totalizer_riset RPC failed:', rpcErr.message);
+                    errors.push(`riset totalizer: ${rpcErr.message}`);
+                }
+            }
+        }
 
         // Helper: save child table (MERGE — update kolom yang dikirim saja).
         // PENTING: jangan DELETE+INSERT. Field yang tidak ada di payload (undefined →

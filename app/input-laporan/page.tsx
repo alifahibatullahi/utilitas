@@ -23,8 +23,13 @@ import StationPickerModal, { type StationSetupSelection } from '@/components/ui/
 import PersonnelConfirmModal, { type PersonnelConfirmField } from '@/components/ui/PersonnelConfirmModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { nowWIB, todayWIB } from '@/lib/utils';
-import { checkConsumptionRate, checkMaxMW } from '@/lib/report-validation';
+import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
+import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
+import {
+    jendelaHarianUntukShift, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
+    saranDariBaris, susunPatchRiset, type MeterTotalizer, type RisetState, type SaranMap,
+} from '@/lib/totalizer-riset';
 import { getGroupForShift, getGroupShiftOnDate, isForemanCandidate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, detectDefaultReport, type OperatorStation } from '@/lib/constants';
 
 // Baris DB batubara → bentuk yang dipakai form. Dipakai di dua tempat (muat awal &
@@ -770,6 +775,33 @@ function InputShiftPageInner() {
 
     useEffect(() => { userModifiedRef.current = userModified; }, [userModified]);
 
+    // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
+    // riset: kunci ada = ditandai (null = nilai akhir belum diisi). Hanya kunci yang
+    // DISENTUH operator yang dikirim saat simpan (anti-wipe); kunci lain cukup termuat
+    // dari DB untuk hitungan. Saran = riset yang sudah tercatat di laporan harian yang
+    // jendelanya beririsan dengan shift ini — dipakai otomatis kalau angkanya ikut turun.
+    const [riset, setRisetState] = useState<RisetState>({});
+    const risetDisentuhRef = useRef<Set<string>>(new Set());
+    const [risetDitolak, setRisetDitolak] = useState<Set<string>>(() => new Set());
+    const [saranRiset, setSaranRiset] = useState<SaranMap>({});
+    const setRiset = useCallback((meter: string, nilai: number | null | undefined) => {
+        risetDisentuhRef.current.add(meter);
+        setRisetState(prev => {
+            const next = { ...prev };
+            if (nilai === undefined) delete next[meter];
+            else next[meter] = nilai;
+            return next;
+        });
+        setUserModified(true);
+    }, []);
+    const risetCtx = useMemo<RisetContextValue>(() => ({
+        riset,
+        setRiset,
+        saran: saranRiset,
+        ditolak: risetDitolak,
+        tolak: (meter: string) => setRisetDitolak(prev => new Set(prev).add(meter)),
+    }), [riset, setRiset, saranRiset, risetDitolak]);
+
     // Patch history.pushState once to intercept SPA navigation
     useEffect(() => {
         const originalPushState = history.pushState.bind(history);
@@ -889,7 +921,31 @@ function InputShiftPageInner() {
         setForemanTurbin('');
         setCatatan('');
         autoInjectedRef.current = new Set();
+        setRisetState({});
+        risetDisentuhRef.current = new Set();
+        setRisetDitolak(new Set());
     }, [selectedShift, selectedDate]);
+
+    // Saran riset dari laporan harian yang jendelanya beririsan dengan shift ini
+    // (malam D → harian D−1 & D; pagi/sore D → harian D). Hanya form penuh & station
+    // panel yang memegang totalizer.
+    useEffect(() => {
+        if (shiftGate || (station && !isPanelStation)) { setSaranRiset({}); return; }
+        let stale = false;
+        const tanggal = jendelaHarianUntukShift(selectedDate, shiftMap[selectedShift]);
+        createClient()
+            .from('daily_reports')
+            .select('date, totalizer_riset')
+            .in('date', tanggal)
+            .order('date', { ascending: true })
+            .then(({ data }) => {
+                if (stale) return;
+                const rows = (data ?? []) as { date: string; totalizer_riset: unknown }[];
+                setSaranRiset(saranDariBaris(rows.map(r => ({ seri: 'harian' as const, date: r.date, riset: r.totalizer_riset }))));
+            });
+        return () => { stale = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDate, selectedShift, shiftGate, station, isPanelStation]);
 
     // Default supervisor = supervisor grup yang bertugas. DIDEKLARASI SETELAH clear-effect
     // supaya urutan efek benar: clear kosongkan supervisor dulu, baru fill isi default.
@@ -988,6 +1044,18 @@ function InputShiftPageInner() {
             mergeSet(setWaterQuality, wqFields);
             mergeSet(setChemicalDosing, cdFields);
         }
+
+        // Penanda riset dari DB; kunci yang sudah disentuh operator menang (pola merge
+        // yang sama dengan field lain).
+        const dbRiset = risetStateDariDb(report.totalizer_riset);
+        setRisetState(prev => {
+            const next: RisetState = { ...dbRiset };
+            for (const k of risetDisentuhRef.current) {
+                if (k in prev) next[k] = prev[k];
+                else delete next[k];
+            }
+            return next;
+        });
     }, [report]);
 
     // Tandai halaman siap setelah fetch pertama selesai
@@ -1203,23 +1271,59 @@ function InputShiftPageInner() {
         // Foreman TIDAK divalidasi wajib di sini — kewajibannya di-enforce lewat
         // pop-up konfirmasi personel (field required, tombol Simpan disabled sampai terisi).
 
+        // Validasi HANYA untuk tab milik scope aktif (form penuh = semua tab;
+        // station = tab station tsb). Tanpa gate ini, simpan dari station panel_turbin
+        // ikut memicu peringatan CR Boiler A/B (tab yang bukan urusannya).
+        const ownsTab = (tabId: TabId) => !station || !!stationShiftTabs?.includes(tabId);
+        // Nilai akhir riset yang siap dihitung per meter (undefined = tidak riset).
+        const rL = (meter: string) => nilaiAkhirDariState(riset, meter);
+        // Raw sekarang & shift sebelumnya untuk satu meter (registri lib/totalizer-riset.ts).
+        const rawShift = (m: MeterTotalizer): { cur: unknown; prev: unknown } => {
+            const l = m.shift!;
+            switch (l.tabel) {
+                case 'shift_boiler': return l.boiler === 'A'
+                    ? { cur: boilerA[l.kolom], prev: prevBoilerA[l.kolom] }
+                    : { cur: boilerB[l.kolom], prev: prevBoilerB[l.kolom] };
+                case 'shift_coal_bunker': return { cur: coalBunker[l.kolom], prev: prevCoalBunker[l.kolom] };
+                case 'shift_turbin': return { cur: turbin[l.kolom], prev: prevTurbin[l.kolom] };
+                case 'shift_steam_dist': return { cur: steamDist[l.kolom], prev: prevSteamDist[l.kolom] };
+                case 'shift_power_dist': return { cur: powerDist[l.kolom], prev: prevPowerDist[l.kolom] };
+                default: return { cur: null, prev: null };
+            }
+        };
+        const meterMilikScope = meterSeri('shift').filter(m => ownsTab(m.shift!.tab as TabId));
+
+        // ─── Riset totalizer ditandai → nilai akhir sebelum riset wajib diisi ───
+        const risetKosong = meterMilikScope.filter(m => m.key in riset && rL(m.key) === undefined);
+        if (risetKosong.length > 0) {
+            setToast({ type: 'error', message: `Isi nilai akhir sebelum riset: ${risetKosong.map(m => m.label).join(', ')}.` });
+            setTimeout(() => setToast(null), 5000);
+            return;
+        }
+
         // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
         // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
-        // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.
+        // nilai berunit MW maksimal 30; totalizer turun tanpa ditandai riset. Dicek
+        // sebelum overlay "Menyimpan" muncul.
         {
-            const dSel = (cur: unknown, prev: unknown) => { const c = Number(cur) || 0, p = Number(prev) || 0; return p > 0 && c > 0 ? Math.max(0, c - p) : 0; };
-            const fSel = (key: string) => dSel(coalBunker[key], prevCoalBunker[key]);
+            const dSel = (cur: unknown, prev: unknown, L?: number) => { const c = Number(cur) || 0, p = Number(prev) || 0; return p > 0 && (c > 0 || L !== undefined) ? Math.max(0, kurangiTotalizer(c, p, L)) : 0; };
+            const fSel = (key: string) => dSel(coalBunker[key], prevCoalBunker[key], rL(key));
             const batubaraA = fSel('feeder_a') + fSel('feeder_b') + fSel('feeder_c');
             const batubaraB = fSel('feeder_d') + fSel('feeder_e') + fSel('feeder_f');
-            const cSel = (cur: unknown, prev: unknown): number | null => { const c = Number(cur) || 0, p = Number(prev) || 0; return p > 0 ? c - p : null; };
-            const ssA = cSel(boilerA.totalizer_steam, prevBoilerA.totalizer_steam);
-            const ssB = cSel(boilerB.totalizer_steam, prevBoilerB.totalizer_steam);
+            const cSel = (cur: unknown, prev: unknown, L?: number): number | null => { const c = Number(cur) || 0, p = Number(prev) || 0; return p > 0 ? kurangiTotalizer(c, p, L) : null; };
+            const ssA = cSel(boilerA.totalizer_steam, prevBoilerA.totalizer_steam, rL('steam_a'));
+            const ssB = cSel(boilerB.totalizer_steam, prevBoilerB.totalizer_steam, rL('steam_b'));
             const isTurbinSd = turbin.status_turbin === 'shutdown';
-            // Validasi HANYA untuk tab milik scope aktif (form penuh = semua tab;
-            // station = tab station tsb). Tanpa gate ini, simpan dari station panel_turbin
-            // ikut memicu peringatan CR Boiler A/B (tab yang bukan urusannya).
-            const ownsTab = (tabId: TabId) => !station || !!stationShiftTabs?.includes(tabId);
             const warnings: string[] = [];
+            // Totalizer turun = riset / salah ketik. 0 dilewati: Pabrik 3B/PIU/Pabrik 2
+            // default 0 saat meter tak dipakai, itu bukan tanda riset.
+            for (const m of meterMilikScope) {
+                const { cur, prev } = rawShift(m);
+                const L = rL(m.key);
+                if (L === undefined && !(Number(cur) > 0)) continue;
+                const w = checkSelisihNegatif(m.label, cur as number | string | null, prev as number | string | null, L);
+                if (w) warnings.push(w);
+            }
             if (ownsTab('Boiler A')) { const wA = checkConsumptionRate('Boiler A', batubaraA, ssA, boilerA.status_boiler === 'shutdown'); if (wA) warnings.push(wA); }
             if (ownsTab('Boiler B')) { const wB = checkConsumptionRate('Boiler B', batubaraB, ssB, boilerB.status_boiler === 'shutdown'); if (wB) warnings.push(wB); }
             if (ownsTab('Generator')) {
@@ -1247,61 +1351,64 @@ function InputShiftPageInner() {
             setSaveProgress(p => (p !== null && p < 85) ? p + 8 : p);
         }, 400);
         try {
-            // Hitung selisih totalizer feeder (current - prev) sebagai konsumsi batubara shift ini
-            const calcSelisih = (cur: number | string | null | undefined, prev: number | string | null | undefined) => {
+            // Hitung selisih totalizer feeder (current - prev) sebagai konsumsi batubara shift ini.
+            // Meter yang riset di shift ini: (nilai akhir sebelum riset − prev) + cur.
+            const calcSelisih = (cur: number | string | null | undefined, prev: number | string | null | undefined, L?: number) => {
                 const c = Number(cur) || 0;
                 const p = Number(prev) || 0;
-                return p > 0 ? c - p : null;
+                return p > 0 ? kurangiTotalizer(c, p, L) : null;
             };
             // Konsumsi = cur − prev. WAJIB cur > 0: kalau form tidak mengisi feeder
             // (mis. station non-boiler), cur=0 dan cur−prev = −prev → batubara negatif
-            // raksasa pernah bocor ke Sheets (insiden malam 10 Jun 2026). Negatif kecil
-            // (counter reset/koreksi) di-clamp 0 — konsumsi tak mungkin negatif.
+            // raksasa pernah bocor ke Sheets (insiden malam 10 Jun 2026). Pengecualian:
+            // feeder yang ditandai riset — pembacaan pasca-riset boleh 0. Negatif kecil
+            // (koreksi) di-clamp 0 — konsumsi tak mungkin negatif.
             const selisih = (key: string) => {
                 const cur = Number(coalBunker[key]) || 0;
                 const prev = Number(prevCoalBunker[key]) || 0;
-                return prev > 0 && cur > 0 ? Math.max(0, cur - prev) : 0;
+                const L = rL(key);
+                return prev > 0 && (cur > 0 || L !== undefined) ? Math.max(0, kurangiTotalizer(cur, prev, L)) : 0;
             };
             const batubaraA = selisih('feeder_a') + selisih('feeder_b') + selisih('feeder_c');
             const batubaraB = selisih('feeder_d') + selisih('feeder_e') + selisih('feeder_f');
 
             // Selisih totalizer boiler
-            const selisihSteamA = calcSelisih(boilerA.totalizer_steam, prevBoilerA.totalizer_steam);
-            const selisihBfwA = calcSelisih(boilerA.totalizer_bfw, prevBoilerA.totalizer_bfw);
-            const selisihSteamB = calcSelisih(boilerB.totalizer_steam, prevBoilerB.totalizer_steam);
-            const selisihBfwB = calcSelisih(boilerB.totalizer_bfw, prevBoilerB.totalizer_bfw);
+            const selisihSteamA = calcSelisih(boilerA.totalizer_steam, prevBoilerA.totalizer_steam, rL('steam_a'));
+            const selisihBfwA = calcSelisih(boilerA.totalizer_bfw, prevBoilerA.totalizer_bfw, rL('bfw_a'));
+            const selisihSteamB = calcSelisih(boilerB.totalizer_steam, prevBoilerB.totalizer_steam, rL('steam_b'));
+            const selisihBfwB = calcSelisih(boilerB.totalizer_bfw, prevBoilerB.totalizer_bfw, rL('bfw_b'));
 
             // Selisih totalizer turbin
             const selisihTurbin = {
-                selisih_steam_inlet: calcSelisih(turbin.totalizer_steam_inlet, prevTurbin.totalizer_steam_inlet),
-                selisih_condensate: calcSelisih(turbin.totalizer_condensate, prevTurbin.totalizer_condensate),
+                selisih_steam_inlet: calcSelisih(turbin.totalizer_steam_inlet, prevTurbin.totalizer_steam_inlet, rL('turbin_inlet')),
+                selisih_condensate: calcSelisih(turbin.totalizer_condensate, prevTurbin.totalizer_condensate, rL('turbin_kondensat')),
             };
 
             // Selisih totalizer steam dist
             const selisihSteamDist = {
-                selisih_pabrik1: calcSelisih(steamDist.pabrik1_totalizer, prevSteamDist.pabrik1_totalizer),
-                selisih_pabrik2: calcSelisih(steamDist.pabrik2_totalizer, prevSteamDist.pabrik2_totalizer),
-                selisih_pabrik3a: calcSelisih(steamDist.pabrik3a_totalizer, prevSteamDist.pabrik3a_totalizer),
+                selisih_pabrik1: calcSelisih(steamDist.pabrik1_totalizer, prevSteamDist.pabrik1_totalizer, rL('steam_pabrik1')),
+                selisih_pabrik2: calcSelisih(steamDist.pabrik2_totalizer, prevSteamDist.pabrik2_totalizer, rL('steam_pabrik2')),
+                selisih_pabrik3a: calcSelisih(steamDist.pabrik3a_totalizer, prevSteamDist.pabrik3a_totalizer, rL('steam_pabrik3a')),
             };
 
             // Selisih totalizer power dist
             const selisihPowerDist = {
-                selisih_ubb: calcSelisih(powerDist.power_ubb_totalizer, prevPowerDist.power_ubb_totalizer),
-                selisih_pabrik2: calcSelisih(powerDist.power_pabrik2_totalizer, prevPowerDist.power_pabrik2_totalizer),
-                selisih_pabrik3a: calcSelisih(powerDist.power_pabrik3a_totalizer, prevPowerDist.power_pabrik3a_totalizer),
-                selisih_revamping: calcSelisih(powerDist.power_revamping_totalizer, prevPowerDist.power_revamping_totalizer),
-                selisih_pie: calcSelisih(powerDist.power_pie_totalizer, prevPowerDist.power_pie_totalizer),
-                selisih_stg_ubb: calcSelisih(powerDist.power_stg_ubb_totalizer, prevPowerDist.power_stg_ubb_totalizer),
+                selisih_ubb: calcSelisih(powerDist.power_ubb_totalizer, prevPowerDist.power_ubb_totalizer, rL('power_ubb')),
+                selisih_pabrik2: calcSelisih(powerDist.power_pabrik2_totalizer, prevPowerDist.power_pabrik2_totalizer, rL('power_pabrik2')),
+                selisih_pabrik3a: calcSelisih(powerDist.power_pabrik3a_totalizer, prevPowerDist.power_pabrik3a_totalizer, rL('power_pabrik3a')),
+                selisih_revamping: calcSelisih(powerDist.power_revamping_totalizer, prevPowerDist.power_revamping_totalizer, rL('power_revamping')),
+                selisih_pie: calcSelisih(powerDist.power_pie_totalizer, prevPowerDist.power_pie_totalizer, rL('power_pie')),
+                selisih_stg_ubb: calcSelisih(powerDist.power_stg_ubb_totalizer, prevPowerDist.power_stg_ubb_totalizer, rL('power_stg_ubb')),
             };
 
             // Selisih totalizer feeder
             const selisihCoalBunker = {
-                selisih_feeder_a: calcSelisih(coalBunker.feeder_a, prevCoalBunker.feeder_a),
-                selisih_feeder_b: calcSelisih(coalBunker.feeder_b, prevCoalBunker.feeder_b),
-                selisih_feeder_c: calcSelisih(coalBunker.feeder_c, prevCoalBunker.feeder_c),
-                selisih_feeder_d: calcSelisih(coalBunker.feeder_d, prevCoalBunker.feeder_d),
-                selisih_feeder_e: calcSelisih(coalBunker.feeder_e, prevCoalBunker.feeder_e),
-                selisih_feeder_f: calcSelisih(coalBunker.feeder_f, prevCoalBunker.feeder_f),
+                selisih_feeder_a: calcSelisih(coalBunker.feeder_a, prevCoalBunker.feeder_a, rL('feeder_a')),
+                selisih_feeder_b: calcSelisih(coalBunker.feeder_b, prevCoalBunker.feeder_b, rL('feeder_b')),
+                selisih_feeder_c: calcSelisih(coalBunker.feeder_c, prevCoalBunker.feeder_c, rL('feeder_c')),
+                selisih_feeder_d: calcSelisih(coalBunker.feeder_d, prevCoalBunker.feeder_d, rL('feeder_d')),
+                selisih_feeder_e: calcSelisih(coalBunker.feeder_e, prevCoalBunker.feeder_e, rL('feeder_e')),
+                selisih_feeder_f: calcSelisih(coalBunker.feeder_f, prevCoalBunker.feeder_f, rL('feeder_f')),
             };
 
             // Total rit unloading fly ash per silo (saved + pending)
@@ -1400,8 +1507,10 @@ function InputShiftPageInner() {
                 },
                 coalBunker: { ...coalBunker, ...selisihCoalBunker },
                 waterQuality: { ...waterQuality, ...chemicalDosing },
-                prevBoilerA: { totalizer_steam: (prevBoilerA.totalizer_steam as number | null) ?? null },
-                prevBoilerB: { totalizer_steam: (prevBoilerB.totalizer_steam as number | null) ?? null },
+                prevBoilerA: { totalizer_steam: (prevBoilerA.totalizer_steam as number | null) ?? null, nilai_akhir_riset: rL('steam_a') ?? null },
+                prevBoilerB: { totalizer_steam: (prevBoilerB.totalizer_steam as number | null) ?? null, nilai_akhir_riset: rL('steam_b') ?? null },
+                // Penanda riset yang disentuh operator — hook memfilternya ke meter milik station.
+                totalizer_riset_patch: susunPatchRiset(riset, risetDisentuhRef.current, { station: station ?? null, oleh: fillerNameVal || operator?.name || null }),
                 // Station-scoped fill audit: hanya di-kirim kalau operator submit dari station view.
                 ...(station && fillerNameVal ? { station_filler: { station, name: fillerNameVal } } : {}),
                 // Catatan operasional per-station (hanya station yg punya tab Catatan, mis.
@@ -1545,6 +1654,8 @@ function InputShiftPageInner() {
                     showToast('Laporan berhasil disimpan!', 'success');
                 }
                 setUserModified(false);
+                // Penanda riset sudah tersimpan → DB kembali jadi sumber (populate setelah refetch).
+                risetDisentuhRef.current = new Set();
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
 
@@ -2382,6 +2493,7 @@ function InputShiftPageInner() {
                                     Pada xl+, switch ke flex-row supaya form & sidebar summary sejajar. */}
                                 {visibleTabs.length > 0 && (
                                 <div className="flex flex-col xl:flex-row gap-6 xl:flex-1 xl:min-h-0 pb-6 w-full max-w-full">
+                                    <RisetProvider value={risetCtx}>
                                     {activeTab === 'Boiler A' && <TabBoiler boilerId="A" values={boilerA} onFieldChange={makeMixedHandler(setBoilerA)} onAutoFieldChange={makeAutoMixedHandler(setBoilerA)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} onAutoCoalBunkerChange={makeAutoMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerA.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerA.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_a} currentDate={selectedDate} />}
                                     {activeTab === 'Boiler B' && <TabBoiler boilerId="B" values={boilerB} onFieldChange={makeMixedHandler(setBoilerB)} onAutoFieldChange={makeAutoMixedHandler(setBoilerB)} coalBunkerValues={coalBunker} onCoalBunkerChange={makeMixedHandler(setCoalBunker)} onAutoCoalBunkerChange={makeAutoMixedHandler(setCoalBunker)} prevTotalizerSteam={prevBoilerB.totalizer_steam as number | null} prevTotalizerBfw={prevBoilerB.totalizer_bfw as number | null} prevCoalBunkerValues={prevCoalBunker as Record<string, number | null>} shutdownSince={boilerShutdownSince.boiler_b} currentDate={selectedDate} />}
                                     {activeTab === 'Turbin' && <TabTurbin values={turbin} onFieldChange={makeNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} onAutoFieldChange={makeAutoNumberHandler(setTurbin as React.Dispatch<React.SetStateAction<Record<string, number | null>>>)} prevTotalizerSteamInlet={prevTurbin.totalizer_steam_inlet as number | null} prevTotalizerCondensate={prevTurbin.totalizer_condensate as number | null} />}
@@ -2397,6 +2509,7 @@ function InputShiftPageInner() {
                                     {activeTab === 'Coal Bunker' && <TabCoalBunker values={coalBunker} onFieldChange={makeMixedHandler(setCoalBunker)} onStatusChange={(name, value) => setCoalBunker(prev => ({ ...prev, [name]: value }))} berasapSince={bunkerBerasapSince} />}
                                     {activeTab === 'Lab' && <TabLab waterQualityValues={waterQuality} chemicalDosingValues={chemicalDosing} onWaterQualityChange={makeNumberHandler(setWaterQuality)} onChemicalDosingChange={makeNumberHandler(setChemicalDosing)} lastStockPhosphate={lastStock.phosphate} lastStockAmine={lastStock.amine} lastStockHydrazine={lastStock.hydrazine} />}
                                     {activeTab === 'Catatan Operasional' && <TabCatatanOperasional catatan={catatan} onCatatanChange={setCatatan} stationCatatan={report?.station_catatan as Record<string, string> | null | undefined} currentStation={station} solarEntries={solarEntries} outSolarEntries={outSolarEntries} savedSolarEntries={savedSolarEntries} savedOutSolarEntries={savedOutSolarEntries} ashEntries={ashEntries} savedAshEntries={savedAshEntries} coalBunker={coalBunker} />}
+                                    </RisetProvider>
                                 </div>
                                 )}
                             </>

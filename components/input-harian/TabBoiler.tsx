@@ -1,6 +1,8 @@
 'use client';
 import React, { useEffect } from 'react';
 import { Card, InputField, CalculatedField, TotalizerInput, FeederStatusChip } from '@/components/input-shift/SharedComponents';
+import { useNilaiAkhirRiset } from '@/components/input-shift/TotalizerRiset';
+import { kurangiTotalizer } from '@/lib/totalizer-riset';
 import type { DailyTabProps } from './types';
 
 // Pembacaan sesaat boiler jam 24.00 (di daily_report_turbine_misc) — per boiler.
@@ -74,13 +76,14 @@ export default function TabBoiler({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [feederStatusSig]);
 
-    // Kalkulasi produksi (sidebar)
-    const produksiSteam = prevSteam24 > 0 ? n(steam[`prod_boiler_${x}_24`]) - prevSteam24 : 0;
-    const produksiBfw = prevBfw > 0 ? n(stockTank[`bfw_boiler_${x}`]) - prevBfw : 0;
+    // Kalkulasi produksi (sidebar) — memperhitungkan riset meter (lib/totalizer-riset.ts).
+    const risetOf = useNilaiAkhirRiset();
+    const produksiSteam = prevSteam24 > 0 ? kurangiTotalizer(n(steam[`prod_boiler_${x}_24`]), prevSteam24, risetOf(`steam_${x}`)) : 0;
+    const produksiBfw = prevBfw > 0 ? kurangiTotalizer(n(stockTank[`bfw_boiler_${x}`]), prevBfw, risetOf(`bfw_${x}`)) : 0;
     const feederKons = feeders.map((f) => {
         const c = n(coal[`coal_${f}_24`]);
         const p = prevCoal ? n(prevCoal[`coal_${f}_24`]) : 0;
-        return p > 0 ? c - p : 0;
+        return p > 0 ? kurangiTotalizer(c, p, risetOf(`feeder_${f}`)) : 0;
     });
     const totalBatubara = feederKons.reduce((s, k) => s + k, 0);
     const cr = boilerId === 'A' ? crA : crB;
@@ -100,14 +103,14 @@ export default function TabBoiler({
                         <InputField label="Pressure Steam" unit="MPa" color="blue" name={`press_steam_${x}`} value={turbineMisc[`press_steam_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                         <InputField label="Temp Steam" unit="°C" color="blue" name={`temp_steam_${x}`} value={turbineMisc[`temp_steam_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                         <InputField label="Flow Steam" unit="t/h" color="blue" name={`prod_boiler_${x}_00`} value={steam[`prod_boiler_${x}_00`]} onChange={onSteamChange} readOnly={isShutdown} />
-                        <TotalizerInput label="Steam" name={`prod_boiler_${x}_24`} value={steam[`prod_boiler_${x}_24`]} prev={prevSteam24} onChange={onSteamChange} unit="ton" color="blue" />
+                        <TotalizerInput label="Steam" name={`prod_boiler_${x}_24`} value={steam[`prod_boiler_${x}_24`]} prev={prevSteam24} onChange={onSteamChange} unit="ton" color="blue" meter={`steam_${x}`} />
                     </Card>
 
                     <Card title="Boiler Feed Water" icon="water_drop" color="cyan">
                         <InputField label="Pressure BFW" unit="MPa" color="cyan" name={`bfw_press_${x}`} value={turbineMisc[`bfw_press_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                         <InputField label="Temp BFW" unit="°C" color="cyan" name={`temp_bfw_${x}`} value={turbineMisc[`temp_bfw_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                         <InputField label="Flow BFW" unit="t/h" color="cyan" name={`flow_bfw_${x}`} value={stockTank[`flow_bfw_${x}`]} onChange={onStockTankChange} readOnly={isShutdown} />
-                        <TotalizerInput label="BFW" name={`bfw_boiler_${x}`} value={stockTank[`bfw_boiler_${x}`]} prev={prevBfw} onChange={onStockTankChange} unit="ton" color="cyan" />
+                        <TotalizerInput label="BFW" name={`bfw_boiler_${x}`} value={stockTank[`bfw_boiler_${x}`]} prev={prevBfw} onChange={onStockTankChange} unit="ton" color="cyan" meter={`bfw_${x}`} />
                     </Card>
 
                     <Card title={`Coal Feeder ${feeders[0].toUpperCase()}-${feeders[2].toUpperCase()}`} icon="precision_manufacturing" color="emerald">
@@ -122,7 +125,7 @@ export default function TabBoiler({
                                         <FeederStatusChip sk={sk} value={(turbineMisc[sk] as string) ?? ''} onChange={onTurbineMiscChange} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <TotalizerInput label={f.toUpperCase()} name={`coal_${f}_24`} value={coal[`coal_${f}_24`]} prev={prevF} onChange={onCoalChange} unit="ton" color="emerald" />
+                                        <TotalizerInput label={f.toUpperCase()} name={`coal_${f}_24`} value={coal[`coal_${f}_24`]} prev={prevF} onChange={onCoalChange} unit="ton" color="emerald" meter={`feeder_${f}`} />
                                         <InputField label="Flow" unit="t/h" color="emerald" name={`coal_${f}_00`} value={coal[`coal_${f}_00`]} onChange={onCoalChange} readOnly={flowLocked} />
                                     </div>
                                 </div>

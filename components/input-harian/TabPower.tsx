@@ -1,6 +1,8 @@
 'use client';
 import React, { useEffect } from 'react';
 import { Card, InputField, SelisihInfo, CalculatedField } from '@/components/input-shift/SharedComponents';
+import { useNilaiAkhirRiset } from '@/components/input-shift/TotalizerRiset';
+import { kurangiTotalizer } from '@/lib/totalizer-riset';
 import type { DailyTabProps } from './types';
 
 const GEN_OUTPUT_FIELDS_HARIAN = ['gen_ampere', 'gen_tegangan', 'gen_amp_react', 'gen_frequensi', 'gen_cos_phi'];
@@ -24,6 +26,7 @@ export default function TabPower({
     const prevPD = prevPower as Record<string, number | null> | undefined;
 
     const fmt = (v: number | string | null | undefined) => (Number(v) || 0).toFixed(2);
+    const risetOf = useNilaiAkhirRiset();
     // Saat turbin shutdown (di turbineMisc.status_turbin), kunci kartu Generator Output.
     // GI & Distribusi Power tetap editable (PLN tetap connect lewat GI).
     const isTurbinShutdown = gv.status_turbin === 'shutdown';
@@ -87,7 +90,7 @@ export default function TabPower({
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <div>
                                                     <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} thousands />
-                                                    <SelisihInfo prev={prevTot} current={curTot} />
+                                                    <SelisihInfo prev={prevTot} current={curTot} meter={`power_${key}`} />
                                                 </div>
                                                 <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />
                                             </div>
@@ -101,7 +104,7 @@ export default function TabPower({
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <div>
                                             <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} thousands />
-                                            <SelisihInfo prev={Number(prevPD?.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} />
+                                            <SelisihInfo prev={Number(prevPD?.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} meter="power_stg_ubb" />
                                         </div>
                                         <div>
                                             <InputField label="MW" unit="MW" color="emerald" size="small" name="_stg_mw" value={pv.gen_00} readOnly />
@@ -120,10 +123,11 @@ export default function TabPower({
                 <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
                     {/* ── MWh totals (selisih totalizer) ── */}
                     {(() => {
+                        // key = power_<x>_totalizer → kunci riset power_<x>.
                         const sel = (key: string) => {
                             const cur = Number(pv[key]) || 0;
                             const prv = Number(prevPD?.[key]) || 0;
-                            return prv > 0 ? cur - prv : 0;
+                            return prv > 0 ? kurangiTotalizer(cur, prv, risetOf(key.replace(/_totalizer$/, ''))) : 0;
                         };
                         const totalUbb     = sel('power_ubb_totalizer');
                         const totalUbbInt  = Math.round(totalUbb);

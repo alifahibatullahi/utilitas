@@ -20,6 +20,7 @@
 import { toIndonesianDate } from './google-sheets';
 import { defaultSolarBoiler } from './solar-balance';
 import { selisihTotalizer as sel, hitungKonsumsiAir } from './konsumsi-baseline';
+import { nilaiAkhirRiset } from './totalizer-riset';
 import type {
     DailyReportSteamRow,
     DailyReportPowerRow,
@@ -274,8 +275,12 @@ export function dailyReportToRow(
     solar: SolarSummary | null = null,
     chemical: ChemicalSummary | null = null,
     coalActivity: CoalSummary | null = null,
+    /** JSONB `totalizer_riset` laporan hari ini — meter yang riset hari ini (kunci di
+     *  lib/totalizer-riset.ts). Selisihnya = (nilai akhir sebelum riset − kemarin) + hari ini. */
+    riset: unknown = null,
 ): (string | number | null)[] {
     const row: (string | number | null)[] = new Array(TOTAL_COLS).fill(null);
+    const r = (meter: string) => nilaiAkhirRiset(riset, meter);
 
     row[COL.no]      = null; // auto-set by upsertDailyRow
     row[COL.tanggal] = toIndonesianDate(isoDate);
@@ -283,16 +288,16 @@ export function dailyReportToRow(
     // ── Steam 24h (raw totalizer → selisih today−yesterday) ──────────────────
     if (steam) {
         const ps = prev?.steam;
-        set(row, COL.prod_boiler_a_24, sel(steam.prod_boiler_a_24, ps?.prod_boiler_a_24));
-        set(row, COL.prod_boiler_b_24, sel(steam.prod_boiler_b_24, ps?.prod_boiler_b_24));
+        set(row, COL.prod_boiler_a_24, sel(steam.prod_boiler_a_24, ps?.prod_boiler_a_24, r('steam_a')));
+        set(row, COL.prod_boiler_b_24, sel(steam.prod_boiler_b_24, ps?.prod_boiler_b_24, r('steam_b')));
         // E(4) = formula: prod_total_24 — skip
 
-        set(row, COL.inlet_turbine_24, sel(steam.inlet_turbine_24, ps?.inlet_turbine_24));
-        set(row, COL.mps_i_24,         sel(steam.mps_i_24,         ps?.mps_i_24));
-        set(row, COL.mps_3a_24,        sel(steam.mps_3a_24,        ps?.mps_3a_24));
+        set(row, COL.inlet_turbine_24, sel(steam.inlet_turbine_24, ps?.inlet_turbine_24, r('turbin_inlet')));
+        set(row, COL.mps_i_24,         sel(steam.mps_i_24,         ps?.mps_i_24,         r('steam_pabrik1')));
+        set(row, COL.mps_3a_24,        sel(steam.mps_3a_24,        ps?.mps_3a_24,        r('steam_pabrik3a')));
         set(row, COL.lps_ii_24,        steam.lps_ii_24);  // always 0
         set(row, COL.lps_3a_24,        steam.lps_3a_24);  // always 0
-        set(row, COL.fully_condens_24, sel(steam.fully_condens_24, ps?.fully_condens_24));
+        set(row, COL.fully_condens_24, sel(steam.fully_condens_24, ps?.fully_condens_24, r('turbin_kondensat')));
         // M(12) = formula: internal_ubb_24 — skip
 
         // 00.00 = direct readings
@@ -314,15 +319,15 @@ export function dailyReportToRow(
         const pp = prev?.power;
 
         // MWh totals (selisih totalizer)
-        const internalUbbMwh = sel(power.power_ubb_totalizer, pp?.power_ubb_totalizer) ?? 0;
+        const internalUbbMwh = sel(power.power_ubb_totalizer, pp?.power_ubb_totalizer, r('power_ubb')) ?? 0;
         const internalUbbInt = Math.round(internalUbbMwh);
         const bb1Mwh = Math.floor(internalUbbInt / 2);
         const bb2Mwh = internalUbbInt - bb1Mwh;
 
-        const stgUbbMwh = sel(power.power_stg_ubb_totalizer, pp?.power_stg_ubb_totalizer) ?? 0;
+        const stgUbbMwh = sel(power.power_stg_ubb_totalizer, pp?.power_stg_ubb_totalizer, r('power_stg_ubb')) ?? 0;
         set(row, COL.power_stg_ubb_mwh,  stgUbbMwh || null);                                       // Y
-        set(row, COL.power_pabrik2_mwh,  sel(power.power_pabrik2_totalizer,  pp?.power_pabrik2_totalizer));  // AA
-        set(row, COL.power_pabrik3a_mwh, sel(power.power_pabrik3a_totalizer, pp?.power_pabrik3a_totalizer)); // AB
+        set(row, COL.power_pabrik2_mwh,  sel(power.power_pabrik2_totalizer,  pp?.power_pabrik2_totalizer,  r('power_pabrik2')));  // AA
+        set(row, COL.power_pabrik3a_mwh, sel(power.power_pabrik3a_totalizer, pp?.power_pabrik3a_totalizer, r('power_pabrik3a'))); // AB
         if (internalUbbInt > 0) {
             row[COL.power_bb1_mwh] = bb1Mwh; // AD
             row[COL.power_bb2_mwh] = bb2Mwh; // AE
@@ -351,13 +356,13 @@ export function dailyReportToRow(
     // ── Batubara 24h (raw totalizer → selisih) & 00.00 ───────────────────────
     if (coal) {
         const pc = prev?.coal;
-        set(row, COL.coal_a_24, sel(coal.coal_a_24, pc?.coal_a_24)); // AY
-        set(row, COL.coal_b_24, sel(coal.coal_b_24, pc?.coal_b_24)); // AZ
-        set(row, COL.coal_c_24, sel(coal.coal_c_24, pc?.coal_c_24)); // BA
+        set(row, COL.coal_a_24, sel(coal.coal_a_24, pc?.coal_a_24, r('feeder_a'))); // AY
+        set(row, COL.coal_b_24, sel(coal.coal_b_24, pc?.coal_b_24, r('feeder_b'))); // AZ
+        set(row, COL.coal_c_24, sel(coal.coal_c_24, pc?.coal_c_24, r('feeder_c'))); // BA
         // BB(53) = formula: total_boiler_a_24 — skip
-        set(row, COL.coal_d_24, sel(coal.coal_d_24, pc?.coal_d_24)); // BC
-        set(row, COL.coal_e_24, sel(coal.coal_e_24, pc?.coal_e_24)); // BD
-        set(row, COL.coal_f_24, sel(coal.coal_f_24, pc?.coal_f_24)); // BE
+        set(row, COL.coal_d_24, sel(coal.coal_d_24, pc?.coal_d_24, r('feeder_d'))); // BC
+        set(row, COL.coal_e_24, sel(coal.coal_e_24, pc?.coal_e_24, r('feeder_e'))); // BD
+        set(row, COL.coal_f_24, sel(coal.coal_f_24, pc?.coal_f_24, r('feeder_f'))); // BE
         // BF(57)=formula, BG(58)=formula — skip
 
         // Flow coal feeder 00:00 — selalu tulis 0 (bukan blank) saat feeder mati/kosong.
@@ -415,8 +420,8 @@ export function dailyReportToRow(
             }) ?? 0);
         setNum0(row, COL.solar_boiler, boilerM3); // CL — m³
         const ps2 = prev?.stock;
-        set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a)); // CO
-        set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b)); // CP
+        set(row, COL.bfw_boiler_a, sel(stock.bfw_boiler_a, ps2?.bfw_boiler_a, r('bfw_a'))); // CO
+        set(row, COL.bfw_boiler_b, sel(stock.bfw_boiler_b, ps2?.bfw_boiler_b, r('bfw_b'))); // CP
         // CQ(94) = formula (bfw_total) — skip
         // CR/CS/CT diisi dari agregasi shift (bukan input manual)
     }
@@ -489,7 +494,7 @@ export function dailyReportToRow(
         // bersama halaman /laporan-harian lewat hitungKonsumsiAir() supaya layar
         // dan Sheets tidak bisa berbeda angka. set() melewati null (= tak ada
         // pembanding H-1), jadi selnya dibiarkan apa adanya, bukan ditulis 0.
-        const kons = hitungKonsumsiAir(totalizer, prev?.totalizer);
+        const kons = hitungKonsumsiAir(totalizer, prev?.totalizer, riset);
         set(row, COL.konsumsi_demin,      kons.konsumsi_demin);      // DP
         set(row, COL.konsumsi_hydrant,    kons.konsumsi_hydrant);    // DQ
         set(row, COL.konsumsi_basin,      kons.konsumsi_basin);      // DR

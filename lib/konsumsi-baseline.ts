@@ -12,6 +12,7 @@
 // berisik untuk parameter yang naik-turun besar (Hydrant, Demin PB1).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { kurangiTotalizer, nilaiAkhirRiset } from './totalizer-riset';
 
 /** Jendela histori pembanding (hari). */
 export const BASELINE_HARI = 60;
@@ -72,17 +73,21 @@ export interface KonsumsiAir {
  * ada, kolomnya kosong, atau 0) — dibedakan dari "konsumsi nol" yang angkanya 0.
  *
  * Totalizer bersifat kumulatif (monoton naik), jadi selisih TIDAK MUNGKIN negatif —
- * hasil <0 selalu anomali (meter reset, salah ketik, atau unit shutdown yang raw-nya
- * belum dibawa). Di-lantai ke 0 supaya tak pernah tampil konsumsi negatif.
+ * hasil <0 selalu anomali (salah ketik, atau unit shutdown yang raw-nya belum dibawa).
+ * Di-lantai ke 0 supaya tak pernah tampil konsumsi negatif.
+ *
+ * Meter yang riset hari ini: `nilaiAkhirRiset` = pembacaan terakhir sebelum kembali ke 0,
+ * selisih = (nilai akhir − kemarin) + hari ini (lihat lib/totalizer-riset.ts).
  */
 export function selisihTotalizer(
     today:     number | string | null | undefined,
     yesterday: number | string | null | undefined,
+    nilaiAkhirRiset?: number | null,
 ): number | null {
     const t = today != null ? Number(today) : null;
     const y = yesterday != null ? Number(yesterday) : null;
     if (t === null || y === null || y === 0) return null;
-    return Math.max(0, t - y);
+    return Math.max(0, kurangiTotalizer(t, y, nilaiAkhirRiset));
 }
 
 /**
@@ -91,12 +96,16 @@ export function selisihTotalizer(
  * RCW = hydrant + basin + service. Komponen yang tak punya pembanding dihitung 0,
  * TAPI kalau ketiganya sama-sama tanpa pembanding hasilnya null (bukan 0) — supaya
  * hari tanpa data sama sekali tidak menyamar jadi "pemakaian RCW nol".
+ *
+ * `riset` = kolom JSONB `totalizer_riset` laporan hari ini (kunci meter = nama kolom tot_*).
  */
 export function hitungKonsumsiAir(
     tot:     TotalizerAirReadings | null | undefined,
     prevTot: TotalizerAirReadings | null | undefined,
+    riset?:  unknown,
 ): KonsumsiAir {
-    const sel = (k: keyof TotalizerAirReadings) => selisihTotalizer(tot?.[k], prevTot?.[k]);
+    const sel = (k: keyof TotalizerAirReadings) =>
+        selisihTotalizer(tot?.[k], prevTot?.[k], nilaiAkhirRiset(riset, k));
 
     const hydrant = sel('tot_hydrant');
     const basin   = sel('tot_basin');
@@ -128,6 +137,8 @@ export type KonsumsiBaselineMap = Record<string, KonsumsiBaseline>;
 export interface BaselineRow {
     date: string; // YYYY-MM-DD
     tot: Record<string, number | null | undefined>;
+    /** JSONB `totalizer_riset` laporan hari itu (meter yang riset hari itu). */
+    riset?: unknown;
 }
 
 const median = (xs: number[]): number => {
@@ -172,7 +183,7 @@ export function computeKonsumsiBaseline(rows: BaselineRow[]): KonsumsiBaselineMa
             const cur = angka(urut[i].tot[kolom]);
             // prev <= 0 = belum ada pembanding, sama dengan perlakuan sel().
             if (prev === null || cur === null || prev <= 0) continue;
-            diffs.push(Math.max(0, cur - prev));
+            diffs.push(Math.max(0, kurangiTotalizer(cur, prev, nilaiAkhirRiset(urut[i].riset, kolom))));
         }
         out[kolom] = diffs.length > 0
             ? { med: median(diffs), max: Math.max(...diffs), n: diffs.length }
@@ -202,7 +213,7 @@ export async function fetchKonsumsiBaseline(
 
     const { data, error } = await supabase
         .from('daily_reports')
-        .select('date, daily_report_totalizer(' + KOLOM.join(', ') + ')')
+        .select('date, totalizer_riset, daily_report_totalizer(' + KOLOM.join(', ') + ')')
         .gte('date', dariStr)
         .lt('date', opts.date)
         .order('date', { ascending: true });
@@ -213,7 +224,7 @@ export async function fetchKonsumsiBaseline(
         // Relasi one-to-one: PostgREST mengembalikan objek, bukan array.
         const rel = r.daily_report_totalizer;
         const tot = (Array.isArray(rel) ? rel[0] : rel) as Record<string, number | null> | null | undefined;
-        if (tot) rows.push({ date: String(r.date), tot });
+        if (tot) rows.push({ date: String(r.date), tot, riset: r.totalizer_riset });
     }
     return computeKonsumsiBaseline(rows);
 }

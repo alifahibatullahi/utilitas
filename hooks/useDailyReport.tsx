@@ -12,6 +12,7 @@ import type {
     DailyReportCoalTransferRow,
     DailyReportTotalizerRow,
 } from '@/lib/supabase/types';
+import { METER_BY_KEY, type RisetMap, type RisetPatch } from '@/lib/totalizer-riset';
 
 export interface DailyReportData {
     id: string;
@@ -31,6 +32,8 @@ export interface DailyReportData {
     daily_report_stock_tank: DailyReportStockTankRow[];
     daily_report_coal_transfer: DailyReportCoalTransferRow[];
     daily_report_totalizer: DailyReportTotalizerRow[];
+    /** Penanda riset totalizer per meter (lib/totalizer-riset.ts). */
+    totalizer_riset?: RisetMap | null;
 }
 
 function isSupabaseConfigured(): boolean {
@@ -398,6 +401,10 @@ export function useDailyReport(date: string, station: string | null = null) {
         /** Per-station filler — kalau diisi, di-merge ke station_fillers JSONB tanpa
          *  overwrite station lain. Dipakai saat operator submit dari station view. */
         station_filler?: { station: string; name: string };
+        /** Penanda riset totalizer yang DISENTUH operator (entry = set, null = hapus).
+         *  Di-merge per kunci ke daily_reports.totalizer_riset via RPC; difilter ke meter
+         *  yang kolom raw-nya dimiliki station ini (STATION_OWNS_COLS). */
+        totalizer_riset_patch?: RisetPatch;
     }) => {
         if (!isSupabaseConfigured()) return { error: 'Supabase not configured' };
 
@@ -459,6 +466,31 @@ export function useDailyReport(date: string, station: string | null = null) {
             }
         }
 
+        // ─── Penanda riset totalizer (atomic JSONB merge per meter via RPC) ───
+        // Station hanya boleh menandai meter yang kolom raw-nya ia miliki — aturan yang sama
+        // dengan tulis child table. Dijalankan SEBELUM POST Sheets: route Sheets membaca
+        // ulang DB dan memakai penanda ini untuk selisih LHUBB. Gagal = error terlihat.
+        const risetErrors: string[] = [];
+        if (reportData.totalizer_riset_patch) {
+            const patch: RisetPatch = {};
+            for (const [k, v] of Object.entries(reportData.totalizer_riset_patch)) {
+                const lok = METER_BY_KEY[k]?.harian;
+                if (!lok) continue;
+                if (ownsMap && !(ownsMap[lok.tabel] ?? []).includes(lok.kolom)) continue;
+                patch[k] = v;
+            }
+            if (Object.keys(patch).length > 0) {
+                const { error: rpcErr } = await supabase.rpc('merge_daily_totalizer_riset', {
+                    p_report_id: reportId,
+                    p_patch: patch,
+                });
+                if (rpcErr) {
+                    console.error('[submitDailyReport] merge_daily_totalizer_riset RPC failed:', rpcErr.message);
+                    risetErrors.push(`riset totalizer: ${rpcErr.message}`);
+                }
+            }
+        }
+
         // Upsert child tables
         const childTables = [
             { key: 'steam', table: 'daily_report_steam' },
@@ -470,7 +502,7 @@ export function useDailyReport(date: string, station: string | null = null) {
             { key: 'totalizer', table: 'daily_report_totalizer' },
         ] as const;
 
-        const childErrors: string[] = [];
+        const childErrors: string[] = [...risetErrors];
         // Subset daily_report_stock_tank yang benar-benar ditulis — dipakai untuk sync ke
         // tank_levels (hanya kalau level tank ikut tersimpan).
         let writtenStockTank: Record<string, unknown> = {};

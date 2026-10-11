@@ -1,17 +1,20 @@
 'use client';
 import React, { useEffect } from 'react';
 import { InputField, Card, CalculatedField, SelisihInfo } from '@/components/input-shift/SharedComponents';
+import { useNilaiAkhirRiset } from '@/components/input-shift/TotalizerRiset';
+import { kurangiTotalizer } from '@/lib/totalizer-riset';
 import type { DailyTabProps } from './types';
 
 // Status chip turbin dipindah ke header utama tab di InputHarianForm.tsx (commit kebijakan
 // "status di header bukan di kartu"). Komponen lokal tidak dipakai lagi.
 
 // Distribution items — urutan: Inlet Turbin, Pabrik 1, Pabrik 3, Condensate
+// meter = kunci riset di lib/totalizer-riset.ts
 const DIST_ITEMS = [
-    { totKey: 'inlet_turbine_24', flowKey: 'inlet_turbine_00', label: 'Inlet Turbin', totUnit: 'Ton', flowUnit: 'T/H' },
-    { totKey: 'mps_i_24',         flowKey: 'mps_i_00',         label: 'Pabrik 1',     totUnit: 'Ton', flowUnit: 'T/H' },
-    { totKey: 'mps_3a_24',        flowKey: 'mps_3a_00',        label: 'Pabrik 3',     totUnit: 'Ton', flowUnit: 'T/H' },
-    { totKey: 'fully_condens_24', flowKey: 'fully_condens_00', label: 'Condensate',   totUnit: 'Ton', flowUnit: 'T/H' },
+    { totKey: 'inlet_turbine_24', flowKey: 'inlet_turbine_00', label: 'Inlet Turbin', totUnit: 'Ton', flowUnit: 'T/H', meter: 'turbin_inlet' },
+    { totKey: 'mps_i_24',         flowKey: 'mps_i_00',         label: 'Pabrik 1',     totUnit: 'Ton', flowUnit: 'T/H', meter: 'steam_pabrik1' },
+    { totKey: 'mps_3a_24',        flowKey: 'mps_3a_00',        label: 'Pabrik 3',     totUnit: 'Ton', flowUnit: 'T/H', meter: 'steam_pabrik3a' },
+    { totKey: 'fully_condens_24', flowKey: 'fully_condens_00', label: 'Condensate',   totUnit: 'Ton', flowUnit: 'T/H', meter: 'turbin_kondensat' },
 ] as const;
 
 export default function TabTurbin({
@@ -48,10 +51,12 @@ export default function TabTurbin({
     // suppress unused warning kalau ada
     void prevTurbineMisc;
 
-    // Selisih per distribusi steam item
+    // Selisih per distribusi steam item — memperhitungkan riset meter.
+    const risetOf = useNilaiAkhirRiset();
     const selisih = (key: typeof DIST_ITEMS[number]['totKey']) => {
         const prev = prevSteam ? n(prevSteam[key]) : 0;
-        return prev > 0 ? n(steam[key]) - prev : 0;
+        const meter = DIST_ITEMS.find(d => d.totKey === key)!.meter;
+        return prev > 0 ? kurangiTotalizer(n(steam[key]), prev, risetOf(meter)) : 0;
     };
 
     const totalInlet     = selisih('inlet_turbine_24');
@@ -70,7 +75,7 @@ export default function TabTurbin({
                     <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Flow (00.00)</span>
                 </div>
 
-                {DIST_ITEMS.map(({ totKey, flowKey, label, totUnit, flowUnit }) => {
+                {DIST_ITEMS.map(({ totKey, flowKey, label, totUnit, flowUnit, meter }) => {
                     const prev = prevSteam ? n(prevSteam[totKey]) : 0;
                     return (
                         <div key={totKey} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3 mb-2">
@@ -87,7 +92,7 @@ export default function TabTurbin({
                                         size="small"
                                         thousands
                                     />
-                                    {prevSteam && <SelisihInfo prev={prev} current={n(steam[totKey])} />}
+                                    {prevSteam && <SelisihInfo prev={prev} current={n(steam[totKey])} meter={meter} />}
                                 </div>
                                 <InputField
                                     label={flowUnit}

@@ -9,6 +9,7 @@ import { todayWIB } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { defaultSolarBoiler } from '@/lib/solar-balance';
 import { hitungKonsumsiAir } from '@/lib/konsumsi-baseline';
+import { kurangiTotalizer, nilaiAkhirRiset } from '@/lib/totalizer-riset';
 
 // ─── Data dari template LHUBB (09 Januari 2026), delta vs 08 Januari ───
 const DAILY_DATA = {
@@ -165,6 +166,12 @@ export default function LaporanHarianPage() {
     // Helper: compute delta between current and previous values
     const delta = (cur: number | null | undefined, prev: number | null | undefined) =>
         (cur != null && prev != null) ? cur - prev : 0;
+    // Delta raw totalizer — memperhitungkan riset meter hari ini (lib/totalizer-riset.ts):
+    // (nilai akhir sebelum riset − kemarin) + hari ini.
+    const deltaTot = (cur: number | null | undefined, prev: number | null | undefined, meter: string) =>
+        (cur != null && prev != null)
+            ? kurangiTotalizer(Number(cur), Number(prev), nilaiAkhirRiset(report?.totalizer_riset, meter))
+            : 0;
 
     // Shorthand accessors for child table rows
     const stm = report?.daily_report_steam?.[0];
@@ -193,7 +200,7 @@ export default function LaporanHarianPage() {
     // Fallback ke kolom DB dipertahankan untuk baris hasil migrasi Sheets: di sana
     // penerimaan_* terisi dari kolom DR–DT tapi totalizer mentahnya tidak ikut
     // dipindahkan, sehingga tidak ada yang bisa dihitung ulang.
-    const konsAir = hitungKonsumsiAir(totalizer, pTotalizer);
+    const konsAir = hitungKonsumsiAir(totalizer, pTotalizer, report?.totalizer_riset);
 
     // Solar (m³) — nilai form menang, kalau kosong pakai agregat entri; Boiler A+B tak
     // punya entri sendiri sehingga jatuh ke neraca tanki. Urutan fallback ini SAMA dengan
@@ -216,21 +223,21 @@ export default function LaporanHarianPage() {
 
         // Produksi Steam 24 Jam (Ton)
         steamBoilerA: n(stm?.prod_boiler_a_24),
-        deltaStmA: delta(stm?.prod_boiler_a_24, pStm?.prod_boiler_a_24),
+        deltaStmA: deltaTot(stm?.prod_boiler_a_24, pStm?.prod_boiler_a_24, 'steam_a'),
         steamBoilerB: n(stm?.prod_boiler_b_24),
-        deltaStmB: delta(stm?.prod_boiler_b_24, pStm?.prod_boiler_b_24),
+        deltaStmB: deltaTot(stm?.prod_boiler_b_24, pStm?.prod_boiler_b_24, 'steam_b'),
         steamTotal: n(stm?.prod_total_24),
         deltaStmTotal: delta(stm?.prod_total_24, pStm?.prod_total_24),
 
         // Distribusi Steam 24 Jam (Ton)
         steamInletTurbine: n(stm?.inlet_turbine_24),
-        deltaInletTurbine: delta(stm?.inlet_turbine_24, pStm?.inlet_turbine_24),
+        deltaInletTurbine: deltaTot(stm?.inlet_turbine_24, pStm?.inlet_turbine_24, 'turbin_inlet'),
         steamCondensat: n(stm?.fully_condens_24),
-        deltaCondensat: delta(stm?.fully_condens_24, pStm?.fully_condens_24),
+        deltaCondensat: deltaTot(stm?.fully_condens_24, pStm?.fully_condens_24, 'turbin_kondensat'),
         mpsTo1B: n(stm?.mps_i_24),
-        deltaMps1B: delta(stm?.mps_i_24, pStm?.mps_i_24),
+        deltaMps1B: deltaTot(stm?.mps_i_24, pStm?.mps_i_24, 'steam_pabrik1'),
         mpsTo3A: n(stm?.mps_3a_24),
-        deltaMps3A: delta(stm?.mps_3a_24, pStm?.mps_3a_24),
+        deltaMps3A: deltaTot(stm?.mps_3a_24, pStm?.mps_3a_24, 'steam_pabrik3a'),
         internalUbb: n(stm?.inlet_turbine_24) - n(stm?.fully_condens_24),
         deltaInternalUbb: (n(stm?.inlet_turbine_24) - n(stm?.fully_condens_24)) - (n(pStm?.inlet_turbine_24) - n(pStm?.fully_condens_24)),
 
@@ -289,19 +296,19 @@ export default function LaporanHarianPage() {
 
         // Konsumsi Batubara (Ton) — Coal Mill A-F
         coalMillA: n(coal?.coal_a_24),
-        deltaCoalA: delta(coal?.coal_a_24, pCoal?.coal_a_24),
+        deltaCoalA: deltaTot(coal?.coal_a_24, pCoal?.coal_a_24, 'feeder_a'),
         coalMillB: n(coal?.coal_b_24),
-        deltaCoalB: delta(coal?.coal_b_24, pCoal?.coal_b_24),
+        deltaCoalB: deltaTot(coal?.coal_b_24, pCoal?.coal_b_24, 'feeder_b'),
         coalMillC: n(coal?.coal_c_24),
-        deltaCoalC: delta(coal?.coal_c_24, pCoal?.coal_c_24),
+        deltaCoalC: deltaTot(coal?.coal_c_24, pCoal?.coal_c_24, 'feeder_c'),
         totalCMBoilerA: n(coal?.total_boiler_a_24),
         deltaTotalCMA: delta(coal?.total_boiler_a_24, pCoal?.total_boiler_a_24),
         coalMillD: n(coal?.coal_d_24),
-        deltaCoalD: delta(coal?.coal_d_24, pCoal?.coal_d_24),
+        deltaCoalD: deltaTot(coal?.coal_d_24, pCoal?.coal_d_24, 'feeder_d'),
         coalMillE: n(coal?.coal_e_24),
-        deltaCoalE: delta(coal?.coal_e_24, pCoal?.coal_e_24),
+        deltaCoalE: deltaTot(coal?.coal_e_24, pCoal?.coal_e_24, 'feeder_e'),
         coalMillF: n(coal?.coal_f_24),
-        deltaCoalF: delta(coal?.coal_f_24, pCoal?.coal_f_24),
+        deltaCoalF: deltaTot(coal?.coal_f_24, pCoal?.coal_f_24, 'feeder_f'),
         totalCMBoilerB: n(coal?.total_boiler_b_24),
         deltaTotalCMB: delta(coal?.total_boiler_b_24, pCoal?.total_boiler_b_24),
 

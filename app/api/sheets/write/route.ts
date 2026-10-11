@@ -33,12 +33,14 @@ async function fetchDailyReport(isoDate: string) {
 
     const { data: report } = await supabase
         .from('daily_reports')
-        .select('id')
+        .select('id, totalizer_riset')
         .eq('date', isoDate)
         .maybeSingle();
 
     if (!report) return null;
     const id = (report as { id: string }).id;
+    // Penanda riset totalizer hari itu — dipakai mapper untuk selisih meter yang riset.
+    const riset = (report as { totalizer_riset?: unknown }).totalizer_riset ?? null;
 
     const [steam, power, coal, turbine, stock, transfer, totalizer] = await Promise.all([
         supabase.from('daily_report_steam').select('*').eq('daily_report_id', id).maybeSingle(),
@@ -58,6 +60,7 @@ async function fetchDailyReport(isoDate: string) {
         stock:     stock.data     ?? null,
         transfer:  transfer.data  ?? null,
         totalizer: totalizer.data ?? null,
+        riset,
     };
 }
 
@@ -217,6 +220,7 @@ export async function POST(req: NextRequest) {
                 solarSummary,
                 chemicalSummary,
                 coalSummary,
+                dbData.riset,
             );
 
             const result = await upsertDailyRow(date, row);

@@ -1,6 +1,8 @@
 'use client';
 import React, { useEffect } from 'react';
 import { Card, InputField, CalculatedField, SelisihInfo } from './SharedComponents';
+import { useNilaiAkhirRiset } from './TotalizerRiset';
+import { kurangiTotalizer } from '@/lib/totalizer-riset';
 
 interface TabTurbinProps {
     values?: Record<string, number | string | null>;
@@ -21,13 +23,14 @@ const TURBIN_NON_TOTALIZER_FIELDS = [
 ];
 
 export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChange, prevTotalizerSteamInlet, prevTotalizerCondensate }: TabTurbinProps) {
+    const risetOf = useNilaiAkhirRiset();
     const currentSteamInlet = Number(values.totalizer_steam_inlet) || 0;
     const prevSteamInlet = Number(prevTotalizerSteamInlet) || 0;
-    const produksiSteamInlet = prevSteamInlet > 0 ? currentSteamInlet - prevSteamInlet : 0;
+    const produksiSteamInlet = prevSteamInlet > 0 ? kurangiTotalizer(currentSteamInlet, prevSteamInlet, risetOf('turbin_inlet')) : 0;
 
     const currentCondensate = Number(values.totalizer_condensate) || 0;
     const prevCondensate = Number(prevTotalizerCondensate) || 0;
-    const produksiCondensate = prevCondensate > 0 ? currentCondensate - prevCondensate : 0;
+    const produksiCondensate = prevCondensate > 0 ? kurangiTotalizer(currentCondensate, prevCondensate, risetOf('turbin_kondensat')) : 0;
 
     // Saat turbin shutdown: kunci field operasional. Kartu Deaerator + raw totalizer
     // (steam_inlet, condensate) TETAP editable supaya operator bisa input pembacaan meter.
@@ -62,7 +65,7 @@ export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChang
                         <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <div>
                             <InputField label="Totalizer Steam Inlet" unit="ton" color="blue" name="totalizer_steam_inlet" value={values.totalizer_steam_inlet} onChange={onFieldChange} placeholder={prevSteamInlet > 0 ? String(prevSteamInlet) : '0.0'} />
-                            <SelisihInfo prev={prevSteamInlet} current={currentSteamInlet} />
+                            <SelisihInfo prev={prevSteamInlet} current={currentSteamInlet} meter="turbin_inlet" />
                         </div>
                     </Card>
 
@@ -78,7 +81,7 @@ export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChang
                         </div>
                         <div>
                             <InputField label="Totalizer Condensate" unit="ton" color="cyan" name="totalizer_condensate" value={values.totalizer_condensate} onChange={onFieldChange} placeholder={prevCondensate > 0 ? String(prevCondensate) : '0.0'} />
-                            <SelisihInfo prev={prevCondensate} current={currentCondensate} />
+                            <SelisihInfo prev={prevCondensate} current={currentCondensate} meter="turbin_kondensat" />
                         </div>
                     </Card>
                     <Card title="Bearings & Mechanical" icon="settings" color="orange">

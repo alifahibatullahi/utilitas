@@ -1,6 +1,8 @@
 'use client';
 import React, { useState } from 'react';
 import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, Modal } from '@/components/input-shift/SharedComponents';
+import { useNilaiAkhirRiset } from '@/components/input-shift/TotalizerRiset';
+import { kurangiTotalizer } from '@/lib/totalizer-riset';
 import type { DailyTabProps } from './types';
 import { formatTon, HOPPER_LABEL, labelZonaPendek, TON_PER_SHOVEL } from '@/lib/coal-storage';
 import { KONSUMSI_TOTALIZER_ROWS } from '@/lib/konsumsi-baseline';
@@ -36,10 +38,12 @@ export default function TabHandling({
     // kolom yang dicek bisa diam-diam berbeda.
     const konsumsiRows = KONSUMSI_TOTALIZER_ROWS;
 
+    // Kunci riset meter air = nama kolom tot_* (lib/totalizer-riset.ts).
+    const risetOf = useNilaiAkhirRiset();
     const selisih = (name: string) => {
         const cur = n(totalizer[name]);
         const prev = prevTotalizer ? n(prevTotalizer[name]) : 0;
-        return prev > 0 ? cur - prev : null;
+        return prev > 0 ? kurangiTotalizer(cur, prev, risetOf(name)) : null;
     };
 
     const konsHydrant = selisih('tot_hydrant');
@@ -148,13 +152,13 @@ export default function TabHandling({
                     {konsumsiRows.slice(0, 6).map(({ label, name }) => (
                         <div key={name}>
                             <InputField label={label} name={name} value={totalizer[name] as number | null} onChange={onTotalizerChange} unit="" color="emerald" thousands placeholder={prevTotalizer?.[name] != null ? String(n(prevTotalizer[name])) : '0.0'} />
-                            <SelisihInfo prev={prevTotalizer ? n(prevTotalizer[name]) : 0} current={n(totalizer[name])} />
+                            <SelisihInfo prev={prevTotalizer ? n(prevTotalizer[name]) : 0} current={n(totalizer[name])} meter={name} />
                         </div>
                     ))}
                 </div>
                 <div>
                     <InputField label="Service" name="tot_service" value={totalizer.tot_service as number | null} onChange={onTotalizerChange} unit="" color="emerald" thousands placeholder={prevTotalizer?.tot_service != null ? String(n(prevTotalizer.tot_service)) : '0.0'} />
-                    <SelisihInfo prev={prevTotalizer ? n(prevTotalizer.tot_service) : 0} current={n(totalizer.tot_service)} />
+                    <SelisihInfo prev={prevTotalizer ? n(prevTotalizer.tot_service) : 0} current={n(totalizer.tot_service)} meter="tot_service" />
                 </div>
             </Card>
 
@@ -175,9 +179,7 @@ export default function TabHandling({
                                 </thead>
                                 <tbody className="divide-y divide-slate-700/40">
                                     {konsumsiRows.map(({ label, name }) => {
-                                        const cur = n(totalizer[name]);
-                                        const prev = prevTotalizer ? n(prevTotalizer[name]) : 0;
-                                        const diff = prev > 0 ? cur - prev : null;
+                                        const diff = selisih(name);
                                         return (
                                             <tr key={name} className="hover:bg-slate-800/30 transition-colors">
                                                 <td className="py-1.5 px-3 text-slate-300 font-medium">{label}</td>

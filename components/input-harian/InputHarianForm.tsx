@@ -22,7 +22,7 @@ import TabSiloFlyAsh from './TabSiloFlyAsh';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import PersonnelConfirmModal, { type PersonnelConfirmField } from '@/components/ui/PersonnelConfirmModal';
 import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif, checkSelisihTidakWajar } from '@/lib/report-validation';
-import { fetchKonsumsiBaseline, KONSUMSI_TOTALIZER_ROWS, selisihTotalizer as selD, type KonsumsiBaselineMap } from '@/lib/konsumsi-baseline';
+import { fetchKonsumsiBaseline, selisihTotalizer as selD, type KonsumsiBaselineMap } from '@/lib/konsumsi-baseline';
 import {
     type DailyState,
     isBoilerComplete, isTurbinComplete, isPowerComplete,
@@ -30,6 +30,11 @@ import {
 } from '@/lib/daily-completeness';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import type { DailyTabProps } from './types';
+import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
+import {
+    jendelaShiftUntukHarian, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
+    saranDariBaris, susunPatchRiset, type MeterTotalizer, type RisetState, type SaranMap, type ShiftNama,
+} from '@/lib/totalizer-riset';
 
 type HarianTabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Coal Bunker' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
 
@@ -200,6 +205,34 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [konsumsiBaseline, setKonsumsiBaseline] = useState<KonsumsiBaselineMap>({});
     const [coalArrivals, setCoalArrivals] = useState<{ id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[]>([]);
     const [coalLoadings, setCoalLoadings] = useState<LoadingShiftHarian[]>([]);
+
+    // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
+    // riset: kunci ada = ditandai (null = nilai akhir belum diisi). Hanya kunci yang
+    // DISENTUH operator yang dikirim saat simpan (anti-wipe). Saran = riset yang sudah
+    // tercatat di laporan shift yang jendelanya beririsan dengan hari ini — dipakai
+    // otomatis kalau angka harian ikut turun.
+    const [riset, setRisetState] = useState<RisetState>({});
+    const risetDisentuhRef = useRef<Set<string>>(new Set());
+    const [risetDitolak, setRisetDitolak] = useState<Set<string>>(() => new Set());
+    const [saranRiset, setSaranRiset] = useState<SaranMap>({});
+    const setRiset = useCallback((meter: string, nilai: number | null | undefined) => {
+        risetDisentuhRef.current.add(meter);
+        setRisetState(prev => {
+            const next = { ...prev };
+            if (nilai === undefined) delete next[meter];
+            else next[meter] = nilai;
+            return next;
+        });
+    }, []);
+    const risetCtx = useMemo<RisetContextValue>(() => ({
+        riset,
+        setRiset,
+        saran: saranRiset,
+        ditolak: risetDitolak,
+        tolak: (meter: string) => setRisetDitolak(prev => new Set(prev).add(meter)),
+    }), [riset, setRiset, saranRiset, risetDitolak]);
+    /** Nilai akhir riset yang siap dihitung (undefined = tidak riset / belum diisi). */
+    const rL = (meter: string) => nilaiAkhirDariState(riset, meter);
 
     // Mode station: select di-narrow ke child table milik station (hemat DB & payload).
     const { report, prevReport, loading, submitReport, refetch } = useDailyReport(date, station);
@@ -493,6 +526,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         setStockTank({});
         setCoalTransfer({});
         setTotalizer({});
+        setRisetState(risetStateDariDb(report?.totalizer_riset));
+        risetDisentuhRef.current = new Set();
+        setRisetDitolak(new Set());
 
         if (!report) {
             // Pre-fill totalizer fields dari data kemarin (default = totalizer kemarin)
@@ -542,6 +578,28 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (transferData) setCoalTransfer(extractFields(transferData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report, prevReport]);
+
+    // Saran riset dari laporan shift yang jendelanya beririsan dengan harian ini:
+    // malam/pagi/sore D + malam D+1. Meter berpasangan shift↔harian hanya dipegang
+    // station panel & form penuh (air Handling & PIU tak punya padanan di shift).
+    useEffect(() => {
+        if (station && !isPanelStation) { setSaranRiset({}); return; }
+        let stale = false;
+        const jendela = jendelaShiftUntukHarian(date);
+        createClient()
+            .from('shift_reports')
+            .select('date, shift, totalizer_riset')
+            .in('date', Array.from(new Set(jendela.map(j => j.date))))
+            .then(({ data }) => {
+                if (stale) return;
+                const urut = (r: { date: string; shift: string }) => jendela.findIndex(j => j.date === r.date && j.shift === r.shift);
+                const rows = ((data ?? []) as { date: string; shift: ShiftNama; totalizer_riset: unknown }[])
+                    .filter(r => urut(r) >= 0)
+                    .sort((a, b) => urut(a) - urut(b));
+                setSaranRiset(saranDariBaris(rows.map(r => ({ seri: 'shift' as const, date: r.date, shift: r.shift, riset: r.totalizer_riset }))));
+            });
+        return () => { stale = true; };
+    }, [date, station, isPanelStation]);
 
     // Default Level Silo A/B (kolom CU/CV LHUBB) = pembacaan ESP terakhir. Hanya
     // mengisi yang masih kosong — isian tersimpan maupun ketikan operator menang.
@@ -608,13 +666,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // ─── CR Calculation (Total Batubara ÷ Total Produksi Steam) ───
     const N0 = (v: number | null | undefined) => Number(v) || 0;
     // Selisih totalizer kumulatif → tak mungkin negatif, di-lantai 0 (samakan dgn sel()/selD).
-    const selCoalCR = (key: string) => { const p = prevCoal ? N0(prevCoal[key]) : 0; return p > 0 ? Math.max(0, N0(coal[key]) - p) : N0(coal[key]); };
-    const coalTotalA = selCoalCR('coal_a_24') + selCoalCR('coal_b_24') + selCoalCR('coal_c_24');
-    const coalTotalB = selCoalCR('coal_d_24') + selCoalCR('coal_e_24') + selCoalCR('coal_f_24');
+    // Meter riset hari ini: (nilai akhir sebelum riset − kemarin) + hari ini.
+    const selCoalCR = (f: string) => {
+        const key = `coal_${f}_24`;
+        const p = prevCoal ? N0(prevCoal[key]) : 0;
+        return p > 0 ? Math.max(0, kurangiTotalizer(N0(coal[key]), p, rL(`feeder_${f}`))) : N0(coal[key]);
+    };
+    const coalTotalA = selCoalCR('a') + selCoalCR('b') + selCoalCR('c');
+    const coalTotalB = selCoalCR('d') + selCoalCR('e') + selCoalCR('f');
     const prevSteamA24 = prevSteam ? N0(prevSteam.prod_boiler_a_24) : 0;
     const prevSteamB24 = prevSteam ? N0(prevSteam.prod_boiler_b_24) : 0;
-    const steamProdA = prevSteamA24 > 0 ? Math.max(0, N0(steam.prod_boiler_a_24) - prevSteamA24) : N0(steam.prod_boiler_a_24);
-    const steamProdB = prevSteamB24 > 0 ? Math.max(0, N0(steam.prod_boiler_b_24) - prevSteamB24) : N0(steam.prod_boiler_b_24);
+    const steamProdA = prevSteamA24 > 0 ? Math.max(0, kurangiTotalizer(N0(steam.prod_boiler_a_24), prevSteamA24, rL('steam_a'))) : N0(steam.prod_boiler_a_24);
+    const steamProdB = prevSteamB24 > 0 ? Math.max(0, kurangiTotalizer(N0(steam.prod_boiler_b_24), prevSteamB24, rL('steam_b'))) : N0(steam.prod_boiler_b_24);
     const crA = steamProdA > 0 ? coalTotalA / steamProdA : 0;
     const crB = steamProdB > 0 ? coalTotalB / steamProdB : 0;
 
@@ -675,17 +738,41 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             return;
         }
 
+        // Validasi HANYA untuk tab milik scope aktif (form penuh = semua tab;
+        // station = tab station tsb). Tanpa gate ini, simpan dari station panel_turbin
+        // ikut memicu peringatan CR Boiler A/B (tab yang bukan urusannya).
+        const ownsTab = (tabId: HarianTabId) => !station || !!harianStationTabs?.includes(tabId);
+        // Raw hari ini & kemarin untuk satu meter (registri lib/totalizer-riset.ts).
+        const rawHarian = (m: MeterTotalizer): { cur: number | string | null | undefined; prev: number | string | null | undefined } => {
+            const l = m.harian!;
+            switch (l.tabel) {
+                case 'daily_report_steam': return { cur: steam[l.kolom], prev: prevSteam?.[l.kolom] };
+                case 'daily_report_coal': return { cur: coal[l.kolom], prev: prevCoal?.[l.kolom] };
+                case 'daily_report_stock_tank': return { cur: stockTank[l.kolom], prev: prevStockTank?.[l.kolom] };
+                case 'daily_report_power': return { cur: power[l.kolom], prev: prevPower?.[l.kolom] };
+                case 'daily_report_turbine_misc': return { cur: turbineMisc[l.kolom], prev: prevTurbineMisc?.[l.kolom] };
+                case 'daily_report_totalizer': return { cur: totalizer[l.kolom], prev: prevTotalizerData?.[l.kolom] };
+                default: return { cur: null, prev: null };
+            }
+        };
+        const meterMilikScope = meterSeri('harian').filter(m => ownsTab(m.harian!.tab as HarianTabId));
+
+        // ─── Riset totalizer ditandai → nilai akhir sebelum riset wajib diisi ───
+        const risetKosong = meterMilikScope.filter(m => m.key in riset && rL(m.key) === undefined);
+        if (risetKosong.length > 0) {
+            setToast({ message: `Isi nilai akhir sebelum riset: ${risetKosong.map(m => m.label).join(', ')}.`, type: 'error' });
+            setTimeout(() => setToast(null), 5000);
+            return;
+        }
+
         // ─── Validasi nilai (pop-up peringatan sebelum simpan) ───
         // CR boiler 0,15–0,25 saat running (skip kalau shutdown / belum ada produksi);
-        // nilai berunit MW maksimal 30. Dicek sebelum overlay "Menyimpan" muncul.
+        // nilai berunit MW maksimal 30; totalizer turun tanpa ditandai riset. Dicek
+        // sebelum overlay "Menyimpan" muncul.
         {
             const isSdA = turbineMisc.status_boiler_a === 'shutdown';
             const isSdB = turbineMisc.status_boiler_b === 'shutdown';
             const isTurbinSd = turbineMisc.status_turbin === 'shutdown';
-            // Validasi HANYA untuk tab milik scope aktif (form penuh = semua tab;
-            // station = tab station tsb). Tanpa gate ini, simpan dari station panel_turbin
-            // ikut memicu peringatan CR Boiler A/B (tab yang bukan urusannya).
-            const ownsTab = (tabId: HarianTabId) => !station || !!harianStationTabs?.includes(tabId);
             const warnings: string[] = [];
             if (ownsTab('Boiler A')) { const wA = checkConsumptionRate('Boiler A', coalTotalA, steamProdA, isSdA); if (wA) warnings.push(wA); }
             if (ownsTab('Boiler B')) { const wB = checkConsumptionRate('Boiler B', coalTotalB, steamProdB, isSdB); if (wB) warnings.push(wB); }
@@ -701,25 +788,24 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 for (const [lbl, v] of mwFields) { const w = checkMaxMW(lbl, v); if (w) warnings.push(w); }
             }
             // PIU dimiliki station lapangan_turbin (tab terpisah), bukan panel_turbin.
-            // Selisih totalizer sengaja tidak diklamp — di layar tampil apa adanya
-            // (boleh minus), di sini operator diberi pilihan perbaiki atau tetap simpan.
             if (ownsTab('PIU')) {
                 const w = checkMaxMW('PIU', power.power_pie); if (w) warnings.push(w);
-                const wI = checkSelisihNegatif('Delivered (Import)', turbineMisc.totalizer_import, prevTurbineMisc?.totalizer_import); if (wI) warnings.push(wI);
-                const wE = checkSelisihNegatif('Received (Export)',  turbineMisc.totalizer_export, prevTurbineMisc?.totalizer_export); if (wE) warnings.push(wE);
             }
-            // Konsumsi air harian = selisih totalizer. Dua kesalahan yang mungkin:
-            // angkanya turun (mustahil, totalizer kumulatif) atau melonjak jauh dari
-            // kebiasaan parameter itu sendiri. Keduanya saling eksklusif — selisih tak
-            // bisa negatif dan besar sekaligus — jadi tiap parameter paling banyak
-            // menyumbang satu baris dan pop-up tidak membengkak jadi 14 baris.
-            if (ownsTab('Handling')) {
-                for (const { label, name } of KONSUMSI_TOTALIZER_ROWS) {
-                    const prev = prevTotalizerData?.[name];
-                    const w = checkSelisihNegatif(label, totalizer[name], prev)
-                        ?? checkSelisihTidakWajar(label, totalizer[name], prev, konsumsiBaseline[name]);
-                    if (w) warnings.push(w);
-                }
+            // Totalizer turun = riset / salah ketik. Selisih di layar tampil apa adanya
+            // (boleh minus); di sini operator diberi pilihan perbaiki, tandai riset, atau
+            // tetap simpan. Riset ditandai → yang dicek ganti: nilai akhir ≥ kemarin.
+            // Konsumsi air (Handling) juga dicek melonjak jauh dari kebiasaannya sendiri;
+            // turun & melonjak saling eksklusif, jadi tiap meter paling banyak satu baris.
+            // Boiler/Turbin/Power: 0 dilewati (unit/meter idle) — bukan tanda riset.
+            for (const m of meterMilikScope) {
+                const { cur, prev } = rawHarian(m);
+                const L = rL(m.key);
+                const tab = m.harian!.tab;
+                const cekNol = tab === 'PIU' || tab === 'Handling';
+                if (!cekNol && L === undefined && !(Number(cur) > 0)) continue;
+                const w = checkSelisihNegatif(m.label, cur, prev, L)
+                    ?? (tab === 'Handling' ? checkSelisihTidakWajar(m.label, cur, prev, konsumsiBaseline[m.key], L) : null);
+                if (w) warnings.push(w);
             }
             if (warnings.length > 0) {
                 const ok = await confirmWarnings(warnings);
@@ -738,8 +824,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             // Auto-kalkulasi: produksi = selisih totalizer, Internal UBB, LPS = 0
             const prevA24 = prevSteam ? N(prevSteam.prod_boiler_a_24) : 0;
             const prevB24 = prevSteam ? N(prevSteam.prod_boiler_b_24) : 0;
-            const prodA24 = prevA24 > 0 ? Math.max(0, N(steam.prod_boiler_a_24) - prevA24) : N(steam.prod_boiler_a_24);
-            const prodB24 = prevB24 > 0 ? Math.max(0, N(steam.prod_boiler_b_24) - prevB24) : N(steam.prod_boiler_b_24);
+            // Meter riset hari ini: (nilai akhir sebelum riset − kemarin) + hari ini.
+            const prodA24 = prevA24 > 0 ? Math.max(0, kurangiTotalizer(N(steam.prod_boiler_a_24), prevA24, rL('steam_a'))) : N(steam.prod_boiler_a_24);
+            const prodB24 = prevB24 > 0 ? Math.max(0, kurangiTotalizer(N(steam.prod_boiler_b_24), prevB24, rL('steam_b'))) : N(steam.prod_boiler_b_24);
 
             const steamWithCalcs = {
                 ...steam,
@@ -756,20 +843,24 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 lps_3a_24: 0,
                 lps_ii_00: 0,
                 lps_3a_00: 0,
-                // Selisih raw totalizer
-                selisih_prod_boiler_a: selD(steam.prod_boiler_a_24, prevSteam?.prod_boiler_a_24),
-                selisih_prod_boiler_b: selD(steam.prod_boiler_b_24, prevSteam?.prod_boiler_b_24),
-                selisih_inlet_turbine: selD(steam.inlet_turbine_24, prevSteam?.inlet_turbine_24),
-                selisih_mps_i:         selD(steam.mps_i_24,         prevSteam?.mps_i_24),
-                selisih_mps_3a:        selD(steam.mps_3a_24,        prevSteam?.mps_3a_24),
+                // Selisih raw totalizer (memperhitungkan riset meter)
+                selisih_prod_boiler_a: selD(steam.prod_boiler_a_24, prevSteam?.prod_boiler_a_24, rL('steam_a')),
+                selisih_prod_boiler_b: selD(steam.prod_boiler_b_24, prevSteam?.prod_boiler_b_24, rL('steam_b')),
+                selisih_inlet_turbine: selD(steam.inlet_turbine_24, prevSteam?.inlet_turbine_24, rL('turbin_inlet')),
+                selisih_mps_i:         selD(steam.mps_i_24,         prevSteam?.mps_i_24,         rL('steam_pabrik1')),
+                selisih_mps_3a:        selD(steam.mps_3a_24,        prevSteam?.mps_3a_24,        rL('steam_pabrik3a')),
                 selisih_lps_ii:        selD(steam.lps_ii_24,        prevSteam?.lps_ii_24),
                 selisih_lps_3a:        selD(steam.lps_3a_24,        prevSteam?.lps_3a_24),
-                selisih_fully_condens: selD(steam.fully_condens_24, prevSteam?.fully_condens_24),
+                selisih_fully_condens: selD(steam.fully_condens_24, prevSteam?.fully_condens_24, rL('turbin_kondensat')),
             };
 
-            const selC = (key: string) => { const p = prevCoal ? N(prevCoal[key]) : 0; return p > 0 ? Math.max(0, N(coal[key]) - p) : N(coal[key]); };
-            const totalA24 = selC('coal_a_24') + selC('coal_b_24') + selC('coal_c_24');
-            const totalB24 = selC('coal_d_24') + selC('coal_e_24') + selC('coal_f_24');
+            const selC = (f: string) => {
+                const key = `coal_${f}_24`;
+                const p = prevCoal ? N(prevCoal[key]) : 0;
+                return p > 0 ? Math.max(0, kurangiTotalizer(N(coal[key]), p, rL(`feeder_${f}`))) : N(coal[key]);
+            };
+            const totalA24 = selC('a') + selC('b') + selC('c');
+            const totalB24 = selC('d') + selC('e') + selC('f');
             const totalA00 = N(coal.coal_a_00) + N(coal.coal_b_00) + N(coal.coal_c_00);
             const totalB00 = N(coal.coal_d_00) + N(coal.coal_e_00) + N(coal.coal_f_00);
             const coalWithCalcs = {
@@ -781,12 +872,12 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 total_boiler_b_00: totalB00,
                 grand_total_00: totalA00 + totalB00,
                 // Selisih totalizer feeder (today − yesterday)
-                selisih_coal_a: selD(coal.coal_a_24, prevCoal?.coal_a_24),
-                selisih_coal_b: selD(coal.coal_b_24, prevCoal?.coal_b_24),
-                selisih_coal_c: selD(coal.coal_c_24, prevCoal?.coal_c_24),
-                selisih_coal_d: selD(coal.coal_d_24, prevCoal?.coal_d_24),
-                selisih_coal_e: selD(coal.coal_e_24, prevCoal?.coal_e_24),
-                selisih_coal_f: selD(coal.coal_f_24, prevCoal?.coal_f_24),
+                selisih_coal_a: selD(coal.coal_a_24, prevCoal?.coal_a_24, rL('feeder_a')),
+                selisih_coal_b: selD(coal.coal_b_24, prevCoal?.coal_b_24, rL('feeder_b')),
+                selisih_coal_c: selD(coal.coal_c_24, prevCoal?.coal_c_24, rL('feeder_c')),
+                selisih_coal_d: selD(coal.coal_d_24, prevCoal?.coal_d_24, rL('feeder_d')),
+                selisih_coal_e: selD(coal.coal_e_24, prevCoal?.coal_e_24, rL('feeder_e')),
+                selisih_coal_f: selD(coal.coal_f_24, prevCoal?.coal_f_24, rL('feeder_f')),
             };
 
             const calcCrA = steamProdA > 0 ? coalTotalA / steamProdA : 0;
@@ -800,8 +891,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
             const prevBfwA = prevStockTank ? N(prevStockTank.bfw_boiler_a) : 0;
             const prevBfwB = prevStockTank ? N(prevStockTank.bfw_boiler_b) : 0;
-            const bfwConsA = prevBfwA > 0 ? N(stockTank.bfw_boiler_a) - prevBfwA : N(stockTank.bfw_boiler_a);
-            const bfwConsB = prevBfwB > 0 ? N(stockTank.bfw_boiler_b) - prevBfwB : N(stockTank.bfw_boiler_b);
+            const bfwConsA = prevBfwA > 0 ? kurangiTotalizer(N(stockTank.bfw_boiler_a), prevBfwA, rL('bfw_a')) : N(stockTank.bfw_boiler_a);
+            const bfwConsB = prevBfwB > 0 ? kurangiTotalizer(N(stockTank.bfw_boiler_b), prevBfwB, rL('bfw_b')) : N(stockTank.bfw_boiler_b);
 
             // Ritase unloading fly ash (kolom CW/CX LHUBB): nihil = 0, BUKAN null —
             // sel kosong di sheet ambigu "tidak ada unloading" vs "belum diisi".
@@ -884,12 +975,12 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             // Precompute selisih totalizer MWh untuk power.
             const powerWithSelisih: Record<string, number | null> = {
                 ...power,
-                selisih_ubb:       selD(power.power_ubb_totalizer,       prevPower?.power_ubb_totalizer),
-                selisih_pabrik2:   selD(power.power_pabrik2_totalizer,   prevPower?.power_pabrik2_totalizer),
-                selisih_pabrik3a:  selD(power.power_pabrik3a_totalizer,  prevPower?.power_pabrik3a_totalizer),
-                selisih_revamping: selD(power.power_revamping_totalizer, prevPower?.power_revamping_totalizer),
-                selisih_pie:       selD(power.power_pie_totalizer,       prevPower?.power_pie_totalizer),
-                selisih_stg_ubb:   selD(power.power_stg_ubb_totalizer,   prevPower?.power_stg_ubb_totalizer),
+                selisih_ubb:       selD(power.power_ubb_totalizer,       prevPower?.power_ubb_totalizer,       rL('power_ubb')),
+                selisih_pabrik2:   selD(power.power_pabrik2_totalizer,   prevPower?.power_pabrik2_totalizer,   rL('power_pabrik2')),
+                selisih_pabrik3a:  selD(power.power_pabrik3a_totalizer,  prevPower?.power_pabrik3a_totalizer,  rL('power_pabrik3a')),
+                selisih_revamping: selD(power.power_revamping_totalizer, prevPower?.power_revamping_totalizer, rL('power_revamping')),
+                selisih_pie:       selD(power.power_pie_totalizer,       prevPower?.power_pie_totalizer,       rL('power_pie')),
+                selisih_stg_ubb:   selD(power.power_stg_ubb_totalizer,   prevPower?.power_stg_ubb_totalizer,   rL('power_stg_ubb')),
             };
             const powerForSubmit: Record<string, number | null> = isTurbinShutdown
                 ? { ...powerWithSelisih, gen_00: 0 }
@@ -932,6 +1023,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 },
                 // Station-scoped fill audit: hanya di-kirim kalau submit dari station view.
                 ...(station && fillerVal ? { station_filler: { station, name: fillerVal } } : {}),
+                // Penanda riset yang disentuh operator — hook memfilternya ke meter milik station.
+                totalizer_riset_patch: susunPatchRiset(riset, risetDisentuhRef.current, { station: station ?? null, oleh: fillerVal || operator?.name || null }),
             });
 
             if (result?.error) {
@@ -942,6 +1035,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 } else {
                     showToast('Laporan harian berhasil disimpan!', 'success');
                 }
+                // Penanda riset sudah tersimpan (state form = isi DB).
+                risetDisentuhRef.current = new Set();
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
 
@@ -1480,7 +1575,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     coalLoadings,
                                 };
                                 return (
-                                    <>
+                                    <RisetProvider value={risetCtx}>
                                         {activeTab === 'Boiler A' && <TabBoiler {...tabProps} boilerId="A" />}
                                         {activeTab === 'Boiler B' && <TabBoiler {...tabProps} boilerId="B" />}
                                         {activeTab === 'Turbin' && <TabTurbin {...tabProps} />}
@@ -1491,7 +1586,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                         {activeTab === 'Chemical' && <TabChemical date={date} />}
                                         {activeTab === 'Stock BB' && <TabStockBatubara {...tabProps} />}
                                         {activeTab === 'Silo & Fly Ash' && <TabSiloFlyAsh {...tabProps} />}
-                                    </>
+                                    </RisetProvider>
                                 );
                             })()}
                         </div>

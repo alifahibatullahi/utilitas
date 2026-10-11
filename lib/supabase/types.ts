@@ -55,6 +55,9 @@ export interface ShiftReportRow {
     /** Map station → catatan operasional milik station tsb (panel_boiler/turbin). Digabung
      *  dengan catatan utama jadi satu catatan shift saat ditampilkan/publish. */
     station_catatan?: Record<string, string> | null;
+    /** Penanda riset totalizer per meter: { <meter>: { nilai_akhir, station, oleh, dicatat_pada } }.
+     *  Ditulis via RPC merge_shift_totalizer_riset — lihat lib/totalizer-riset.ts. */
+    totalizer_riset?: Record<string, { nilai_akhir: number; station?: string | null; oleh?: string | null; dicatat_pada?: string | null }> | null;
     /** Approval supervisor/foreman saat publish. Di-set bersamaan dengan status='approved'. */
     reviewed_by?: string | null;
     reviewed_at?: string | null;
@@ -73,6 +76,8 @@ export interface DailyReportRow {
     created_at: string;
     /** Lihat ShiftReportRow.station_fillers. */
     station_fillers?: Record<string, string> | null;
+    /** Lihat ShiftReportRow.totalizer_riset (RPC merge_daily_totalizer_riset). */
+    totalizer_riset?: Record<string, { nilai_akhir: number; station?: string | null; oleh?: string | null; dicatat_pada?: string | null }> | null;
 }
 
 // ─── Shift Tables (10 tabel) ───

@@ -92,7 +92,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <div>
                                                     <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} placeholder={prevTot > 0 ? String(prevTot) : '0'} />
-                                                    <SelisihInfo prev={prevTot} current={curTot} />
+                                                    <SelisihInfo prev={prevTot} current={curTot} meter={`power_${key}`} />
                                                 </div>
                                                 <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />
                                             </div>
@@ -106,7 +106,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <div>
                                             <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} placeholder={Number(prevPowerDist.power_stg_ubb_totalizer) > 0 ? String(Number(prevPowerDist.power_stg_ubb_totalizer)) : '0.0'} />
-                                            <SelisihInfo prev={Number(prevPowerDist.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} />
+                                            <SelisihInfo prev={Number(prevPowerDist.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} meter="power_stg_ubb" />
                                         </div>
                                         <div>
                                             <InputField label="MW" unit="MW" color="emerald" size="small" name="_stg_mw" value={genLoad} readOnly />

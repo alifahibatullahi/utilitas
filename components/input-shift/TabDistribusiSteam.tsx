@@ -1,6 +1,8 @@
 'use client';
 import React from 'react';
 import { Card, InputField, CalculatedField, SelisihInfo } from './SharedComponents';
+import { useNilaiAkhirRiset } from './TotalizerRiset';
+import { kurangiTotalizer } from '@/lib/totalizer-riset';
 
 interface TabDistribusiSteamProps {
     values?: Record<string, number | string | null>;
@@ -11,17 +13,18 @@ interface TabDistribusiSteamProps {
 }
 
 export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTotalizerPabrik1, prevTotalizerPabrik2, prevTotalizerPabrik3 }: TabDistribusiSteamProps) {
+    const risetOf = useNilaiAkhirRiset();
     const currentP1 = Number(values.pabrik1_totalizer) || 0;
     const prevP1 = Number(prevTotalizerPabrik1) || 0;
-    const produksiP1 = prevP1 > 0 ? currentP1 - prevP1 : 0;
+    const produksiP1 = prevP1 > 0 ? kurangiTotalizer(currentP1, prevP1, risetOf('steam_pabrik1')) : 0;
 
     const currentP2 = Number(values.pabrik2_totalizer) || 0;
     const prevP2 = Number(prevTotalizerPabrik2) || 0;
-    const produksiP2 = prevP2 > 0 ? currentP2 - prevP2 : 0;
+    const produksiP2 = prevP2 > 0 ? kurangiTotalizer(currentP2, prevP2, risetOf('steam_pabrik2')) : 0;
 
     const currentP3 = Number(values.pabrik3a_totalizer) || 0;
     const prevP3 = Number(prevTotalizerPabrik3) || 0;
-    const produksiP3 = prevP3 > 0 ? currentP3 - prevP3 : 0;
+    const produksiP3 = prevP3 > 0 ? kurangiTotalizer(currentP3, prevP3, risetOf('steam_pabrik3a')) : 0;
 
     const grandTotal = produksiP1 + produksiP2 + produksiP3;
 
@@ -36,7 +39,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                             <InputField label="Temperatur" unit="°C" color="blue" name="pabrik1_temp" value={values.pabrik1_temp} onChange={onFieldChange} />
                             <div>
                                 <InputField label="Totaliser" unit="ton" color="blue" name="pabrik1_totalizer" value={values.pabrik1_totalizer} onChange={onFieldChange} placeholder={prevP1 > 0 ? String(prevP1) : '0.0'} />
-                                <SelisihInfo prev={prevP1} current={currentP1} />
+                                <SelisihInfo prev={prevP1} current={currentP1} meter="steam_pabrik1" />
                             </div>
                         </div>
                     </Card>
@@ -50,7 +53,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                             <InputField label="Temperatur" unit="°C" color="cyan" name="pabrik2_temp" value={values.pabrik2_temp} onChange={onFieldChange} />
                             <div>
                                 <InputField label="Totaliser" unit="ton" color="cyan" name="pabrik2_totalizer" value={values.pabrik2_totalizer ?? 0} onChange={onFieldChange} placeholder={prevP2 > 0 ? String(prevP2) : '0'} />
-                                <SelisihInfo prev={prevP2} current={currentP2} />
+                                <SelisihInfo prev={prevP2} current={currentP2} meter="steam_pabrik2" />
                             </div>
                         </div>
                     </Card>
@@ -61,7 +64,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                             <InputField label="Temperatur" unit="°C" color="emerald" name="pabrik3a_temp" value={values.pabrik3a_temp} onChange={onFieldChange} />
                             <div>
                                 <InputField label="Totaliser" unit="ton" color="emerald" name="pabrik3a_totalizer" value={values.pabrik3a_totalizer} onChange={onFieldChange} placeholder={prevP3 > 0 ? String(prevP3) : '0.0'} />
-                                <SelisihInfo prev={prevP3} current={currentP3} />
+                                <SelisihInfo prev={prevP3} current={currentP3} meter="steam_pabrik3a" />
                             </div>
                         </div>
                     </Card>

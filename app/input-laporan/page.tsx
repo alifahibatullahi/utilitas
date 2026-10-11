@@ -783,7 +783,31 @@ function InputShiftPageInner() {
     const [riset, setRisetState] = useState<RisetState>({});
     const risetDisentuhRef = useRef<Set<string>>(new Set());
     const [risetDitolak, setRisetDitolak] = useState<Set<string>>(() => new Set());
-    const [saranRiset, setSaranRiset] = useState<SaranMap>({});
+    // Saran dikunci per tanggal|shift — saran tanggal lain tak pernah ikut tampil.
+    const [saranRiset, setSaranRiset] = useState<{ kunci: string; map: SaranMap }>({ kunci: '', map: {} });
+    const saranDimintaRef = useRef<string | null>(null);
+    const kunciSaran = `${selectedDate}|${shiftMap[selectedShift]}`;
+    // Dimuat MALAS: baru saat angka totalizer turun / tombol Riset ditekan (dipanggil
+    // SelisihInfo), sekali per tanggal|shift — buka form tidak menambah query.
+    // Jendela: malam D → harian D−1 & D; pagi/sore D → harian D. Hanya form penuh &
+    // station panel yang memegang totalizer.
+    const mintaSaran = useCallback(() => {
+        if (shiftGate || (station && !isPanelStation)) return;
+        if (saranDimintaRef.current === kunciSaran) return;
+        const kunci = kunciSaran;
+        saranDimintaRef.current = kunci;
+        createClient()
+            .from('daily_reports')
+            .select('date, totalizer_riset')
+            .in('date', jendelaHarianUntukShift(selectedDate, shiftMap[selectedShift]))
+            .order('date', { ascending: true })
+            .then(({ data, error }) => {
+                if (error) { if (saranDimintaRef.current === kunci) saranDimintaRef.current = null; return; }
+                const rows = (data ?? []) as { date: string; totalizer_riset: unknown }[];
+                setSaranRiset({ kunci, map: saranDariBaris(rows.map(r => ({ seri: 'harian' as const, date: r.date, riset: r.totalizer_riset }))) });
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kunciSaran, shiftGate, station, isPanelStation]);
     const setRiset = useCallback((meter: string, nilai: number | null | undefined) => {
         risetDisentuhRef.current.add(meter);
         setRisetState(prev => {
@@ -797,10 +821,11 @@ function InputShiftPageInner() {
     const risetCtx = useMemo<RisetContextValue>(() => ({
         riset,
         setRiset,
-        saran: saranRiset,
+        saran: saranRiset.kunci === kunciSaran ? saranRiset.map : {},
+        mintaSaran,
         ditolak: risetDitolak,
         tolak: (meter: string) => setRisetDitolak(prev => new Set(prev).add(meter)),
-    }), [riset, setRiset, saranRiset, risetDitolak]);
+    }), [riset, setRiset, saranRiset, kunciSaran, mintaSaran, risetDitolak]);
 
     // Patch history.pushState once to intercept SPA navigation
     useEffect(() => {
@@ -925,27 +950,6 @@ function InputShiftPageInner() {
         risetDisentuhRef.current = new Set();
         setRisetDitolak(new Set());
     }, [selectedShift, selectedDate]);
-
-    // Saran riset dari laporan harian yang jendelanya beririsan dengan shift ini
-    // (malam D → harian D−1 & D; pagi/sore D → harian D). Hanya form penuh & station
-    // panel yang memegang totalizer.
-    useEffect(() => {
-        if (shiftGate || (station && !isPanelStation)) { setSaranRiset({}); return; }
-        let stale = false;
-        const tanggal = jendelaHarianUntukShift(selectedDate, shiftMap[selectedShift]);
-        createClient()
-            .from('daily_reports')
-            .select('date, totalizer_riset')
-            .in('date', tanggal)
-            .order('date', { ascending: true })
-            .then(({ data }) => {
-                if (stale) return;
-                const rows = (data ?? []) as { date: string; totalizer_riset: unknown }[];
-                setSaranRiset(saranDariBaris(rows.map(r => ({ seri: 'harian' as const, date: r.date, riset: r.totalizer_riset }))));
-            });
-        return () => { stale = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedDate, selectedShift, shiftGate, station, isPanelStation]);
 
     // Default supervisor = supervisor grup yang bertugas. DIDEKLARASI SETELAH clear-effect
     // supaya urutan efek benar: clear kosongkan supervisor dulu, baru fill isi default.

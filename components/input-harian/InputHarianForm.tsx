@@ -214,7 +214,32 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const [riset, setRisetState] = useState<RisetState>({});
     const risetDisentuhRef = useRef<Set<string>>(new Set());
     const [risetDitolak, setRisetDitolak] = useState<Set<string>>(() => new Set());
-    const [saranRiset, setSaranRiset] = useState<SaranMap>({});
+    // Saran dikunci per tanggal — saran tanggal lain tak pernah ikut tampil.
+    const [saranRiset, setSaranRiset] = useState<{ kunci: string; map: SaranMap }>({ kunci: '', map: {} });
+    const saranDimintaRef = useRef<string | null>(null);
+    // Dimuat MALAS: baru saat angka totalizer turun / tombol Riset ditekan (dipanggil
+    // SelisihInfo), sekali per tanggal — buka form tidak menambah query. Jendela:
+    // malam/pagi/sore D + malam D+1. Meter berpasangan shift↔harian hanya dipegang
+    // station panel & form penuh (air Handling & PIU tak punya padanan di shift).
+    const mintaSaran = useCallback(() => {
+        if (station && !isPanelStation) return;
+        if (saranDimintaRef.current === date) return;
+        const kunci = date;
+        saranDimintaRef.current = kunci;
+        const jendela = jendelaShiftUntukHarian(kunci);
+        createClient()
+            .from('shift_reports')
+            .select('date, shift, totalizer_riset')
+            .in('date', Array.from(new Set(jendela.map(j => j.date))))
+            .then(({ data, error }) => {
+                if (error) { if (saranDimintaRef.current === kunci) saranDimintaRef.current = null; return; }
+                const urut = (r: { date: string; shift: string }) => jendela.findIndex(j => j.date === r.date && j.shift === r.shift);
+                const rows = ((data ?? []) as { date: string; shift: ShiftNama; totalizer_riset: unknown }[])
+                    .filter(r => urut(r) >= 0)
+                    .sort((a, b) => urut(a) - urut(b));
+                setSaranRiset({ kunci, map: saranDariBaris(rows.map(r => ({ seri: 'shift' as const, date: r.date, shift: r.shift, riset: r.totalizer_riset }))) });
+            });
+    }, [date, station, isPanelStation]);
     const setRiset = useCallback((meter: string, nilai: number | null | undefined) => {
         risetDisentuhRef.current.add(meter);
         setRisetState(prev => {
@@ -227,10 +252,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     const risetCtx = useMemo<RisetContextValue>(() => ({
         riset,
         setRiset,
-        saran: saranRiset,
+        saran: saranRiset.kunci === date ? saranRiset.map : {},
+        mintaSaran,
         ditolak: risetDitolak,
         tolak: (meter: string) => setRisetDitolak(prev => new Set(prev).add(meter)),
-    }), [riset, setRiset, saranRiset, risetDitolak]);
+    }), [riset, setRiset, saranRiset, date, mintaSaran, risetDitolak]);
     /** Nilai akhir riset yang siap dihitung (undefined = tidak riset / belum diisi). */
     const rL = (meter: string) => nilaiAkhirDariState(riset, meter);
 
@@ -578,28 +604,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         if (transferData) setCoalTransfer(extractFields(transferData as unknown as Record<string, unknown>) as Record<string, number | null>);
         if (totalizerData) setTotalizer(extractFields(totalizerData as unknown as Record<string, unknown>));
     }, [report, prevReport]);
-
-    // Saran riset dari laporan shift yang jendelanya beririsan dengan harian ini:
-    // malam/pagi/sore D + malam D+1. Meter berpasangan shift↔harian hanya dipegang
-    // station panel & form penuh (air Handling & PIU tak punya padanan di shift).
-    useEffect(() => {
-        if (station && !isPanelStation) { setSaranRiset({}); return; }
-        let stale = false;
-        const jendela = jendelaShiftUntukHarian(date);
-        createClient()
-            .from('shift_reports')
-            .select('date, shift, totalizer_riset')
-            .in('date', Array.from(new Set(jendela.map(j => j.date))))
-            .then(({ data }) => {
-                if (stale) return;
-                const urut = (r: { date: string; shift: string }) => jendela.findIndex(j => j.date === r.date && j.shift === r.shift);
-                const rows = ((data ?? []) as { date: string; shift: ShiftNama; totalizer_riset: unknown }[])
-                    .filter(r => urut(r) >= 0)
-                    .sort((a, b) => urut(a) - urut(b));
-                setSaranRiset(saranDariBaris(rows.map(r => ({ seri: 'shift' as const, date: r.date, shift: r.shift, riset: r.totalizer_riset }))));
-            });
-        return () => { stale = true; };
-    }, [date, station, isPanelStation]);
 
     // Default Level Silo A/B (kolom CU/CV LHUBB) = pembacaan ESP terakhir. Hanya
     // mengisi yang masih kosong — isian tersimpan maupun ketikan operator menang.

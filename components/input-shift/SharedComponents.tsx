@@ -266,6 +266,12 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
     const turun = prev > 0 && current > 0 && current < prev;
     const ditolak = !!(meter && ctx?.ditolak.has(meter));
 
+    // Saran riset baru dimuat begitu dibutuhkan (angka turun) — bukan di tiap buka form.
+    useEffect(() => {
+        if (meter && ctx && turun) ctx.mintaSaran();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [meter, turun]);
+
     // Riset sudah dicatat laporan seri lain & angka di sini ikut turun → laporan ini
     // berada di sisi lain riset yang sama: pakai nilai akhirnya (operator bisa batalkan).
     useEffect(() => {
@@ -293,7 +299,7 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
                     <button
                         type="button"
                         onClick={() => { ctx.setRiset(meter, undefined); ctx.tolak(meter); }}
-                        className="text-slate-400 hover:text-white underline cursor-pointer"
+                        className="font-semibold text-rose-300 hover:text-rose-200 underline cursor-pointer"
                     >
                         Batal riset
                     </button>
@@ -309,6 +315,17 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
                     plainInteger={!!plain}
                 />
                 {dariSaran && <p className="text-amber-200/80">Tercatat di {dariSaran}.</p>}
+                {/* Saran datang belakangan (dimuat saat dibutuhkan) atau isian beda dari
+                    yang tercatat di laporan lain → tawarkan, jangan timpa diam-diam. */}
+                {saran && !dariSaran && (
+                    <button
+                        type="button"
+                        onClick={() => ctx.setRiset(meter, saran.nilai)}
+                        className="text-left font-semibold text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                    >
+                        Pakai {fmt(saran.nilai)} (tercatat di {saran.sumber})
+                    </button>
+                )}
                 <p>Prev: <span className="text-slate-300 font-medium">{fmt(prev)}</span></p>
                 {sel != null ? (
                     <p>
@@ -334,7 +351,7 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
                     <span>Lebih kecil dari prev. Totalizer riset?</span>
                     <button
                         type="button"
-                        onClick={() => ctx.setRiset(meter, saran?.nilai ?? null)}
+                        onClick={() => { ctx.mintaSaran(); ctx.setRiset(meter, saran?.nilai ?? null); }}
                         className="rounded bg-amber-500/80 px-2 py-0.5 font-bold text-slate-900 hover:bg-amber-400 cursor-pointer"
                     >
                         Ya, riset
@@ -343,9 +360,10 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
             ) : (
                 <button
                     type="button"
-                    onClick={() => ctx.setRiset(meter, saran?.nilai ?? null)}
-                    className="text-slate-500 hover:text-amber-300 underline decoration-dotted cursor-pointer"
+                    onClick={() => { ctx.mintaSaran(); ctx.setRiset(meter, saran?.nilai ?? null); }}
+                    className="inline-flex items-center gap-0.5 font-semibold text-amber-400/90 hover:text-amber-300 underline decoration-dotted cursor-pointer"
                 >
+                    <span className="material-symbols-outlined text-[12px] no-underline">restart_alt</span>
                     Riset?
                 </button>
             ))}

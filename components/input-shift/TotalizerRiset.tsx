@@ -12,6 +12,9 @@ export interface RisetContextValue {
     setRiset: (meter: string, nilaiAkhir: number | null | undefined) => void;
     /** Riset yang sudah tercatat di laporan seri lain (shift ↔ harian), per meter. */
     saran: SaranMap;
+    /** Muat saran (sekali per tanggal/shift) — dipanggil baru saat dibutuhkan: angka
+     *  totalizer turun atau tombol Riset ditekan. Tidak membebani tiap buka form. */
+    mintaSaran: () => void;
     /** Meter yang penandanya dibatalkan operator — tidak diaktifkan otomatis lagi. */
     ditolak: ReadonlySet<string>;
     tolak: (meter: string) => void;

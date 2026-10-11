@@ -27,8 +27,8 @@ import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif } from '@/lib/rep
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
 import {
-    jendelaHarianUntukShift, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
-    saranDariBaris, susunPatchRiset, type MeterTotalizer, type RisetState, type SaranMap,
+    hitungPasanganRiset, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
+    susunPatchRiset, type MeterTotalizer, type RisetState,
 } from '@/lib/totalizer-riset';
 import { getGroupForShift, getGroupShiftOnDate, isForemanCandidate, isValidStation, STATION_SHIFT_TABS, STATION_LABELS, getShiftWindow, detectCurrentShift, detectDefaultReport, type OperatorStation } from '@/lib/constants';
 
@@ -778,36 +778,19 @@ function InputShiftPageInner() {
     // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
     // riset: kunci ada = ditandai (null = nilai akhir belum diisi). Hanya kunci yang
     // DISENTUH operator yang dikirim saat simpan (anti-wipe); kunci lain cukup termuat
-    // dari DB untuk hitungan. Riset hanya ditandai lewat tombol "Riset Totalizer".
-    // Saran = riset yang sudah tercatat di laporan harian yang jendelanya beririsan
-    // dengan shift ini — ditawarkan di panel riset, operator yang memilih.
+    // dari DB untuk hitungan. Riset BARU hanya ditandai lewat tombol "Riset Totalizer".
+    // Pasangan = riset yang sudah dicatat laporan harian yang jendelanya mencakup shift
+    // ini & belum dipakai shift lain → panel tampil & terisi otomatis (hitungPasanganRiset).
+    // Datanya ikut query walkback useLatestBoilerStatus — tanpa query tambahan.
     const [riset, setRisetState] = useState<RisetState>({});
     const risetDisentuhRef = useRef<Set<string>>(new Set());
-    // Saran dikunci per tanggal|shift — saran tanggal lain tak pernah ikut tampil.
-    const [saranRiset, setSaranRiset] = useState<{ kunci: string; map: SaranMap }>({ kunci: '', map: {} });
-    const saranDimintaRef = useRef<string | null>(null);
-    const kunciSaran = `${selectedDate}|${shiftMap[selectedShift]}`;
-    // Dimuat MALAS: baru saat tombol "Riset Totalizer" diklik (dipanggil SelisihInfo),
-    // sekali per tanggal|shift — buka form tidak menambah query.
-    // Jendela: malam D → harian D−1 & D; pagi/sore D → harian D. Hanya form penuh &
-    // station panel yang memegang totalizer.
-    const mintaSaran = useCallback(() => {
-        if (shiftGate || (station && !isPanelStation)) return;
-        if (saranDimintaRef.current === kunciSaran) return;
-        const kunci = kunciSaran;
-        saranDimintaRef.current = kunci;
-        createClient()
-            .from('daily_reports')
-            .select('date, totalizer_riset')
-            .in('date', jendelaHarianUntukShift(selectedDate, shiftMap[selectedShift]))
-            .order('date', { ascending: true })
-            .then(({ data, error }) => {
-                if (error) { if (saranDimintaRef.current === kunci) saranDimintaRef.current = null; return; }
-                const rows = (data ?? []) as { date: string; totalizer_riset: unknown }[];
-                setSaranRiset({ kunci, map: saranDariBaris(rows.map(r => ({ seri: 'harian' as const, date: r.date, riset: r.totalizer_riset }))) });
-            });
+    const [risetOtomatis, setRisetOtomatis] = useState<Set<string>>(() => new Set());
+    const [risetDitolak, setRisetDitolak] = useState<Set<string>>(() => new Set());
+    const pasanganRiset = useMemo(
+        () => hitungPasanganRiset({ seri: 'shift', date: selectedDate, shift: shiftMap[selectedShift], riset: null }, latestBoilerStatus.risetRows),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [kunciSaran, shiftGate, station, isPanelStation]);
+        [selectedDate, selectedShift, latestBoilerStatus.risetRows],
+    );
     const setRiset = useCallback((meter: string, nilai: number | null | undefined) => {
         risetDisentuhRef.current.add(meter);
         setRisetState(prev => {
@@ -816,14 +799,31 @@ function InputShiftPageInner() {
             else next[meter] = nilai;
             return next;
         });
+        // Disunting operator → bukan lagi isian otomatis.
+        setRisetOtomatis(prev => { if (!prev.has(meter)) return prev; const n = new Set(prev); n.delete(meter); return n; });
         setUserModified(true);
+    }, []);
+    // Isi otomatis dari pasangan: ditandai disentuh (ikut tersimpan) tapi TIDAK menandai
+    // form "diubah" — pola autofill programatik yang sama dengan handler auto lainnya.
+    const terapkanRisetOtomatis = useCallback((meter: string, nilai: number) => {
+        risetDisentuhRef.current.add(meter);
+        setRisetState(prev => ({ ...prev, [meter]: nilai }));
+        setRisetOtomatis(prev => new Set(prev).add(meter));
+    }, []);
+    const lepasRisetOtomatis = useCallback((meter: string) => {
+        setRisetState(prev => { const n = { ...prev }; delete n[meter]; return n; });
+        setRisetOtomatis(prev => { const n = new Set(prev); n.delete(meter); return n; });
     }, []);
     const risetCtx = useMemo<RisetContextValue>(() => ({
         riset,
         setRiset,
-        saran: saranRiset.kunci === kunciSaran ? saranRiset.map : {},
-        mintaSaran,
-    }), [riset, setRiset, saranRiset, kunciSaran, mintaSaran]);
+        saran: pasanganRiset,
+        otomatis: risetOtomatis,
+        terapkanOtomatis: terapkanRisetOtomatis,
+        lepasOtomatis: lepasRisetOtomatis,
+        ditolak: risetDitolak,
+        tolak: (meter: string) => setRisetDitolak(prev => new Set(prev).add(meter)),
+    }), [riset, setRiset, pasanganRiset, risetOtomatis, terapkanRisetOtomatis, lepasRisetOtomatis, risetDitolak]);
 
     // Patch history.pushState once to intercept SPA navigation
     useEffect(() => {
@@ -946,6 +946,8 @@ function InputShiftPageInner() {
         autoInjectedRef.current = new Set();
         setRisetState({});
         risetDisentuhRef.current = new Set();
+        setRisetOtomatis(new Set());
+        setRisetDitolak(new Set());
     }, [selectedShift, selectedDate]);
 
     // Default supervisor = supervisor grup yang bertugas. DIDEKLARASI SETELAH clear-effect
@@ -1658,8 +1660,10 @@ function InputShiftPageInner() {
                     showToast('Laporan berhasil disimpan!', 'success');
                 }
                 setUserModified(false);
-                // Penanda riset sudah tersimpan → DB kembali jadi sumber (populate setelah refetch).
+                // Penanda riset sudah tersimpan → DB kembali jadi sumber (populate setelah refetch);
+                // isian otomatis kini penanda milik laporan ini sendiri.
                 risetDisentuhRef.current = new Set();
+                setRisetOtomatis(new Set());
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ShiftType, ReportStatus } from '@/lib/supabase/types';
 import type { OperatorStation } from '@/lib/constants';
-import { METER_BY_KEY, type RisetMap, type RisetPatch } from '@/lib/totalizer-riset';
+import { METER_BY_KEY, type BarisRiset, type RisetMap, type RisetPatch } from '@/lib/totalizer-riset';
 
 // Determine the previous shift based on chronological report order:
 // 06.00 (malam) → prev is sore (22.00) from yesterday
@@ -224,13 +224,17 @@ export interface LatestBoilerStatus {
     statusBoilerB: string | null;
     statusTurbin: string | null;
     statusFeeders: Record<string, string | null>;
+    /** Laporan shift & harian terbaru (≤ tanggal ini) yang memegang penanda riset
+     *  totalizer — ikut query walkback yang sudah ada, jadi tanpa query tambahan.
+     *  Dipakai hitungPasanganRiset (lib/totalizer-riset.ts). */
+    risetRows: BarisRiset[];
 }
 
 // Cari status boiler & feeder terbaru dengan walkback hingga 10 shift ke belakang
 // Lebih andal dari usePreviousShiftData yang hanya lihat 1 shift sebelumnya
 export function useLatestBoilerStatus(date: string, shift: ShiftType | 'harian', enabled: boolean = true): LatestBoilerStatus {
     const [result, setResult] = useState<LatestBoilerStatus>({
-        statusBoilerA: null, statusBoilerB: null, statusTurbin: null, statusFeeders: {},
+        statusBoilerA: null, statusBoilerB: null, statusTurbin: null, statusFeeders: {}, risetRows: [],
     });
 
     useEffect(() => {
@@ -248,19 +252,30 @@ export function useLatestBoilerStatus(date: string, shift: ShiftType | 'harian',
             const [shiftRes, dailyRes] = await Promise.all([
                 supabase
                     .from('shift_reports')
-                    .select('date, shift, shift_boiler(boiler, status_boiler), shift_turbin(status_turbin), shift_coal_bunker(status_feeder_a,status_feeder_b,status_feeder_c,status_feeder_d,status_feeder_e,status_feeder_f)')
+                    .select('date, shift, totalizer_riset, shift_boiler(boiler, status_boiler), shift_turbin(status_turbin), shift_coal_bunker(status_feeder_a,status_feeder_b,status_feeder_c,status_feeder_d,status_feeder_e,status_feeder_f)')
                     .lte('date', date)
                     .order('date', { ascending: false })
                     .limit(15),
                 supabase
                     .from('daily_reports')
-                    .select('date, daily_report_turbine_misc(status_boiler_a, status_boiler_b, status_turbin)')
+                    .select('date, totalizer_riset, daily_report_turbine_misc(status_boiler_a, status_boiler_b, status_turbin)')
                     .lte('date', date)
                     .order('date', { ascending: false })
                     .limit(15),
             ]);
 
             if (stale) return;
+
+            // Penanda riset totalizer — hanya baris yang benar-benar memegang penanda.
+            const adaRiset = (v: unknown) => !!v && typeof v === 'object' && Object.keys(v as object).length > 0;
+            const risetRows: BarisRiset[] = [
+                ...((shiftRes.data ?? []) as { date: string; shift: ShiftType; totalizer_riset?: unknown }[])
+                    .filter(r => adaRiset(r.totalizer_riset))
+                    .map(r => ({ seri: 'shift' as const, date: r.date, shift: r.shift, riset: r.totalizer_riset })),
+                ...((dailyRes.data ?? []) as { date: string; totalizer_riset?: unknown }[])
+                    .filter(r => adaRiset(r.totalizer_riset))
+                    .map(r => ({ seri: 'harian' as const, date: r.date, riset: r.totalizer_riset })),
+            ];
 
             // Gabungkan: tiap entry punya { date, shift|'harian', boilerA, boilerB, turbin, feeders }.
             type Entry = {
@@ -338,6 +353,7 @@ export function useLatestBoilerStatus(date: string, shift: ShiftType | 'harian',
                 statusBoilerB: foundB,
                 statusTurbin: foundT,
                 statusFeeders: foundFeeders,
+                risetRows,
             });
         }
 

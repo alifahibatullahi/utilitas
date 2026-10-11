@@ -251,11 +251,12 @@ export const SectionLabel = ({ label, badge }: { label: string; badge?: string }
 
 /**
  * Prev + selisih di bawah isian totalizer. Dengan `meter` (kunci di lib/totalizer-riset.ts)
- * dan berada di dalam RisetProvider, sekaligus menangani RISET (meter kembali ke 0) —
- * HANYA lewat klik tombol "Riset Totalizer" (permintaan user: tak ada yang otomatis):
- *  - klik → isian nilai akhir sebelum riset + rumus (akhir − prev) + cur;
- *  - riset meter ini yang sudah tercatat di laporan seri lain (shift ↔ harian) ditawarkan
- *    sebagai tombol "Pakai …", operator yang memilih.
+ * dan berada di dalam RisetProvider, sekaligus menangani RISET (meter kembali ke 0):
+ *  - riset BARU dicatat hanya lewat klik tombol "Riset Totalizer" → isian nilai akhir
+ *    sebelum riset + rumus (akhir − prev) + cur (tak ada prompt saat selisih negatif);
+ *  - laporan PASANGAN (shift ↔ harian yang mencakup riset yang sudah dicatat) menampilkan
+ *    panel riset otomatis dengan nilai akhir terisi — selama pembacaan di sini masih kosong
+ *    atau di bawah prev. Lewat pasangan itu, laporan berikutnya normal lagi.
  * Tanpa `meter`/provider tampil persis seperti dulu.
  */
 export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; current: number; plain?: boolean; meter?: string }) => {
@@ -263,6 +264,18 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
     const risetOn = !!(meter && ctx && Object.prototype.hasOwnProperty.call(ctx.riset, meter));
     const nilaiAkhir = risetOn ? ctx!.riset[meter!] : null;
     const saran = meter && ctx ? pilihSaran(ctx.saran[meter], prev) : null;
+    const otomatis = !!(meter && ctx?.otomatis.has(meter));
+    // Isi otomatis dari pasangan hanya kalau pembacaan di sini belum diisi (0) atau turun —
+    // pembacaan ≥ prev berarti riset tidak terjadi di jendela laporan ini.
+    const layakOtomatis = !!saran && prev > 0 && (!(current > 0) || current < prev);
+    const ditolak = !!(meter && ctx?.ditolak.has(meter));
+
+    useEffect(() => {
+        if (!meter || !ctx) return;
+        if (layakOtomatis && !risetOn && !ditolak) ctx.terapkanOtomatis(meter, saran!.nilai);
+        else if (!layakOtomatis && otomatis) ctx.lepasOtomatis(meter);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [meter, layakOtomatis, risetOn, ditolak, otomatis, saran?.nilai]);
 
     if (!(prev > 0)) return null;
 
@@ -282,7 +295,7 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
                     </span>
                     <button
                         type="button"
-                        onClick={() => ctx.setRiset(meter, undefined)}
+                        onClick={() => { ctx.setRiset(meter, undefined); ctx.tolak(meter); }}
                         className="font-semibold text-rose-300 hover:text-rose-200 underline cursor-pointer"
                     >
                         Batal riset
@@ -299,8 +312,8 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
                     plainInteger={!!plain}
                 />
                 {dariSaran && <p className="text-amber-200/80">Tercatat di {dariSaran}.</p>}
-                {/* Saran dimuat saat tombol diklik (datang belakangan) atau isian beda dari
-                    yang tercatat di laporan lain → tawarkan, jangan timpa diam-diam. */}
+                {/* Isian diubah operator jadi beda dari yang tercatat di laporan pasangan →
+                    tawarkan nilai tercatat, jangan timpa diam-diam. */}
                 {saran && !dariSaran && (
                     <button
                         type="button"
@@ -333,7 +346,7 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
             {meter && ctx && (
                 <button
                     type="button"
-                    onClick={() => { ctx.mintaSaran(); ctx.setRiset(meter, saran?.nilai ?? null); }}
+                    onClick={() => ctx.setRiset(meter, saran?.nilai ?? null)}
                     className="mt-1 rounded border border-amber-500/50 px-2 py-0.5 font-semibold text-amber-300 hover:bg-amber-500/10 cursor-pointer"
                 >
                     Riset Totalizer

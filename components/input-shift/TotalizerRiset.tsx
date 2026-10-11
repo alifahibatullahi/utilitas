@@ -8,13 +8,18 @@ import type { RisetState, SaranMap } from '@/lib/totalizer-riset';
 export interface RisetContextValue {
     /** Kunci ada = riset ditandai; null = ditandai tapi nilai akhir belum diisi. */
     riset: RisetState;
-    /** number/null = tandai (dengan/tanpa nilai akhir); undefined = batalkan penanda. */
+    /** Isian operator. number/null = tandai (dengan/tanpa nilai akhir); undefined = batalkan. */
     setRiset: (meter: string, nilaiAkhir: number | null | undefined) => void;
-    /** Riset yang sudah tercatat di laporan seri lain (shift ↔ harian), per meter. */
+    /** Riset yang sudah dicatat laporan PASANGAN (shift ↔ harian) dan belum dipakai seri
+     *  laporan ini — lihat hitungPasanganRiset. Dipakai untuk mengisi otomatis. */
     saran: SaranMap;
-    /** Muat saran (sekali per tanggal/shift) — dipanggil saat tombol "Riset Totalizer"
-     *  diklik. Tidak membebani tiap buka form. */
-    mintaSaran: () => void;
+    /** Meter yang penandanya hasil isi otomatis dari laporan pasangan (belum diubah operator). */
+    otomatis: ReadonlySet<string>;
+    terapkanOtomatis: (meter: string, nilaiAkhir: number) => void;
+    lepasOtomatis: (meter: string) => void;
+    /** Meter yang penandanya dibatalkan operator — tidak diisi otomatis lagi di sesi ini. */
+    ditolak: ReadonlySet<string>;
+    tolak: (meter: string) => void;
 }
 
 const RisetContext = createContext<RisetContextValue | null>(null);

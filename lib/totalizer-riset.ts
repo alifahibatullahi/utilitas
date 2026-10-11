@@ -258,18 +258,65 @@ export function jendelaShiftUntukHarian(date: string): { date: string; shift: Sh
     ];
 }
 
+/** Satu laporan beserta JSONB `totalizer_riset`-nya. */
+export interface BarisRiset {
+    seri: SeriLaporan;
+    date: string;
+    shift?: ShiftNama | null;
+    riset: unknown;
+}
+
+const labelSumber = (r: BarisRiset) => r.seri === 'harian'
+    ? `Laporan Harian ${ddmm(r.date)}`
+    : `Shift ${r.shift ? SHIFT_LABEL[r.shift] : ''} ${ddmm(r.date)}`;
+
 /** Kumpulkan saran per meter dari baris laporan seri lain. */
-export function saranDariBaris(
-    rows: { seri: SeriLaporan; date: string; shift?: ShiftNama | null; riset: unknown }[],
-): SaranMap {
+export function saranDariBaris(rows: BarisRiset[]): SaranMap {
     const out: SaranMap = {};
     for (const r of rows) {
-        const sumber = r.seri === 'harian'
-            ? `Laporan Harian ${ddmm(r.date)}`
-            : `Shift ${r.shift ? SHIFT_LABEL[r.shift] : ''} ${ddmm(r.date)}`;
+        const sumber = labelSumber(r);
         for (const [k, n] of Object.entries(risetStateDariDb(r.riset))) {
             if (n == null) continue;
             (out[k] ??= []).push({ nilai: n, sumber });
+        }
+    }
+    return out;
+}
+
+/** Apakah laporan `r` (seri lain dari `laporan`) jendelanya beririsan dengan `laporan`. */
+const beririsan = (laporan: BarisRiset, r: BarisRiset): boolean => {
+    if (laporan.seri === r.seri) return false;
+    if (laporan.seri === 'shift') {
+        return !!laporan.shift && jendelaHarianUntukShift(laporan.date, laporan.shift).includes(r.date);
+    }
+    return jendelaShiftUntukHarian(laporan.date).some(j => j.date === r.date && j.shift === r.shift);
+};
+
+const samaLaporan = (a: BarisRiset, b: BarisRiset) =>
+    a.seri === b.seri && a.date === b.date && (a.seri === 'harian' || a.shift === b.shift);
+
+/**
+ * Riset yang sudah dicatat laporan PASANGAN (seri lain yang jendelanya mencakup riset itu)
+ * dan belum dipakai seri laporan ini — dipakai untuk mengisi otomatis nilai akhir di laporan
+ * ini (permintaan user 11 Okt 2026: shift & harian setelah riset tak perlu mengisi lagi).
+ *
+ * Batasnya satu pasangan: catatan E untuk meter m dianggap SUDAH DIPAKAI seri ini bila ada
+ * laporan lain di seri ini, di dalam jendela E, yang sudah memegang penanda m. Contoh riset
+ * di shift pagi D → harian D mendapatkannya; setelah harian D disimpan, shift sore D /
+ * malam D+1 (jendela harian D) tak mendapatkannya lagi karena pagi D sudah memegangnya.
+ *
+ * `rows` boleh campuran shift & harian, termasuk laporan ini sendiri (diabaikan).
+ */
+export function hitungPasanganRiset(laporan: BarisRiset, rows: BarisRiset[]): SaranMap {
+    const out: SaranMap = {};
+    for (const E of rows) {
+        if (!beririsan(laporan, E)) continue;
+        // Laporan seri ini (selain dirinya) yang jendelanya beririsan dengan E.
+        const sesama = rows.filter(r => r.seri === laporan.seri && !samaLaporan(r, laporan) && beririsan(r, E));
+        for (const [m, n] of Object.entries(risetStateDariDb(E.riset))) {
+            if (n == null) continue;
+            if (sesama.some(r => nilaiAkhirRiset(r.riset, m) !== undefined)) continue; // sudah dipakai
+            (out[m] ??= []).push({ nilai: n, sumber: labelSumber(E) });
         }
     }
     return out;

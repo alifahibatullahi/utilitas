@@ -32,8 +32,8 @@ import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import type { DailyTabProps } from './types';
 import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
 import {
-    jendelaShiftUntukHarian, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
-    saranDariBaris, susunPatchRiset, type MeterTotalizer, type RisetState, type SaranMap, type ShiftNama,
+    hitungPasanganRiset, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
+    susunPatchRiset, type MeterTotalizer, type RisetState,
 } from '@/lib/totalizer-riset';
 
 type HarianTabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Power' | 'PIU' | 'Handling' | 'Coal Bunker' | 'Chemical' | 'Stock BB' | 'Silo & Fly Ash';
@@ -208,37 +208,14 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
     // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
     // riset: kunci ada = ditandai (null = nilai akhir belum diisi). Hanya kunci yang
-    // DISENTUH operator yang dikirim saat simpan (anti-wipe). Riset hanya ditandai lewat
-    // tombol "Riset Totalizer". Saran = riset yang sudah tercatat di laporan shift yang
-    // jendelanya beririsan dengan hari ini — ditawarkan di panel riset.
+    // DISENTUH operator yang dikirim saat simpan (anti-wipe). Riset BARU hanya ditandai
+    // lewat tombol "Riset Totalizer". Pasangan = riset yang sudah dicatat laporan shift yang
+    // jendelanya mencakup hari ini & belum dipakai harian lain → panel tampil & terisi
+    // otomatis (hitungPasanganRiset; context dirakit sesudah useLatestBoilerStatus di bawah).
     const [riset, setRisetState] = useState<RisetState>({});
     const risetDisentuhRef = useRef<Set<string>>(new Set());
-    // Saran dikunci per tanggal — saran tanggal lain tak pernah ikut tampil.
-    const [saranRiset, setSaranRiset] = useState<{ kunci: string; map: SaranMap }>({ kunci: '', map: {} });
-    const saranDimintaRef = useRef<string | null>(null);
-    // Dimuat MALAS: baru saat tombol "Riset Totalizer" diklik (dipanggil SelisihInfo),
-    // sekali per tanggal — buka form tidak menambah query. Jendela:
-    // malam/pagi/sore D + malam D+1. Meter berpasangan shift↔harian hanya dipegang
-    // station panel & form penuh (air Handling & PIU tak punya padanan di shift).
-    const mintaSaran = useCallback(() => {
-        if (station && !isPanelStation) return;
-        if (saranDimintaRef.current === date) return;
-        const kunci = date;
-        saranDimintaRef.current = kunci;
-        const jendela = jendelaShiftUntukHarian(kunci);
-        createClient()
-            .from('shift_reports')
-            .select('date, shift, totalizer_riset')
-            .in('date', Array.from(new Set(jendela.map(j => j.date))))
-            .then(({ data, error }) => {
-                if (error) { if (saranDimintaRef.current === kunci) saranDimintaRef.current = null; return; }
-                const urut = (r: { date: string; shift: string }) => jendela.findIndex(j => j.date === r.date && j.shift === r.shift);
-                const rows = ((data ?? []) as { date: string; shift: ShiftNama; totalizer_riset: unknown }[])
-                    .filter(r => urut(r) >= 0)
-                    .sort((a, b) => urut(a) - urut(b));
-                setSaranRiset({ kunci, map: saranDariBaris(rows.map(r => ({ seri: 'shift' as const, date: r.date, shift: r.shift, riset: r.totalizer_riset }))) });
-            });
-    }, [date, station, isPanelStation]);
+    const [risetOtomatis, setRisetOtomatis] = useState<Set<string>>(() => new Set());
+    const [risetDitolak, setRisetDitolak] = useState<Set<string>>(() => new Set());
     const setRiset = useCallback((meter: string, nilai: number | null | undefined) => {
         risetDisentuhRef.current.add(meter);
         setRisetState(prev => {
@@ -247,13 +224,19 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             else next[meter] = nilai;
             return next;
         });
+        // Disunting operator → bukan lagi isian otomatis.
+        setRisetOtomatis(prev => { if (!prev.has(meter)) return prev; const n = new Set(prev); n.delete(meter); return n; });
     }, []);
-    const risetCtx = useMemo<RisetContextValue>(() => ({
-        riset,
-        setRiset,
-        saran: saranRiset.kunci === date ? saranRiset.map : {},
-        mintaSaran,
-    }), [riset, setRiset, saranRiset, date, mintaSaran]);
+    // Isi otomatis dari pasangan: ditandai disentuh supaya ikut tersimpan.
+    const terapkanRisetOtomatis = useCallback((meter: string, nilai: number) => {
+        risetDisentuhRef.current.add(meter);
+        setRisetState(prev => ({ ...prev, [meter]: nilai }));
+        setRisetOtomatis(prev => new Set(prev).add(meter));
+    }, []);
+    const lepasRisetOtomatis = useCallback((meter: string) => {
+        setRisetState(prev => { const n = { ...prev }; delete n[meter]; return n; });
+        setRisetOtomatis(prev => { const n = new Set(prev); n.delete(meter); return n; });
+    }, []);
     /** Nilai akhir riset yang siap dihitung (undefined = tidak riset / belum diisi). */
     const rL = (meter: string) => nilaiAkhirDariState(riset, meter);
 
@@ -551,6 +534,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         setTotalizer({});
         setRisetState(risetStateDariDb(report?.totalizer_riset));
         risetDisentuhRef.current = new Set();
+        setRisetOtomatis(new Set());
+        setRisetDitolak(new Set());
 
         if (!report) {
             // Pre-fill totalizer fields dari data kemarin (default = totalizer kemarin)
@@ -624,6 +609,22 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // sehingga status boiler & turbin berlanjut pagi → sore → harian → malam.
     // Konsumen inherit = status boiler/turbin (turbineMisc) — hanya panel & form penuh.
     const latestStatus = useLatestBoilerStatus(date, 'harian', !station || isPanelStation);
+    // Riset pasangan dari laporan shift — datanya ikut query walkback di atas (tanpa query
+    // tambahan). Meter berpasangan shift↔harian hanya dipegang station panel & form penuh.
+    const pasanganRiset = useMemo(
+        () => hitungPasanganRiset({ seri: 'harian', date, riset: null }, latestStatus.risetRows),
+        [date, latestStatus.risetRows],
+    );
+    const risetCtx = useMemo<RisetContextValue>(() => ({
+        riset,
+        setRiset,
+        saran: pasanganRiset,
+        otomatis: risetOtomatis,
+        terapkanOtomatis: terapkanRisetOtomatis,
+        lepasOtomatis: lepasRisetOtomatis,
+        ditolak: risetDitolak,
+        tolak: (meter: string) => setRisetDitolak(prev => new Set(prev).add(meter)),
+    }), [riset, setRiset, pasanganRiset, risetOtomatis, terapkanRisetOtomatis, lepasRisetOtomatis, risetDitolak]);
     const _inhBoilerA = latestStatus.statusBoilerA;
     const _inhBoilerB = latestStatus.statusBoilerB;
     const _inhTurbin = latestStatus.statusTurbin;
@@ -1035,8 +1036,10 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 } else {
                     showToast('Laporan harian berhasil disimpan!', 'success');
                 }
-                // Penanda riset sudah tersimpan (state form = isi DB).
+                // Penanda riset sudah tersimpan (state form = isi DB); isian otomatis kini
+                // penanda milik laporan ini sendiri.
                 risetDisentuhRef.current = new Set();
+                setRisetOtomatis(new Set());
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
 

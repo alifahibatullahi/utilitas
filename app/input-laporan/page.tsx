@@ -1582,7 +1582,10 @@ function InputShiftPageInner() {
             // Total Loading disunting. Jadi disamakan lewat MERGE (hapus yang lepas,
             // update yang bertahan, insert yang baru) — bukan hapus-lalu-isi-ulang, dan
             // bukan insert-append yang akan menggandakan baris tiap simpan ulang.
-            {
+            // Hanya form ber-tab Handling: station lain tidak memegang Total Loading/hopper,
+            // jadi merge dari sana menimpa shovel jadi 0 (insiden 10–11 Okt 2026, simpanan
+            // kedua station boiler/bunker/Lab).
+            if (needsCoal) {
                 const supabase = createClient();
                 const totalShovel = Number(espHandling.loading);
                 const perPilar = Number.isFinite(totalShovel) && totalShovel > 0 && coalZonas.length > 0
@@ -1711,20 +1714,24 @@ function InputShiftPageInner() {
                     .order('created_at', { ascending: true })
                     .then(({ data }) => setSavedOutSolarEntries((data ?? []).map((r: any) => ({ id: r.id, tanggal: r.date, jumlah: r.liters, tujuan: r.tujuan }))));
 
-                spb.from('coal_loadings').select('id, zona, shovel, hopper')
-                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
-                    .order('created_at', { ascending: true })
-                    .then(({ data }) => {
-                        const rows = ((data ?? []) as CoalLoadingRow[]).map(toCoalLoadingRef);
-                        setSavedCoalLoadingRows(rows);
-                        setCoalZonas(rows.map(r => r.zona));
-                    });
+                // Sama dengan gerbang fetch awal: state pilar tak boleh terisi di station
+                // tanpa tab Handling, kalau tidak simpanan berikutnya ikut me-merge-nya.
+                if (needsCoal) {
+                    spb.from('coal_loadings').select('id, zona, shovel, hopper')
+                        .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
+                        .order('created_at', { ascending: true })
+                        .then(({ data }) => {
+                            const rows = ((data ?? []) as CoalLoadingRow[]).map(toCoalLoadingRef);
+                            setSavedCoalLoadingRows(rows);
+                            setCoalZonas(rows.map(r => r.zona));
+                        });
 
-                spb.from('coal_arrivals').select('id, batch_id, supplier, zona, ton, tanggal_masuk, status')
-                    .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
-                    .order('created_at', { ascending: true })
-                    .then(({ data }) => setSavedCoalArrivalEntries(((data ?? []) as CoalArrivalRow[]).map(toCoalArrivalEntry)));
-                muatInfoKedatangan();
+                    spb.from('coal_arrivals').select('id, batch_id, supplier, zona, ton, tanggal_masuk, status')
+                        .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
+                        .order('created_at', { ascending: true })
+                        .then(({ data }) => setSavedCoalArrivalEntries(((data ?? []) as CoalArrivalRow[]).map(toCoalArrivalEntry)));
+                    muatInfoKedatangan();
+                }
 
                 setAshEntries([]);
                 setSolarEntries([]);

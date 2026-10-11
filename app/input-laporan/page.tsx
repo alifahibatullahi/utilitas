@@ -778,17 +778,17 @@ function InputShiftPageInner() {
     // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
     // riset: kunci ada = ditandai (null = nilai akhir belum diisi). Hanya kunci yang
     // DISENTUH operator yang dikirim saat simpan (anti-wipe); kunci lain cukup termuat
-    // dari DB untuk hitungan. Saran = riset yang sudah tercatat di laporan harian yang
-    // jendelanya beririsan dengan shift ini — dipakai otomatis kalau angkanya ikut turun.
+    // dari DB untuk hitungan. Riset hanya ditandai lewat tombol "Riset Totalizer".
+    // Saran = riset yang sudah tercatat di laporan harian yang jendelanya beririsan
+    // dengan shift ini — ditawarkan di panel riset, operator yang memilih.
     const [riset, setRisetState] = useState<RisetState>({});
     const risetDisentuhRef = useRef<Set<string>>(new Set());
-    const [risetDitolak, setRisetDitolak] = useState<Set<string>>(() => new Set());
     // Saran dikunci per tanggal|shift — saran tanggal lain tak pernah ikut tampil.
     const [saranRiset, setSaranRiset] = useState<{ kunci: string; map: SaranMap }>({ kunci: '', map: {} });
     const saranDimintaRef = useRef<string | null>(null);
     const kunciSaran = `${selectedDate}|${shiftMap[selectedShift]}`;
-    // Dimuat MALAS: baru saat angka totalizer turun / tombol Riset ditekan (dipanggil
-    // SelisihInfo), sekali per tanggal|shift — buka form tidak menambah query.
+    // Dimuat MALAS: baru saat tombol "Riset Totalizer" diklik (dipanggil SelisihInfo),
+    // sekali per tanggal|shift — buka form tidak menambah query.
     // Jendela: malam D → harian D−1 & D; pagi/sore D → harian D. Hanya form penuh &
     // station panel yang memegang totalizer.
     const mintaSaran = useCallback(() => {
@@ -823,9 +823,7 @@ function InputShiftPageInner() {
         setRiset,
         saran: saranRiset.kunci === kunciSaran ? saranRiset.map : {},
         mintaSaran,
-        ditolak: risetDitolak,
-        tolak: (meter: string) => setRisetDitolak(prev => new Set(prev).add(meter)),
-    }), [riset, setRiset, saranRiset, kunciSaran, mintaSaran, risetDitolak]);
+    }), [riset, setRiset, saranRiset, kunciSaran, mintaSaran]);
 
     // Patch history.pushState once to intercept SPA navigation
     useEffect(() => {
@@ -948,7 +946,6 @@ function InputShiftPageInner() {
         autoInjectedRef.current = new Set();
         setRisetState({});
         risetDisentuhRef.current = new Set();
-        setRisetDitolak(new Set());
     }, [selectedShift, selectedDate]);
 
     // Default supervisor = supervisor grup yang bertugas. DIDEKLARASI SETELAH clear-effect

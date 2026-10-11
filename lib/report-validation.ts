@@ -83,7 +83,7 @@ export function checkSelisihNegatif(
     const t = Number(today);
     if (!isFinite(t) || t >= y) return null;
     return `${label} = ${t} lebih kecil dari sebelumnya (${y}) — selisih ${t - y}. `
-        + `Kalau totalizer riset, tekan "Riset?" di bawah isian lalu isi nilai akhir sebelum riset.`;
+        + `Kalau totalizer riset, tekan tombol "Riset Totalizer" di bawah isian lalu isi nilai akhir sebelum riset.`;
 }
 
 /**

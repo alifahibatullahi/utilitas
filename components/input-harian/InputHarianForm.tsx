@@ -208,17 +208,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
     // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
     // riset: kunci ada = ditandai (null = nilai akhir belum diisi). Hanya kunci yang
-    // DISENTUH operator yang dikirim saat simpan (anti-wipe). Saran = riset yang sudah
-    // tercatat di laporan shift yang jendelanya beririsan dengan hari ini — dipakai
-    // otomatis kalau angka harian ikut turun.
+    // DISENTUH operator yang dikirim saat simpan (anti-wipe). Riset hanya ditandai lewat
+    // tombol "Riset Totalizer". Saran = riset yang sudah tercatat di laporan shift yang
+    // jendelanya beririsan dengan hari ini — ditawarkan di panel riset.
     const [riset, setRisetState] = useState<RisetState>({});
     const risetDisentuhRef = useRef<Set<string>>(new Set());
-    const [risetDitolak, setRisetDitolak] = useState<Set<string>>(() => new Set());
     // Saran dikunci per tanggal — saran tanggal lain tak pernah ikut tampil.
     const [saranRiset, setSaranRiset] = useState<{ kunci: string; map: SaranMap }>({ kunci: '', map: {} });
     const saranDimintaRef = useRef<string | null>(null);
-    // Dimuat MALAS: baru saat angka totalizer turun / tombol Riset ditekan (dipanggil
-    // SelisihInfo), sekali per tanggal — buka form tidak menambah query. Jendela:
+    // Dimuat MALAS: baru saat tombol "Riset Totalizer" diklik (dipanggil SelisihInfo),
+    // sekali per tanggal — buka form tidak menambah query. Jendela:
     // malam/pagi/sore D + malam D+1. Meter berpasangan shift↔harian hanya dipegang
     // station panel & form penuh (air Handling & PIU tak punya padanan di shift).
     const mintaSaran = useCallback(() => {
@@ -254,9 +253,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         setRiset,
         saran: saranRiset.kunci === date ? saranRiset.map : {},
         mintaSaran,
-        ditolak: risetDitolak,
-        tolak: (meter: string) => setRisetDitolak(prev => new Set(prev).add(meter)),
-    }), [riset, setRiset, saranRiset, date, mintaSaran, risetDitolak]);
+    }), [riset, setRiset, saranRiset, date, mintaSaran]);
     /** Nilai akhir riset yang siap dihitung (undefined = tidak riset / belum diisi). */
     const rL = (meter: string) => nilaiAkhirDariState(riset, meter);
 
@@ -554,7 +551,6 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         setTotalizer({});
         setRisetState(risetStateDariDb(report?.totalizer_riset));
         risetDisentuhRef.current = new Set();
-        setRisetDitolak(new Set());
 
         if (!report) {
             // Pre-fill totalizer fields dari data kemarin (default = totalizer kemarin)

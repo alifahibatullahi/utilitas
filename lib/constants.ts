@@ -445,11 +445,11 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     // Denah stok batubara dari Supabase; tiap operator bisa menyunting isi per zona
     // langsung di petanya (koreksi tercatat di coal_lot_koreksi, lihat lib/coal-storage-query.ts).
     { id: 'coal-storage', label: 'Storage Batubara', description: 'Peta penempatan supplier di open & closed storage', icon: 'storage', path: '/coal-storage', roles: 'all', featured: true },
-    // Sengaja bernama samar: isinya gambar isometrik jalur pipa air di /piping,
-    // yang rutenya masih rangka menunggu koreksi lapangan. Halamannya sudah bisa
-    // dibuka lewat URL langsung; buang comingSoon (dan ganti label) begitu
-    // rutenya dipastikan.
-    { id: 'fitur-lanjutan', label: 'Fitur Lanjutan', description: 'Sedang disiapkan — menyusul di pembaruan berikutnya.', icon: 'locked', path: '/piping', roles: 'all', featured: true, comingSoon: true },
+    // Cleaning UBB (nama dari user 16 Okt 2026) — masih Coming Soon, kartu tak bisa diklik.
+    // `id` tetap 'fitur-lanjutan' (kunci tema kartu di app/home/page.tsx); `path` /piping
+    // (gambar isometrik jalur pipa air, bisa dibuka lewat URL langsung) belum terpakai
+    // selama comingSoon — sesuaikan begitu fiturnya dibuka.
+    { id: 'fitur-lanjutan', label: 'Cleaning UBB', description: 'Sedang disiapkan — menyusul di pembaruan berikutnya.', icon: 'locked', path: '/piping', roles: 'all', featured: true, comingSoon: true },
 ];
 
 // Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah

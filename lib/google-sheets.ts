@@ -677,10 +677,31 @@ export function mergeCatatanCell(existing: string, canonical: string): { next: s
     // yang tinggal sisa penanda harus tetap dianggap kosong.
     const bare = stripCatatanMarkers(cell);
     if (!bare.trim()) return { next: buildCatatanBlock(trimmedCanonical), changed: true };
-    const existingLines = new Set(bare.split('\n').map(kunciBaris).filter(Boolean));
-    const newLines = trimmedCanonical.split('\n').map(l => l.trim()).filter(Boolean).filter(l => !existingLines.has(kunciBaris(l)));
-    if (newLines.length === 0) return { next: cell, changed: false };
-    return { next: `${cell.replace(/\s+$/, '')}\n\n${buildCatatanBlock(newLines.join('\n'))}`, changed: true };
+    const baru = sisihkanYangSudahAda(bare, trimmedCanonical);
+    if (!baru) return { next: cell, changed: false };
+    return { next: `${cell.replace(/\s+$/, '')}\n\n${buildCatatanBlock(baru)}`, changed: true };
+}
+
+/** Bagian canonical yang belum ada di sel. Paragraf ber-bullet (kolom D/F/G, dan baris
+ *  manual kolom H) di-dedup PER BARIS seperti biasa. Paragraf tanpa bullet adalah blok
+ *  kedatangan batubara kolom H ("Nama : …", "Status : IP", …) dan di-dedup UTUH: baris
+ *  seperti "Status : IP" pasti sudah ada di log ketikan operator, jadi dedup per baris
+ *  akan mencabik bloknya. Antar paragraf tetap dipisah baris kosong. */
+function sisihkanYangSudahAda(existing: string, canonical: string): string {
+    const kunciParagraf = (p: string) => p.split('\n').map(kunciBaris).filter(Boolean).join('\n');
+    const paragraf = (s: string) => s.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    const existingLines = new Set(existing.split('\n').map(kunciBaris).filter(Boolean));
+    const existingParagraf = new Set(paragraf(existing).map(kunciParagraf));
+    const sisa: string[] = [];
+    for (const p of paragraf(canonical)) {
+        if (p.startsWith('•')) {
+            const baris = p.split('\n').map(l => l.trim()).filter(Boolean).filter(l => !existingLines.has(kunciBaris(l)));
+            if (baris.length > 0) sisa.push(baris.join('\n'));
+        } else if (!existingParagraf.has(kunciParagraf(p))) {
+            sisa.push(p);
+        }
+    }
+    return sisa.join('\n\n');
 }
 
 export interface CatatanUpsertResult {

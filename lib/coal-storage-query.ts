@@ -21,7 +21,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CoalArrivalRow, CoalLoadingRow, CoalLotKoreksiRow } from './supabase/types';
 import { type ShiftKey } from './constants';
-import { type CoalLoading, type CoalLot, type HopperKey, rankShift, URUT_SHIFT } from './coal-storage';
+import { type AsalKedatangan, type CoalLoading, type CoalLot, type HopperKey, rankShift, URUT_SHIFT } from './coal-storage';
 
 /**
  * Lantai riwayat loading yang ditarik, dalam hari.
@@ -338,7 +338,12 @@ export interface PengirimanBerjalan {
     zona: string;
     tonSejauhIni: number;
     tanggal_masuk: string;
+    /** Asal milik pengiriman — lanjutan mewarisinya. null = baris lama tanpa asal. */
+    asal: AsalKedatangan | null;
 }
+
+const normalAsal = (v: string | null | undefined): AsalKedatangan | null =>
+    v === 'tongkang' || v === 'darat' ? v : null;
 
 /** Jendela kedatangan terbaru yang ditarik modal Kedatangan Batubara. */
 const JENDELA_KEDATANGAN = 200;
@@ -360,7 +365,7 @@ export async function fetchInfoKedatangan(
     const [kedatangan, koreksi] = await Promise.all([
         supabase
             .from('coal_arrivals')
-            .select('batch_id, supplier, zona, ton, tanggal_masuk, status, created_at')
+            .select('batch_id, supplier, zona, ton, tanggal_masuk, status, asal, created_at')
             .order('created_at', { ascending: false })
             .limit(JENDELA_KEDATANGAN),
         supabase
@@ -387,6 +392,8 @@ export async function fetchInfoKedatangan(
             tanggal_masuk: prev?.tanggal_masuk ?? r.tanggal_masuk,
             tonSejauhIni: (prev?.tonSejauhIni ?? 0) + Number(r.ton ?? 0),
             status: r.status,
+            // Asal pengiriman dari baris pertamanya yang punya asal.
+            asal: prev?.asal ?? normalAsal(r.asal),
         });
     }
 
@@ -394,7 +401,7 @@ export async function fetchInfoKedatangan(
         .filter(b => b.status === 'progres' && !koreksiBerlaku.get(b.batch_id)?.dihapus)
         .map(b => ({
             batch_id: b.batch_id, supplier: b.supplier, zona: b.zona,
-            tonSejauhIni: b.tonSejauhIni, tanggal_masuk: b.tanggal_masuk,
+            tonSejauhIni: b.tonSejauhIni, tanggal_masuk: b.tanggal_masuk, asal: b.asal,
         }));
 
     const suppliers = [...new Set([

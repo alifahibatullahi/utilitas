@@ -744,6 +744,10 @@ export interface CoalArrivalRow {
     ton: number;
     tanggal_masuk: string;
     status: string;          // 'progres' | 'selesai'
+    /** 'tongkang' (= Via Laut di harian) | 'darat' (= Via Darat). NULL = baris lama. */
+    asal: string | null;
+    /** Khusus tongkang: 'conveyor' | 'dump_truck'. NULL untuk darat. */
+    metode_unloading: string | null;
     keterangan: string | null;
     operator_id: string | null;
     created_at: string;

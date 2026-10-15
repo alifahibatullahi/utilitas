@@ -162,6 +162,81 @@ export function labelZonaPendek(zonaId: string): string {
     return `${area.singkat} · ${labelPilar(indexZona(zonaId), jumlahZona(area))}`;
 }
 
+/**
+ * Letak tumpukan dalam ejaan log kedatangan di kolom H sheet Catatan:
+ * 'Close Storage Zona pilar 4–5'. "Close" (bukan "Closed") mengikuti format yang
+ * dipakai user di sheet itu, jadi sengaja tidak memakai area.nama.
+ */
+export function labelLetakCatatan(zonaId: string): string {
+    const area = areaOfZona(zonaId);
+    const nama = area.key === 'closed' ? 'Close Storage' : 'Open Storage';
+    return `${nama} Zona ${labelPilar(indexZona(zonaId), jumlahZona(area))}`;
+}
+
+// ── Kedatangan: asal & metode unloading ──────────────────────────────────────
+
+/** Tongkang = Via Laut di laporan harian (LHUBB DM), darat = Via Darat (DK). */
+export type AsalKedatangan = 'tongkang' | 'darat';
+/** Khusus tongkang. Darat datang dengan truknya sendiri, jadi tanpa metode. */
+export type MetodeUnloading = 'conveyor' | 'dump_truck';
+
+export const ASAL_KEDATANGAN: { value: AsalKedatangan; label: string }[] = [
+    { value: 'tongkang', label: 'Tongkang' },
+    { value: 'darat', label: 'Darat' },
+];
+
+export const METODE_UNLOADING: { value: MetodeUnloading; label: string }[] = [
+    { value: 'conveyor', label: 'Conveyor' },
+    { value: 'dump_truck', label: 'Dump Truck' },
+];
+
+export function labelAsal(asal: string | null | undefined): string {
+    return ASAL_KEDATANGAN.find(a => a.value === asal)?.label ?? '';
+}
+
+export function labelMetode(metode: string | null | undefined): string {
+    return METODE_UNLOADING.find(m => m.value === metode)?.label ?? '';
+}
+
+/** 'Tongkang · Conveyor' | 'Darat' | '' (baris lama tanpa asal). */
+export function labelAsalKedatangan(asal: string | null | undefined, metode: string | null | undefined): string {
+    if (asal === 'tongkang') return labelMetode(metode) ? `Tongkang · ${labelMetode(metode)}` : 'Tongkang';
+    return labelAsal(asal);
+}
+
+/**
+ * Kedatangan 24 jam per asal untuk laporan harian — SATU rumus untuk review supervisor,
+ * form harian, dan penulisan LHUBB (DK = darat, DM = laut), supaya angka di layar dan di
+ * sheet tidak bisa berbeda diam-diam. Baris tanpa asal (sebelum kolomnya ada) tidak
+ * dihitung ke mana pun daripada ditebak.
+ */
+export function rekapKedatanganHarian(
+    rows: { ton: number | string | null; asal: string | null | undefined }[],
+): { darat: number; laut: number } {
+    let darat = 0;
+    let laut = 0;
+    for (const r of rows) {
+        const ton = Number(r.ton) || 0;
+        if (r.asal === 'darat') darat += ton;
+        else if (r.asal === 'tongkang') laut += ton;
+    }
+    return { darat, laut };
+}
+
+/**
+ * Via Darat/Laut harian dari entri — atau null bila TAK SATU PUN entri punya asal, yang
+ * berarti angka tersimpan di daily_report_coal_transfer yang berlaku. Dua kasus:
+ *   - tanggal sebelum kedatangan dicatat per entri (ketikan supervisor, mis. 4 Okt 2026);
+ *   - entri yang diinput lewat aplikasi lama sebelum kolom asal ada di form (asal NULL).
+ * Tanpa aturan ini kedua kasus terbaca 0 dan menimpa angka yang benar di LHUBB DK/DM.
+ * Dipakai review supervisor, form harian, dan /api/sheets/write — aturannya harus sama.
+ */
+export function kedatanganHarianDariEntri(
+    rows: { ton: number | string | null; asal: string | null | undefined }[],
+): { darat: number; laut: number } | null {
+    return rows.some(r => r.asal === 'tongkang' || r.asal === 'darat') ? rekapKedatanganHarian(rows) : null;
+}
+
 // Delapan hue yang berjarak di roda warna, semuanya kontras di atas kartu putih.
 // Sengaja tidak memakai teal/abu-abu karena dipakai pita judul area & pilar.
 export const COAL_PALETTE = [

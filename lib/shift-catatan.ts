@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { labelZonaPendek } from './coal-storage';
+import { labelAsal, labelLetakCatatan, labelMetode, rankShift } from './coal-storage';
+import type { ShiftKey } from './constants';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUMBER TUNGGAL "Catatan Operasional" shift. Dipakai oleh publish-shift (washift
@@ -56,21 +57,87 @@ export function buildActivityLines(internal: { ash?: any[]; solarIn?: any[]; sol
     return lines;
 }
 
-// Baris kedatangan batubara dari coal_arrivals. SENGAJA tidak masuk buildActivityLines
-// maupun teks kanonik: permintaan user (9 Okt 2026) baris ini hanya ke kolom H sheet
-// Catatan, TIDAK ikut WA. Baris penutup (lanjutan bertonase 0) dilewati — ia cuma
-// menandai pengiriman selesai, tidak ada batubara yang datang. Pola RE_BATUBARA di
-// bawah diturunkan dari kalimat ini.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildCoalArrivalLines(rows: any[] | null | undefined): string[] {
-    const lines: string[] = [];
-    for (const r of rows ?? []) {
-        const ton = Number(r.ton);
-        if (!(ton > 0)) continue;
-        const lokasi = r.zona ? ` di ${labelZonaPendek(r.zona)}` : '';
-        lines.push(`Kedatangan batubara dari ${r.supplier || '-'} sebanyak ${ton.toLocaleString('id-ID')} ton${lokasi}`);
+/** Kolom coal_arrivals yang dibutuhkan blok kolom H. */
+export const KOLOM_KEDATANGAN_CATATAN = 'id, batch_id, date, shift, supplier, zona, ton, status, asal, metode_unloading, created_at';
+
+export interface BarisKedatanganCatatan {
+    id?: string;
+    batch_id: string;
+    date: string;
+    shift: string;
+    supplier: string | null;
+    zona: string | null;
+    ton: number | string | null;
+    status: string | null;
+    asal: string | null;
+    metode_unloading: string | null;
+    created_at: string | null;
+}
+
+/** Urutan kronologis satu baris kedatangan: (tanggal, shift malam→pagi→sore), lalu waktu input. */
+function bandingkanUrutan(a: BarisKedatanganCatatan, b: BarisKedatanganCatatan): number {
+    return rankShift(a.date, a.shift as ShiftKey) - rankShift(b.date, b.shift as ShiftKey)
+        || (a.created_at ?? '').localeCompare(b.created_at ?? '');
+}
+
+// Blok kedatangan batubara dari coal_arrivals untuk kolom H sheet Catatan. SENGAJA tidak
+// masuk buildActivityLines maupun teks kanonik: permintaan user (9 Okt 2026) kedatangan
+// hanya ke kolom H, TIDAK ikut WA. Formatnya log yang dipakai user di sheet itu
+// (12 Okt 2026), satu blok per PENGIRIMAN per shift, antar blok baris kosong:
+//
+//   Kedatangan Batubara Tongkang
+//   Nama : BG SAKHAMAS
+//   Via : Conveyor                          (Conveyor / Dump Truck; darat → Darat)
+//   Letak : Close Storage Zona pilar 4–5
+//   Tonase : 5.100 ton                      (KUMULATIF pengiriman s.d. shift ini)
+//   Status : IP                             (IP / Selesai)
+//
+// `semuaBarisBatch` = seluruh baris batch-batch yang muncul di shift ini (semua shift),
+// bahan tonase kumulatif. Baris penutup (lanjutan bertonase 0) ikut ditulis: di format
+// ini justru dialah yang membawa "Status : Selesai".
+export function buildCoalArrivalBlocks(
+    barisShift: BarisKedatanganCatatan[] | null | undefined,
+    semuaBarisBatch: BarisKedatanganCatatan[] | null | undefined = [],
+): string[] {
+    const perBatch = new Map<string, BarisKedatanganCatatan[]>();
+    for (const r of [...(barisShift ?? [])].sort(bandingkanUrutan)) {
+        const daftar = perBatch.get(r.batch_id) ?? [];
+        daftar.push(r);
+        perBatch.set(r.batch_id, daftar);
     }
-    return lines;
+
+    const blok: string[] = [];
+    for (const [batchId, daftar] of perBatch) {
+        const terakhir = daftar[daftar.length - 1];
+        // Kumulatif = semua baris batch ini yang tidak lebih baru dari baris terakhirnya di
+        // shift ini. Baris shift ini sendiri selalu ikut, walau kueri batch gagal.
+        const sebelumnya = (semuaBarisBatch ?? []).filter(r =>
+            r.batch_id === batchId && bandingkanUrutan(r, terakhir) <= 0
+            && !daftar.some(d => d.id !== undefined && d.id === r.id));
+        const kumulatif = [...sebelumnya, ...daftar].reduce((s, r) => s + (Number(r.ton) || 0), 0);
+
+        // Asal milik pengiriman (dikunci untuk lanjutan); metode bisa berganti antar shift,
+        // bahkan dalam satu shift kalau conveyor berhenti — tulis semuanya.
+        const asal = daftar.find(r => r.asal)?.asal ?? null;
+        let metode = [...new Set(daftar.map(r => labelMetode(r.metode_unloading)).filter(Boolean))];
+        // Baris penutup tak punya metode sendiri → pakai metode terakhir pengiriman ini.
+        if (metode.length === 0) {
+            const terakhirBermetode = sebelumnya.filter(r => r.metode_unloading).sort(bandingkanUrutan).pop();
+            if (terakhirBermetode) metode = [labelMetode(terakhirBermetode.metode_unloading)];
+        }
+        const via = asal === 'darat' ? 'Darat' : (metode.join(' + ') || '-');
+        const zona = terakhir.zona ?? daftar.find(r => r.zona)?.zona ?? null;
+
+        blok.push([
+            `Kedatangan Batubara${asal ? ` ${labelAsal(asal)}` : ''}`,
+            `Nama : ${terakhir.supplier || '-'}`,
+            `Via : ${via}`,
+            `Letak : ${zona ? labelLetakCatatan(zona) : '-'}`,
+            `Tonase : ${kumulatif.toLocaleString('id-ID')} ton`,
+            `Status : ${terakhir.status === 'selesai' ? 'Selesai' : 'IP'}`,
+        ].join('\n'));
+    }
+    return blok;
 }
 
 // Baris "Bunker X berasap sejak ..." dari status bunker + history (berasapSince).
@@ -229,26 +296,26 @@ export function klasifikasiBarisCatatan(line: string): keyof CatatanPerKolom {
 
 /** Pecah catatan kanonik jadi empat ember sesuai kolomnya di sheet. LOSSLESS:
  *  tiap baris non-kosong masuk tepat satu ember, tidak ada yang dibuang, dan
- *  urutan baris dalam tiap ember tetap seperti aslinya. `tambahanBatubara` =
- *  baris kedatangan dari tabel (buildCoalArrivalLines) yang tidak ada di teks
- *  kanonik karena memang tidak boleh ikut WA; yang sudah ada di teks dilewati. */
-export function partisiCatatanPerKolom(canonical: string, tambahanBatubara: string[] = []): CatatanPerKolom {
+ *  urutan baris dalam tiap ember tetap seperti aslinya. `blokBatubara` = blok
+ *  kedatangan dari tabel (buildCoalArrivalBlocks) yang memang tidak ada di teks
+ *  kanonik karena tidak boleh ikut WA. */
+export function partisiCatatanPerKolom(canonical: string, blokBatubara: string[] = []): CatatanPerKolom {
     const ember: Record<keyof CatatanPerKolom, string[]> = { operasional: [], flyAsh: [], solar: [], batubara: [] };
     for (const raw of (canonical ?? '').split('\n')) {
         const line = raw.trim();
         if (!line) continue;
         ember[klasifikasiBarisCatatan(line)].push(line);
     }
-    for (const line of tambahanBatubara) {
-        if (!(canonical ?? '').includes(line)) ember.batubara.push(line);
-    }
     const { operasional, flyAsh, solar, batubara } = ember;
+    // Blok kedatangan ditempel apa adanya: multi-baris, TANPA bullet (format log user),
+    // dipisah baris kosong — tidak boleh lewat toBullets yang mem-bullet tiap barisnya.
+    const kolomH = [toBullets(batubara.join('\n')), ...blokBatubara.map(b => b.trim())].filter(Boolean);
     // toBullets idempoten — baris yang sudah ber-bullet dibiarkan apa adanya.
     return {
         operasional: toBullets(operasional.join('\n')),
         flyAsh: toBullets(flyAsh.join('\n')),
         solar: toBullets(solar.join('\n')),
-        batubara: toBullets(batubara.join('\n')),
+        batubara: kolomH.join('\n\n'),
     };
 }
 
@@ -260,9 +327,20 @@ export function partisiCatatanPerKolom(canonical: string, tambahanBatubara: stri
 export async function getShiftCatatanPerKolom(supabase: SupabaseClient, shiftRow: any): Promise<CatatanPerKolom> {
     const [canonical, { data: coalRows }] = await Promise.all([
         getShiftCatatanCanonical(supabase, shiftRow),
-        supabase.from('coal_arrivals').select('supplier, zona, ton')
+        supabase.from('coal_arrivals').select(KOLOM_KEDATANGAN_CATATAN)
             .eq('date', shiftRow.date).eq('shift', shiftRow.shift)
             .order('created_at', { ascending: true }),
     ]);
-    return partisiCatatanPerKolom(canonical, buildCoalArrivalLines(coalRows));
+    const barisShift = (coalRows ?? []) as unknown as BarisKedatanganCatatan[];
+    // Tonase di blok = kumulatif per pengiriman, jadi butuh baris shift-shift lain dari
+    // batch yang sama. Gagal muat → kumulatif cuma dari shift ini, blok tetap tertulis.
+    const batchIds = [...new Set(barisShift.map(r => r.batch_id))];
+    let semuaBarisBatch: BarisKedatanganCatatan[] = [];
+    if (batchIds.length > 0) {
+        const { data, error } = await supabase.from('coal_arrivals')
+            .select(KOLOM_KEDATANGAN_CATATAN).in('batch_id', batchIds);
+        if (error) console.warn('[shift-catatan] baris batch kedatangan gagal dimuat:', error.message);
+        else semuaBarisBatch = (data ?? []) as unknown as BarisKedatanganCatatan[];
+    }
+    return partisiCatatanPerKolom(canonical, buildCoalArrivalBlocks(barisShift, semuaBarisBatch));
 }

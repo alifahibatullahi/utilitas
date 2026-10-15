@@ -29,7 +29,8 @@ import {
     isPiuComplete, isHandlingComplete, isSiloComplete, isCoalBunkerComplete,
 } from '@/lib/daily-completeness';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
-import type { DailyTabProps } from './types';
+import { KOLOM_COAL_ARRIVAL_HARIAN, keCoalArrivalHarian, type CoalArrivalHarian, type DailyTabProps } from './types';
+import { kedatanganHarianDariEntri } from '@/lib/coal-storage';
 import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
 import {
     hitungPasanganRiset, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
@@ -203,7 +204,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // Kebiasaan konsumsi harian per totalizer (median & tertinggi 60 hari) — hanya
     // dipakai saat simpan untuk menilai selisih yang melonjak. Kosong = cek dilewati.
     const [konsumsiBaseline, setKonsumsiBaseline] = useState<KonsumsiBaselineMap>({});
-    const [coalArrivals, setCoalArrivals] = useState<{ id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[]>([]);
+    const [coalArrivals, setCoalArrivals] = useState<CoalArrivalHarian[]>([]);
+    // Tanggal yang entri kedatangannya BERHASIL dimuat. Via Darat/Laut saat simpan hanya
+    // diturunkan dari entri kalau entri tanggal itu memang sudah termuat — gagal muat tidak
+    // boleh menimpa angka tersimpan dengan 0.
+    const [coalArrivalsTanggal, setCoalArrivalsTanggal] = useState<string | null>(null);
     const [coalLoadings, setCoalLoadings] = useState<LoadingShiftHarian[]>([]);
 
     // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
@@ -357,20 +362,13 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             // awal untuk pengiriman yang sudah berhari-hari berjalan.
             if (needsCoalArrivals) supabase
                 .from('coal_arrivals')
-                .select('id, shift, supplier, zona, ton, status')
+                .select(KOLOM_COAL_ARRIVAL_HARIAN)
                 .eq('date', date)
                 .order('created_at', { ascending: false })
-                .then(({ data }) => {
-                    setCoalArrivals(
-                        (data ?? []).map(r => ({
-                            id: r.id as string,
-                            shift: (r.shift as string) || '',
-                            supplier: (r.supplier as string) || '',
-                            zona: (r.zona as string) || '',
-                            ton: Number(r.ton) || 0,
-                            status: (r.status as string) || '',
-                        }))
-                    );
+                .then(({ data, error }) => {
+                    if (error) { console.warn('[harian] kedatangan batubara gagal dimuat', error.message); return; }
+                    setCoalArrivals((data ?? []).map(r => keCoalArrivalHarian(r as Record<string, unknown>)));
+                    setCoalArrivalsTanggal(date);
                 });
 
             // Loading batubara per shift — BACA-SAJA, kartu ringkasan di tab Handling.
@@ -910,6 +908,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
             // Total tidak lagi dihitung app. Kolom total PB2/PB3/Darat (DC–DF, DI–DJ, DL)
             // ditulis 0 ke sheet; total via laut (DN) adalah formula di sheet (mapper skip,
             // ditampilkan di form via read sheet). Form hanya mengumpulkan input harian.
+            // Kedatangan batubara = SATU data dengan tab Handling laporan shift: Via Darat/Laut
+            // diturunkan dari entri coal_arrivals tanggal ini (rumus sama dgn LHUBB DK/DM).
+            // Tanpa entri berasal (tanggal lama, entri aplikasi lama, atau gagal muat) →
+            // angka tersimpan dibiarkan.
+            const kedatanganEntri = coalArrivalsTanggal === date ? kedatanganHarianDariEntri(coalArrivals) : null;
             const calcTransfer = {
                 ...coalTransfer,
                 // Input harian: default 0 (kalau belum diisi → 0, bukan kosong) supaya tersimpan
@@ -920,8 +923,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 pb2_pf2_ton: N(coalTransfer.pb2_pf2_ton),
                 pb3_calc_rit: N(coalTransfer.pb3_calc_rit),
                 pb3_calc_ton: N(coalTransfer.pb3_calc_ton),
-                darat_24_ton: N(coalTransfer.darat_24_ton),
-                laut_24_ton: N(coalTransfer.laut_24_ton),
+                darat_24_ton: kedatanganEntri ? kedatanganEntri.darat : N(coalTransfer.darat_24_ton),
+                laut_24_ton: kedatanganEntri ? kedatanganEntri.laut : N(coalTransfer.laut_24_ton),
                 // Total: app tidak hitung lagi. PB2/PB3/Darat (DC–DF, DI–DJ, DL) ditulis 0.
                 // Total via laut (DN) = formula di sheet (mapper skip), tampil di form via read.
                 pb2_total_pf1_rit: 0,

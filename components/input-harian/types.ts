@@ -1,4 +1,7 @@
 import type { LoadingShiftHarian } from '@/lib/coal-storage-query';
+import type { AsalKedatangan, MetodeUnloading } from '@/lib/coal-storage';
+import type { ShiftKey } from '@/lib/constants';
+import type { CoalArrivalEntry, OpenArrival } from '@/components/input-shift/CoalArrivalModal';
 
 export interface DailyTabProps {
     // State objects
@@ -42,9 +45,10 @@ export interface DailyTabProps {
     solarUnloadings?: { id?: string; date: string; liters: number; supplier: string; shift?: string | null }[];
     solarUsages?: { id?: string; date: string; shift: string; liters: number; tujuan: string }[];
     ashUnloadings?: { id?: string; date: string; shift: string; silo: string; perusahaan: string; tujuan: string; ritase: number }[];
-    /** Kedatangan batubara hari itu (coal_arrivals) — ringkasan BACA-SAJA di tab Handling,
-     *  cermin dari laporan shift. Tanpa handler edit/hapus: sumbernya laporan shift. */
-    coalArrivals?: { id?: string; shift: string; supplier: string; zona: string; ton: number; status: string }[];
+    /** Kedatangan batubara hari itu (coal_arrivals) — SATU data dengan tab Handling laporan
+     *  shift. Form harian hanya menampilkannya; review supervisor (PublishReportModal) bisa
+     *  mengoreksinya lewat handler CoalReviewProps. */
+    coalArrivals?: CoalArrivalHarian[];
     /** Loading batubara per shift hari itu — ringkasan BACA-SAJA di tab Handling, cermin
      *  laporan shift (Total Loading + pilar asal). Urut Malam → Pagi → Sore. */
     coalLoadings?: LoadingShiftHarian[];
@@ -59,14 +63,57 @@ export interface DailyTabProps {
 
 }
 
+/** Satu baris coal_arrivals tanggal laporan, bentuk yang dipakai laporan harian. */
+export interface CoalArrivalHarian {
+    id?: string;
+    batch_id: string;
+    shift: string;
+    supplier: string;
+    zona: string;
+    ton: number;
+    status: string;
+    tanggal_masuk: string;
+    asal: AsalKedatangan | null;
+    metode_unloading: MetodeUnloading | null;
+}
+
+/** Kolom coal_arrivals yang dimuat laporan harian (form & review supervisor). */
+export const KOLOM_COAL_ARRIVAL_HARIAN = 'id, batch_id, shift, supplier, zona, ton, status, tanggal_masuk, asal, metode_unloading';
+
+/** Baris DB → CoalArrivalHarian. Asal/metode di luar daftar → null. */
+export function keCoalArrivalHarian(r: Record<string, unknown>): CoalArrivalHarian {
+    const asal = r.asal === 'tongkang' || r.asal === 'darat' ? r.asal : null;
+    const metode = r.metode_unloading === 'conveyor' || r.metode_unloading === 'dump_truck' ? r.metode_unloading : null;
+    return {
+        id: r.id as string,
+        batch_id: (r.batch_id as string) || '',
+        shift: (r.shift as string) || '',
+        supplier: (r.supplier as string) || '',
+        zona: (r.zona as string) || '',
+        ton: Number(r.ton) || 0,
+        status: (r.status as string) || '',
+        tanggal_masuk: (r.tanggal_masuk as string) || '',
+        asal,
+        metode_unloading: asal === 'tongkang' ? metode : null,
+    };
+}
+
 /** Subset prop yang dipakai TabStockBatubara (form In/Out batubara per kategori) — supaya
  *  komponen bisa dipakai ulang di luar form harian (mis. panel publish) tanpa menyediakan
- *  seluruh DailyTabProps. */
+ *  seluruh DailyTabProps. Handler kedatangan opsional: tanpa handler → daftar baca-saja. */
 export type CoalReviewProps = Pick<DailyTabProps,
     | 'coalTransfer'
     | 'onCoalTransferChange'
     | 'coalArrivals'
->;
+> & {
+    /** Tanggal laporan — default "mulai masuk storage" kedatangan baru. */
+    reportDate?: string;
+    coalOpenArrivals?: OpenArrival[];
+    coalSupplierOptions?: string[];
+    onAddCoalArrival?: (entry: CoalArrivalEntry, shift: ShiftKey) => Promise<void>;
+    onEditCoalArrival?: (id: string, entry: CoalArrivalEntry) => Promise<void>;
+    onDeleteCoalArrival?: (id: string) => Promise<void>;
+};
 
 export interface SolarUnloadingEntry { id?: string; date: string; liters: number; supplier: string; shift?: string | null }
 export interface SolarUsageEntry { id?: string; date: string; shift: string; liters: number; tujuan: string }

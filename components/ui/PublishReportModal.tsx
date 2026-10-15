@@ -6,10 +6,14 @@ import { createClient } from '@/lib/supabase/client';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import Stepper from '@/components/ui/Stepper';
 import { parseSheetNumber } from '@/lib/utils';
-import { isForemanCandidate } from '@/lib/constants';
+import { isForemanCandidate, type ShiftKey } from '@/lib/constants';
 import TabStockBatubara from '@/components/input-harian/TabStockBatubara';
 import TabSolarReview from '@/components/input-harian/TabSolarReview';
-import type { SolarUnloadingEntry, SolarUsageEntry } from '@/components/input-harian/types';
+import { KOLOM_COAL_ARRIVAL_HARIAN, keCoalArrivalHarian, type CoalArrivalHarian, type SolarUnloadingEntry, type SolarUsageEntry } from '@/components/input-harian/types';
+import type { CoalArrivalEntry, OpenArrival } from '@/components/input-shift/CoalArrivalModal';
+import { kedatanganHarianDariEntri } from '@/lib/coal-storage';
+import { fetchInfoKedatangan } from '@/lib/coal-storage-query';
+import { syncCatatanKedatangan } from '@/lib/coal-arrival-sync';
 
 /** Satu langkah di panel publish. Daftar step dibangun per-`kind` (lihat buildSteps di
  *  komponen) sehingga menambah step pra-publish ke depan = cukup push entri baru. */
@@ -173,6 +177,10 @@ export function PublishReportModal({
     // on-change via Supabase langsung (tidak butuh state form penuh).
     const [coalTransfer, setCoalTransfer] = useState<Record<string, number | null>>({});
     const [stockBatubaraSheet, setStockBatubaraSheet] = useState<string | null>(null);
+    // Kedatangan = entri coal_arrivals tanggal ini — SATU data dengan tab Handling laporan
+    // shift. Supervisor mengoreksi entrinya (tabel yang sama), bukan mengetik angka terpisah.
+    const [coalArrivals, setCoalArrivals] = useState<CoalArrivalHarian[]>([]);
+    const [coalInfo, setCoalInfo] = useState<{ berjalan: OpenArrival[]; suppliers: string[] }>({ berjalan: [], suppliers: [] });
 
     // ── State Review Solar (step 'solar' di laporan harian) ──
     // Bukan gate Ya/Tidak — selalu tampil review. Supervisor boleh edit semua entri operator
@@ -392,10 +400,36 @@ export function PublishReportModal({
         })));
     }, [reportDate]);
 
+    // ── Kedatangan batubara: muat entri (dipakai ulang setelah CRUD) ──
+    // Via Darat/Laut harian = jumlah entri. Angkanya juga disimpan sebagai snapshot di
+    // daily_report_coal_transfer (dibaca ringkasan & riwayat parameter) — HANYA bila ada
+    // entri berasal: tanggal lama / entri aplikasi lama menyimpan angka ketikan supervisor
+    // yang tak boleh tertimpa 0 (aturan sama dengan LHUBB di /api/sheets/write).
+    const loadCoalArrivals = useCallback(async () => {
+        if (!reportDate) return;
+        const supabase = createClient();
+        fetchInfoKedatangan(supabase)
+            .then(info => setCoalInfo(info))
+            .catch(e => console.warn('[PublishReportModal] info kedatangan gagal dimuat', e));
+        const { data, error } = await supabase.from('coal_arrivals')
+            .select(KOLOM_COAL_ARRIVAL_HARIAN).eq('date', reportDate)
+            .order('created_at', { ascending: true });
+        if (error) { console.warn('[PublishReportModal] coal_arrivals gagal dimuat', error.message); return; }
+        const rows = (data ?? []).map(r => keCoalArrivalHarian(r as Record<string, unknown>));
+        setCoalArrivals(rows);
+        const rekap = kedatanganHarianDariEntri(rows);
+        if (!reportId || !rekap) return;
+        const { darat, laut } = rekap;
+        const { error: upErr } = await supabase.from('daily_report_coal_transfer')
+            .upsert({ daily_report_id: reportId, darat_24_ton: darat, laut_24_ton: laut }, { onConflict: 'daily_report_id' });
+        if (upErr) console.warn('[PublishReportModal] snapshot kedatangan gagal disimpan', upErr.message);
+    }, [reportDate, reportId]);
+
     // Saat panel harian dibuka: muat entri + level & Boiler A+B (kolom manual).
     useEffect(() => {
         if (!open || kind !== 'daily' || !reportDate || !reportId) return;
         loadSolarEntries();
+        loadCoalArrivals();
         const supabase = createClient();
         supabase.from('daily_report_stock_tank').select('solar_tank_a, kedatangan_solar, solar_boiler, solar_bengkel, solar_3b').eq('daily_report_id', reportId).maybeSingle()
             .then(({ data }) => {
@@ -403,7 +437,7 @@ export function PublishReportModal({
                 setSolarLevel(num('solar_tank_a'));
                 setSolarVals({ kedatangan_solar: num('kedatangan_solar'), solar_boiler: num('solar_boiler'), solar_bengkel: num('solar_bengkel'), solar_3b: num('solar_3b') });
             });
-    }, [open, kind, reportDate, reportId, loadSolarEntries]);
+    }, [open, kind, reportDate, reportId, loadSolarEntries, loadCoalArrivals]);
 
     // Level solar kemarin dari Sheets LHUBB hari sebelumnya: CH(85)=solar_tank_a.
     useEffect(() => {
@@ -482,6 +516,44 @@ export function PublishReportModal({
         const { error } = await supabase.from('solar_usages').delete().eq('id', id);
         if (error) { alert('Gagal hapus: ' + error.message); return; }
         await loadSolarEntries();
+    };
+
+    // CRUD entri kedatangan batubara — tabel yang sama dengan tab Handling laporan shift.
+    // Tiap perubahan: muat ulang (sekaligus snapshot darat/laut) + tulis ulang kolom H sheet
+    // Catatan shift baris itu dan shift sesudahnya di pengiriman yang sama (tonase kumulatif).
+    const addCoalArrival = async (entry: CoalArrivalEntry, shift: ShiftKey) => {
+        if (!reportDate) return;
+        const supabase = createClient();
+        const { error } = await supabase.from('coal_arrivals').insert({
+            batch_id: entry.batch_id, date: reportDate, shift,
+            supplier: entry.supplier, zona: entry.zona, ton: entry.ton ?? 0,
+            tanggal_masuk: entry.tanggal_masuk || reportDate, status: entry.status,
+            asal: entry.asal, metode_unloading: entry.asal === 'tongkang' ? entry.metode_unloading : null,
+            operator_id: null,
+        });
+        if (error) { alert('Gagal simpan kedatangan batubara: ' + error.message); return; }
+        await loadCoalArrivals();
+        void syncCatatanKedatangan(supabase, { date: reportDate, shift }, [entry.batch_id]);
+    };
+    const editCoalArrival = async (id: string, entry: CoalArrivalEntry) => {
+        const baris = coalArrivals.find(a => a.id === id);
+        const supabase = createClient();
+        const { error } = await supabase.from('coal_arrivals').update({
+            ton: entry.ton ?? 0, status: entry.status, asal: entry.asal,
+            metode_unloading: entry.asal === 'tongkang' ? entry.metode_unloading : null,
+        }).eq('id', id);
+        if (error) { alert('Gagal simpan: ' + error.message); return; }
+        await loadCoalArrivals();
+        if (reportDate && baris) void syncCatatanKedatangan(supabase, { date: reportDate, shift: baris.shift }, [baris.batch_id]);
+    };
+    const deleteCoalArrival = async (id: string) => {
+        if (!confirm('Hapus data kedatangan batubara ini? Tumpukan di denah /coal-storage ikut berkurang.')) return;
+        const baris = coalArrivals.find(a => a.id === id);
+        const supabase = createClient();
+        const { error } = await supabase.from('coal_arrivals').delete().eq('id', id);
+        if (error) { alert('Gagal hapus: ' + error.message); return; }
+        await loadCoalArrivals();
+        if (reportDate && baris) void syncCatatanKedatangan(supabase, { date: reportDate, shift: baris.shift }, [baris.batch_id]);
     };
 
     if (!open) return null;
@@ -567,9 +639,12 @@ export function PublishReportModal({
     const kindLabel = kind === 'shift' ? 'Shift' : 'Harian';
 
     // Stock batubara untuk ringkasan = stock LHUBB + kedatangan (in) − pemindahan (out).
+    // Kedatangan dari entri berasal bila ada; selain itu → angka tersimpan.
     const coalStockBase = parseSheetNumber(stockBatubaraSheet);
     const cn = (k: string) => Number(coalTransfer[k]) || 0;
-    const coalIn = cn('darat_24_ton') + cn('laut_24_ton');
+    const rekapIn = kedatanganHarianDariEntri(coalArrivals)
+        ?? { darat: cn('darat_24_ton'), laut: cn('laut_24_ton') };
+    const coalIn = rekapIn.darat + rekapIn.laut;
     const coalOut = cn('pb2_pf1_ton') + cn('pb2_pf2_ton') + cn('pb3_calc_ton');
     const stockComputed = coalStockBase != null
         ? fmt(coalStockBase + coalIn - coalOut)
@@ -694,12 +769,19 @@ export function PublishReportModal({
             label: 'In/Out Batubara',
             icon: 'local_shipping',
             description: 'Kedatangan & pemindahan batubara 24 jam',
-            hint: 'Periksa kedatangan (darat/laut) dan pemindahan ke Pabrik 2 & 3. Nilai 0 tetap tersimpan ke Sheets.',
+            hint: 'Kedatangan = entri tab Handling (tongkang/darat) — koreksi lewat entrinya. Isi pemindahan ke Pabrik 2 & 3; nilai 0 tetap tersimpan ke Sheets.',
             // Form langsung (default 0, editable). Bukan gate Ya/Tidak.
             render: () => (
                 <TabStockBatubara
                     coalTransfer={coalTransfer}
                     onCoalTransferChange={handleCoalTransferChange}
+                    coalArrivals={coalArrivals}
+                    reportDate={reportDate}
+                    coalOpenArrivals={coalInfo.berjalan}
+                    coalSupplierOptions={coalInfo.suppliers}
+                    onAddCoalArrival={addCoalArrival}
+                    onEditCoalArrival={editCoalArrival}
+                    onDeleteCoalArrival={deleteCoalArrival}
                 />
             ),
         });

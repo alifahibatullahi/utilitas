@@ -7,7 +7,7 @@ import TabBoiler from '@/components/input-shift/TabBoiler';
 import TabTurbin from '@/components/input-shift/TabTurbin';
 import TabGenerator from '@/components/input-shift/TabGenerator';
 import TabDistribusiSteam from '@/components/input-shift/TabDistribusiSteam';
-import TabHandling, { isBarisPenutup, type CoalArrivalEntry, type OpenArrival } from '@/components/input-shift/TabHandling';
+import TabHandling, { isKedatanganLengkap, type CoalArrivalEntry, type OpenArrival } from '@/components/input-shift/TabHandling';
 import TabESP, { AshUnloadingEntry } from '@/components/input-shift/TabESP';
 import TabCoalBunker from '@/components/input-shift/TabCoalBunker';
 import TabLab from '@/components/input-shift/TabLab';
@@ -16,6 +16,7 @@ import { useShiftReport, usePreviousShiftData, useBunkerBerasapHistory, useBoile
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInfoKedatangan } from '@/lib/coal-storage-query';
+import { syncCatatanKedatangan } from '@/lib/coal-arrival-sync';
 import type { CoalArrivalRow, CoalLoadingRow, ShiftType, SolarUnloadingRow, SolarUsageRow } from '@/lib/supabase/types';
 import { SAMPLE_MALAM_01JAN } from '@/lib/sampleData';
 import InputHarianForm from '@/components/input-harian/InputHarianForm';
@@ -39,21 +40,12 @@ const toCoalArrivalEntry = (r: CoalArrivalRow): CoalArrivalEntry => ({
     id: r.id, batch_id: r.batch_id, supplier: r.supplier, zona: r.zona,
     ton: r.ton, tanggal_masuk: r.tanggal_masuk,
     status: r.status === 'selesai' ? 'selesai' : 'progres',
+    asal: r.asal === 'tongkang' || r.asal === 'darat' ? r.asal : null,
+    metode_unloading: r.metode_unloading === 'conveyor' || r.metode_unloading === 'dump_truck' ? r.metode_unloading : null,
 });
 
-/**
- * Picu ulang sync Catatan Operasional ke sheet Catatan — fire-and-forget, pola sama
- * dengan hooks/useShiftReport.tsx. Dipakai setelah coal_arrivals berubah: kedatangan
- * batubara masuk kolom H sheet Catatan (TIDAK ke WA), dan baris itu dirakit server
- * dari tabel, jadi harus dipicu setelah tabelnya benar-benar berubah.
- */
-function syncCatatanSheet(date: string, shift: string) {
-    fetch('/api/sheets/write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'catatan_operasional', data: { date, shift } }),
-    }).catch(err => console.warn('[input-laporan] catatan_operasional sync failed:', err));
-}
+/** Kolom coal_arrivals yang dimuat form — sama untuk muat awal & muat ulang setelah simpan. */
+const KOLOM_COAL_ARRIVAL_FORM = 'id, batch_id, supplier, zona, ton, tanggal_masuk, status, asal, metode_unloading';
 
 /** Baris coal_loadings yang sudah ada di DB — id disimpan untuk merge saat simpan. */
 type CoalLoadingRowRef = { id: string; zona: string };
@@ -697,7 +689,7 @@ function InputShiftPageInner() {
 
         supabase
             .from('coal_arrivals')
-            .select('id, batch_id, supplier, zona, ton, tanggal_masuk, status')
+            .select(KOLOM_COAL_ARRIVAL_FORM)
             .eq('date', selectedDate)
             .eq('shift', shiftMap[selectedShift])
             .order('created_at', { ascending: true })
@@ -745,11 +737,13 @@ function InputShiftPageInner() {
         const supabase = createClient();
         const { error } = await supabase.from('coal_arrivals').delete().eq('id', id);
         if (error) { showToast('Gagal hapus: ' + error.message, 'error'); return; }
+        const batchId = savedCoalArrivalEntries.find(e => e.id === id)?.batch_id;
         setSavedCoalArrivalEntries(prev => prev.filter(e => e.id !== id));
         // Status batch bisa berubah (baris penutupnya yang dihapus), dan kolom H sheet
-        // Catatan ikut dirakit ulang dari tabel.
+        // Catatan ikut dirakit ulang dari tabel — termasuk shift sesudahnya yang
+        // melanjutkan pengiriman ini, karena tonase di sana kumulatif.
         muatInfoKedatangan();
-        syncCatatanSheet(selectedDate, shiftMap[selectedShift]);
+        void syncCatatanKedatangan(supabase, { date: selectedDate, shift: shiftMap[selectedShift] }, batchId ? [batchId] : []);
     };
     const handleDeleteSavedSolar = async (id: string) => {
         if (!confirm('Hapus data kedatangan solar ini?')) return;
@@ -1623,10 +1617,10 @@ function InputShiftPageInner() {
                 if (errs.length > 0) showToast('Pilar loading GAGAL tersimpan: ' + errs[0] + '. Mohon simpan ulang.', 'error');
             }
 
-            // Kedatangan batubara — OPSIONAL, sama perlakuannya. Tonase 0 hanya sah untuk
-            // baris penutup (lanjutan berstatus selesai, lihat isBarisPenutup).
-            const validCoalArrivals = coalArrivalEntries.filter(e =>
-                e.supplier && e.zona && ((e.ton ?? 0) > 0 || isBarisPenutup(e)));
+            // Kedatangan batubara — OPSIONAL, sama perlakuannya. Aturannya sama dengan
+            // tombol Simpan di modal (isKedatanganLengkap): asal wajib, metode unloading
+            // wajib untuk tongkang, tonase 0 hanya sah untuk baris penutup.
+            const validCoalArrivals = coalArrivalEntries.filter(isKedatanganLengkap);
             if (validCoalArrivals.length > 0) {
                 const supabase = createClient();
                 const arrivalInserts = validCoalArrivals.map(entry => ({
@@ -1638,13 +1632,16 @@ function InputShiftPageInner() {
                     ton: entry.ton ?? 0,
                     tanggal_masuk: entry.tanggal_masuk || selectedDate,
                     status: entry.status,
+                    asal: entry.asal,
+                    metode_unloading: entry.asal === 'tongkang' ? entry.metode_unloading : null,
                     operator_id: operator?.supabaseId ?? null,
                 }));
                 const { error: arrivalErr } = await supabase.from('coal_arrivals').insert(arrivalInserts as any[]);
                 if (arrivalErr) showToast('Kedatangan batubara GAGAL tersimpan: ' + arrivalErr.message + '. Mohon simpan ulang.', 'error');
                 // Sync catatan di submitReport jalan SEBELUM insert ini, jadi kolom H
                 // (In-Out Batubara) sheet Catatan belum melihat kedatangan barusan.
-                else syncCatatanSheet(selectedDate, shiftMap[selectedShift]);
+                else void syncCatatanKedatangan(supabase, { date: selectedDate, shift: shiftMap[selectedShift] },
+                    validCoalArrivals.map(e => e.batch_id));
             }
 
             clearInterval(progressInterval);
@@ -1730,7 +1727,7 @@ function InputShiftPageInner() {
                             setCoalZonas(rows.map(r => r.zona));
                         });
 
-                    spb.from('coal_arrivals').select('id, batch_id, supplier, zona, ton, tanggal_masuk, status')
+                    spb.from('coal_arrivals').select(KOLOM_COAL_ARRIVAL_FORM)
                         .eq('date', selectedDate).eq('shift', shiftMap[selectedShift])
                         .order('created_at', { ascending: true })
                         .then(({ data }) => setSavedCoalArrivalEntries(((data ?? []) as CoalArrivalRow[]).map(toCoalArrivalEntry)));

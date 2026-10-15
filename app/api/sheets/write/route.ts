@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift, upsertCatatanOperasional, upsertEvalCmAir, type EvalCmUpdateResult } from '@/lib/google-sheets';
 import { getShiftCatatanPerKolom } from '@/lib/shift-catatan';
+import { kedatanganHarianDariEntri } from '@/lib/coal-storage';
 import { upsertLogsheetBoiler, type LogsheetShift, type LogsheetBunker, type LogsheetLab, type LogsheetPersonnel } from '@/lib/logsheet-boiler';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
 import { dailyReportToRow, type SolarSummary, type ChemicalSummary, type CoalSummary } from '@/lib/daily-sheets-mapper';
@@ -151,7 +152,7 @@ export async function POST(req: NextRequest) {
             // Semua read Supabase diparalelkan (dulu 3 tahap serial: current →
             // prev → aux) — memangkas latensi route sebelum tulis Sheets.
             const supabase = getSupabase();
-            const [dbData, prevData, solarIn, solarOut, shiftChem] = await Promise.all([
+            const [dbData, prevData, solarIn, solarOut, shiftChem, coalIn] = await Promise.all([
                 fetchDailyReport(date),
                 fetchDailyReport(prevDateStr),
                 supabase.from('solar_unloadings').select('liters').eq('date', date),
@@ -160,6 +161,7 @@ export async function POST(req: NextRequest) {
                     .from('shift_reports')
                     .select('shift_water_quality(phosphate_penambahan_chemical, phosphate_b_penambahan_chemical, amine_penambahan_chemical, hydrazine_penambahan_chemical)')
                     .eq('date', date),
+                supabase.from('coal_arrivals').select('ton, asal').eq('date', date),
             ]);
             if (!dbData) {
                 return NextResponse.json({ warning: `Daily report untuk ${date} tidak ditemukan di database` });
@@ -193,12 +195,19 @@ export async function POST(req: NextRequest) {
                 hydrazine:  hasHydrazine  ? hydrazineTotal  : null,
             };
 
-            // In/Out batubara — dari daily_report_coal_transfer (form per kategori, default 0).
+            // In/Out batubara — pemindahan dari daily_report_coal_transfer (form per kategori,
+            // default 0). Kedatangan (DK darat, DM laut) = SATU data dengan tab Handling laporan
+            // shift: jumlah entri coal_arrivals tanggal ini per asal. Tanpa entri berasal (tanggal
+            // lama, entri dari aplikasi lama, atau gagal baca) → angka tersimpan, supaya ketikan
+            // supervisor tidak tertimpa 0 (kedatanganHarianDariEntri).
             const tr = (dbData.transfer ?? {}) as Record<string, unknown>;
             const trn = (k: string) => Number(tr[k]) || 0;
+            if (coalIn.error) console.warn('[sheets/write] coal_arrivals gagal dibaca, DK/DM pakai angka tersimpan:', coalIn.error.message);
+            const kedatangan = kedatanganHarianDariEntri(coalIn.error ? [] : (coalIn.data ?? []))
+                ?? { darat: trn('darat_24_ton'), laut: trn('laut_24_ton') };
             const coalSummary: CoalSummary = {
-                daratTon:   trn('darat_24_ton'),
-                lautTon:    trn('laut_24_ton'),
+                daratTon:   kedatangan.darat,
+                lautTon:    kedatangan.laut,
                 pb2Pf1Rit:  trn('pb2_pf1_rit'),
                 pb2Pf1Ton:  trn('pb2_pf1_ton'),
                 pb2Pf2Rit:  trn('pb2_pf2_rit'),

@@ -1,7 +1,12 @@
 'use client';
 import React, { useState } from 'react';
 import { Card, InputField, Modal, SectionLabel } from './SharedComponents';
-import { COAL_AREAS, TON_PER_SHOVEL, formatTon, labelZonaPendek, zonaIds } from '@/lib/coal-storage';
+import { TON_PER_SHOVEL, formatTon, labelAsalKedatangan, labelZonaPendek } from '@/lib/coal-storage';
+import CoalArrivalModal, { ZONA_OPTIONS, isBarisPenutup, type CoalArrivalEntry, type OpenArrival } from './CoalArrivalModal';
+
+// Tipe & aturan kedatangan tinggal di CoalArrivalModal (dipakai juga review harian);
+// diekspor ulang supaya pemanggil lama tidak perlu tahu.
+export { isBarisPenutup, isKedatanganLengkap, type CoalArrivalEntry, type OpenArrival } from './CoalArrivalModal';
 
 export interface SolarEntry {
     id?: string;
@@ -19,60 +24,9 @@ export interface OutSolarEntry {
     tujuan: string;
 }
 
-/** Satu kali kedatangan batubara → baris tabel coal_arrivals. */
-export interface CoalArrivalEntry {
-    id?: string;
-    batch_id: string;        // sama untuk pengiriman yang berlanjut antar shift
-    supplier: string;
-    zona: string;
-    ton: number | null;
-    tanggal_masuk: string;   // 'YYYY-MM-DD' — hari batubara MULAI masuk storage
-    status: 'progres' | 'selesai';
-}
-
-/**
- * Pengiriman yang di shift sebelumnya ditandai masih 'progres'. Dipakai untuk
- * tombol "Lanjutkan" supaya baris lanjutannya mewarisi batch_id yang sama — kalau
- * tidak, satu pengiriman yang memakan tiga shift jadi tiga tumpukan di denah.
- */
-export interface OpenArrival {
-    batch_id: string;
-    supplier: string;
-    zona: string;
-    tonSejauhIni: number;
-    tanggal_masuk: string;
-}
-
-/**
- * Daftar pilihan zona untuk kedua area, memakai label pendek yang sama dengan
- * halaman /coal-storage ('Closed · pilar 4–5') supaya operator membaca istilah
- * yang persis sama di form dan di denah.
- */
-const ZONA_OPTIONS = COAL_AREAS.flatMap(area =>
-    zonaIds(area).map(zona => ({ value: zona, label: labelZonaPendek(zona) })),
-);
-
-/**
- * Id pengiriman baru. Di luar komponen supaya aturan kemurnian React tidak
- * menganggap Date.now/Math.random dipanggil saat render — ini cuma dipakai di
- * dalam handler. Cadangan non-crypto untuk browser lama tanpa randomUUID.
- */
-function newBatchId(): string {
-    return globalThis.crypto?.randomUUID?.()
-        ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-/**
- * Baris penutup = lanjutan berstatus 'selesai' tanpa tonase tambahan. Gunanya cuma
- * menandai pengiriman sudah tuntas (kalau tidak, ia nyangkut di dropdown "Pengiriman"
- * selamanya); tonasenya 0, jadi tumpukan di denah tidak berubah.
- */
-export function isBarisPenutup(e: Pick<CoalArrivalEntry, 'ton' | 'status'>): boolean {
-    return !e.ton && e.status === 'selesai';
-}
-
 function isiBarisKedatangan(e: CoalArrivalEntry): { utama: React.ReactNode; sub: string } {
-    const lokasi = `${e.supplier} · ${labelZonaPendek(e.zona)}`;
+    const asal = labelAsalKedatangan(e.asal, e.metode_unloading);
+    const lokasi = `${asal ? `${asal} · ` : ''}${e.supplier} · ${labelZonaPendek(e.zona)}`;
     if (isBarisPenutup(e)) {
         return { utama: <span className="text-emerald-300">Tandai selesai</span>, sub: lokasi };
     }
@@ -81,12 +35,6 @@ function isiBarisKedatangan(e: CoalArrivalEntry): { utama: React.ReactNode; sub:
         sub: `${lokasi}${e.status === 'progres' ? ' · masih progres' : ''}`,
     };
 }
-
-/** Batas chip supplier yang ditampilkan sekaligus — sisanya tetap lewat datalist/ketik. */
-const MAKS_SARAN_SUPPLIER = 8;
-
-const selectClass = (filled: boolean, ring: string) =>
-    `w-full bg-[#101822] border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 ${ring} text-sm font-bold transition-all ${filled ? 'text-white' : 'text-slate-400'}`;
 
 /**
  * Daftar entri batubara (loading / kedatangan). Ditulis terpisah dari EntryList
@@ -253,10 +201,6 @@ export default function TabHandling({
     const [tujuanMode, setTujuanMode] = useState<'Boiler A+B' | 'Bengkel' | 'SA/SU 3B' | 'Lainnya'>('Bengkel');
 
     const [showArrivalModal, setShowArrivalModal] = useState(false);
-    const [arrivalForm, setArrivalForm] = useState<CoalArrivalEntry | null>(null);
-    // Terisi saat dropdown "Pengiriman" dipakai untuk melanjutkan: supplier, pilar,
-    // dan tanggal dikunci mengikuti induknya supaya tumpukan di denah tidak terbelah.
-    const [lanjutanDari, setLanjutanDari] = useState<OpenArrival | null>(null);
 
     const saveSolar = () => {
         if (!solarForm.jam || !solarForm.jumlah || !solarForm.perusahaan) return;
@@ -296,54 +240,12 @@ export default function TabHandling({
 
     const allArrivals = [...savedCoalArrivalEntries, ...coalArrivalEntries];
     const totalTonDatang = allArrivals.reduce((s, e) => s + (e.ton || 0), 0);
-    const daftarSupplier = [...new Set(
-        [...supplierOptions, ...allArrivals.map(a => a.supplier)].filter(Boolean),
-    )].sort((a, b) => a.localeCompare(b, 'id'));
+    const daftarSupplier = [...supplierOptions, ...allArrivals.map(a => a.supplier)];
 
-    /**
-     * Isi ulang form kedatangan. Tanpa induk = pengiriman baru; dengan induk =
-     * lanjutan yang mewarisi batch_id DAN tanggal masuknya, supaya tumpukannya tetap
-     * satu dan umurnya dihitung sejak batubara pertama kali menyentuh lapangan.
-     */
-    const setArrivalMode = (induk: OpenArrival | null) => {
-        setLanjutanDari(induk);
-        setArrivalForm({
-            batch_id: induk?.batch_id ?? newBatchId(),
-            supplier: induk?.supplier ?? '',
-            zona: induk?.zona ?? '',
-            ton: null,
-            tanggal_masuk: induk?.tanggal_masuk ?? reportDate,
-            status: 'progres',
-        });
-    };
-
-    const openArrivalModal = () => {
-        setArrivalMode(null);
-        setShowArrivalModal(true);
-    };
-
-    const closeArrivalModal = () => {
+    const saveArrival = (entry: CoalArrivalEntry) => {
+        onCoalArrivalEntriesChange?.([...coalArrivalEntries, entry]);
         setShowArrivalModal(false);
-        setArrivalForm(null);
-        setLanjutanDari(null);
     };
-
-    // Tonase wajib, KECUALI lanjutan yang ditandai selesai: itu baris penutup dan boleh
-    // tanpa tonase tambahan. Pengiriman baru tanpa tonase tidak ada artinya.
-    const tonaseBolehKosong = !!lanjutanDari && arrivalForm?.status === 'selesai';
-    const arrivalValid = !!arrivalForm?.supplier && !!arrivalForm.zona
-        && ((arrivalForm.ton ?? 0) > 0 || tonaseBolehKosong);
-
-    const saveArrival = () => {
-        if (!arrivalForm || !arrivalValid) return;
-        onCoalArrivalEntriesChange?.([...coalArrivalEntries, { ...arrivalForm, ton: arrivalForm.ton ?? 0 }]);
-        closeArrivalModal();
-    };
-
-    const cariSupplier = (arrivalForm?.supplier ?? '').trim().toLowerCase();
-    const saranSupplier = daftarSupplier
-        .filter(s => s.toLowerCase().includes(cariSupplier))
-        .slice(0, MAKS_SARAN_SUPPLIER);
 
     const removeArrival = (row: { id?: string; key: string }) => {
         if (row.id) return onDeleteSavedCoalArrival?.(row.id);
@@ -508,7 +410,7 @@ export default function TabHandling({
                         )}
 
                         {canEditCoal ? (
-                            <button type="button" onClick={openArrivalModal}
+                            <button type="button" onClick={() => setShowArrivalModal(true)}
                                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-sm font-bold transition-colors">
                                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
                                 Tambah Kedatangan
@@ -573,113 +475,16 @@ export default function TabHandling({
                 </button>
             </Modal>
 
-            {/* Modal Kedatangan Batubara */}
-            <Modal open={showArrivalModal && !!arrivalForm} onClose={closeArrivalModal}
-                title={lanjutanDari ? 'Lanjutan Kedatangan' : 'Kedatangan Batubara'} color="emerald">
-                {arrivalForm && (
-                    <>
-                        {/* Field pertama: pengiriman baru atau lanjutan. Memilih lanjutan
-                            mewarisi batch_id + tanggal masuk induknya, jadi pengiriman yang
-                            memakan beberapa shift tetap terbaca sebagai SATU tumpukan. */}
-                        {openArrivals.length > 0 && (
-                            <div className="space-y-1.5 w-full">
-                                <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Pengiriman</label>
-                                <select
-                                    value={lanjutanDari?.batch_id ?? ''}
-                                    onChange={e => setArrivalMode(openArrivals.find(o => o.batch_id === e.target.value) ?? null)}
-                                    className={selectClass(true, 'focus:ring-emerald-500')}
-                                >
-                                    <option value="" className="text-white bg-[#101822] font-bold">Baru</option>
-                                    {openArrivals.map(o => (
-                                        <option key={o.batch_id} value={o.batch_id} className="text-white bg-[#101822] font-bold">
-                                            Lanjutan — {o.supplier} · {labelZonaPendek(o.zona)} · {o.tonSejauhIni.toLocaleString('id-ID')} t sejauh ini
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-                        {lanjutanDari && (
-                            <p className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 leading-relaxed">
-                                Melanjutkan pengiriman {lanjutanDari.supplier} di {labelZonaPendek(lanjutanDari.zona)}.
-                                Supplier, pilar, dan tanggal masuk dikunci supaya tetap terhitung satu tumpukan.
-                            </p>
-                        )}
-                        <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Supplier / PT</label>
-                            <input type="text" list="coal-supplier-list" value={arrivalForm.supplier} disabled={!!lanjutanDari}
-                                onChange={e => setArrivalForm({ ...arrivalForm, supplier: e.target.value })}
-                                placeholder="Nama PT..."
-                                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-emerald-500 text-sm transition-all disabled:opacity-60" />
-                            <datalist id="coal-supplier-list">
-                                {daftarSupplier.map(s => <option key={s} value={s} />)}
-                            </datalist>
-                            {/* Chip nama yang sudah dipakai (dari laporan shift & denah), sebab
-                                <datalist> tidak andal di browser HP. Nama yang konsisten itu
-                                penting: warna & pengelompokan di /coal-storage per nama supplier. */}
-                            {!lanjutanDari && saranSupplier.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 pt-1">
-                                    {saranSupplier.map(s => {
-                                        const dipilih = s === arrivalForm.supplier;
-                                        return (
-                                            <button
-                                                key={s} type="button" aria-pressed={dipilih}
-                                                onClick={() => setArrivalForm({ ...arrivalForm, supplier: s })}
-                                                className={`px-2.5 py-1 rounded-full border text-[10px] font-bold transition-colors cursor-pointer
-                                                    ${dipilih
-                                                        ? 'border-emerald-500 bg-emerald-500/25 text-emerald-200'
-                                                        : 'border-slate-700/80 bg-[#101822] text-slate-400 hover:border-emerald-500/50 hover:text-emerald-300'}`}
-                                            >
-                                                {s}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                        <InputField label={tonaseBolehKosong ? 'Tonase (boleh kosong)' : 'Tonase'} unit="ton" color="emerald" name="coal_ton" value={arrivalForm.ton} thousands
-                            onChange={(_, v) => setArrivalForm({ ...arrivalForm, ton: typeof v === 'string' ? parseFloat(v) || null : v as number | null })} />
-                        {tonaseBolehKosong && !arrivalForm.ton && (
-                            <p className="-mt-1 text-[10px] text-slate-400 leading-relaxed">
-                                Tanpa tonase = sekadar menandai pengiriman ini sudah selesai; tumpukan di denah tidak berubah.
-                            </p>
-                        )}
-                        <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Ditaruh di pilar</label>
-                            <select value={arrivalForm.zona} disabled={!!lanjutanDari}
-                                onChange={e => setArrivalForm({ ...arrivalForm, zona: e.target.value })}
-                                className={`${selectClass(!!arrivalForm.zona, 'focus:ring-emerald-500')} disabled:opacity-60`}>
-                                <option value="" className="text-slate-400 bg-[#101822]">Pilih pilar...</option>
-                                {ZONA_OPTIONS.map(z => (
-                                    <option key={z.value} value={z.value} className="text-white bg-[#101822] font-bold">{z.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        {/* Tanggal batubara MULAI masuk storage — tanpa jam. Untuk lanjutan
-                            ia mewarisi tanggal kedatangan pertama, jadi umur tumpukan di denah
-                            dihitung sejak batubara pertama kali menyentuh lapangan. */}
-                        <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Mulai masuk storage</label>
-                            <input type="date" value={arrivalForm.tanggal_masuk} disabled={!!lanjutanDari}
-                                onChange={e => setArrivalForm({ ...arrivalForm, tanggal_masuk: e.target.value })}
-                                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-emerald-500 text-sm transition-all disabled:opacity-60" />
-                        </div>
-                        <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Status</label>
-                            <select value={arrivalForm.status}
-                                onChange={e => setArrivalForm({ ...arrivalForm, status: e.target.value as 'progres' | 'selesai' })}
-                                className={selectClass(true, 'focus:ring-emerald-500')}>
-                                <option value="progres" className="text-white bg-[#101822] font-bold">Masih progres — lanjut shift berikutnya</option>
-                                <option value="selesai" className="text-white bg-[#101822] font-bold">Selesai</option>
-                            </select>
-                        </div>
-                        <button type="button" onClick={saveArrival} disabled={!arrivalValid}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm transition-colors mt-1">
-                            <span className="material-symbols-outlined text-[18px]">save</span>
-                            Simpan
-                        </button>
-                    </>
-                )}
-            </Modal>
+            {/* Modal Kedatangan Batubara — form yang sama dipakai review harian supervisor. */}
+            {showArrivalModal && (
+                <CoalArrivalModal
+                    onClose={() => setShowArrivalModal(false)}
+                    onSave={saveArrival}
+                    reportDate={reportDate}
+                    openArrivals={openArrivals}
+                    supplierOptions={daftarSupplier}
+                />
+            )}
         </>
     );
 }

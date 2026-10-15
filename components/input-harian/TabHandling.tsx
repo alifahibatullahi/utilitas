@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { InputField, Card, CalculatedField, SectionLabel, SelisihInfo, Modal } from '@/components/input-shift/SharedComponents';
+import { InputField, Card, CalculatedField, SectionLabel, TotalizerField, Modal } from '@/components/input-shift/SharedComponents';
 import { useNilaiAkhirRiset } from '@/components/input-shift/TotalizerRiset';
 import { kurangiTotalizer } from '@/lib/totalizer-riset';
 import type { DailyTabProps } from './types';
@@ -150,16 +150,10 @@ export default function TabHandling({
                 <p className="text-[10px] text-slate-500 -mt-1 mb-2">Input totalizer — konsumsi dihitung otomatis (selisih hari ini − kemarin)</p>
                 <div className="grid grid-cols-2 gap-4">
                     {konsumsiRows.slice(0, 6).map(({ label, name }) => (
-                        <div key={name}>
-                            <InputField label={label} name={name} value={totalizer[name] as number | null} onChange={onTotalizerChange} unit="" color="emerald" thousands placeholder={prevTotalizer?.[name] != null ? String(n(prevTotalizer[name])) : '0.0'} />
-                            <SelisihInfo prev={prevTotalizer ? n(prevTotalizer[name]) : 0} current={n(totalizer[name])} meter={name} />
-                        </div>
+                        <TotalizerField key={name} label={label} name={name} value={totalizer[name] as number | null} onChange={onTotalizerChange} unit="" color="emerald" thousands placeholder={prevTotalizer?.[name] != null ? String(n(prevTotalizer[name])) : '0.0'} prev={prevTotalizer ? n(prevTotalizer[name]) : 0} meter={name} />
                     ))}
                 </div>
-                <div>
-                    <InputField label="Service" name="tot_service" value={totalizer.tot_service as number | null} onChange={onTotalizerChange} unit="" color="emerald" thousands placeholder={prevTotalizer?.tot_service != null ? String(n(prevTotalizer.tot_service)) : '0.0'} />
-                    <SelisihInfo prev={prevTotalizer ? n(prevTotalizer.tot_service) : 0} current={n(totalizer.tot_service)} meter="tot_service" />
-                </div>
+                <TotalizerField label="Service" name="tot_service" value={totalizer.tot_service as number | null} onChange={onTotalizerChange} unit="" color="emerald" thousands placeholder={prevTotalizer?.tot_service != null ? String(n(prevTotalizer.tot_service)) : '0.0'} prev={prevTotalizer ? n(prevTotalizer.tot_service) : 0} meter="tot_service" />
             </Card>
 
             {/* ═══ Summary ═══ */}

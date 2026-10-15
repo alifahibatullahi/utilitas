@@ -486,7 +486,7 @@ export function useDailyReport(date: string, station: string | null = null) {
                 });
                 if (rpcErr) {
                     console.error('[submitDailyReport] merge_daily_totalizer_riset RPC failed:', rpcErr.message);
-                    risetErrors.push(`riset totalizer: ${rpcErr.message}`);
+                    risetErrors.push(`reset totalizer: ${rpcErr.message}`);
                 }
             }
         }

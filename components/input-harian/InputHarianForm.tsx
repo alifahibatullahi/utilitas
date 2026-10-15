@@ -214,7 +214,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
     // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
     // riset: kunci ada = ditandai (null = nilai akhir belum diisi). Hanya kunci yang
     // DISENTUH operator yang dikirim saat simpan (anti-wipe). Riset BARU hanya ditandai
-    // lewat tombol "Riset Totalizer". Pasangan = riset yang sudah dicatat laporan shift yang
+    // lewat tombol "Reset Totalizer". Pasangan = riset yang sudah dicatat laporan shift yang
     // jendelanya mencakup hari ini & belum dipakai harian lain → panel tampil & terisi
     // otomatis (hitungPasanganRiset; context dirakit sesudah useLatestBoilerStatus di bawah).
     const [riset, setRisetState] = useState<RisetState>({});
@@ -756,10 +756,21 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
         };
         const meterMilikScope = meterSeri('harian').filter(m => ownsTab(m.harian!.tab as HarianTabId));
 
-        // ─── Riset totalizer ditandai → nilai akhir sebelum riset wajib diisi ───
+        // ─── Riset (reset) totalizer ditandai → nilai akhir sebelum reset DAN pembacaan
+        // hari ini wajib diisi (0 sah; kosong = operator belum mengisi) ───
         const risetKosong = meterMilikScope.filter(m => m.key in riset && rL(m.key) === undefined);
         if (risetKosong.length > 0) {
-            setToast({ message: `Isi nilai akhir sebelum riset: ${risetKosong.map(m => m.label).join(', ')}.`, type: 'error' });
+            setToast({ message: `Isi totalizer terakhir sebelum reset: ${risetKosong.map(m => m.label).join(', ')}.`, type: 'error' });
+            setTimeout(() => setToast(null), 5000);
+            return;
+        }
+        const risetCurKosong = meterMilikScope.filter(m => {
+            if (!(m.key in riset)) return false;
+            const { cur } = rawHarian(m);
+            return cur == null || cur === '';
+        });
+        if (risetCurKosong.length > 0) {
+            setToast({ message: `Isi totalizer saat ini (setelah reset): ${risetCurKosong.map(m => m.label).join(', ')}.`, type: 'error' });
             setTimeout(() => setToast(null), 5000);
             return;
         }

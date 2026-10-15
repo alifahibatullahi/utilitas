@@ -772,7 +772,7 @@ function InputShiftPageInner() {
     // ─── Riset totalizer (meter kembali ke 0) — lib/totalizer-riset.ts ───
     // riset: kunci ada = ditandai (null = nilai akhir belum diisi). Hanya kunci yang
     // DISENTUH operator yang dikirim saat simpan (anti-wipe); kunci lain cukup termuat
-    // dari DB untuk hitungan. Riset BARU hanya ditandai lewat tombol "Riset Totalizer".
+    // dari DB untuk hitungan. Riset BARU hanya ditandai lewat tombol "Reset Totalizer".
     // Pasangan = riset yang sudah dicatat laporan harian yang jendelanya mencakup shift
     // ini & belum dipakai shift lain → panel tampil & terisi otomatis (hitungPasanganRiset).
     // Datanya ikut query walkback useLatestBoilerStatus — tanpa query tambahan.
@@ -1290,10 +1290,21 @@ function InputShiftPageInner() {
         };
         const meterMilikScope = meterSeri('shift').filter(m => ownsTab(m.shift!.tab as TabId));
 
-        // ─── Riset totalizer ditandai → nilai akhir sebelum riset wajib diisi ───
+        // ─── Riset (reset) totalizer ditandai → nilai akhir sebelum reset DAN pembacaan
+        // saat ini wajib diisi (0 sah; kosong = operator belum mengisi) ───
         const risetKosong = meterMilikScope.filter(m => m.key in riset && rL(m.key) === undefined);
         if (risetKosong.length > 0) {
-            setToast({ type: 'error', message: `Isi nilai akhir sebelum riset: ${risetKosong.map(m => m.label).join(', ')}.` });
+            setToast({ type: 'error', message: `Isi totalizer terakhir sebelum reset: ${risetKosong.map(m => m.label).join(', ')}.` });
+            setTimeout(() => setToast(null), 5000);
+            return;
+        }
+        const risetCurKosong = meterMilikScope.filter(m => {
+            if (!(m.key in riset)) return false;
+            const { cur } = rawShift(m);
+            return cur == null || cur === '';
+        });
+        if (risetCurKosong.length > 0) {
+            setToast({ type: 'error', message: `Isi totalizer saat ini (setelah reset): ${risetCurKosong.map(m => m.label).join(', ')}.` });
             setTimeout(() => setToast(null), 5000);
             return;
         }

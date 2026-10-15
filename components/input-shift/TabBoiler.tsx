@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { Card, InputField, CalculatedField, SelisihInfo, FeederStatusChip } from './SharedComponents';
+import { Card, InputField, CalculatedField, TotalizerField, FeederStatusChip } from './SharedComponents';
 import { useNilaiAkhirRiset } from './TotalizerRiset';
 import { kurangiTotalizer } from '@/lib/totalizer-riset';
 
@@ -141,20 +141,14 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, onAuto
                         <InputField label="Pressure Steam" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        <div>
-                            <InputField label="Totalizer Steam" unit="ton" color="blue" name="totalizer_steam" value={values.totalizer_steam} onChange={onFieldChange} placeholder={prevSteam > 0 ? String(prevSteam) : '0.0'} />
-                            <SelisihInfo prev={prevSteam} current={currentSteam} meter={`steam_${bx}`} />
-                        </div>
+                        <TotalizerField label="Totalizer Steam" unit="ton" color="blue" name="totalizer_steam" value={values.totalizer_steam} onChange={onFieldChange} placeholder={prevSteam > 0 ? String(prevSteam) : '0.0'} prev={prevSteam} meter={`steam_${bx}`} />
                     </Card>
 
                     <Card title="Boiler Feed Water" icon="water_drop" color="cyan">
                         <InputField label="Pressure BFW" unit="MPa" color="cyan" name="bfw_press" value={values.bfw_press} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         <InputField label="Temp BFW" unit="°C" color="cyan" name="temp_bfw" value={values.temp_bfw} onChange={onFieldChange} readOnly={isBoilerShutdown} />
                         <InputField label="Flow BFW" unit="t/h" color="cyan" name="flow_bfw" value={values.flow_bfw} onChange={onFieldChange} readOnly={isBoilerShutdown} />
-                        <div>
-                            <InputField label="Totalizer BFW" unit="ton" color="cyan" name="totalizer_bfw" value={values.totalizer_bfw} onChange={onFieldChange} placeholder={Number(prevTotalizerBfw) > 0 ? String(Number(prevTotalizerBfw)) : '0.0'} />
-                            <SelisihInfo prev={Number(prevTotalizerBfw) || 0} current={Number(values.totalizer_bfw) || 0} meter={`bfw_${bx}`} />
-                        </div>
+                        <TotalizerField label="Totalizer BFW" unit="ton" color="cyan" name="totalizer_bfw" value={values.totalizer_bfw} onChange={onFieldChange} placeholder={Number(prevTotalizerBfw) > 0 ? String(Number(prevTotalizerBfw)) : '0.0'} prev={Number(prevTotalizerBfw) || 0} meter={`bfw_${bx}`} />
                     </Card>
 
                     <Card title={`Coal Feeder ${feeders[0]}-${feeders[feeders.length - 1]}`} icon="precision_manufacturing" color="emerald">
@@ -173,10 +167,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, onAuto
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <InputField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} />
-                                            <SelisihInfo prev={Number(prevCoalBunkerValues[fk]) || 0} current={Number(coalBunkerValues[fk]) || 0} meter={fk} />
-                                        </div>
+                                        <TotalizerField placeholder={Number(prevCoalBunkerValues[fk]) > 0 ? String(Number(prevCoalBunkerValues[fk])) : 'Totalizer'} unit="ton" color="emerald" name={fk} value={coalBunkerValues[fk]} onChange={onCoalBunkerChange} prev={Number(prevCoalBunkerValues[fk]) || 0} meter={fk} />
                                         <InputField placeholder="Flow" unit="t/h" color="emerald" name={`${fk}_flow`} value={values[`${fk}_flow`]} onChange={onFieldChange} readOnly={flowLocked} />
                                     </div>
                                 </div>

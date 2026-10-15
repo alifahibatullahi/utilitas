@@ -1,6 +1,6 @@
 'use client';
-// Context penanda riset totalizer untuk form laporan shift & harian. Isiannya dirender
-// oleh SelisihInfo (SharedComponents) lewat prop `meter`; angka sidebar tiap tab membaca
+// Context penanda riset (reset) totalizer untuk form laporan shift & harian. Isiannya dirender
+// oleh TotalizerField (SharedComponents) lewat prop `meter`; angka sidebar tiap tab membaca
 // nilai akhirnya lewat useNilaiAkhirRiset(). Rumus & penyimpanan: lib/totalizer-riset.ts.
 import { createContext, useContext } from 'react';
 import type { RisetState, SaranMap } from '@/lib/totalizer-riset';

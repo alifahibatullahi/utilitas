@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { Card, InputField, CalculatedField, SelisihInfo } from './SharedComponents';
+import { Card, InputField, CalculatedField, TotalizerField } from './SharedComponents';
 import { useNilaiAkhirRiset } from './TotalizerRiset';
 import { kurangiTotalizer } from '@/lib/totalizer-riset';
 
@@ -63,10 +63,7 @@ export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChang
                         <InputField label="Pressure Steam Inlet" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
-                        <div>
-                            <InputField label="Totalizer Steam Inlet" unit="ton" color="blue" name="totalizer_steam_inlet" value={values.totalizer_steam_inlet} onChange={onFieldChange} placeholder={prevSteamInlet > 0 ? String(prevSteamInlet) : '0.0'} />
-                            <SelisihInfo prev={prevSteamInlet} current={currentSteamInlet} meter="turbin_inlet" />
-                        </div>
+                        <TotalizerField label="Totalizer Steam Inlet" unit="ton" color="blue" name="totalizer_steam_inlet" value={values.totalizer_steam_inlet} onChange={onFieldChange} placeholder={prevSteamInlet > 0 ? String(prevSteamInlet) : '0.0'} prev={prevSteamInlet} meter="turbin_inlet" />
                     </Card>
 
                     <Card title="Condenser" icon="water_drop" color="cyan">
@@ -79,10 +76,7 @@ export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChang
                             <InputField label="Level Condenser" unit="mm" color="cyan" name="level_condenser" value={values.level_condenser} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                             <InputField label="Durasi HPO" unit="s" color="cyan" name="hpo_durasi" value={values.hpo_durasi} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         </div>
-                        <div>
-                            <InputField label="Totalizer Condensate" unit="ton" color="cyan" name="totalizer_condensate" value={values.totalizer_condensate} onChange={onFieldChange} placeholder={prevCondensate > 0 ? String(prevCondensate) : '0.0'} />
-                            <SelisihInfo prev={prevCondensate} current={currentCondensate} meter="turbin_kondensat" />
-                        </div>
+                        <TotalizerField label="Totalizer Condensate" unit="ton" color="cyan" name="totalizer_condensate" value={values.totalizer_condensate} onChange={onFieldChange} placeholder={prevCondensate > 0 ? String(prevCondensate) : '0.0'} prev={prevCondensate} meter="turbin_kondensat" />
                     </Card>
                     <Card title="Bearings & Mechanical" icon="settings" color="orange">
                         <div className="grid grid-cols-2 gap-3">

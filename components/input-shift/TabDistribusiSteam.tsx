@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Card, InputField, CalculatedField, SelisihInfo } from './SharedComponents';
+import { Card, InputField, CalculatedField, TotalizerField } from './SharedComponents';
 import { useNilaiAkhirRiset } from './TotalizerRiset';
 import { kurangiTotalizer } from '@/lib/totalizer-riset';
 
@@ -37,10 +37,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                         <div className="flex flex-col gap-3">
                             <InputField label="Flow Steam" unit="t/h" color="blue" name="pabrik1_flow" value={values.pabrik1_flow} onChange={onFieldChange} />
                             <InputField label="Temperatur" unit="°C" color="blue" name="pabrik1_temp" value={values.pabrik1_temp} onChange={onFieldChange} />
-                            <div>
-                                <InputField label="Totaliser" unit="ton" color="blue" name="pabrik1_totalizer" value={values.pabrik1_totalizer} onChange={onFieldChange} placeholder={prevP1 > 0 ? String(prevP1) : '0.0'} />
-                                <SelisihInfo prev={prevP1} current={currentP1} meter="steam_pabrik1" />
-                            </div>
+                            <TotalizerField label="Totaliser" unit="ton" color="blue" name="pabrik1_totalizer" value={values.pabrik1_totalizer} onChange={onFieldChange} placeholder={prevP1 > 0 ? String(prevP1) : '0.0'} prev={prevP1} meter="steam_pabrik1" />
                         </div>
                     </Card>
 
@@ -51,10 +48,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                                 <InputField label="Pressure LPS" unit="MPa" color="cyan" name="press_lps" value={values.press_lps} onChange={onFieldChange} />
                             </div>
                             <InputField label="Temperatur" unit="°C" color="cyan" name="pabrik2_temp" value={values.pabrik2_temp} onChange={onFieldChange} />
-                            <div>
-                                <InputField label="Totaliser" unit="ton" color="cyan" name="pabrik2_totalizer" value={values.pabrik2_totalizer ?? 0} onChange={onFieldChange} placeholder={prevP2 > 0 ? String(prevP2) : '0'} />
-                                <SelisihInfo prev={prevP2} current={currentP2} meter="steam_pabrik2" />
-                            </div>
+                            <TotalizerField label="Totaliser" unit="ton" color="cyan" name="pabrik2_totalizer" value={values.pabrik2_totalizer ?? 0} onChange={onFieldChange} placeholder={prevP2 > 0 ? String(prevP2) : '0'} prev={prevP2} meter="steam_pabrik2" />
                         </div>
                     </Card>
 
@@ -62,10 +56,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                         <div className="flex flex-col gap-3">
                             <InputField label="Flow Steam" unit="t/h" color="emerald" name="pabrik3a_flow" value={values.pabrik3a_flow} onChange={onFieldChange} />
                             <InputField label="Temperatur" unit="°C" color="emerald" name="pabrik3a_temp" value={values.pabrik3a_temp} onChange={onFieldChange} />
-                            <div>
-                                <InputField label="Totaliser" unit="ton" color="emerald" name="pabrik3a_totalizer" value={values.pabrik3a_totalizer} onChange={onFieldChange} placeholder={prevP3 > 0 ? String(prevP3) : '0.0'} />
-                                <SelisihInfo prev={prevP3} current={currentP3} meter="steam_pabrik3a" />
-                            </div>
+                            <TotalizerField label="Totaliser" unit="ton" color="emerald" name="pabrik3a_totalizer" value={values.pabrik3a_totalizer} onChange={onFieldChange} placeholder={prevP3 > 0 ? String(prevP3) : '0.0'} prev={prevP3} meter="steam_pabrik3a" />
                         </div>
                     </Card>
 

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useRisetContext } from './TotalizerRiset';
 import { kurangiTotalizer, pilihSaran } from '@/lib/totalizer-riset';
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands, plainInteger }: {
+export interface InputFieldProps {
     label?: string;
     placeholder?: string;
     unit?: string;
@@ -20,7 +20,15 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     /** Bilangan bulat polos — tanpa pemisah ribuan & tanpa desimal; memakai mode
      *  input teks numerik yang sama dengan `thousands`. */
     plainInteger?: boolean;
-}) => {
+    /** Pinggir merah — isian wajib yang masih kosong (mis. saat reset totalizer). */
+    highlight?: boolean;
+    autoFocus?: boolean;
+}
+
+const FIELD_LABEL = "font-bold text-white uppercase tracking-wider block text-left text-xs";
+
+export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands, plainInteger, highlight, autoFocus }: InputFieldProps) => {
+    const border = highlight ? 'border-red-500 ring-1 ring-red-500/60' : 'border-slate-700/80';
     // Local state for textMode to handle intermediate values like "-" or "1."
     const [rawText, setRawText] = useState('');
     const [thuText, setThuText] = useState('');
@@ -72,7 +80,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     };
 
     const labelEl = label && (
-        <label className="font-bold text-white uppercase tracking-wider block text-left text-xs">
+        <label className={FIELD_LABEL}>
             {label}
         </label>
     );
@@ -85,10 +93,11 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                 {labelEl}
                 <div className="relative">
                     <input
-                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border border-slate-700/80 rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(thuText)} font-mono font-bold tracking-wide transition-all text-left`}
+                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border ${border} rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(thuText)} font-mono font-bold tracking-wide transition-all text-left`}
                         type="text"
                         inputMode="numeric"
                         placeholder={placeholder}
+                        autoFocus={autoFocus}
                         readOnly={readOnly}
                         tabIndex={readOnly ? -1 : undefined}
                         value={thuText}
@@ -129,8 +138,9 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
             <div className="relative">
                 {negative && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">−</span>}
                 <input
-                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border border-slate-700/80 rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(String(textMode ? rawText : (displayValue ?? '')))} font-mono font-bold tracking-wide transition-all text-left`}
+                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border ${border} rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(String(textMode ? rawText : (displayValue ?? '')))} font-mono font-bold tracking-wide transition-all text-left`}
                     placeholder={placeholder}
+                    autoFocus={autoFocus}
                     type={textMode ? "text" : "number"}
                     inputMode={textMode ? "text" : "decimal"}
                     readOnly={readOnly}
@@ -250,16 +260,29 @@ export const SectionLabel = ({ label, badge }: { label: string; badge?: string }
 );
 
 /**
- * Prev + selisih di bawah isian totalizer. Dengan `meter` (kunci di lib/totalizer-riset.ts)
- * dan berada di dalam RisetProvider, sekaligus menangani RISET (meter kembali ke 0):
- *  - riset BARU dicatat hanya lewat klik tombol "Riset Totalizer" → isian nilai akhir
- *    sebelum riset + rumus (akhir − prev) + cur (tak ada prompt saat selisih negatif);
- *  - laporan PASANGAN (shift ↔ harian yang mencakup riset yang sudah dicatat) menampilkan
- *    panel riset otomatis dengan nilai akhir terisi — selama pembacaan di sini masih kosong
- *    atau di bawah prev. Lewat pasangan itu, laporan berikutnya normal lagi.
- * Tanpa `meter`/provider tampil persis seperti dulu.
+ * Isian raw totalizer + prev/selisih di bawahnya. Dengan `meter` (kunci di
+ * lib/totalizer-riset.ts) dan berada di dalam RisetProvider, sekaligus menangani RESET
+ * totalizer (meter kembali ke 0; di kode & DB disebut "riset"):
+ *  - reset BARU dicatat hanya lewat klik tombol "Reset Totalizer" → muncul isian
+ *    ① totalizer terakhir sebelum reset DI ATAS isian ini (② totalizer saat ini), keduanya
+ *    berpinggir merah selama kosong, + rumus (akhir − prev) + cur (tak ada prompt saat
+ *    selisih negatif);
+ *  - laporan PASANGAN (shift ↔ harian yang mencakup reset yang sudah dicatat) menampilkan
+ *    panel reset otomatis dengan ① terisi — selama pembacaan di sini masih kosong atau di
+ *    bawah prev. Lewat pasangan itu, laporan berikutnya normal lagi.
+ * Tanpa `meter`/provider tampil sebagai isian + prev/selisih biasa.
+ *
+ * Urutan child panel dijaga tetap (bagian reset = `{reset && …}`) supaya isian ② tidak
+ * remount saat reset diaktifkan/dibatalkan.
  */
-export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; current: number; plain?: boolean; meter?: string }) => {
+export const TotalizerField = ({ prev, meter, plain, ...input }: InputFieldProps & {
+    prev: number;
+    meter?: string;
+    /** Angka tanpa pemisah ribuan (isian `plainInteger`). */
+    plain?: boolean;
+}) => {
+    const current = Number(input.value) || 0;
+    const [baruDiklik, setBaruDiklik] = useState(false);
     const ctx = useRisetContext();
     const risetOn = !!(meter && ctx && Object.prototype.hasOwnProperty.call(ctx.riset, meter));
     const nilaiAkhir = risetOn ? ctx!.riset[meter!] : null;
@@ -277,81 +300,123 @@ export const SelisihInfo = ({ prev, current, plain, meter }: { prev: number; cur
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [meter, layakOtomatis, risetOn, ditolak, otomatis, saran?.nilai]);
 
-    if (!(prev > 0)) return null;
-
     // plain: tanpa pemisah ribuan, biar sama persis dengan angka di kolom isian.
     const fmt = (v: number) => v % 1 !== 0 ? v.toFixed(1) : plain ? String(v) : v.toLocaleString('id-ID');
 
-    if (risetOn && meter && ctx) {
-        const L = nilaiAkhir != null && nilaiAkhir > 0 ? nilaiAkhir : null;
-        const sel = L != null ? kurangiTotalizer(current, prev, L) : null;
-        const dariSaran = saran && L === saran.nilai ? saran.sumber : null;
-        return (
-            <div className="mt-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 space-y-1.5 text-[10px] text-slate-400">
-                <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1 font-bold uppercase tracking-wider text-amber-300">
-                        <span className="material-symbols-outlined text-[14px]">restart_alt</span>
-                        Totalizer riset
-                    </span>
+    // Info prev/selisih & panel reset hanya kalau ada pembanding sebelumnya.
+    const adaPrev = prev > 0;
+    const reset = adaPrev && risetOn && !!meter && !!ctx;
+    const L = nilaiAkhir != null && nilaiAkhir > 0 ? nilaiAkhir : null;
+    const kosongAkhir = L == null;
+    const kosongCur = input.value == null || input.value === '';
+    const dariSaran = saran && L === saran.nilai ? saran.sumber : null;
+
+    const mulaiReset = () => {
+        setBaruDiklik(true);
+        ctx!.setRiset(meter!, saran?.nilai ?? null);
+    };
+    const batalReset = () => {
+        setBaruDiklik(false);
+        ctx!.setRiset(meter!, undefined);
+        ctx!.tolak(meter!);
+    };
+
+    let info: React.ReactNode = null;
+    if (reset) {
+        const sel = L != null && !kosongCur ? kurangiTotalizer(current, prev, L) : null;
+        info = sel != null ? (
+            <p className="text-[10px] text-slate-400">
+                Selisih: ({fmt(L!)} − {fmt(prev)}) + {fmt(current)} ={' '}
+                <span className={`font-bold ${sel >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(sel)}</span>
+            </p>
+        ) : (
+            <p className="text-[10px] font-semibold text-red-300">
+                {kosongAkhir && kosongCur
+                    ? 'Isi ① totalizer terakhir sebelum reset, lalu ② totalizer saat ini.'
+                    : kosongAkhir
+                        ? 'Isi ① totalizer terakhir sebelum kembali ke 0.'
+                        : 'Isi ② totalizer saat ini (dihitung dari 0 setelah reset).'}
+            </p>
+        );
+    } else if (adaPrev) {
+        // Selisih tampil apa adanya (boleh minus) — anomali justru harus kelihatan.
+        // Penjagaannya ada saat simpan lewat checkSelisihNegatif().
+        const diff = current - prev;
+        info = (
+            <div className="mt-1.5 text-[10px] text-slate-500 space-y-0.5">
+                <p>Prev: <span className="text-slate-400 font-medium">{fmt(prev)}</span></p>
+                <p>Selisih: <span className={`font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{diff >= 0 ? '+' : ''}{fmt(diff)}</span></p>
+                {meter && ctx && (
                     <button
                         type="button"
-                        onClick={() => { ctx.setRiset(meter, undefined); ctx.tolak(meter); }}
-                        className="font-semibold text-rose-300 hover:text-rose-200 underline cursor-pointer"
+                        onClick={mulaiReset}
+                        className="mt-1 rounded border border-amber-500/50 px-2 py-0.5 font-semibold text-amber-300 hover:bg-amber-500/10 cursor-pointer"
                     >
-                        Batal riset
+                        Reset Totalizer
                     </button>
-                </div>
-                <InputField
-                    label="Nilai akhir sebelum riset"
-                    name={`riset_${meter}`}
-                    value={nilaiAkhir}
-                    onChange={(_, v) => ctx.setRiset(meter, typeof v === 'number' ? v : null)}
-                    placeholder={`≥ ${fmt(prev)}`}
-                    color="amber"
-                    thousands={!plain}
-                    plainInteger={!!plain}
-                />
-                {dariSaran && <p className="text-amber-200/80">Tercatat di {dariSaran}.</p>}
-                {/* Isian diubah operator jadi beda dari yang tercatat di laporan pasangan →
-                    tawarkan nilai tercatat, jangan timpa diam-diam. */}
-                {saran && !dariSaran && (
-                    <button
-                        type="button"
-                        onClick={() => ctx.setRiset(meter, saran.nilai)}
-                        className="text-left font-semibold text-amber-300 hover:text-amber-200 underline cursor-pointer"
-                    >
-                        Pakai {fmt(saran.nilai)} (tercatat di {saran.sumber})
-                    </button>
-                )}
-                <p>Prev: <span className="text-slate-300 font-medium">{fmt(prev)}</span></p>
-                {sel != null ? (
-                    <p>
-                        Selisih: ({fmt(L!)} − {fmt(prev)}) + {fmt(current)} ={' '}
-                        <span className={`font-bold ${sel >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(sel)}</span>
-                    </p>
-                ) : (
-                    <p className="text-amber-300">Isi nilai totalizer terakhir sebelum kembali ke 0.</p>
                 )}
             </div>
         );
     }
 
-    // Selisih tampil apa adanya (boleh minus) — anomali justru harus kelihatan.
-    // Penjagaannya ada saat simpan lewat checkSelisihNegatif().
-    const diff = current - prev;
     return (
-        <div className="mt-1.5 text-[10px] text-slate-500 space-y-0.5">
-            <p>Prev: <span className="text-slate-400 font-medium">{fmt(prev)}</span></p>
-            <p>Selisih: <span className={`font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{diff >= 0 ? '+' : ''}{fmt(diff)}</span></p>
-            {meter && ctx && (
-                <button
-                    type="button"
-                    onClick={() => ctx.setRiset(meter, saran?.nilai ?? null)}
-                    className="mt-1 rounded border border-amber-500/50 px-2 py-0.5 font-semibold text-amber-300 hover:bg-amber-500/10 cursor-pointer"
-                >
-                    Riset Totalizer
-                </button>
-            )}
+        <div className="space-y-1.5 w-full">
+            {input.label && <label className={FIELD_LABEL}>{input.label}</label>}
+            <div className={reset ? 'rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 space-y-1.5' : ''}>
+                {reset && (
+                    <div className="flex items-center justify-between gap-2 text-[10px]">
+                        <span className="flex items-center gap-1 font-bold uppercase tracking-wider text-amber-300">
+                            <span className="material-symbols-outlined text-[14px]">restart_alt</span>
+                            Reset totalizer
+                        </span>
+                        <button
+                            type="button"
+                            onClick={batalReset}
+                            className="font-semibold text-rose-300 hover:text-rose-200 underline cursor-pointer"
+                        >
+                            Batal reset
+                        </button>
+                    </div>
+                )}
+                {reset && (
+                    <div className="space-y-1 text-[10px] text-slate-400">
+                        <InputField
+                            label="① Terakhir sebelum reset"
+                            name={`riset_${meter}`}
+                            value={nilaiAkhir}
+                            onChange={(_, v) => ctx!.setRiset(meter!, typeof v === 'number' ? v : null)}
+                            placeholder={`≥ ${fmt(prev)}`}
+                            unit={input.unit}
+                            color="amber"
+                            thousands={!plain}
+                            plainInteger={!!plain}
+                            highlight={kosongAkhir}
+                            autoFocus={baruDiklik}
+                        />
+                        <p>Prev: <span className="text-slate-300 font-medium">{fmt(prev)}</span></p>
+                        {dariSaran && <p className="text-amber-200/80">Tercatat di {dariSaran}.</p>}
+                        {/* Isian diubah operator jadi beda dari yang tercatat di laporan pasangan →
+                            tawarkan nilai tercatat, jangan timpa diam-diam. */}
+                        {saran && !dariSaran && (
+                            <button
+                                type="button"
+                                onClick={() => ctx!.setRiset(meter!, saran.nilai)}
+                                className="text-left font-semibold text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                            >
+                                Pakai {fmt(saran.nilai)} (tercatat di {saran.sumber})
+                            </button>
+                        )}
+                    </div>
+                )}
+                {reset && <label className={`${FIELD_LABEL} pt-1`}>② Saat ini (setelah reset)</label>}
+                <InputField
+                    {...input}
+                    label={undefined}
+                    placeholder={reset ? 'Setelah reset' : input.placeholder}
+                    highlight={reset && kosongCur}
+                />
+                {info}
+            </div>
         </div>
     );
 };
@@ -361,10 +426,7 @@ export const TotalizerInput = ({ label, name, value, prev, onChange, unit, color
     onChange: (n: string, v: number | string | null) => void; unit: string; color: string;
     meter?: string;
 }) => (
-    <div>
-        <InputField label={`Totalizer ${label}`} name={name} value={value} onChange={onChange} unit={unit} color={color} />
-        <SelisihInfo prev={prev} current={Number(value) || 0} meter={meter} />
-    </div>
+    <TotalizerField label={`Totalizer ${label}`} name={name} value={value} onChange={onChange} unit={unit} color={color} prev={prev} meter={meter} />
 );
 
 // ── Feeder status chip (Coal Feeder) ──────────────────────────────────────────

@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { Card, InputField, SelisihInfo, CalculatedField } from '@/components/input-shift/SharedComponents';
+import { Card, InputField, TotalizerField, CalculatedField } from '@/components/input-shift/SharedComponents';
 import { useNilaiAkhirRiset } from '@/components/input-shift/TotalizerRiset';
 import { kurangiTotalizer } from '@/lib/totalizer-riset';
 import type { DailyTabProps } from './types';
@@ -82,16 +82,12 @@ export default function TabPower({
                                     const prevTot = Number(prevPD?.[totName]) || 0;
                                     const defaultZero = key === 'revamping' || key === 'pie';
                                     const totValue = defaultZero ? (pv[totName] ?? '') : pv[totName];
-                                    const curTot  = Number(totValue) || 0;
 
                                     return (
                                         <div key={key} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
-                                                <div>
-                                                    <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} thousands />
-                                                    <SelisihInfo prev={prevTot} current={curTot} meter={`power_${key}`} />
-                                                </div>
+                                                <TotalizerField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} thousands prev={prevTot} meter={`power_${key}`} />
                                                 <InputField label="MW" unit="MW" color="emerald" size="small" name={mwName} value={pv[mwName]} onChange={onPowerChange} textMode />
                                             </div>
                                         </div>
@@ -102,10 +98,7 @@ export default function TabPower({
                                 <div className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
                                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
                                     <div className="grid grid-cols-2 gap-3 mt-2">
-                                        <div>
-                                            <InputField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} thousands />
-                                            <SelisihInfo prev={Number(prevPD?.power_stg_ubb_totalizer) || 0} current={Number(pv.power_stg_ubb_totalizer) || 0} meter="power_stg_ubb" />
-                                        </div>
+                                        <TotalizerField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} thousands prev={Number(prevPD?.power_stg_ubb_totalizer) || 0} meter="power_stg_ubb" />
                                         <div>
                                             <InputField label="MW" unit="MW" color="emerald" size="small" name="_stg_mw" value={pv.gen_00} readOnly />
                                             <p className="mt-1 text-[10px] text-slate-500">= Load STG</p>

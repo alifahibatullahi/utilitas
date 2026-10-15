@@ -1134,7 +1134,7 @@ export function useShiftReport(
                 });
                 if (rpcErr) {
                     console.error('[submitReport] merge_shift_totalizer_riset RPC failed:', rpcErr.message);
-                    errors.push(`riset totalizer: ${rpcErr.message}`);
+                    errors.push(`reset totalizer: ${rpcErr.message}`);
                 }
             }
         }

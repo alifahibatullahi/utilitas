@@ -77,13 +77,13 @@ export function checkSelisihNegatif(
     if (!isFinite(y) || y <= 0) return null;
     if (nilaiAkhirRiset != null) {
         if (nilaiAkhirRiset >= y) return null;
-        return `${label}: nilai akhir sebelum riset (${nilaiAkhirRiset}) lebih kecil dari pembacaan sebelumnya (${y}). Periksa lagi nilai akhirnya.`;
+        return `${label}: totalizer terakhir sebelum reset (${nilaiAkhirRiset}) lebih kecil dari pembacaan sebelumnya (${y}). Periksa lagi angkanya.`;
     }
     if (today == null || today === '') return null;
     const t = Number(today);
     if (!isFinite(t) || t >= y) return null;
     return `${label} = ${t} lebih kecil dari sebelumnya (${y}) — selisih ${t - y}. `
-        + `Kalau totalizer riset, tekan tombol "Riset Totalizer" di bawah isian lalu isi nilai akhir sebelum riset.`;
+        + `Kalau totalizer reset (kembali ke 0), tekan tombol "Reset Totalizer" di bawah isian lalu isi totalizer terakhir sebelum reset.`;
 }
 
 /**

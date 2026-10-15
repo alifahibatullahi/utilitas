@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { InputField, Card, CalculatedField, SelisihInfo } from '@/components/input-shift/SharedComponents';
+import { InputField, Card, CalculatedField, TotalizerField } from '@/components/input-shift/SharedComponents';
 import { useNilaiAkhirRiset } from '@/components/input-shift/TotalizerRiset';
 import { kurangiTotalizer } from '@/lib/totalizer-riset';
 import type { DailyTabProps } from './types';
@@ -81,19 +81,18 @@ export default function TabTurbin({
                         <div key={totKey} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3 mb-2">
                             <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">{label}</span>
                             <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <InputField
-                                        label={totUnit}
-                                        name={totKey}
-                                        value={steam[totKey]}
-                                        onChange={onSteamChange}
-                                        unit={totUnit}
-                                        color="cyan"
-                                        size="small"
-                                        thousands
-                                    />
-                                    {prevSteam && <SelisihInfo prev={prev} current={n(steam[totKey])} meter={meter} />}
-                                </div>
+                                <TotalizerField
+                                    label={totUnit}
+                                    name={totKey}
+                                    value={steam[totKey]}
+                                    onChange={onSteamChange}
+                                    unit={totUnit}
+                                    color="cyan"
+                                    size="small"
+                                    thousands
+                                    prev={prev}
+                                    meter={meter}
+                                />
                                 <InputField
                                     label={flowUnit}
                                     name={flowKey}

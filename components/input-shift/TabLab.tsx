@@ -30,7 +30,7 @@ export default function TabLab({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     {/* Chemical Dosing Section */}
-                    <div className="rounded-xl ring-1 ring-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.15)]">
+                    <div>
                         <Card title="Phosphate Boiler A" icon="science" color="purple">
                             <div className="grid grid-cols-2 gap-3">
                                 <InputField label="Level Tanki" unit="%" color="purple" name="phosphate_level_tanki" value={cd.phosphate_level_tanki} onChange={onChemicalDosingChange} />
@@ -43,7 +43,7 @@ export default function TabLab({
                         </Card>
                     </div>
 
-                    <div className="rounded-xl ring-1 ring-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.15)]">
+                    <div>
                         <Card title="Phosphate Boiler B" icon="science" color="rose">
                             <div className="grid grid-cols-2 gap-3">
                                 <InputField label="Level Tanki" unit="%" color="rose" name="phosphate_b_level_tanki" value={cd.phosphate_b_level_tanki} onChange={onChemicalDosingChange} />
@@ -56,7 +56,7 @@ export default function TabLab({
                         </Card>
                     </div>
 
-                    <div className="rounded-xl ring-1 ring-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.15)]">
+                    <div>
                         <Card title="Amine" icon="science" color="indigo">
                             <div className="grid grid-cols-2 gap-3">
                                 <InputField label="Level Tanki" unit="%" color="indigo" name="amine_level_tanki" value={cd.amine_level_tanki} onChange={onChemicalDosingChange} />
@@ -69,7 +69,7 @@ export default function TabLab({
                         </Card>
                     </div>
 
-                    <div className="rounded-xl ring-1 ring-orange-500/30 shadow-[0_0_12px_rgba(249,115,22,0.15)]">
+                    <div>
                         <Card title="Hydrazine" icon="science" color="orange">
                             <div className="grid grid-cols-2 gap-3">
                                 <InputField label="Level Tanki" unit="%" color="orange" name="hydrazine_level_tanki" value={cd.hydrazine_level_tanki} onChange={onChemicalDosingChange} />
@@ -83,7 +83,7 @@ export default function TabLab({
                     </div>
 
                     {/* Stock Chemical memanjang (1 baris penuh) */}
-                    <div className="col-span-1 md:col-span-2 rounded-xl ring-1 ring-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                    <div className="col-span-1 md:col-span-2">
                         <Card title="Stock Chemical" icon="inventory_2" color="emerald">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className="flex flex-col gap-1">
@@ -111,7 +111,7 @@ export default function TabLab({
                     {/* Water Quality Section Divider */}
                     <div className="col-span-1 md:col-span-2 flex items-center gap-3 pt-2">
                         <div className="h-px bg-slate-700/50 flex-1"></div>
-                        <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Water Quality</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Water Quality</span>
                         <div className="h-px bg-slate-700/50 flex-1"></div>
                     </div>
 

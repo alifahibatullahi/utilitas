@@ -32,23 +32,12 @@ interface StationPickerModalProps {
 // Pilihan jenis laporan datar: 3 shift + harian dalam satu baris.
 // malam/pagi/sore → mode 'shift' + nomor shift; harian → mode 'harian'.
 const REPORT_CHOICE_INACTIVE = 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50';
-const REPORT_CHOICES: { id: 'malam' | 'pagi' | 'sore' | 'harian'; shift?: 1 | 2 | 3; label: string; time: string; icon: string; activeClass: string }[] = [
-    {
-        id: 'malam', shift: 1, label: 'Malam', time: '23.00–07.00', icon: 'bedtime',
-        activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 border-indigo-500/40',
-    },
-    {
-        id: 'pagi', shift: 2, label: 'Pagi', time: '07.00–15.00', icon: 'light_mode',
-        activeClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-md shadow-amber-500/20 border-amber-400/40',
-    },
-    {
-        id: 'sore', shift: 3, label: 'Sore', time: '15.00–23.00', icon: 'wb_twilight',
-        activeClass: 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-md shadow-orange-500/20 border-orange-500/40',
-    },
-    {
-        id: 'harian', label: 'Harian', time: 'Rekap 24 jam', icon: 'today',
-        activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/20 border-emerald-500/40',
-    },
+const REPORT_CHOICE_ACTIVE = 'bg-slate-700 text-white border-slate-600 shadow-[inset_0_-2px_0_var(--color-blue-500)]';
+const REPORT_CHOICES: { id: 'malam' | 'pagi' | 'sore' | 'harian'; shift?: 1 | 2 | 3; label: string; time: string; icon: string }[] = [
+    { id: 'malam', shift: 1, label: 'Malam', time: '23.00–07.00', icon: 'bedtime' },
+    { id: 'pagi', shift: 2, label: 'Pagi', time: '07.00–15.00', icon: 'light_mode' },
+    { id: 'sore', shift: 3, label: 'Sore', time: '15.00–23.00', icon: 'wb_twilight' },
+    { id: 'harian', label: 'Harian', time: 'Rekap 24 jam', icon: 'today' },
 ];
 
 const SHIFT_NUM: Record<'malam' | 'pagi' | 'sore', 1 | 2 | 3> = { malam: 1, pagi: 2, sore: 3 };
@@ -72,83 +61,18 @@ function harianExpectedToday(): string {
     return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
 }
 
-// Custom icons and color themes for each operator station
-const STATION_THEMES: Record<
-    OperatorStation,
-    { icon: string; color: string; borderHover: string; glow: string; textActive: string; iconBg: string }
-> = {
-    panel_boiler: {
-        icon: 'local_fire_department',
-        color: 'text-rose-400',
-        borderHover: 'hover:border-rose-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(244,63,94,0.15)]',
-        textActive: 'text-rose-400',
-        iconBg: 'bg-rose-500/10',
-    },
-    panel_boiler_a: {
-        icon: 'local_fire_department',
-        color: 'text-rose-400',
-        borderHover: 'hover:border-rose-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(244,63,94,0.15)]',
-        textActive: 'text-rose-400',
-        iconBg: 'bg-rose-500/10',
-    },
-    panel_boiler_b: {
-        icon: 'local_fire_department',
-        color: 'text-orange-400',
-        borderHover: 'hover:border-orange-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]',
-        textActive: 'text-orange-400',
-        iconBg: 'bg-orange-500/10',
-    },
-    panel_turbin: {
-        icon: 'toys_fan',
-        color: 'text-cyan-400',
-        borderHover: 'hover:border-cyan-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]',
-        textActive: 'text-cyan-400',
-        iconBg: 'bg-cyan-500/10',
-    },
-    handling: {
-        icon: 'precision_manufacturing',
-        color: 'text-amber-400',
-        borderHover: 'hover:border-amber-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(251,191,36,0.15)]',
-        textActive: 'text-amber-400',
-        iconBg: 'bg-amber-500/10',
-    },
-    esp: {
-        icon: 'electric_bolt',
-        color: 'text-purple-400',
-        borderHover: 'hover:border-purple-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(192,132,252,0.15)]',
-        textActive: 'text-purple-400',
-        iconBg: 'bg-purple-500/10',
-    },
-    bunker: {
-        icon: 'layers',
-        color: 'text-blue-400',
-        borderHover: 'hover:border-blue-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(96,165,250,0.15)]',
-        textActive: 'text-blue-400',
-        iconBg: 'bg-blue-500/10',
-    },
-    lapangan_boiler: {
-        icon: 'science',
-        color: 'text-teal-400',
-        borderHover: 'hover:border-teal-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(45,212,191,0.15)]',
-        textActive: 'text-teal-400',
-        iconBg: 'bg-teal-500/10',
-    },
-    lapangan_turbin: {
-        icon: 'engineering',
-        color: 'text-emerald-400',
-        borderHover: 'hover:border-emerald-500/50',
-        glow: 'hover:shadow-[0_0_20px_rgba(52,211,153,0.15)]',
-        textActive: 'text-emerald-400',
-        iconBg: 'bg-emerald-500/10',
-    },
+// Ikon per station. Kartu station sengaja netral (tanpa warna per station) —
+// warna di modal ini hanya untuk status "sudah diisi".
+const STATION_ICONS: Record<OperatorStation, string> = {
+    panel_boiler: 'local_fire_department',
+    panel_boiler_a: 'local_fire_department',
+    panel_boiler_b: 'local_fire_department',
+    panel_turbin: 'toys_fan',
+    handling: 'precision_manufacturing',
+    esp: 'electric_bolt',
+    bunker: 'layers',
+    lapangan_boiler: 'science',
+    lapangan_turbin: 'engineering',
 };
 
 export default function StationPickerModal({
@@ -243,7 +167,7 @@ export default function StationPickerModal({
     const dateLabel = fmtDateID(date);
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200">
             <div className="relative w-full max-w-4xl rounded-3xl border border-slate-700 bg-slate-900 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 duration-200 ease-out">
                 {/* Close Button on top right */}
                 <button
@@ -255,13 +179,9 @@ export default function StationPickerModal({
                     <span className="material-symbols-outlined text-lg">close</span>
                 </button>
 
-                {/* Ambient glow decoration */}
-                <div className="absolute -top-[20%] -right-[20%] w-72 h-72 rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
-                <div className="absolute -bottom-[20%] -left-[20%] w-72 h-72 rounded-full bg-emerald-500/5 blur-[80px] pointer-events-none" />
-
                 {/* Header */}
                 <div className="px-6 py-5 border-b border-slate-800 relative z-10">
-                    <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-slate-400 tracking-tight flex items-center gap-2">
+                    <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
                         <span className="material-symbols-outlined text-blue-400">assignment</span>
                         Pilih Laporan
                     </h2>
@@ -276,7 +196,7 @@ export default function StationPickerModal({
                     {/* Step 1: Jenis Laporan — 4 pilihan datar (malam/pagi/sore/harian) */}
                     <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">1. Jenis Laporan</label>
-                        <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-850 gap-1.5 shadow-[inset_0_1.5px_4px_rgba(0,0,0,0.5)]">
+                        <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800 gap-1.5">
                             {REPORT_CHOICES.map((c) => {
                                 const active = mode === 'harian' ? c.id === 'harian' : c.shift === shift;
                                 // Tanda "Terpublish" per tanggal terpilih — prioritas di atas
@@ -300,16 +220,16 @@ export default function StationPickerModal({
                                             setMode('shift');
                                             setShift(c.shift!);
                                         }}
-                                        className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 sm:px-2 py-2 rounded-xl text-[11px] sm:text-xs uppercase tracking-wider font-bold transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] border border-transparent
-                                            ${active ? c.activeClass : REPORT_CHOICE_INACTIVE}`}
+                                        className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 sm:px-2 py-2 rounded-xl text-[11px] sm:text-xs uppercase tracking-wider font-bold transition-colors duration-200 cursor-pointer active:scale-[0.98] border border-transparent
+                                            ${active ? REPORT_CHOICE_ACTIVE : REPORT_CHOICE_INACTIVE}`}
                                     >
                                         {isPublished ? (
-                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-violet-500 px-1.5 py-[1px] text-[8px] font-black text-white normal-case tracking-normal whitespace-nowrap shadow-md shadow-violet-500/30 pointer-events-none">
+                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-slate-200 px-1.5 py-[1px] text-[8px] font-black text-slate-900 normal-case tracking-normal whitespace-nowrap pointer-events-none">
                                                 <span className="leading-none">✓</span>
                                                 Terpublish
                                             </span>
                                         ) : isNow && (
-                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-500 px-1.5 py-[1px] text-[8px] font-black text-white normal-case tracking-normal whitespace-nowrap shadow-md shadow-emerald-500/30 pointer-events-none">
+                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-600 px-1.5 py-[1px] text-[8px] font-black text-white normal-case tracking-normal whitespace-nowrap pointer-events-none">
                                                 <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
                                                 Sekarang
                                             </span>
@@ -343,7 +263,7 @@ export default function StationPickerModal({
                             />
                             <div className="pointer-events-none w-full rounded-2xl border border-slate-800 bg-slate-900/60 group-hover:bg-slate-900/80 px-4 py-3 flex items-center justify-between transition-all">
                                 <span className="flex items-center gap-2 text-white text-sm font-semibold">
-                                    <span className="material-symbols-outlined text-[18px] text-cyan-400">event</span>
+                                    <span className="material-symbols-outlined text-[18px] text-slate-400">event</span>
                                     {dateLabel || 'Pilih tanggal'}
                                 </span>
                                 <span className="material-symbols-outlined text-slate-400 text-[18px]">calendar_today</span>
@@ -379,14 +299,6 @@ export default function StationPickerModal({
                         </label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                             {stations.map((s) => {
-                                const theme = STATION_THEMES[s] || {
-                                    icon: 'tune',
-                                    color: 'text-blue-400',
-                                    borderHover: 'hover:border-blue-500/50',
-                                    glow: 'hover:shadow-[0_0_15px_rgba(59,130,246,0.15)]',
-                                    textActive: 'text-blue-400',
-                                    iconBg: 'bg-blue-500/10'
-                                };
                                 const isFilled = filledStations.has(s);
 
                                 return (
@@ -394,13 +306,13 @@ export default function StationPickerModal({
                                         key={s}
                                         type="button"
                                         onClick={() => onConfirm({ mode, date, shift, station: s })}
-                                        className={`group flex items-center gap-3 rounded-2xl border p-3 text-left text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer
+                                        className={`group flex items-center gap-3 rounded-2xl border p-3 text-left text-white transition-colors duration-200 active:scale-[0.98] cursor-pointer
                                             ${isFilled
                                                 ? 'border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/15 hover:border-emerald-400/60'
-                                                : `border-slate-800 bg-slate-900/40 hover:bg-slate-850/60 ${theme.borderHover} ${theme.glow}`}`}
+                                                : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60 hover:border-slate-600'}`}
                                     >
-                                        <div className={`flex items-center justify-center p-2 rounded-xl ${theme.iconBg} ${theme.color} transition-all duration-300 group-hover:scale-110 shrink-0`}>
-                                            <span className="material-symbols-outlined text-lg">{theme.icon}</span>
+                                        <div className="flex items-center justify-center p-2 rounded-xl bg-slate-800 text-slate-300 shrink-0">
+                                            <span className="material-symbols-outlined text-lg">{STATION_ICONS[s] ?? 'tune'}</span>
                                         </div>
                                         <h4 className={`min-w-0 flex-1 text-xs font-bold tracking-wide leading-tight transition-colors ${isFilled ? 'text-emerald-300 group-hover:text-emerald-200' : 'text-slate-200 group-hover:text-white'}`}>
                                             {STATION_LABELS[s]}
@@ -424,7 +336,7 @@ export default function StationPickerModal({
                             <button
                                 type="button"
                                 onClick={() => onConfirm({ mode, date, shift, station: 'all' })}
-                                className="mt-3 w-full flex items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-3 text-sm font-bold text-indigo-200 transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+                                className="mt-3 w-full flex items-center justify-center gap-2 rounded-2xl border border-slate-600 bg-slate-800 hover:bg-slate-700 px-4 py-3 text-sm font-bold text-slate-200 transition-colors duration-200 active:scale-[0.98] cursor-pointer"
                             >
                                 <span className="material-symbols-outlined text-lg">grid_view</span>
                                 Review laporan
@@ -434,7 +346,7 @@ export default function StationPickerModal({
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 bg-slate-950/20 border-t border-slate-850 flex justify-end gap-3 relative z-10">
+                <div className="px-6 py-4 bg-slate-950/20 border-t border-slate-800 flex justify-end gap-3 relative z-10">
                     <button
                         type="button"
                         onClick={onCancel}

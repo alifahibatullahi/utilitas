@@ -84,7 +84,7 @@ export default function TabPower({
                                     const totValue = defaultZero ? (pv[totName] ?? '') : pv[totName];
 
                                     return (
-                                        <div key={key} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
+                                        <div key={key} className="bg-bg-dark/40 border border-slate-700/40 rounded-lg p-3">
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <TotalizerField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} thousands prev={prevTot} meter={`power_${key}`} />
@@ -95,7 +95,7 @@ export default function TabPower({
                                 })}
 
                                 {/* STG UBB: totalizer only, MW = Load STG */}
-                                <div className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
+                                <div className="bg-bg-dark/40 border border-slate-700/40 rounded-lg p-3">
                                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <TotalizerField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} thousands prev={Number(prevPD?.power_stg_ubb_totalizer) || 0} meter="power_stg_ubb" />

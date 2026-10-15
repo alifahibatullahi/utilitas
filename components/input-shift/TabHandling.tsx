@@ -52,7 +52,7 @@ function CoalEntryList({ rows, onRemove, canEdit }: {
             {rows.map(r => (
                 <div
                     key={r.key}
-                    className={`relative flex justify-between items-center px-3 py-2 rounded-lg pr-10 border ${r.baru ? `bg-[#101822]/60 ${r.accent}/20` : `bg-[#101822] ${r.accent}/30`}`}
+                    className={`relative flex justify-between items-center px-3 py-2 rounded-lg pr-10 border ${r.baru ? `bg-bg-dark/60 ${r.accent}/20` : `bg-bg-dark ${r.accent}/30`}`}
                 >
                     <div className="flex flex-col min-w-0 gap-0.5">
                         <span className="text-xs font-mono font-bold text-slate-200">{r.utama}</span>
@@ -134,7 +134,7 @@ function EntryList({ entries, savedEntries, accentColor, labelKey, valueKey, uni
     return (
         <div className="flex flex-col gap-2">
             {savedEntries.map((e) => (
-                <div key={`saved-${e.id}`} className={`relative flex justify-between items-center px-3 py-2 bg-[#101822] border ${borderSaved} rounded-lg pr-10`}>
+                <div key={`saved-${e.id}`} className={`relative flex justify-between items-center px-3 py-2 bg-bg-dark border ${borderSaved} rounded-lg pr-10`}>
                     <div className="flex flex-col min-w-0">
                         <span className={`text-xs font-mono font-bold ${textAccent}`}>{(e.jumlah || 0).toLocaleString('id-ID')} <span className={`text-[10px] ${textAccentSm}`}>{unitLabel}</span></span>
                         <span className="text-[10px] text-slate-400 truncate">{(e as any)[labelKey]}{e.jam ? ` · ${e.jam}` : ''}</span>
@@ -148,7 +148,7 @@ function EntryList({ entries, savedEntries, accentColor, labelKey, valueKey, uni
                 </div>
             ))}
             {entries.map((e, idx) => (
-                <div key={`pending-${idx}`} className={`relative flex justify-between items-center px-3 py-2 bg-[#101822]/60 border ${borderPending} rounded-lg pr-10`}>
+                <div key={`pending-${idx}`} className={`relative flex justify-between items-center px-3 py-2 bg-bg-dark/60 border ${borderPending} rounded-lg pr-10`}>
                     <div className="flex flex-col min-w-0">
                         <span className={`text-xs font-mono font-bold ${textAccent}`}>{(e.jumlah || 0).toLocaleString('id-ID')} <span className={`text-[10px] ${textAccentSm}`}>{unitLabel}</span></span>
                         <span className="text-[10px] text-slate-400 truncate">{(e as any)[labelKey]}{e.jam ? ` · ${e.jam}` : ''} <span className={`text-[9px] ${textAccentSm}`}>(baru)</span></span>
@@ -175,7 +175,7 @@ function timeInput(value: string, prev: string, onChange: (v: string) => void) {
                     if (v.length === 2 && !v.includes(':') && prev.length < 2) v = v + ':';
                     onChange(v);
                 }}
-                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 text-sm font-mono transition-all"
+                className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm font-mono transition-all"
             />
         </div>
     );
@@ -262,22 +262,22 @@ export default function TabHandling({
                         <InputField label="Total Loading" unit="shovel" color="orange" name="loading" value={espValues.loading} onChange={onEspChange} />
                         <div className="space-y-1.5 w-full">
                             <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Hopper Aktif</label>
-                            <select className={`w-full bg-[#101822] border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 text-sm font-bold transition-all ${!espValues.hopper ? 'text-slate-400' : 'text-white'}`}
+                            <select className={`w-full bg-bg-dark border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-blue-500 text-sm font-bold transition-all ${!espValues.hopper ? 'text-slate-400' : 'text-white'}`}
                                 value={(espValues.hopper as string) || ''} onChange={e => onEspChange?.('hopper', e.target.value || null)}>
-                                <option value="" className="text-slate-400 bg-[#101822]">Pilih...</option>
-                                <option value="A" className="text-white bg-[#101822] font-bold">Hopper A</option>
-                                <option value="B" className="text-white bg-[#101822] font-bold">Hopper B</option>
-                                <option value="AB" className="text-white bg-[#101822] font-bold">Hopper AB</option>
+                                <option value="" className="text-slate-400 bg-bg-dark">Pilih...</option>
+                                <option value="A" className="text-white bg-bg-dark font-bold">Hopper A</option>
+                                <option value="B" className="text-white bg-bg-dark font-bold">Hopper B</option>
+                                <option value="AB" className="text-white bg-bg-dark font-bold">Hopper AB</option>
                             </select>
                         </div>
                         <div className="space-y-1.5 w-full">
                             <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Conveyor Status</label>
-                            <select className={`w-full bg-[#101822] border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-orange-500 text-sm font-bold transition-all ${!espValues.conveyor ? 'text-slate-400' : 'text-white'}`}
+                            <select className={`w-full bg-bg-dark border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-blue-500 text-sm font-bold transition-all ${!espValues.conveyor ? 'text-slate-400' : 'text-white'}`}
                                 value={(espValues.conveyor as string) || ''} onChange={e => onEspChange?.('conveyor', e.target.value || null)}>
-                                <option value="" className="text-slate-400 bg-[#101822]">Pilih...</option>
-                                <option value="AB" className="text-white bg-[#101822] font-bold">Conveyor AB</option>
-                                <option value="A" className="text-white bg-[#101822] font-bold">Conveyor A</option>
-                                <option value="B" className="text-white bg-[#101822] font-bold">Conveyor B</option>
+                                <option value="" className="text-slate-400 bg-bg-dark">Pilih...</option>
+                                <option value="AB" className="text-white bg-bg-dark font-bold">Conveyor AB</option>
+                                <option value="A" className="text-white bg-bg-dark font-bold">Conveyor A</option>
+                                <option value="B" className="text-white bg-bg-dark font-bold">Conveyor B</option>
                             </select>
                         </div>
 
@@ -303,8 +303,8 @@ export default function TabHandling({
                                                 ${!canEditCoal
                                                     ? 'border-slate-700/60 bg-slate-800/40 text-slate-600 cursor-not-allowed'
                                                     : aktif
-                                                        ? 'border-orange-500 bg-orange-500/25 text-orange-200 cursor-pointer'
-                                                        : 'border-slate-700/80 bg-[#101822] text-slate-400 hover:border-orange-500/50 hover:text-orange-300 cursor-pointer'}`}
+                                                        ? 'border-blue-500 bg-blue-500/20 text-blue-100 cursor-pointer'
+                                                        : 'border-slate-700/80 bg-bg-dark text-slate-400 hover:border-slate-500 hover:text-slate-200 cursor-pointer'}`}
                                         >
                                             {z.label}
                                         </button>
@@ -320,7 +320,7 @@ export default function TabHandling({
                                             ? `${coalZonas.length} pilar dipilih — isi Total Loading dulu untuk melihat pembagiannya.`
                                             : <>
                                                 {totalDiketik} shovel ÷ {coalZonas.length} pilar ={' '}
-                                                <span className="text-orange-300 font-bold">
+                                                <span className="text-slate-100 font-bold">
                                                     ±{shovelPerPilar.toLocaleString('id-ID', { maximumFractionDigits: 2 })} shovel
                                                     {' '}({formatTon(shovelPerPilar * TON_PER_SHOVEL)} ton)
                                                 </span>{' '}
@@ -354,7 +354,7 @@ export default function TabHandling({
                             </div>
                         )}
                         <button type="button" onClick={() => setShowSolarModal(true)}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm font-bold transition-colors">
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 text-sm font-bold transition-colors">
                             <span className="material-symbols-outlined text-[18px]">add_circle</span>
                             Tambah Kedatangan
                         </button>
@@ -371,13 +371,13 @@ export default function TabHandling({
                                 />
                                 <div className="flex justify-between items-center px-1 mt-2 mb-1">
                                     <span className="text-[10px] text-slate-500 uppercase tracking-wider">Total</span>
-                                    <span className="text-sm font-mono font-bold text-rose-300">{totalOutSolar.toLocaleString('id-ID')} L</span>
+                                    <span className="text-sm font-mono font-bold text-red-300">{totalOutSolar.toLocaleString('id-ID')} L</span>
                                 </div>
                                 <div className="h-px bg-slate-700/40 mb-3" />
                             </div>
                         )}
                         <button type="button" onClick={() => setShowOutModal(true)}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-sm font-bold transition-colors">
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 text-sm font-bold transition-colors">
                             <span className="material-symbols-outlined text-[18px]">add_circle</span>
                             Tambah Permintaan
                         </button>
@@ -436,10 +436,10 @@ export default function TabHandling({
                     <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Perusahaan</label>
                     <input type="text" value={solarForm.perusahaan} onChange={e => setSolarForm({ ...solarForm, perusahaan: e.target.value })}
                         placeholder="Nama perusahaan..."
-                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 text-sm transition-all" />
+                        className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
                 </div>
                 <button type="button" onClick={saveSolar} disabled={!solarForm.jam || !solarForm.jumlah || !solarForm.perusahaan}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm transition-colors mt-1">
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors mt-1">
                     <span className="material-symbols-outlined text-[18px]">save</span>
                     Simpan
                 </button>
@@ -457,7 +457,7 @@ export default function TabHandling({
                         setTujuanMode(mode);
                         if (mode !== 'Lainnya') setOutForm({ ...outForm, tujuan: mode });
                         else setOutForm({ ...outForm, tujuan: '' });
-                    }} className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-rose-500 text-sm transition-all">
+                    }} className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-blue-500 text-sm transition-all">
                         <option value="Boiler A+B">Boiler A+B</option>
                         <option value="Bengkel">Bengkel</option>
                         <option value="SA/SU 3B">SA/SU 3B</option>
@@ -465,11 +465,11 @@ export default function TabHandling({
                     </select>
                     {tujuanMode === 'Lainnya' && (
                         <input type="text" value={outForm.tujuan} onChange={e => setOutForm({ ...outForm, tujuan: e.target.value })}
-                            placeholder="Tulis tujuan..." className="mt-2 w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 text-sm transition-all" />
+                            placeholder="Tulis tujuan..." className="mt-2 w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
                     )}
                 </div>
                 <button type="button" onClick={saveOut} disabled={!outForm.jam || !outForm.jumlah || !outForm.tujuan}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors mt-1">
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors mt-1">
                     <span className="material-symbols-outlined text-[18px]">save</span>
                     Simpan
                 </button>

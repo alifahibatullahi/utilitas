@@ -72,7 +72,7 @@ export default function TabSolarReview({
             {/* ═══ Level Solar ═══ */}
             <Card title="Level Solar" icon="water_drop" color="orange">
                 <div className="grid grid-cols-2 gap-3 items-end">
-                    <div className="rounded-lg border border-slate-700/40 bg-[#101822]/40 px-3 py-2.5">
+                    <div className="rounded-lg border border-slate-700/40 bg-bg-dark/40 px-3 py-2.5">
                         <p className="text-[9px] text-slate-400 uppercase tracking-wider">Level Kemarin</p>
                         <p className="text-lg font-mono font-bold text-slate-300">{levelKemarin != null ? fmt(levelKemarin) : '—'} <span className="text-[10px] text-slate-500">m³</span></p>
                     </div>
@@ -84,11 +84,11 @@ export default function TabSolarReview({
                         deltaVolume > 0
                             ? 'border-emerald-500/30'
                             : deltaVolume < 0
-                                ? 'border-rose-500/30'
+                                ? 'border-red-500/30'
                                 : 'border-slate-500/30'
                     }`}>
                         {/* Rincian volume — level (1 tanki) × 2 tanki */}
-                        <div className="px-3 py-2 bg-[#101822]/40 border-b border-slate-700/40 space-y-1 font-mono">
+                        <div className="px-3 py-2 bg-bg-dark/40 border-b border-slate-700/40 space-y-1 font-mono">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-slate-400">Level kemarin</span>
                                 <span className="text-slate-200"><span className="font-bold">{fmt(levelKemarin)}</span> <span className="text-white">× 2 =</span> <span className="font-bold text-white">{fmt(levelKemarin * 2)} m³</span></span>
@@ -103,7 +103,7 @@ export default function TabSolarReview({
                             deltaVolume > 0
                                 ? 'bg-emerald-500/10 text-emerald-300'
                                 : deltaVolume < 0
-                                    ? 'bg-rose-500/10 text-rose-300'
+                                    ? 'bg-red-500/10 text-red-300'
                                     : 'bg-slate-500/10 text-slate-300'
                         }`}>
                             <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">
@@ -128,7 +128,7 @@ export default function TabSolarReview({
                     {solarUnloadings.length > 0 ? (
                         <div className="space-y-2">
                             {solarUnloadings.map((item, i) => (
-                                <div key={item.id ?? i} className="relative flex items-center gap-2 bg-[#101822]/50 border border-amber-500/30 rounded-lg px-3 py-2 pr-16 min-w-0">
+                                <div key={item.id ?? i} className="relative flex items-center gap-2 bg-bg-dark/50 border border-amber-500/30 rounded-lg px-3 py-2 pr-16 min-w-0">
                                     <span className="material-symbols-outlined text-amber-400 text-[15px]">local_shipping</span>
                                     <span className="text-white font-medium text-sm">{n(item.liters).toLocaleString('id-ID')} <span className="text-amber-400 text-xs">L</span></span>
                                     <SolarOriginBadge shift={item.shift} />
@@ -144,7 +144,7 @@ export default function TabSolarReview({
                         </div>
                     ) : <p className="text-[11px] text-slate-500 italic">Belum ada entri kedatangan.</p>}
                     <button type="button" onClick={() => setEditUn({ liters: 0, supplier: '' })}
-                        className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm font-bold transition-colors">
+                        className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 text-sm font-bold transition-colors">
                         <span className="material-symbols-outlined text-[18px]">add_circle</span>Tambah Kedatangan
                     </button>
                 </div>
@@ -162,7 +162,7 @@ export default function TabSolarReview({
                             {boilerAB != null
                                 ? 'Diisi manual — kosongkan untuk kembali ke hitungan neraca.'
                                 : neraca
-                                    ? <>Neraca: turun <b className="text-slate-300">{fmt(neraca.turun)}</b> + datang <b className="text-slate-300">{fmt(neraca.kedatangan)}</b> − keluar lain <b className="text-slate-300">{fmt(neraca.keluarLain)}</b> = <b className="text-rose-300">{fmt(neraca.boiler)} m³</b></>
+                                    ? <>Neraca: turun <b className="text-slate-300">{fmt(neraca.turun)}</b> + datang <b className="text-slate-300">{fmt(neraca.kedatangan)}</b> − keluar lain <b className="text-slate-300">{fmt(neraca.keluarLain)}</b> = <b className="text-red-300">{fmt(neraca.boiler)} m³</b></>
                                     : 'Level kemarin/hari ini belum ada — isi manual.'}
                         </p>
                     </div>
@@ -177,9 +177,9 @@ export default function TabSolarReview({
                     {solarUsages.length > 0 ? (
                         <div className="space-y-2">
                             {solarUsages.map((item, i) => (
-                                <div key={item.id ?? i} className="relative flex items-center gap-2 bg-[#101822]/50 border border-rose-500/30 rounded-lg px-3 py-2 pr-16 min-w-0">
-                                    <span className="material-symbols-outlined text-rose-400 text-[15px]">upload</span>
-                                    <span className="text-white font-medium text-sm">{n(item.liters).toLocaleString('id-ID')} <span className="text-rose-400 text-xs">L</span></span>
+                                <div key={item.id ?? i} className="relative flex items-center gap-2 bg-bg-dark/50 border border-red-500/30 rounded-lg px-3 py-2 pr-16 min-w-0">
+                                    <span className="material-symbols-outlined text-red-400 text-[15px]">upload</span>
+                                    <span className="text-white font-medium text-sm">{n(item.liters).toLocaleString('id-ID')} <span className="text-red-400 text-xs">L</span></span>
                                     <SolarOriginBadge shift={item.shift} />
                                     <span className="text-[10px] text-slate-400 truncate">{item.tujuan}</span>
                                     {item.id && (
@@ -193,7 +193,7 @@ export default function TabSolarReview({
                         </div>
                     ) : <p className="text-[11px] text-slate-500 italic">Belum ada entri permintaan.</p>}
                     <button type="button" onClick={() => setEditUs({ liters: 0, tujuan: 'Bengkel', shift: 'harian', tujuanMode: 'Bengkel' })}
-                        className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-sm font-bold transition-colors">
+                        className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 text-sm font-bold transition-colors">
                         <span className="material-symbols-outlined text-[18px]">add_circle</span>Tambah Permintaan
                     </button>
                 </div>
@@ -208,10 +208,10 @@ export default function TabSolarReview({
                         <div className="space-y-1.5 w-full">
                             <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Supplier</label>
                             <input type="text" value={editUn.supplier} onChange={e => setEditUn({ ...editUn, supplier: e.target.value })} placeholder="Nama supplier..."
-                                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-amber-500 text-sm transition-all" />
+                                className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
                         </div>
                         <button type="button" onClick={saveUn} disabled={!Number(editUn.liters)}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 disabled:cursor-not-allowed font-bold text-sm transition-colors mt-1">
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold text-sm transition-colors mt-1">
                             <span className="material-symbols-outlined text-[18px]">save</span>Simpan
                         </button>
                     </>
@@ -227,11 +227,11 @@ export default function TabSolarReview({
                         <div className="space-y-1.5 w-full">
                             <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Asal / Shift</label>
                             <select value={editUs.shift} onChange={e => setEditUs({ ...editUs, shift: e.target.value })}
-                                className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-rose-500 text-sm font-bold transition-all">
-                                <option value="harian" className="bg-[#101822]">Harian (ditambah di laporan harian)</option>
-                                <option value="pagi" className="bg-[#101822]">Shift Pagi</option>
-                                <option value="sore" className="bg-[#101822]">Shift Sore</option>
-                                <option value="malam" className="bg-[#101822]">Shift Malam</option>
+                                className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-blue-500 text-sm font-bold transition-all">
+                                <option value="harian" className="bg-bg-dark">Harian (ditambah di laporan harian)</option>
+                                <option value="pagi" className="bg-bg-dark">Shift Pagi</option>
+                                <option value="sore" className="bg-bg-dark">Shift Sore</option>
+                                <option value="malam" className="bg-bg-dark">Shift Malam</option>
                             </select>
                         </div>
                         <div className="space-y-1.5 w-full">
@@ -239,18 +239,18 @@ export default function TabSolarReview({
                             <select value={editUs.tujuanMode} onChange={e => {
                                 const mode = e.target.value as TujuanMode;
                                 setEditUs({ ...editUs, tujuanMode: mode, tujuan: mode !== 'Lainnya' ? mode : '' });
-                            }} className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-rose-500 text-sm font-bold transition-all">
-                                <option value="Bengkel" className="bg-[#101822]">Bengkel</option>
-                                <option value="SA/SU 3B" className="bg-[#101822]">SA/SU 3B</option>
-                                <option value="Lainnya" className="bg-[#101822]">Lainnya…</option>
+                            }} className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-blue-500 text-sm font-bold transition-all">
+                                <option value="Bengkel" className="bg-bg-dark">Bengkel</option>
+                                <option value="SA/SU 3B" className="bg-bg-dark">SA/SU 3B</option>
+                                <option value="Lainnya" className="bg-bg-dark">Lainnya…</option>
                             </select>
                             {editUs.tujuanMode === 'Lainnya' && (
                                 <input type="text" placeholder="Tulis tujuan..." value={editUs.tujuan} onChange={e => setEditUs({ ...editUs, tujuan: e.target.value })}
-                                    className="mt-2 w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-rose-500 text-sm transition-all" />
+                                    className="mt-2 w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
                             )}
                         </div>
                         <button type="button" onClick={saveUs} disabled={!Number(editUs.liters) || (editUs.tujuanMode === 'Lainnya' && !editUs.tujuan.trim())}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold text-sm transition-colors mt-1">
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold text-sm transition-colors mt-1">
                             <span className="material-symbols-outlined text-[18px]">save</span>Simpan
                         </button>
                     </>

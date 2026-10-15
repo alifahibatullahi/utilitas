@@ -92,8 +92,8 @@ export default function TabBoiler({
         <>
             <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 {isShutdown && (
-                    <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
-                        <span className="material-symbols-outlined text-[16px] text-rose-400 shrink-0 mt-0.5">power_off</span>
+                    <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+                        <span className="material-symbols-outlined text-[16px] text-red-400 shrink-0 mt-0.5">power_off</span>
                         <span>Boiler {boilerId} <span className="font-bold">shutdown</span> — totalizer tetap bisa diedit, parameter lain dikunci.</span>
                     </div>
                 )}
@@ -162,7 +162,7 @@ export default function TabBoiler({
                     <div className="h-px bg-slate-700/80 w-full my-1" />
                     <CalculatedField label="Total Batubara" value={totalBatubara.toFixed(2)} unit="ton" variant="primary" />
                     <div className="mt-auto">
-                        <CalculatedField label="Consumption Rate" value={cr > 0 ? cr.toFixed(3) : '—'} unit="ton/ton" variant="purple" />
+                        <CalculatedField label="Consumption Rate" value={cr > 0 ? cr.toFixed(3) : '—'} unit="ton/ton" variant="primary" />
                     </div>
                 </Card>
             </div>

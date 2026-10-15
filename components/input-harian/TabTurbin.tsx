@@ -71,14 +71,14 @@ export default function TabTurbin({
             <Card title="Distribusi Steam" icon="fork_right" color="cyan">
                 {/* Header row */}
                 <div className="grid grid-cols-2 gap-3 mb-1 px-1">
-                    <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Totalizer</span>
-                    <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Flow (00.00)</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Totalizer</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Flow (00.00)</span>
                 </div>
 
                 {DIST_ITEMS.map(({ totKey, flowKey, label, totUnit, flowUnit, meter }) => {
                     const prev = prevSteam ? n(prevSteam[totKey]) : 0;
                     return (
-                        <div key={totKey} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3 mb-2">
+                        <div key={totKey} className="bg-bg-dark/40 border border-slate-700/40 rounded-lg p-3 mb-2">
                             <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">{label}</span>
                             <div className="grid grid-cols-2 gap-3">
                                 <TotalizerField

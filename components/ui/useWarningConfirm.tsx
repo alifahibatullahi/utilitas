@@ -29,8 +29,8 @@ export function useWarningConfirm() {
     }, []);
 
     const warningModal = warnings && warnings.length > 0 ? (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="bg-[#0d1520] border border-amber-500/40 rounded-2xl shadow-2xl shadow-amber-500/10 max-w-md w-full p-6 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/70 p-4">
+            <div className="bg-surface-dark border border-amber-500/40 rounded-2xl shadow-2xl shadow-amber-500/10 max-w-md w-full p-6 animate-in zoom-in-95">
                 <div className="flex items-center gap-3 mb-3">
                     <span className="material-symbols-outlined text-amber-400 text-[28px]">warning</span>
                     <h3 className="text-white font-bold text-lg">Nilai Tidak Wajar</h3>

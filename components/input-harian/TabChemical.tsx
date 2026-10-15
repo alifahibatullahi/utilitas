@@ -28,39 +28,31 @@ function fmt(v: number | null, decimals = 1): string {
     return v.toFixed(decimals);
 }
 
-function ChemRow({ label, shifts, total, unit, color }: {
+function ChemRow({ label, shifts, total, unit }: {
     label: string;
     shifts: (number | null)[];
     total: number | null;
     unit: string;
-    color: string;
 }) {
-    const colorMap: Record<string, { bg: string; text: string; border: string; total: string }> = {
-        purple: { bg: 'bg-purple-500/10', text: 'text-purple-300', border: 'border-purple-500/20', total: 'text-purple-200' },
-        indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-300', border: 'border-indigo-500/20', total: 'text-indigo-200' },
-        orange: { bg: 'bg-orange-500/10', text: 'text-orange-300', border: 'border-orange-500/20', total: 'text-orange-200' },
-    };
-    const c = colorMap[color] ?? colorMap.purple;
-
     return (
-        <div className={`rounded-xl border ${c.border} ${c.bg} p-4`}>
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800/40 p-4">
             <div className="flex items-center justify-between mb-3">
-                <span className={`text-sm font-bold uppercase tracking-wider ${c.text}`}>{label}</span>
+                <span className="text-sm font-bold uppercase tracking-wider text-slate-300">{label}</span>
                 <span className="text-xs text-slate-400 font-mono">{unit}</span>
             </div>
             <div className="grid grid-cols-3 gap-2 mb-3">
                 {SHIFT_ORDER.map((s, i) => (
                     <div key={s} className="flex flex-col items-center gap-0.5">
                         <span className="text-[10px] text-slate-500 uppercase tracking-wider">{SHIFT_LABEL[s].replace('Shift ', '')}</span>
-                        <span className={`text-lg font-bold font-mono ${shifts[i] != null ? c.total : 'text-slate-600'}`}>
+                        <span className={`text-lg font-bold font-mono ${shifts[i] != null ? 'text-white' : 'text-slate-600'}`}>
                             {fmt(shifts[i])}
                         </span>
                     </div>
                 ))}
             </div>
-            <div className={`flex items-center justify-between mt-3 p-3 rounded-lg ${c.bg} border ${c.border}`}>
-                <span className={`text-sm font-bold uppercase tracking-wider ${c.total}`}>Total Hari Ini</span>
-                <span className={`text-xl font-black font-mono ${c.total}`}>
+            <div className="flex items-center justify-between mt-3 p-3 rounded-lg bg-slate-800/60 border border-slate-700/60">
+                <span className="text-sm font-bold uppercase tracking-wider text-slate-300">Total Hari Ini</span>
+                <span className="text-xl font-black font-mono text-white">
                     {fmt(total)} <span className="text-sm font-normal opacity-70">{unit}</span>
                 </span>
             </div>
@@ -131,7 +123,7 @@ export default function TabChemical({ date }: TabChemicalProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full overflow-y-auto pr-1 scrollbar-hide">
             {/* Konsumsi Chemical 24 Jam */}
-            <div className="rounded-xl ring-1 ring-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.15)]">
+            <div>
                 <Card title="Konsumsi Chemical 24 Jam" icon="science" color="purple">
                     {loading ? (
                         <p className="text-sm text-slate-500 py-4 text-center">Memuat data...</p>
@@ -140,21 +132,18 @@ export default function TabChemical({ date }: TabChemicalProps) {
                             <ChemRow
                                 label="Phosphate"
                                 unit="Kg"
-                                color="purple"
                                 shifts={SHIFT_ORDER.map(s => getShiftVal('phosphate', s))}
                                 total={getTotal('phosphate')}
                             />
                             <ChemRow
                                 label="Amine"
                                 unit="Ltr"
-                                color="indigo"
                                 shifts={SHIFT_ORDER.map(s => getShiftVal('amine', s))}
                                 total={getTotal('amine')}
                             />
                             <ChemRow
                                 label="Hydrazine"
                                 unit="Ltr"
-                                color="orange"
                                 shifts={SHIFT_ORDER.map(s => getShiftVal('hydrazine', s))}
                                 total={getTotal('hydrazine')}
                             />
@@ -164,17 +153,17 @@ export default function TabChemical({ date }: TabChemicalProps) {
             </div>
 
             {/* Stock Chemical */}
-            <div className="rounded-xl ring-1 ring-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+            <div>
                 <Card title="Stock Chemical" icon="inventory_2" color="emerald">
                     <div className="flex flex-col gap-4 h-full">
                         {[
-                            { label: 'Phosphate', value: stock.phosphate, color: 'text-purple-300', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-                            { label: 'Amine', value: stock.amine, color: 'text-indigo-300', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-                            { label: 'Hydrazine', value: stock.hydrazine, color: 'text-orange-300', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-                        ].map(({ label, value, color, bg, border }) => (
-                            <div key={label} className={`rounded-xl ${bg} border ${border} p-5 flex flex-col items-center justify-center gap-2 flex-1`}>
+                            { label: 'Phosphate', value: stock.phosphate },
+                            { label: 'Amine', value: stock.amine },
+                            { label: 'Hydrazine', value: stock.hydrazine },
+                        ].map(({ label, value }) => (
+                            <div key={label} className="rounded-xl bg-slate-800/40 border border-slate-700/60 p-5 flex flex-col items-center justify-center gap-2 flex-1">
                                 <span className="text-sm text-slate-300 uppercase tracking-wider font-bold">{label}</span>
-                                <span className={`text-4xl font-black font-mono ${value != null ? color : 'text-slate-600'}`}>
+                                <span className={`text-4xl font-black font-mono ${value != null ? 'text-white' : 'text-slate-600'}`}>
                                     {value != null ? value : '—'}
                                 </span>
                                 <span className="text-xs text-slate-400">pcs (terakhir tercatat)</span>

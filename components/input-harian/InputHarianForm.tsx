@@ -50,28 +50,27 @@ const parseSheetNum = (s: string | number | null | undefined): number | null => 
     return isNaN(n) ? null : n;
 };
 
-const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; colorClass: string }[] = [
-    { id: 'Boiler A', label: 'Boiler A', icon: 'factory', colorClass: 'rose' },
-    { id: 'Boiler B', label: 'Boiler B', icon: 'factory', colorClass: 'purple' },
-    { id: 'Turbin', label: 'Turbin & Distribusi Steam', icon: 'mode_fan', colorClass: 'cyan' },
-    { id: 'Power', label: 'Generator', icon: 'bolt', colorClass: 'amber' },
-    { id: 'PIU', label: 'PIU', icon: 'electric_meter', colorClass: 'blue' },
-    { id: 'Handling', label: 'Handling', icon: 'local_shipping', colorClass: 'orange' },
-    { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2', colorClass: 'indigo' },
-    { id: 'Chemical', label: 'Chemical', icon: 'science', colorClass: 'purple' },
-    { id: 'Stock BB', label: 'In/Out Batubara', icon: 'local_shipping', colorClass: 'indigo' },
-    { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt', colorClass: 'teal' },
+const HARIAN_TABS: { id: HarianTabId; label: string; icon: string }[] = [
+    { id: 'Boiler A', label: 'Boiler A', icon: 'factory' },
+    { id: 'Boiler B', label: 'Boiler B', icon: 'factory' },
+    { id: 'Turbin', label: 'Turbin & Distribusi Steam', icon: 'mode_fan' },
+    { id: 'Power', label: 'Generator', icon: 'bolt' },
+    { id: 'PIU', label: 'PIU', icon: 'electric_meter' },
+    { id: 'Handling', label: 'Handling', icon: 'local_shipping' },
+    { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2' },
+    { id: 'Chemical', label: 'Chemical', icon: 'science' },
+    { id: 'Stock BB', label: 'In/Out Batubara', icon: 'local_shipping' },
+    { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt' },
 ];
 
-const TAB_STYLES: Record<string, { active: string; inactive: string; icon: string }> = {
-    'rose': { active: 'font-bold bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-inner shadow-rose-500/10', inactive: 'font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border-transparent', icon: 'text-rose-400' },
-    'cyan': { active: 'font-bold bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-inner shadow-cyan-500/10', inactive: 'font-medium text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border-transparent', icon: 'text-cyan-400' },
-    'amber': { active: 'font-bold bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-inner shadow-amber-500/10', inactive: 'font-medium text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 border-transparent', icon: 'text-amber-400' },
-    'blue': { active: 'font-bold bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-inner shadow-blue-500/10', inactive: 'font-medium text-slate-400 hover:text-blue-300 hover:bg-blue-500/10 border-transparent', icon: 'text-blue-400' },
-    'orange': { active: 'font-bold bg-orange-500/20 text-orange-400 border-orange-500/30 shadow-inner shadow-orange-500/10', inactive: 'font-medium text-slate-400 hover:text-orange-300 hover:bg-orange-500/10 border-transparent', icon: 'text-orange-400' },
-    'purple': { active: 'font-bold bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-inner shadow-purple-500/10', inactive: 'font-medium text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 border-transparent', icon: 'text-purple-400' },
-    'indigo': { active: 'font-bold bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-inner shadow-indigo-500/10', inactive: 'font-medium text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 border-transparent', icon: 'text-indigo-400' },
-    'teal': { active: 'font-bold bg-teal-500/20 text-teal-400 border-teal-500/30 shadow-inner shadow-teal-500/10', inactive: 'font-medium text-slate-400 hover:text-teal-300 hover:bg-teal-500/10 border-transparent', icon: 'text-teal-400' },
+// Satu gaya untuk semua tab: identitas tab cukup dari ikon & label, warna hanya
+// untuk status. Tab aktif ditandai garis aksen (kiri di desktop, bawah di HP).
+const TAB_STYLE = {
+    active: 'font-bold bg-slate-800 text-white border-slate-700',
+    inactive: 'font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border-transparent',
+    icon: 'text-slate-200',
+    barSide: 'shadow-[inset_3px_0_0_var(--color-blue-500)]',
+    barBottom: 'shadow-[inset_0_-2px_0_var(--color-blue-500)]',
 };
 
 interface InputHarianFormProps {
@@ -1198,8 +1197,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
             {/* WA Preview Dialog */}
             {waPreview && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !waPreview.sending && setWaPreview(null)}>
-                    <div className="bg-[#0d1520] border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-[90vw] max-h-[80vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60" onClick={() => !waPreview.sending && setWaPreview(null)}>
+                    <div className="bg-surface-dark border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-[90vw] max-h-[80vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-white font-bold text-lg flex items-center gap-2">
                                 <span className="material-symbols-outlined text-emerald-400">chat</span>
@@ -1281,21 +1280,20 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
             {/* Loading Overlay */}
             {submitting && (
-                <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
-                    <div className="relative flex flex-col items-center justify-center bg-[#16202e] border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95 w-72">
-                        <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-2xl pointer-events-none"></div>
-                        <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mb-6 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
+                <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 transition-all duration-300">
+                    <div className="relative flex flex-col items-center justify-center bg-surface-dark border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95 w-72">
+                        <div className="w-16 h-16 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin mb-6"></div>
                         <h3 className="text-white font-black text-xl tracking-wide mb-1 relative z-10">Menyimpan data</h3>
                         <p className="text-slate-400 text-sm font-medium mb-5 relative z-10">Mohon tunggu sebentar...</p>
                         {saveProgress !== null && (
                             <div className="w-full relative z-10">
                                 <div className="flex justify-between text-xs text-slate-400 mb-1.5">
                                     <span>Progress</span>
-                                    <span className="font-bold text-emerald-400">{saveProgress}%</span>
+                                    <span className="font-bold text-slate-200">{saveProgress}%</span>
                                 </div>
                                 <div className="w-full h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
                                     <div
-                                        className="h-full bg-emerald-500 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                                         style={{ width: `${saveProgress}%` }}
                                     />
                                 </div>
@@ -1339,7 +1337,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 {/* Left Sidebar */}
                 <div className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
                     {/* Action Buttons */}
-                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
+                    <div className="bg-surface-dark border border-slate-800/80 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
                         <div>
                             <h3 className="text-white font-bold text-sm mb-1">Menu Laporan</h3>
                             <p className="text-[11px] text-slate-400 leading-tight">Pilih kategori area untuk mulai input data harian.</p>
@@ -1353,7 +1351,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             title={isHarianBeforeStart && submitWindowStart
                                 ? `Window submit mulai ${submitWindowStart.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
                                 : isHarianPastEnd ? 'Window submit sudah berakhir' : undefined}
-                            className={`flex items-center justify-center gap-2 ${isHarianLocked ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/50 w-full ${submitting || isHarianLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex items-center justify-center gap-2 ${isHarianLocked ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors border border-emerald-500/50 w-full ${submitting || isHarianLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">{isHarianLocked ? 'lock' : 'save'}</span>
                             {submitting ? 'Menyimpan...' : isHarianLocked ? 'TERKUNCI' : 'SIMPAN LAPORAN'}
@@ -1368,7 +1366,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     onClick={goPublishDaily}
                                     disabled={publishDisabled}
                                     title={!report?.id ? 'Submit laporan dulu sebelum review/publish' : (!allTabsComplete && !isAdmin) ? 'Semua tab harus lengkap dulu' : 'Review ringkasan laporan sebelum kirim ke WhatsApp'}
-                                    className={`flex items-center justify-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(43,124,238,0.3)] border border-blue-500/50 w-full`}
+                                    className={`flex items-center justify-center gap-2 ${publishDisabled ? 'bg-slate-700 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-500'} text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors border border-blue-500/50 w-full`}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">fact_check</span>
                                     REVIEW / PUBLISH{isAdmin && !allTabsComplete ? ' (Admin)' : ''}
@@ -1388,15 +1386,15 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     </div>
 
                     {station && (
-                        <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-[#0f1721]/80 border border-slate-700/50 shadow-lg">
+                        <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-surface-dark/80 border border-slate-700/50 shadow-lg">
                             <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 18 }}>badge</span>
+                                <span className="material-symbols-outlined text-blue-400" style={{ fontSize: 18 }}>badge</span>
                                 <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Station</span>
                                 <span className="text-sm font-extrabold text-white">{STATION_LABELS[station]}</span>
                             </div>
                             <div className="flex flex-col gap-1">
                                 <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Diisi oleh</span>
-                                <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                <div className="flex items-center gap-1.5 bg-bg-dark px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
                                     <SearchableSelect
                                         value={fillerName}
                                         onChange={setFillerName}
@@ -1412,7 +1410,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             {isPanelStation && (
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Supervisor <span className="text-red-400">*</span></span>
-                                    <div className="flex items-center gap-1.5 bg-[#101822] px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
+                                    <div className="flex items-center gap-1.5 bg-bg-dark px-2 py-1.5 rounded-lg border border-slate-700/50 relative pr-5">
                                         <SearchableSelect
                                             value={(totalizer.kasi_name as string) || supervisorName || ''}
                                             onChange={(v) => { setTotalizer(prev => ({ ...prev, kasi_name: v })); onSupervisorChange?.(v); }}
@@ -1428,23 +1426,22 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     )}
 
                     {/* Desktop Tab List */}
-                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg hidden lg:flex flex-col gap-1">
+                    <div className="bg-surface-dark border border-slate-800/80 rounded-xl p-2 shadow-lg hidden lg:flex flex-col gap-1">
                         {visibleTabs.map((tab) => {
                             const isActive = activeTab === tab.id;
                             const isComplete = isTabLengkap(tab.id);
-                            const styles = TAB_STYLES[tab.colorClass];
                             return (
                                 <button
                                     key={tab.id}
                                     onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
-                                    className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? styles.active : styles.inactive}`}
+                                    className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barSide}` : TAB_STYLE.inactive}`}
                                 >
-                                    <span className={`material-symbols-outlined text-[20px] ${isActive ? styles.icon : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
+                                    <span className={`material-symbols-outlined text-[20px] ${isActive ? TAB_STYLE.icon : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
                                         {tab.icon}
                                     </span>
                                     <span className="flex-1">{tab.label}</span>
                                     {isComplete && (
-                                        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 mr-1 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                                        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 mr-1">
                                             <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                                         </div>
                                     )}
@@ -1455,19 +1452,18 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     </div>
 
                     {/* Mobile Tab List */}
-                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl p-2 shadow-lg lg:hidden overflow-x-auto">
+                    <div className="bg-surface-dark border border-slate-800/80 rounded-xl p-2 shadow-lg lg:hidden overflow-x-auto">
                         <div className="flex gap-2 w-max pb-1">
                             {visibleTabs.map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 const isComplete = isTabLengkap(tab.id);
-                                const styles = TAB_STYLES[tab.colorClass];
                                 return (
                                     <button
                                         key={tab.id}
                                         onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
-                                        className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? styles.active : styles.inactive}`}
+                                        className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barBottom}` : TAB_STYLE.inactive}`}
                                     >
-                                        <span className={`material-symbols-outlined text-[18px] ${isActive ? styles.icon : 'opacity-70'}`}>
+                                        <span className={`material-symbols-outlined text-[18px] ${isActive ? TAB_STYLE.icon : 'opacity-70'}`}>
                                             {tab.icon}
                                         </span>
                                         <span>{tab.label}</span>
@@ -1486,17 +1482,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                 {/* Tab Content Area */}
                 <div className="flex-1 min-w-0 flex flex-col gap-4">
                     {/* Active Tab Header — disamakan dengan laporan shift (judul + status chip di kanan judul). */}
-                    <div className="bg-[#16202e]/80 backdrop-blur-md border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
+                    <div className="bg-surface-dark border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                         {(() => {
                             const tab = visibleTabs.find(t => t.id === activeTab);
-                            const styles = tab ? TAB_STYLES[tab.colorClass] : TAB_STYLES['rose'];
                             const turbinStatus = (turbineMisc.status_turbin as string) ?? '';
                             const tBorder = turbinStatus === 'running' ? 'border-emerald-500/50' : turbinStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
                             const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                             return (
                                 <>
-                                    <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-[#101822] border border-slate-700/50 shadow-inner shrink-0`}>
-                                        <span className={`material-symbols-outlined text-[22px] sm:text-[30px] ${styles.icon}`}>{tab?.icon}</span>
+                                    <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-bg-dark border border-slate-700/50 shadow-inner shrink-0`}>
+                                        <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-slate-300`}>{tab?.icon}</span>
                                     </div>
                                     <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide min-w-0 truncate">{tab?.label}</h2>
                                     {/* Status chip boiler — di kanan judul untuk tab Boiler A/B (sama spt shift). */}
@@ -1506,7 +1501,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                         const bBorder = bStatus === 'running' ? 'border-emerald-500/50' : bStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
                                         const bDot = bStatus === 'running' ? 'bg-emerald-500' : bStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                                         return (
-                                            <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${bBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                            <div className={`inline-flex items-center gap-2 sm:gap-3 bg-bg-dark/60 border ${bBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
                                                 <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${bDot} shrink-0`} />
                                                 <select
                                                     className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
@@ -1516,16 +1511,16 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                                         setTurbineMisc(prev => ({ ...prev, [`status_boiler_${bx}`]: v }));
                                                     }}
                                                 >
-                                                    <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                                                    <option value="running" className="bg-[#101822] text-white">Running</option>
-                                                    <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                    <option value="" className="bg-bg-dark text-slate-500">Status...</option>
+                                                    <option value="running" className="bg-bg-dark text-white">Running</option>
+                                                    <option value="shutdown" className="bg-bg-dark text-white">Shutdown</option>
                                                 </select>
                                             </div>
                                         );
                                     })()}
                                     {/* Status chip turbin — di kanan judul, size sama seperti chip shift */}
                                     {activeTab === 'Turbin' && (
-                                        <div className={`inline-flex items-center gap-2 sm:gap-3 bg-[#101822]/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                        <div className={`inline-flex items-center gap-2 sm:gap-3 bg-bg-dark/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
                                             <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
                                             <select
                                                 className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
@@ -1535,9 +1530,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                                     setTurbineMisc(prev => ({ ...prev, status_turbin: v }));
                                                 }}
                                             >
-                                                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
-                                                <option value="running" className="bg-[#101822] text-white">Running</option>
-                                                <option value="shutdown" className="bg-[#101822] text-white">Shutdown</option>
+                                                <option value="" className="bg-bg-dark text-slate-500">Status...</option>
+                                                <option value="running" className="bg-bg-dark text-white">Running</option>
+                                                <option value="shutdown" className="bg-bg-dark text-white">Shutdown</option>
                                             </select>
                                         </div>
                                     )}
@@ -1548,17 +1543,17 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
 
                     {/* Loading Overlay — tampil saat data sedang di-fetch dari Supabase */}
                     {loading ? (
-                        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl">
-                            <div className="w-12 h-12 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin shadow-[0_0_12px_rgba(16,185,129,0.3)]"></div>
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[400px] bg-surface-dark border border-slate-800/80 rounded-xl">
+                            <div className="w-12 h-12 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin"></div>
                             <div className="text-center">
                                 <h3 className="text-white font-bold text-base mb-1">Memuat data dari Supabase</h3>
                                 <p className="text-slate-400 text-sm">Mengambil data laporan harian...</p>
                             </div>
                         </div>
                     ) : visibleTabs.length === 0 && station ? (
-                        <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[400px] bg-[#16202e]/60 backdrop-blur-md border border-slate-800/80 rounded-xl text-center px-6">
+                        <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[400px] bg-surface-dark border border-slate-800/80 rounded-xl text-center px-6">
                             <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 56 }}>info</span>
-                            <h3 className="text-white font-bold text-base">Station <span className="text-emerald-400">{STATION_LABELS[station]}</span> tidak punya tab di laporan harian.</h3>
+                            <h3 className="text-white font-bold text-base">Station <span className="text-blue-400">{STATION_LABELS[station]}</span> tidak punya tab di laporan harian.</h3>
                             <p className="text-slate-400 text-sm max-w-md">Station ini hanya mengisi data di laporan shift. Buka link yang sesuai dari grup WA.</p>
                         </div>
                     ) : (

@@ -86,7 +86,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                     const totValue = defaultZero ? (pv[totName] ?? '') : pv[totName];
 
                                     return (
-                                        <div key={key} className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
+                                        <div key={key} className="bg-bg-dark/40 border border-slate-700/40 rounded-lg p-3">
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{label}</span>
                                             <div className="grid grid-cols-2 gap-3 mt-2">
                                                 <TotalizerField label="Totalizer" unit="MWh" color="emerald" size="small" name={totName} value={totValue} onChange={onPowerChange} placeholder={prevTot > 0 ? String(prevTot) : '0'} prev={prevTot} meter={`power_${key}`} />
@@ -97,7 +97,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                                 })}
 
                                 {/* STG UBB: totalizer only, MW = Load STG */}
-                                <div className="bg-[#101822]/40 border border-slate-700/40 rounded-lg p-3">
+                                <div className="bg-bg-dark/40 border border-slate-700/40 rounded-lg p-3">
                                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">STG UBB</span>
                                     <div className="grid grid-cols-2 gap-3 mt-2">
                                         <TotalizerField label="Totalizer" unit="MWh" color="emerald" size="small" name="power_stg_ubb_totalizer" value={pv.power_stg_ubb_totalizer} onChange={onPowerChange} placeholder={Number(prevPowerDist.power_stg_ubb_totalizer) > 0 ? String(Number(prevPowerDist.power_stg_ubb_totalizer)) : '0.0'} prev={Number(prevPowerDist.power_stg_ubb_totalizer) || 0} meter="power_stg_ubb" />

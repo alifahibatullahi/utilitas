@@ -688,7 +688,7 @@ export function PublishReportModal({
                                         onChange={v => { setForemanTurbin(v); onForemanTurbinChange?.(v); persistChange('foreman_turbin', v); }}
                                         options={foremanTurbinOptions.map(op => ({ value: op.name, label: op.name }))}
                                         ariaLabel="Foreman Turbin"
-                                        triggerClassName="text-xs font-black text-indigo-300 pr-6"
+                                        triggerClassName="text-xs font-black text-slate-200 pr-6"
                                     />
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
                                 </div>
@@ -703,7 +703,7 @@ export function PublishReportModal({
                                         onChange={v => { setForemanBoiler(v); onForemanBoilerChange?.(v); persistChange('foreman_boiler', v); }}
                                         options={foremanBoilerOptions.map(op => ({ value: op.name, label: op.name }))}
                                         ariaLabel="Foreman Boiler"
-                                        triggerClassName="text-xs font-black text-amber-300 pr-6"
+                                        triggerClassName="text-xs font-black text-slate-200 pr-6"
                                     />
                                     <span className="material-symbols-outlined text-[18px] text-slate-500 absolute right-0 pointer-events-none select-none">expand_more</span>
                                 </div>
@@ -716,8 +716,8 @@ export function PublishReportModal({
             {/* Ringkasan + pesan Washift */}
             {loadingText || !summary ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
-                    <span className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent" />
-                    <span className="text-emerald-400 text-xs font-semibold tracking-wider uppercase animate-pulse">Memuat ringkasan...</span>
+                    <span className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+                    <span className="text-slate-400 text-xs font-semibold tracking-wider uppercase">Memuat ringkasan...</span>
                 </div>
             ) : (
                 <div className="space-y-5">
@@ -730,7 +730,7 @@ export function PublishReportModal({
                     <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[14px] text-cyan-400">chat</span>
+                                <span className="material-symbols-outlined text-[14px] text-slate-400">chat</span>
                                 Pesan ke {washiftKey}
                             </div>
                             <button
@@ -738,8 +738,8 @@ export function PublishReportModal({
                                 disabled={loadingText || !text}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-40 active:scale-95 border text-[10px] font-bold uppercase tracking-wider
                                     ${copied
-                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
-                                        : 'bg-slate-900 border-slate-800 hover:border-slate-700/80 text-slate-400 hover:text-white hover:scale-105 shadow-sm'}`}
+                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                        : 'bg-slate-900 border-slate-800 hover:border-slate-700/80 text-slate-400 hover:text-white shadow-sm'}`}
                             >
                                 <span className="material-symbols-outlined text-[13px]">{copied ? 'check' : 'content_copy'}</span>
                                 {copied ? 'Tersalin' : 'Salin'}
@@ -826,14 +826,14 @@ export function PublishReportModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 transition-all duration-300"
+            className="graphite-canvas fixed inset-0 z-50 bg-slate-950/80 flex flex-col items-center justify-center p-3 sm:p-6 transition-all duration-300"
         >
             <div
-                className="relative w-full max-w-4xl max-h-[94dvh] bg-gradient-to-b from-[#182333] to-[#0e1621] flex flex-col overflow-hidden shadow-2xl rounded-2xl border border-slate-800/60"
+                className="relative w-full max-w-4xl max-h-[94dvh] bg-surface-dark flex flex-col overflow-hidden shadow-2xl rounded-2xl border border-slate-800/60"
             >
                 {/* Loading Overlay */}
                 {sending && (
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center space-y-4">
+                    <div className="absolute inset-0 bg-slate-950/85 z-50 flex flex-col items-center justify-center space-y-4">
                         <div className="relative flex items-center justify-center">
                             <div className="w-16 h-16 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin" />
                             <div className="absolute w-10 h-10 rounded-full border-4 border-emerald-500/20 border-b-emerald-500 animate-spin duration-1000" />
@@ -849,19 +849,16 @@ export function PublishReportModal({
                     </div>
                 )}
 
-                {/* Accent Top Bar */}
-                <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-500" />
-
                 {/* Header */}
                 <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-800/80">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-lg sm:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400">
+                        <h3 className="text-lg sm:text-xl font-extrabold text-white">
                             Publish Laporan {kindLabel}
                         </h3>
                         <button
                             onClick={onClose}
                             disabled={sending}
-                            className="text-slate-450 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/60 transition-all duration-200 disabled:opacity-30 flex items-center justify-center flex-shrink-0 cursor-pointer"
+                            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/60 transition-all duration-200 disabled:opacity-30 flex items-center justify-center flex-shrink-0 cursor-pointer"
                         >
                             <span className="material-symbols-outlined text-lg">close</span>
                         </button>
@@ -948,7 +945,7 @@ export function PublishReportModal({
                         <button
                             onClick={() => goToStep(Math.min(steps.length - 1, safeStepIdx + 1))}
                             disabled={sending}
-                            className="flex items-center gap-2 px-5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 transition-all duration-300 shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
+                            className="flex items-center gap-2 px-5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-blue-600 hover:bg-blue-500 transition-colors active:scale-[0.98] disabled:opacity-40"
                         >
                             <span>
                                 Lanjut
@@ -961,7 +958,7 @@ export function PublishReportModal({
                             onClick={publish}
                             disabled={sending || loadingText || !text.trim() || !reportId}
                             title={!reportId ? 'Laporan belum disimpan' : `Setujui isi laporan dan kirim teks ke ${washiftKey}`}
-                            className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all duration-300 shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_24px_rgba(16,185,129,0.45)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                            className="flex items-center gap-2.5 px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white rounded-xl cursor-pointer bg-emerald-600 hover:bg-emerald-500 transition-colors active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
                         >
                             {sending ? (
                                 <>
@@ -984,23 +981,11 @@ export function PublishReportModal({
 
 // ──────────── Review Summary Components — kartu mini per area ────────────
 
-function ReviewCard({ title, icon, color = 'slate', children }: { title: string; icon: string; color?: 'slate' | 'amber' | 'cyan' | 'purple' | 'emerald' | 'rose'; children: React.ReactNode }) {
-    const colorMap: Record<string, { border: string; text: string; bg: string; accent: string }> = {
-        slate: { border: 'border-slate-800/80', text: 'text-slate-350', bg: 'bg-slate-950/40', accent: 'bg-slate-600' },
-        amber: { border: 'border-amber-500/25', text: 'text-amber-300', bg: 'bg-slate-950/40', accent: 'bg-amber-500' },
-        cyan: { border: 'border-cyan-500/25', text: 'text-cyan-300', bg: 'bg-slate-950/40', accent: 'bg-cyan-500' },
-        purple: { border: 'border-purple-500/25', text: 'text-purple-300', bg: 'bg-slate-950/40', accent: 'bg-purple-500' },
-        emerald: { border: 'border-emerald-500/25', text: 'text-emerald-300', bg: 'bg-slate-950/40', accent: 'bg-emerald-500' },
-        rose: { border: 'border-rose-500/25', text: 'text-rose-300', bg: 'bg-slate-950/40', accent: 'bg-rose-500' },
-    };
-    const c = colorMap[color] || colorMap.slate;
+function ReviewCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
     return (
-        <div className={`relative ${c.bg} border ${c.border} rounded-2xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col justify-between`}>
-            {/* Left Accent Strip */}
-            <div className={`absolute left-0 top-0 bottom-0 w-1 ${c.accent}`} />
-            
-            <div className="pl-1.5 space-y-3">
-                <div className={`text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 ${c.text}`}>
+        <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between">
+            <div className="space-y-3">
+                <div className="text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 text-slate-400">
                     <span className="material-symbols-outlined text-[16px]">{icon}</span>
                     {title}
                 </div>
@@ -1030,7 +1015,7 @@ function StatusBadge({ value }: { value: string | null }) {
         standby: 'bg-slate-500/15 text-slate-300 border-slate-500/40',
         maintenance: 'bg-blue-500/15 text-blue-300 border-blue-500/40',
         berasap: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
-        shutdown: 'bg-rose-500/15 text-rose-300 border-rose-500/40',
+        shutdown: 'bg-red-500/15 text-red-300 border-red-500/40',
     };
     return (
         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${colorMap[v] ?? colorMap.standby}`}>
@@ -1043,8 +1028,8 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
     return (
         <div className="space-y-4">
             {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl p-4 shadow-[0_4px_20px_rgba(16,185,129,0.05)]">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-3 flex items-center gap-1.5 select-none">
+            <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5 select-none">
                     <span className="material-symbols-outlined text-[14px]">info</span>
                     Informasi Laporan Shift
                 </div>
@@ -1057,7 +1042,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Boiler A */}
-                <ReviewCard title="Boiler A" icon="factory" color="rose">
+                <ReviewCard title="Boiler A" icon="factory">
                     <Row label="Flow Steam" value={fmt(summary.boilerA?.flow)} unit="t/h" />
                     <Row label="Press Steam" value={fmt(summary.boilerA?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.boilerA?.tempSteam)} unit="°C" />
@@ -1071,7 +1056,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Boiler B */}
-                <ReviewCard title="Boiler B" icon="factory" color="purple">
+                <ReviewCard title="Boiler B" icon="factory">
                     <Row label="Flow Steam" value={fmt(summary.boilerB?.flow)} unit="t/h" />
                     <Row label="Press Steam" value={fmt(summary.boilerB?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.boilerB?.tempSteam)} unit="°C" />
@@ -1085,7 +1070,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Turbin */}
-                <ReviewCard title="Turbin" icon="mode_fan" color="cyan">
+                <ReviewCard title="Turbin" icon="mode_fan">
                     <Row label="Flow Steam" value={fmt(summary.turbin?.flowSteam)} unit="t/h" />
                     <Row label="Press Steam" value={fmt(summary.turbin?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.turbin?.tempSteam)} unit="°C" />
@@ -1094,7 +1079,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Distribusi Steam */}
-                <ReviewCard title="Distribusi Steam" icon="water_drop" color="cyan">
+                <ReviewCard title="Distribusi Steam" icon="water_drop">
                     <Row label="Pabrik 1" value={fmt(summary.steamDist?.pabrik1)} unit="t/h" />
                     <Row label="Pabrik 2" value={fmt(summary.steamDist?.pabrik2)} unit="t/h" />
                     <Row label="Pabrik 3A" value={fmt(summary.steamDist?.pabrik3a)} unit="t/h" />
@@ -1102,7 +1087,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Power */}
-                <ReviewCard title="Power" icon="bolt" color="amber">
+                <ReviewCard title="Power" icon="bolt">
                     <Row label="STG UBB" value={fmt(summary.power?.stgUbb)} unit="MW" />
                     <Row label="Internal UBB" value={fmt(summary.power?.internalUbb)} unit="MW" />
                     <Row label="Pabrik 2" value={fmt(summary.power?.pabrik2)} unit="MW" />
@@ -1113,7 +1098,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Tank Levels */}
-                <ReviewCard title="Tank Level" icon="water" color="emerald">
+                <ReviewCard title="Tank Level" icon="water">
                     <Row label="RCW" value={fmt(summary.tankLevels?.rcw)} unit="m³" />
                     <Row label="Demin" value={fmt(summary.tankLevels?.demin)} unit="m³" />
                 </ReviewCard>
@@ -1121,7 +1106,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
 
             {/* Catatan Operasional — hanya teks catatan (detail aktivitas sudah otomatis
                 masuk sebagai baris di dalam catatan, jadi blok "Detail" terpisah dihapus). */}
-            <ReviewCard title="Catatan Operasional" icon="sticky_note_2" color="amber">
+            <ReviewCard title="Catatan Operasional" icon="sticky_note_2">
                 {summary.catatan.trim() ? (
                     <pre className="text-[11px] text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">{summary.catatan}</pre>
                 ) : (
@@ -1130,7 +1115,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
             </ReviewCard>
 
             {/* Maintenance */}
-            <ReviewCard title="Maintenance" icon="build" color="slate">
+            <ReviewCard title="Maintenance" icon="build">
                 <p className="text-[11px] text-slate-400 italic flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm">hourglass_empty</span> Coming soon
                 </p>
@@ -1138,14 +1123,14 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
 
             {/* Critical Equipment */}
             {summary.critical.length > 0 && (
-                <ReviewCard title={`Critical Equipment (${summary.critical.length})`} icon="warning" color="rose">
+                <ReviewCard title={`Critical Equipment (${summary.critical.length})`} icon="warning">
                     <div className="space-y-2.5 divide-y divide-slate-800/55">
                         {summary.critical.map((c, i) => (
                             <div key={i} className={`flex flex-col gap-1.5 text-[11px] ${i > 0 ? 'pt-2.5' : ''}`}>
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex flex-wrap items-center gap-1.5">
                                         <span className="font-mono text-[9px] text-slate-300 bg-slate-900 border border-slate-800/80 px-1.5 py-0.5 rounded font-bold">{c.date}</span>
-                                        <span className="font-mono font-black text-rose-400 text-[11px]">{c.item}</span>
+                                        <span className="font-mono font-black text-red-400 text-[11px]">{c.item}</span>
                                         <span className="text-[9px] bg-slate-800/70 text-slate-300 px-2 py-0.5 rounded font-bold uppercase">{humanizeScope(c.scope)}</span>
                                     </div>
                                 </div>
@@ -1163,8 +1148,8 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
     return (
         <div className="space-y-4">
             {/* Header Laporan Harian */}
-            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl p-4 shadow-[0_4px_20px_rgba(16,185,129,0.05)]">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-3 flex items-center gap-1.5 select-none">
+            <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5 select-none">
                     <span className="material-symbols-outlined text-[14px]">info</span>
                     Informasi Laporan Harian
                 </div>
@@ -1174,7 +1159,7 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ReviewCard title="Boiler A" icon="factory" color="rose">
+                <ReviewCard title="Boiler A" icon="factory">
                     <Row label="Flow Steam (00:00)" value={fmt(summary.boilerA?.flow)} unit="t/h" />
                     <Row label="Batubara 24h" value={fmt(summary.boilerA?.batubara)} unit="ton" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerA?.tempFurnace)} unit="°C" />
@@ -1183,7 +1168,7 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                         <StatusBadge value={summary.boilerA?.status ?? null} />
                     </div>
                 </ReviewCard>
-                <ReviewCard title="Boiler B" icon="factory" color="purple">
+                <ReviewCard title="Boiler B" icon="factory">
                     <Row label="Flow Steam (00:00)" value={fmt(summary.boilerB?.flow)} unit="t/h" />
                     <Row label="Batubara 24h" value={fmt(summary.boilerB?.batubara)} unit="ton" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerB?.tempFurnace)} unit="°C" />
@@ -1192,15 +1177,15 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                         <StatusBadge value={summary.boilerB?.status ?? null} />
                     </div>
                 </ReviewCard>
-                <ReviewCard title="Turbin" icon="mode_fan" color="cyan">
+                <ReviewCard title="Turbin" icon="mode_fan">
                     <Row label="Inlet Flow" value={fmt(summary.turbin?.inletFlow)} unit="t/h" />
                     <Row label="Thrust Bearing" value={fmt(summary.turbin?.thrustBearing)} unit="°C" />
                 </ReviewCard>
-                <ReviewCard title="Distribusi Steam" icon="water_drop" color="cyan">
+                <ReviewCard title="Distribusi Steam" icon="water_drop">
                     <Row label="Pabrik 1" value={fmt(summary.steamDist?.pabrik1)} unit="t/h" />
                     <Row label="Pabrik 3" value={fmt(summary.steamDist?.pabrik3)} unit="t/h" />
                 </ReviewCard>
-                <ReviewCard title="Power" icon="bolt" color="amber">
+                <ReviewCard title="Power" icon="bolt">
                     <Row label="STG UBB" value={fmt(summary.power?.stgUbb)} unit="MW" />
                     <Row label="Internal UBB" value={fmt(summary.power?.internalUbb)} unit="MW" />
                     <Row label="Pabrik 2" value={fmt(summary.power?.pabrik2)} unit="MW" />
@@ -1209,14 +1194,14 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                     <Row label="PIU" value={fmt(summary.power?.piu)} unit="MW" />
                     <Row label="PLN" value={fmt(summary.power?.pln)} unit="MW" />
                 </ReviewCard>
-                <ReviewCard title="Tank & Stock" icon="water" color="emerald">
+                <ReviewCard title="Tank & Stock" icon="water">
                     <Row label="RCW" value={fmt(summary.tankLevels?.rcw)} unit="m³" />
                     <Row label="Demin" value={fmt(summary.tankLevels?.demin)} unit="m³" />
                     <Row label="Stock Batubara" value={stockOverride && stockOverride.trim() ? stockOverride.trim() : fmt(summary.stockBatubara)} unit="ton" />
                 </ReviewCard>
             </div>
 
-            <ReviewCard title="Catatan Operasional" icon="sticky_note_2" color="amber">
+            <ReviewCard title="Catatan Operasional" icon="sticky_note_2">
                 {summary.notes.trim() ? (
                     <pre className="text-[11px] text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">{summary.notes}</pre>
                 ) : (
@@ -1224,21 +1209,21 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                 )}
             </ReviewCard>
 
-            <ReviewCard title="Maintenance" icon="build" color="slate">
+            <ReviewCard title="Maintenance" icon="build">
                 <p className="text-[11px] text-slate-400 italic flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm">hourglass_empty</span> Coming soon
                 </p>
             </ReviewCard>
 
             {summary.critical.length > 0 && (
-                <ReviewCard title={`Critical Equipment (${summary.critical.length})`} icon="warning" color="rose">
+                <ReviewCard title={`Critical Equipment (${summary.critical.length})`} icon="warning">
                     <div className="space-y-2.5 divide-y divide-slate-800/55">
                         {summary.critical.map((c, i) => (
                             <div key={i} className={`flex flex-col gap-1.5 text-[11px] ${i > 0 ? 'pt-2.5' : ''}`}>
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex flex-wrap items-center gap-1.5">
                                         <span className="font-mono text-[9px] text-slate-300 bg-slate-900 border border-slate-800/80 px-1.5 py-0.5 rounded font-bold">{c.date}</span>
-                                        <span className="font-mono font-black text-rose-400 text-[11px]">{c.item}</span>
+                                        <span className="font-mono font-black text-red-400 text-[11px]">{c.item}</span>
                                         <span className="text-[9px] bg-slate-800/70 text-slate-300 px-2 py-0.5 rounded font-bold uppercase">{humanizeScope(c.scope)}</span>
                                     </div>
                                 </div>
@@ -1260,12 +1245,11 @@ function ResultRow({ label, res, extra }: { label: string; res?: ChannelResult; 
         <div 
             className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all duration-200 
                 ${isOk 
-                    ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300 shadow-[0_2px_8px_rgba(16,185,129,0.05)]' 
-                    : 'bg-rose-500/5 border-rose-500/20 text-rose-300 shadow-[0_2px_8px_rgba(244,63,94,0.05)]'}`}
+                    ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300' 
+                    : 'bg-red-500/5 border-red-500/20 text-red-300'}`}
         >
             <div className="relative flex-shrink-0 mt-0.5">
-                <span className={`block w-2 h-2 rounded-full ${isOk ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                <span className={`absolute top-0 left-0 w-2 h-2 rounded-full animate-ping opacity-75 ${isOk ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                <span className={`block w-2 h-2 rounded-full ${isOk ? 'bg-emerald-500' : 'bg-red-500'}`} />
             </div>
             
             <div className="flex-1 min-w-0">

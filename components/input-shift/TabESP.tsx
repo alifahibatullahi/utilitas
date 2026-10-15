@@ -70,7 +70,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                         {allAshEntries.length > 0 && (
                             <div className="mb-1 flex flex-col gap-2">
                                 {savedAshEntries.map((e) => (
-                                    <div key={`saved-${e.id}`} className="flex items-center justify-between px-3 py-2.5 bg-[#101822] border border-orange-500/30 rounded-lg group hover:border-orange-500/50 transition-colors">
+                                    <div key={`saved-${e.id}`} className="flex items-center justify-between px-3 py-2.5 bg-bg-dark border border-orange-500/30 rounded-lg group hover:border-orange-500/50 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0 pr-2">
                                             <span className="text-[10px] font-bold text-orange-300 bg-orange-500/15 border border-orange-500/30 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
                                             <div className="flex flex-col gap-0.5 min-w-0">
@@ -87,7 +87,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <div className="flex items-baseline gap-1 bg-[#0f1721] px-2.5 py-1.5 rounded-lg border border-slate-700/50 shadow-inner">
+                                            <div className="flex items-baseline gap-1 bg-surface-dark px-2.5 py-1.5 rounded-lg border border-slate-700/50 shadow-inner">
                                                 <span className="text-white font-black text-lg leading-none">{e.ritase}</span>
                                                 <span className="text-orange-400 text-[9px] font-bold uppercase tracking-widest">Rit</span>
                                             </div>
@@ -101,7 +101,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                                     </div>
                                 ))}
                                 {ashEntries.filter(e => e.silo && e.perusahaan).map((e, idx) => (
-                                    <div key={`pending-${idx}`} className="flex items-center justify-between px-3 py-2.5 bg-[#101822]/60 border border-amber-500/30 rounded-lg border-dashed">
+                                    <div key={`pending-${idx}`} className="flex items-center justify-between px-3 py-2.5 bg-bg-dark/60 border border-amber-500/30 rounded-lg border-dashed">
                                         <div className="flex items-center gap-3 min-w-0 pr-2">
                                             <span className="text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-1 rounded-md shrink-0">Silo {e.silo}</span>
                                             <div className="flex flex-col gap-0.5 min-w-0">
@@ -119,7 +119,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <div className="flex items-baseline gap-1 bg-[#0f1721] px-2.5 py-1.5 rounded-lg border border-slate-700/50 shadow-inner">
+                                            <div className="flex items-baseline gap-1 bg-surface-dark px-2.5 py-1.5 rounded-lg border border-slate-700/50 shadow-inner">
                                                 <span className="text-white font-black text-lg leading-none">{e.ritase}</span>
                                                 <span className="text-amber-400 text-[9px] font-bold uppercase tracking-widest">Rit</span>
                                             </div>
@@ -134,7 +134,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                             </div>
                         )}
                         <button type="button" onClick={() => setShowModal(true)}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-orange-500/40 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 text-sm font-bold transition-colors">
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 text-sm font-bold transition-colors">
                             <span className="material-symbols-outlined text-[18px]">add_circle</span>
                             Tambah Unloading
                         </button>
@@ -163,19 +163,19 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                     <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Truck Dari Perusahaan</label>
                     <input type="text" value={form.perusahaan} onChange={e => setForm({ ...form, perusahaan: e.target.value })}
                         placeholder="Nama PT..."
-                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-orange-500 text-sm transition-all" />
+                        className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
                 </div>
                 <div className="space-y-1.5 w-full">
                     <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Tujuan</label>
                     <input type="text" value={form.tujuan} onChange={e => setForm({ ...form, tujuan: e.target.value })}
                         placeholder="Lokasi tujuan..."
-                        className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-orange-500 text-sm transition-all" />
+                        className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
                 </div>
                 <InputField label="Jumlah Ritase" unit="Rit" color="orange"
                     value={form.ritase}
                     onChange={(_, v) => setForm({ ...form, ritase: typeof v === 'string' ? parseFloat(v) || null : v })} />
                 <button type="button" onClick={saveEntry} disabled={!form.silo || !form.perusahaan || !form.tujuan || !form.ritase}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm transition-colors mt-1">
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors mt-1">
                     <span className="material-symbols-outlined text-[18px]">save</span>
                     Simpan
                 </button>

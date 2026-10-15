@@ -41,8 +41,8 @@ export default function PersonnelConfirmModal({ open, subtitle, fields, onConfir
     const missing = fields.filter(f => f.required && !(values[f.key] ?? '').trim());
 
     return (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="bg-[#16202e] border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/70 p-4">
+            <div className="bg-surface-dark border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-150">
                 <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
                         <span className="material-symbols-outlined text-blue-400 text-[22px]">badge</span>
@@ -61,7 +61,7 @@ export default function PersonnelConfirmModal({ open, subtitle, fields, onConfir
                             <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
                                 {f.label} {f.required && <span className="text-red-400">*</span>}
                             </span>
-                            <div className="flex items-center bg-[#101822] px-2.5 py-2 rounded-lg border border-slate-700/50 relative pr-6">
+                            <div className="flex items-center bg-bg-dark px-2.5 py-2 rounded-lg border border-slate-700/50 relative pr-6">
                                 <SearchableSelect
                                     value={values[f.key] ?? ''}
                                     onChange={v => setValues(prev => ({ ...prev, [f.key]: v }))}
@@ -90,7 +90,7 @@ export default function PersonnelConfirmModal({ open, subtitle, fields, onConfir
                     </button>
                 </div>
                 {missing.length > 0 && (
-                    <p className="text-rose-400 text-[11px] font-semibold mt-2 text-center">
+                    <p className="text-red-400 text-[11px] font-semibold mt-2 text-center">
                         Isi dulu: {missing.map(m => m.label).join(', ')}
                     </p>
                 )}

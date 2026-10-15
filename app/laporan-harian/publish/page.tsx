@@ -19,7 +19,7 @@ function PublishHarianInner() {
 
     if (!reportId) {
         return (
-            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[#0e1621] text-slate-300">
+            <div className="graphite-canvas fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg-dark text-slate-300">
                 <span className="material-symbols-outlined text-5xl text-slate-600">error</span>
                 <p className="text-sm">Laporan tidak ditemukan (parameter <code>id</code> kosong).</p>
                 <button onClick={() => router.back()} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase tracking-wider">Kembali</button>

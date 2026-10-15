@@ -210,6 +210,73 @@ body:has(.light-canvas) {
   background-color: #fafafa;
 }
 
+/* Tema grafit Input Laporan (+ review/publish laporan-shift/harian). Root halaman
+   memasang .graphite-canvas; :has() di body supaya modal/portal & AppShell ikut.
+   Utilitas Tailwind v4 membaca var(--color-*), jadi slate/blue/emerald di halaman
+   ini otomatis jadi grafit netral / biru baja / hijau kalem. Merah, amber & oranye
+   sengaja tidak diremap — itu warna status. Halaman gelap lain tetap navy. */
+body:has(.graphite-canvas) {
+  background-color: #121314;
+
+  --color-bg-dark: #121314;
+  --color-surface-dark: #1a1c1f;
+  --color-surface-highlight: #25282c;
+  --color-text-secondary: #9aa0a7;
+  --color-primary: #4a83c9;
+  --color-bg-primary: #121314;
+  --color-bg-card: #1a1c1f;
+  --color-bg-card-hover: #25282c;
+
+  --color-slate-50: #f7f8f8;
+  --color-slate-100: #eef0f1;
+  --color-slate-200: #dfe1e4;
+  --color-slate-300: #c6cacf;
+  --color-slate-400: #9aa0a7;
+  --color-slate-500: #6c727a;
+  --color-slate-600: #4d5258;
+  --color-slate-700: #383c41;
+  --color-slate-800: #26292d;
+  --color-slate-900: #16181a;
+  --color-slate-950: #0d0e0f;
+
+  --color-blue-50: #f1f5fa;
+  --color-blue-100: #e0e9f5;
+  --color-blue-200: #c3d5ec;
+  --color-blue-300: #9dbbe0;
+  --color-blue-400: #74a0d4;
+  --color-blue-500: #4a83c9;
+  --color-blue-600: #3c6dab;
+  --color-blue-700: #33598b;
+  --color-blue-800: #2b486f;
+  --color-blue-900: #233a57;
+  --color-blue-950: #16253a;
+
+  --color-emerald-50: #eff8f2;
+  --color-emerald-100: #d8efe0;
+  --color-emerald-200: #b2dec3;
+  --color-emerald-300: #84c7a0;
+  --color-emerald-400: #59ae80;
+  --color-emerald-500: #3a9564;
+  --color-emerald-600: #2d8454;
+  --color-emerald-700: #276c46;
+  --color-emerald-800: #22563a;
+  --color-emerald-900: #1c4530;
+  --color-emerald-950: #0f2a1c;
+}
+
+/* Scrollbar global bergaya terang — di kanvas grafit tampak sebagai pita putih,
+   jadi digelapkan di halaman grafit. */
+body:has(.graphite-canvas) ::-webkit-scrollbar-track {
+  background: #1a1c1f;
+}
+body:has(.graphite-canvas) ::-webkit-scrollbar-thumb {
+  background: #4d5258;
+  border-color: #1a1c1f;
+}
+body:has(.graphite-canvas) ::-webkit-scrollbar-thumb:hover {
+  background: #6c727a;
+}
+
 /* Scrollbar-hide utility */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

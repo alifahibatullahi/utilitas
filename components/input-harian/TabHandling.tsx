@@ -111,7 +111,7 @@ export default function TabHandling({
                     <InputField label="Level Demin" name="demin_level_00" value={stockTank.demin_level_00} onChange={onStockTankChange} unit="m³" color="blue" />
                 </div>
                 <div className="grid grid-cols-2 gap-3 items-end">
-                    <div className="rounded-lg border border-slate-700/40 bg-[#101822]/40 px-3 py-2.5">
+                    <div className="rounded-lg border border-slate-700/40 bg-bg-dark/40 px-3 py-2.5">
                         <p className="text-[9px] text-slate-400 uppercase tracking-wider">Level Solar Kemarin</p>
                         <p className="text-lg font-mono font-bold text-slate-300">{levelKemarin != null ? fmt(levelKemarin) : '—'} <span className="text-[10px] text-slate-500">m³</span></p>
                     </div>
@@ -166,7 +166,7 @@ export default function TabHandling({
                         <div className="rounded-lg border border-slate-700/60 overflow-hidden">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="bg-[#101822]/70 text-[10px] uppercase tracking-wider text-slate-400">
+                                    <tr className="bg-bg-dark/70 text-[10px] uppercase tracking-wider text-slate-400">
                                         <th className="text-left py-2 px-3 font-medium">Parameter</th>
                                         <th className="text-right py-2 px-3 font-medium">Konsumsi</th>
                                     </tr>
@@ -205,7 +205,7 @@ export default function TabHandling({
                             {solarUnloadings.length > 0 ? (
                                 <div className="space-y-2">
                                     {solarUnloadings.map((item) => (
-                                        <div key={item.id ?? item.supplier} className="flex items-center justify-between gap-2 bg-[#101822]/50 border border-amber-500/30 rounded-lg px-3 py-2">
+                                        <div key={item.id ?? item.supplier} className="flex items-center justify-between gap-2 bg-bg-dark/50 border border-amber-500/30 rounded-lg px-3 py-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <span className="material-symbols-outlined text-amber-400 text-[15px]">local_shipping</span>
                                                 <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-amber-400 text-xs">L</span></span>
@@ -231,7 +231,7 @@ export default function TabHandling({
                                 <p className="text-[11px] text-slate-500 italic">Belum ada data kedatangan solar hari ini</p>
                             )}
                             <button type="button" onClick={() => setEditUn({ liters: 0, supplier: '' })}
-                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs font-bold transition-colors">
+                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-bold transition-colors">
                                 <span className="material-symbols-outlined text-[16px]">add_circle</span>
                                 Tambah Kedatangan
                             </button>
@@ -243,10 +243,10 @@ export default function TabHandling({
                             {solarUsages.length > 0 ? (
                                 <div className="space-y-2">
                                     {solarUsages.map((item) => (
-                                        <div key={item.id ?? item.tujuan} className="flex items-center justify-between gap-2 bg-[#101822]/50 border border-rose-500/30 rounded-lg px-3 py-2">
+                                        <div key={item.id ?? item.tujuan} className="flex items-center justify-between gap-2 bg-bg-dark/50 border border-red-500/30 rounded-lg px-3 py-2">
                                             <div className="flex items-center gap-2 min-w-0">
-                                                <span className="material-symbols-outlined text-rose-400 text-[15px]">upload</span>
-                                                <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-rose-400 text-xs">L</span></span>
+                                                <span className="material-symbols-outlined text-red-400 text-[15px]">upload</span>
+                                                <span className="text-white font-medium text-sm">{item.liters.toLocaleString('id-ID')} <span className="text-red-400 text-xs">L</span></span>
                                                 <SolarOriginBadge shift={item.shift} />
                                                 <span className="text-[10px] text-slate-400 truncate">{item.tujuan}</span>
                                             </div>
@@ -272,7 +272,7 @@ export default function TabHandling({
                                 <p className="text-[11px] text-slate-500 italic">Belum ada data permintaan solar hari ini</p>
                             )}
                             <button type="button" onClick={() => setEditUs({ liters: 0, tujuan: 'Bengkel', shift: 'harian', tujuanMode: 'Bengkel' })}
-                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-bold transition-colors">
+                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-bold transition-colors">
                                 <span className="material-symbols-outlined text-[16px]">add_circle</span>
                                 Tambah Permintaan
                             </button>
@@ -301,7 +301,7 @@ export default function TabHandling({
                     {coalArrivals.length > 0 ? (
                         <div className="space-y-2">
                             {coalArrivals.map((item, i) => (
-                                <div key={item.id ?? i} className="flex items-center gap-2 bg-[#101822]/50 border border-emerald-500/30 rounded-lg px-3 py-2 min-w-0">
+                                <div key={item.id ?? i} className="flex items-center gap-2 bg-bg-dark/50 border border-emerald-500/30 rounded-lg px-3 py-2 min-w-0">
                                     <span className="material-symbols-outlined text-emerald-400 text-[15px]">{item.asal === 'darat' ? 'local_shipping' : 'directions_boat'}</span>
                                     {/* Baris penutup (lanjutan bertonase 0) cuma menandai pengiriman tuntas. */}
                                     {item.ton === 0 && item.status === 'selesai'
@@ -330,7 +330,7 @@ export default function TabHandling({
                     {coalLoadings.length > 0 ? (
                         <div className="space-y-2">
                             {coalLoadings.map(item => (
-                                <div key={item.shift} className="flex items-start gap-2 bg-[#101822]/50 border border-orange-500/30 rounded-lg px-3 py-2 min-w-0">
+                                <div key={item.shift} className="flex items-start gap-2 bg-bg-dark/50 border border-orange-500/30 rounded-lg px-3 py-2 min-w-0">
                                     <span className="material-symbols-outlined text-orange-400 text-[15px] mt-0.5">local_shipping</span>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -366,16 +366,16 @@ export default function TabHandling({
                     <>
                         <div className="space-y-1.5">
                             <label className="font-bold text-white uppercase tracking-wider block text-xs">Jumlah (Liter)</label>
-                            <input type="number" className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                            <input type="number" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUn.liters} onChange={e => setEditUn({ ...editUn, liters: Number(e.target.value) || 0 })} />
                         </div>
                         <div className="space-y-1.5">
                             <label className="font-bold text-white uppercase tracking-wider block text-xs">Supplier</label>
-                            <input type="text" className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                            <input type="text" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUn.supplier} onChange={e => setEditUn({ ...editUn, supplier: e.target.value })} />
                         </div>
                         <button type="button" onClick={saveEditUn}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors mt-1">
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors mt-1">
                             <span className="material-symbols-outlined text-[18px]">save</span>Simpan
                         </button>
                     </>
@@ -388,12 +388,12 @@ export default function TabHandling({
                     <>
                         <div className="space-y-1.5">
                             <label className="font-bold text-white uppercase tracking-wider block text-xs">Jumlah (Liter)</label>
-                            <input type="number" className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
+                            <input type="number" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUs.liters} onChange={e => setEditUs({ ...editUs, liters: Number(e.target.value) || 0 })} />
                         </div>
                         <div className="space-y-1.5">
                             <label className="font-bold text-white uppercase tracking-wider block text-xs">Asal / Shift</label>
-                            <select className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
+                            <select className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUs.shift} onChange={e => setEditUs({ ...editUs, shift: e.target.value })}>
                                 <option value="harian">Harian (ditambah di laporan harian)</option>
                                 <option value="pagi">Shift Pagi</option>
@@ -403,7 +403,7 @@ export default function TabHandling({
                         </div>
                         <div className="space-y-1.5">
                             <label className="font-bold text-white uppercase tracking-wider block text-xs">Tujuan</label>
-                            <select className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
+                            <select className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUs.tujuanMode} onChange={e => {
                                     const mode = e.target.value as EditUs['tujuanMode'];
                                     setEditUs({ ...editUs, tujuanMode: mode, tujuan: mode !== 'Lainnya' ? mode : '' });
@@ -413,12 +413,12 @@ export default function TabHandling({
                                 <option value="Lainnya">Lainnya…</option>
                             </select>
                             {editUs.tujuanMode === 'Lainnya' && (
-                                <input type="text" placeholder="Tulis tujuan..." className="mt-2 w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-all"
+                                <input type="text" placeholder="Tulis tujuan..." className="mt-2 w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                     value={editUs.tujuan} onChange={e => setEditUs({ ...editUs, tujuan: e.target.value })} />
                             )}
                         </div>
                         <button type="button" onClick={saveEditUs}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-sm transition-colors mt-1">
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors mt-1">
                             <span className="material-symbols-outlined text-[18px]">save</span>Simpan
                         </button>
                     </>

@@ -59,7 +59,7 @@ export default function TabStockBatubara({
                         { label: 'Via Laut · Tongkang', ton: laut, icon: 'directions_boat' },
                         { label: 'Via Darat', ton: darat, icon: 'local_shipping' },
                     ].map(k => (
-                        <div key={k.label} className="rounded-lg border border-slate-700/40 bg-[#101822]/40 px-3 py-2.5">
+                        <div key={k.label} className="rounded-lg border border-slate-700/40 bg-bg-dark/40 px-3 py-2.5">
                             <p className="text-[9px] text-slate-400 uppercase tracking-wider flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[12px]">{k.icon}</span>{k.label}
                             </p>
@@ -85,7 +85,7 @@ export default function TabStockBatubara({
                             {coalArrivals.map((item, i) => {
                                 const asal = labelAsalKedatangan(item.asal, item.metode_unloading);
                                 return (
-                                    <div key={item.id ?? i} className={`relative flex items-center gap-2 bg-[#101822]/50 border border-amber-500/30 rounded-lg px-3 py-2 min-w-0 ${bisaUbah ? 'pr-16' : ''}`}>
+                                    <div key={item.id ?? i} className={`relative flex items-center gap-2 bg-bg-dark/50 border border-amber-500/30 rounded-lg px-3 py-2 min-w-0 ${bisaUbah ? 'pr-16' : ''}`}>
                                         <span className="material-symbols-outlined text-amber-400 text-[15px]">{item.asal === 'darat' ? 'local_shipping' : 'directions_boat'}</span>
                                         <div className="flex flex-col min-w-0 gap-0.5">
                                             <div className="flex items-center gap-2 min-w-0">
@@ -115,7 +115,7 @@ export default function TabStockBatubara({
                     ) : <p className="text-[11px] text-slate-500 italic">Belum ada kedatangan batubara hari ini.</p>}
                     {onAddCoalArrival && (
                         <button type="button" onClick={() => setModal({ edit: null })}
-                            className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm font-bold transition-colors">
+                            className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 text-sm font-bold transition-colors">
                             <span className="material-symbols-outlined text-[18px]">add_circle</span>Tambah Kedatangan
                         </button>
                     )}

@@ -123,8 +123,8 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, onAuto
         <>
             <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 {isBoilerShutdown && (
-                    <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
-                        <span className="material-symbols-outlined text-[16px] text-rose-400 shrink-0 mt-0.5">power_off</span>
+                    <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+                        <span className="material-symbols-outlined text-[16px] text-red-400 shrink-0 mt-0.5">power_off</span>
                         <span>
                             Boiler {boilerId} <span className="font-bold">shutdown</span>
                             {shutdownSince && currentDate
@@ -215,7 +215,7 @@ export default function TabBoiler({ boilerId, values = {}, onFieldChange, onAuto
                     <CalculatedField label="Total Batubara" value={totalBatubara.toFixed(2)} unit="ton" variant="primary" size="large" />
 
                     <div className="mt-auto">
-                        <CalculatedField label="Consumption Rate" value={cr.toFixed(3)} unit="ton/ton" variant="purple" size="large" />
+                        <CalculatedField label="Consumption Rate" value={cr.toFixed(3)} unit="ton/ton" variant="primary" size="large" />
                     </div>
                 </Card>
             </div>

@@ -8,6 +8,7 @@ export interface InputFieldProps {
     label?: string;
     placeholder?: string;
     unit?: string;
+    /** Tidak dipakai lagi — fokus isian selalu warna aksen. */
     color?: string;
     size?: string;
     value?: number | string | null;
@@ -27,7 +28,7 @@ export interface InputFieldProps {
 
 const FIELD_LABEL = "font-bold text-white uppercase tracking-wider block text-left text-xs";
 
-export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", size = "small", value, onChange, name, negative, readOnly, textMode, thousands, plainInteger, highlight, autoFocus }: InputFieldProps) => {
+export const InputField = ({ label, placeholder = "0.0", unit, size = "small", value, onChange, name, negative, readOnly, textMode, thousands, plainInteger, highlight, autoFocus }: InputFieldProps) => {
     const border = highlight ? 'border-red-500 ring-1 ring-red-500/60' : 'border-slate-700/80';
     // Local state for textMode to handle intermediate values like "-" or "1."
     const [rawText, setRawText] = useState('');
@@ -93,7 +94,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
                 {labelEl}
                 <div className="relative">
                     <input
-                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-[#101822]/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border ${border} rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(thuText)} font-mono font-bold tracking-wide transition-all text-left`}
+                        className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : `bg-bg-dark/50 ${isEmpty ? 'text-slate-400' : 'text-white'}`} border ${border} rounded-lg py-2.5 pl-3 ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${sizeForLen(thuText)} font-mono font-bold tracking-wide transition-all text-left`}
                         type="text"
                         inputMode="numeric"
                         placeholder={placeholder}
@@ -138,7 +139,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
             <div className="relative">
                 {negative && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">−</span>}
                 <input
-                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-[#101822]/50 text-white'} border ${border} rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 ${sizeForLen(String(textMode ? rawText : (displayValue ?? '')))} font-mono font-bold tracking-wide transition-all text-left`}
+                    className={`w-full ${readOnly ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-bg-dark/50 text-white'} border ${border} rounded-lg py-2.5 ${negative ? 'pl-7' : 'pl-3'} ${unit ? 'pr-12' : 'pr-3'} placeholder-slate-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${sizeForLen(String(textMode ? rawText : (displayValue ?? '')))} font-mono font-bold tracking-wide transition-all text-left`}
                     placeholder={placeholder}
                     autoFocus={autoFocus}
                     type={textMode ? "text" : "number"}
@@ -179,7 +180,7 @@ export const InputField = ({ label, placeholder = "0.0", unit, color = "blue", s
     );
 };
 
-export const SelectField = ({ label, options, color = "blue", size = "normal", value, onChange, name, placeholder = "Pilih..." }: {
+export const SelectField = ({ label, options, size = "normal", value, onChange, name, placeholder = "Pilih..." }: {
     label?: string;
     options: { value: string; label: string }[];
     color?: string;
@@ -196,13 +197,13 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
             </label>
         )}
         <select
-            className={`w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-${color}-500 focus:border-${color}-500 text-lg font-mono font-bold tracking-wide transition-all appearance-none cursor-pointer`}
+            className={`w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-lg font-mono font-bold tracking-wide transition-all appearance-none cursor-pointer`}
             value={value ?? ''}
             onChange={e => onChange?.(name || label || '', e.target.value === '' ? null : e.target.value)}
         >
-            <option value="" className="bg-[#101822] text-slate-500">{placeholder}</option>
+            <option value="" className="bg-bg-dark text-slate-500">{placeholder}</option>
             {options.map((opt) => (
-                <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">
+                <option key={opt.value} value={opt.value} className="bg-bg-dark text-white">
                     {opt.label}
                 </option>
             ))}
@@ -210,36 +211,22 @@ export const SelectField = ({ label, options, color = "blue", size = "normal", v
     </div>
 );
 
-export const Card = ({ title, icon, color = "blue", children, isSidebar = false, className = '', headerRight }: {
+export const Card = ({ title, icon, children, isSidebar = false, className = '', headerRight }: {
     title: string;
     icon: string;
+    /** Tidak dipakai lagi — semua kartu netral; warna hanya untuk status. Dibiarkan
+     *  supaya pemanggil lama tetap valid. */
     color?: 'blue' | 'cyan' | 'orange' | 'emerald' | 'purple' | 'indigo' | 'slate' | 'amber' | 'rose' | 'teal' | 'sky';
     children: React.ReactNode;
     isSidebar?: boolean;
     className?: string;
     headerRight?: React.ReactNode;
 }) => {
-    const colorMap: Record<string, { icon: string; iconBg: string; headerGradient: string; border: string; glow: string }> = {
-        blue:    { icon: 'text-blue-400',    iconBg: 'bg-blue-500/20',    headerGradient: 'from-blue-500/10',    border: 'border-blue-500/20 hover:border-blue-400/40',    glow: 'shadow-blue-500/5 hover:shadow-blue-500/15' },
-        cyan:    { icon: 'text-cyan-400',    iconBg: 'bg-cyan-500/20',    headerGradient: 'from-cyan-500/10',    border: 'border-cyan-500/20 hover:border-cyan-400/40',    glow: 'shadow-cyan-500/5 hover:shadow-cyan-500/15' },
-        orange:  { icon: 'text-orange-400',  iconBg: 'bg-orange-500/20',  headerGradient: 'from-orange-500/10',  border: 'border-orange-500/20 hover:border-orange-400/40',  glow: 'shadow-orange-500/5 hover:shadow-orange-500/15' },
-        emerald: { icon: 'text-emerald-400', iconBg: 'bg-emerald-500/20', headerGradient: 'from-emerald-500/10', border: 'border-emerald-500/20 hover:border-emerald-400/40', glow: 'shadow-emerald-500/5 hover:shadow-emerald-500/15' },
-        purple:  { icon: 'text-purple-400',  iconBg: 'bg-purple-500/20',  headerGradient: 'from-purple-500/10',  border: 'border-purple-500/20 hover:border-purple-400/40',  glow: 'shadow-purple-500/5 hover:shadow-purple-500/15' },
-        indigo:  { icon: 'text-indigo-400',  iconBg: 'bg-indigo-500/20',  headerGradient: 'from-indigo-500/10',  border: 'border-indigo-500/20 hover:border-indigo-400/40',  glow: 'shadow-indigo-500/5 hover:shadow-indigo-500/15' },
-        amber:   { icon: 'text-amber-400',   iconBg: 'bg-amber-500/20',   headerGradient: 'from-amber-500/10',   border: 'border-amber-500/20 hover:border-amber-400/40',   glow: 'shadow-amber-500/5 hover:shadow-amber-500/15' },
-        rose:    { icon: 'text-rose-400',    iconBg: 'bg-rose-500/20',    headerGradient: 'from-rose-500/10',    border: 'border-rose-500/20 hover:border-rose-400/40',    glow: 'shadow-rose-500/5 hover:shadow-rose-500/15' },
-        teal:    { icon: 'text-teal-400',    iconBg: 'bg-teal-500/20',    headerGradient: 'from-teal-500/10',    border: 'border-teal-500/20 hover:border-teal-400/40',    glow: 'shadow-teal-500/5 hover:shadow-teal-500/15' },
-        sky:     { icon: 'text-sky-400',     iconBg: 'bg-sky-500/20',     headerGradient: 'from-sky-500/10',     border: 'border-sky-500/20 hover:border-sky-400/40',     glow: 'shadow-sky-500/5 hover:shadow-sky-500/15' },
-        slate:   { icon: 'text-slate-400',   iconBg: 'bg-slate-500/20',   headerGradient: 'from-slate-500/10',   border: 'border-slate-500/20 hover:border-slate-400/40',   glow: 'shadow-slate-500/5 hover:shadow-slate-500/15' },
-    };
-
-    const c = colorMap[color] || colorMap.blue;
-
     return (
-        <div className={`bg-[#0f1923]/90 backdrop-blur-md border rounded-xl overflow-hidden flex flex-col group transition-all duration-300 ${c.border} shadow-lg ${c.glow} ${className}`}>
-            <div className={`p-4 border-b border-slate-800/60 flex items-center gap-3 bg-gradient-to-r ${c.headerGradient} to-transparent shrink-0`}>
-                <div className={`p-2 rounded-lg ${c.iconBg} ring-1 ring-white/5`}>
-                    <span className={`material-symbols-outlined ${c.icon}`}>{icon}</span>
+        <div className={`bg-surface-dark border border-slate-700/60 rounded-xl overflow-hidden flex flex-col ${className}`}>
+            <div className="p-4 border-b border-slate-800 flex items-center gap-3 shrink-0">
+                <div className="p-2 rounded-lg bg-slate-800">
+                    <span className="material-symbols-outlined text-slate-400">{icon}</span>
                 </div>
                 <h3 className="text-white font-bold text-lg tracking-wide">{title}</h3>
                 {headerRight}
@@ -372,7 +359,7 @@ export const TotalizerField = ({ prev, meter, plain, ...input }: InputFieldProps
                         <button
                             type="button"
                             onClick={batalReset}
-                            className="font-semibold text-rose-300 hover:text-rose-200 underline cursor-pointer"
+                            className="font-semibold text-red-300 hover:text-red-200 underline cursor-pointer"
                         >
                             Batal reset
                         </button>
@@ -454,16 +441,16 @@ export function FeederStatusChip({ sk, value, onChange }: {
     const border = style?.border ?? 'border-slate-700/60';
     const dot = style?.dot ?? 'bg-slate-500';
     return (
-        <div className={`inline-flex items-center gap-1.5 bg-[#101822]/60 border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
+        <div className={`inline-flex items-center gap-1.5 bg-bg-dark/60 border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
             <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
             <select
                 className="bg-transparent appearance-none text-sm text-white font-semibold pr-3 cursor-pointer outline-none"
                 value={value}
                 onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
             >
-                <option value="" className="bg-[#101822] text-slate-500">Status...</option>
+                <option value="" className="bg-bg-dark text-slate-500">Status...</option>
                 {FEEDER_STATUS_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value} className="bg-[#101822] text-white">{opt.label}</option>
+                    <option key={opt.value} value={opt.value} className="bg-bg-dark text-white">{opt.label}</option>
                 ))}
             </select>
         </div>
@@ -474,45 +461,27 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
     label: string;
     value?: string;
     unit: string;
-    variant?: 'primary' | 'secondary' | 'small' | 'purple' | 'transparent' | 'amber' | 'rose';
+    variant?: 'primary' | 'secondary' | 'small' | 'transparent';
     size?: 'large' | 'medium' | 'small';
 }) => {
     const variantStyles = {
         primary: {
-            bg: 'bg-emerald-500/10 border-emerald-500/30 p-3',
-            label: 'text-emerald-300 text-xs font-bold uppercase tracking-wider',
-            value: 'text-emerald-100 font-mono font-black text-2xl tracking-tighter',
-            unit: 'text-emerald-400/70 text-xs font-bold',
+            bg: 'bg-slate-800/60 border-slate-700/70 p-3',
+            label: 'text-slate-400 text-xs font-bold uppercase tracking-wider',
+            value: 'text-white font-mono font-black text-2xl tracking-tighter',
+            unit: 'text-slate-400 text-xs font-bold',
         },
         secondary: {
-            bg: 'bg-sky-500/10 border-sky-500/20 p-3',
-            label: 'text-sky-300 text-xs font-medium uppercase tracking-wider',
-            value: 'text-sky-100 font-mono font-bold text-xl',
-            unit: 'text-sky-400/60 text-xs font-medium',
+            bg: 'bg-slate-800/30 border-slate-700/50 p-3',
+            label: 'text-slate-400 text-xs font-medium uppercase tracking-wider',
+            value: 'text-slate-100 font-mono font-bold text-xl',
+            unit: 'text-slate-500 text-xs font-medium',
         },
         small: {
-            bg: 'bg-[#1f2b3e]/30 border-slate-700/30 p-2.5',
+            bg: 'bg-surface-highlight/30 border-slate-700/30 p-2.5',
             label: 'text-white text-[10px] font-medium uppercase tracking-wider',
             value: 'text-white font-mono font-bold text-sm',
             unit: 'text-slate-500 text-[10px] font-medium',
-        },
-        purple: {
-            bg: 'bg-purple-500/10 border-purple-500/30 p-3 mt-auto',
-            label: 'text-purple-400 text-xs font-bold uppercase tracking-wider',
-            value: 'text-purple-300 font-mono font-black text-2xl',
-            unit: 'text-purple-500/80 text-xs font-bold',
-        },
-        amber: {
-            bg: 'bg-amber-500/10 border-amber-500/30 p-3',
-            label: 'text-amber-300 text-xs font-bold uppercase tracking-wider',
-            value: 'text-amber-100 font-mono font-black text-2xl tracking-tighter',
-            unit: 'text-amber-400/70 text-xs font-bold',
-        },
-        rose: {
-            bg: 'bg-rose-500/10 border-rose-500/30 p-3',
-            label: 'text-rose-300 text-xs font-bold uppercase tracking-wider',
-            value: 'text-rose-100 font-mono font-black text-2xl tracking-tighter',
-            unit: 'text-rose-400/70 text-xs font-bold',
         },
         transparent: {
             bg: 'bg-transparent border-slate-700/50 p-2.5',
@@ -535,10 +504,11 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
     );
 };
 
-export const Modal = ({ open, onClose, title, color = 'blue', children }: {
+export const Modal = ({ open, onClose, title, children }: {
     open: boolean;
     onClose: () => void;
     title: string;
+    /** Tidak dipakai lagi — modal netral. */
     color?: string;
     children: React.ReactNode;
 }) => {
@@ -546,16 +516,10 @@ export const Modal = ({ open, onClose, title, color = 'blue', children }: {
     useEffect(() => { setMounted(true); }, []);
     if (!open || !mounted) return null;
 
-    const colorBorder: Record<string, string> = {
-        amber: 'border-amber-500/40', rose: 'border-rose-500/40', orange: 'border-orange-500/40',
-        blue: 'border-blue-500/40', emerald: 'border-emerald-500/40', cyan: 'border-cyan-500/40',
-    };
-    const border = colorBorder[color] ?? 'border-slate-700/80';
-
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-            <div className={`relative bg-[#16202e] border ${border} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl max-h-[90dvh] flex flex-col`}>
+            <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+            <div className={`relative bg-surface-dark border border-slate-700/80 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl max-h-[90dvh] flex flex-col`}>
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-800/60 shrink-0">
                     <h3 className="text-white font-bold text-base tracking-wide">{title}</h3>
                     <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-700/50 text-slate-400 hover:text-white flex items-center justify-center transition-colors">

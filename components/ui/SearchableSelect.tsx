@@ -138,7 +138,7 @@ export default function SearchableSelect({
                 <div
                     ref={panelRef}
                     style={{ position: 'fixed', top: rect.top, left: rect.left, width: Math.max(rect.width, 220), zIndex: 9999 }}
-                    className="rounded-xl border border-slate-700 bg-[#0e1621] shadow-2xl shadow-black/60 overflow-hidden"
+                    className="rounded-xl border border-slate-700 bg-bg-dark shadow-2xl shadow-black/60 overflow-hidden"
                 >
                     <div className="p-2 border-b border-slate-800">
                         {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
@@ -148,7 +148,7 @@ export default function SearchableSelect({
                             onChange={e => { setQuery(e.target.value); setHighlight(0); }}
                             onKeyDown={onKeyDown}
                             placeholder={searchPlaceholder}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full bg-bg-dark border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-blue-500"
                         />
                     </div>
                     <div className="max-h-60 overflow-y-auto py-1">

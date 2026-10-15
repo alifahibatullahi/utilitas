@@ -89,7 +89,7 @@ const SHIFT_OPTIONS: { value: ShiftKey; label: string }[] = [
 ];
 
 const selectClass = (filled: boolean) =>
-    `w-full bg-[#101822] border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-emerald-500 text-sm font-bold transition-all ${filled ? 'text-white' : 'text-slate-400'}`;
+    `w-full bg-bg-dark border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-emerald-500 text-sm font-bold transition-all ${filled ? 'text-white' : 'text-slate-400'}`;
 
 const labelClass = 'font-medium text-white uppercase tracking-wider block text-left text-[10px]';
 
@@ -112,7 +112,7 @@ function PilihanTombol<T extends string>({ opsi, nilai, onPilih, terkunci, icon 
                         className={`flex items-center justify-center gap-1.5 min-h-[44px] px-2 rounded-lg border text-sm font-bold transition-colors
                             ${aktif
                                 ? 'border-emerald-500 bg-emerald-500/25 text-emerald-200'
-                                : 'border-slate-700/80 bg-[#101822] text-slate-400 hover:border-emerald-500/50 hover:text-emerald-300'}
+                                : 'border-slate-700/80 bg-bg-dark text-slate-400 hover:border-emerald-500/50 hover:text-emerald-300'}
                             ${terkunci ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     >
                         {icon && <span className="material-symbols-outlined text-[18px]">{icon[o.value]}</span>}
@@ -234,9 +234,9 @@ export default function CoalArrivalModal({
                         onChange={e => setMode(openArrivals.find(o => o.batch_id === e.target.value) ?? null)}
                         className={selectClass(true)}
                     >
-                        <option value="" className="text-white bg-[#101822] font-bold">Baru</option>
+                        <option value="" className="text-white bg-bg-dark font-bold">Baru</option>
                         {openArrivals.map(o => (
-                            <option key={o.batch_id} value={o.batch_id} className="text-white bg-[#101822] font-bold">
+                            <option key={o.batch_id} value={o.batch_id} className="text-white bg-bg-dark font-bold">
                                 Lanjutan — {o.asal ? `${labelAsal(o.asal)} · ` : ''}{o.supplier} · {labelZonaPendek(o.zona)} · {o.tonSejauhIni.toLocaleString('id-ID')} t sejauh ini
                             </option>
                         ))}
@@ -288,7 +288,7 @@ export default function CoalArrivalModal({
                 <input type="text" list="coal-supplier-list" value={form.supplier} disabled={identitasTerkunci}
                     onChange={e => setForm({ ...form, supplier: e.target.value })}
                     placeholder={form.asal === 'tongkang' ? 'Nama tongkang...' : 'Nama PT...'}
-                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-emerald-500 text-sm transition-all disabled:opacity-60" />
+                    className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-emerald-500 text-sm transition-all disabled:opacity-60" />
                 <datalist id="coal-supplier-list">
                     {daftarSupplier.map(s => <option key={s} value={s} />)}
                 </datalist>
@@ -306,7 +306,7 @@ export default function CoalArrivalModal({
                                     className={`px-2.5 py-1 rounded-full border text-[10px] font-bold transition-colors cursor-pointer
                                         ${dipilih
                                             ? 'border-emerald-500 bg-emerald-500/25 text-emerald-200'
-                                            : 'border-slate-700/80 bg-[#101822] text-slate-400 hover:border-emerald-500/50 hover:text-emerald-300'}`}
+                                            : 'border-slate-700/80 bg-bg-dark text-slate-400 hover:border-emerald-500/50 hover:text-emerald-300'}`}
                                 >
                                     {s}
                                 </button>
@@ -327,9 +327,9 @@ export default function CoalArrivalModal({
                 <select value={form.zona} disabled={identitasTerkunci}
                     onChange={e => setForm({ ...form, zona: e.target.value })}
                     className={`${selectClass(!!form.zona)} disabled:opacity-60`}>
-                    <option value="" className="text-slate-400 bg-[#101822]">Pilih pilar...</option>
+                    <option value="" className="text-slate-400 bg-bg-dark">Pilih pilar...</option>
                     {ZONA_OPTIONS.map(z => (
-                        <option key={z.value} value={z.value} className="text-white bg-[#101822] font-bold">{z.label}</option>
+                        <option key={z.value} value={z.value} className="text-white bg-bg-dark font-bold">{z.label}</option>
                     ))}
                 </select>
             </div>
@@ -340,15 +340,15 @@ export default function CoalArrivalModal({
                 <label className={labelClass}>Mulai masuk storage</label>
                 <input type="date" value={form.tanggal_masuk} disabled={identitasTerkunci}
                     onChange={e => setForm({ ...form, tanggal_masuk: e.target.value })}
-                    className="w-full bg-[#101822]/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-emerald-500 text-sm transition-all disabled:opacity-60" />
+                    className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-emerald-500 text-sm transition-all disabled:opacity-60" />
             </div>
             <div className="space-y-1.5 w-full">
                 <label className={labelClass}>Status</label>
                 <select value={form.status}
                     onChange={e => setForm({ ...form, status: e.target.value as 'progres' | 'selesai' })}
                     className={selectClass(true)}>
-                    <option value="progres" className="text-white bg-[#101822] font-bold">Masih progres — lanjut shift berikutnya</option>
-                    <option value="selesai" className="text-white bg-[#101822] font-bold">Selesai</option>
+                    <option value="progres" className="text-white bg-bg-dark font-bold">Masih progres — lanjut shift berikutnya</option>
+                    <option value="selesai" className="text-white bg-bg-dark font-bold">Selesai</option>
                 </select>
             </div>
             <button type="button" onClick={simpan} disabled={!valid || menyimpan}

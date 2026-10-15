@@ -30,7 +30,7 @@ function stateOf(i: number, current: number, furthest: number): StepState {
 
 const CIRCLE: Record<StepState, string> = {
     done: 'bg-emerald-500 border-2 border-emerald-500 text-white',
-    active: 'bg-gradient-to-br from-emerald-600 to-teal-500 border-2 border-emerald-400 text-white ring-4 ring-emerald-500/20 shadow-[0_4px_12px_rgba(16,185,129,0.25)] scale-110',
+    active: 'bg-blue-600 border-2 border-blue-500 text-white ring-4 ring-blue-500/20 scale-110',
     visited: 'bg-slate-950 border-2 border-emerald-500/60 text-emerald-300',
     upcoming: 'bg-slate-800/80 border-2 border-slate-700/60 text-slate-500',
 };

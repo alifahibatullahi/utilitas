@@ -32,6 +32,7 @@ import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import { KOLOM_COAL_ARRIVAL_HARIAN, keCoalArrivalHarian, type CoalArrivalHarian, type DailyTabProps } from './types';
 import { kedatanganHarianDariEntri } from '@/lib/coal-storage';
 import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
+import { areaStyle, type Area } from '@/components/input-shift/area';
 import {
     hitungPasanganRiset, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
     susunPatchRiset, type MeterTotalizer, type RisetState,
@@ -50,27 +51,27 @@ const parseSheetNum = (s: string | number | null | undefined): number | null => 
     return isNaN(n) ? null : n;
 };
 
-const HARIAN_TABS: { id: HarianTabId; label: string; icon: string }[] = [
-    { id: 'Boiler A', label: 'Boiler A', icon: 'factory' },
-    { id: 'Boiler B', label: 'Boiler B', icon: 'factory' },
-    { id: 'Turbin', label: 'Turbin & Distribusi Steam', icon: 'mode_fan' },
-    { id: 'Power', label: 'Generator', icon: 'bolt' },
-    { id: 'PIU', label: 'PIU', icon: 'electric_meter' },
-    { id: 'Handling', label: 'Handling', icon: 'local_shipping' },
-    { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2' },
-    { id: 'Chemical', label: 'Chemical', icon: 'science' },
-    { id: 'Stock BB', label: 'In/Out Batubara', icon: 'local_shipping' },
-    { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt' },
+const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; area: Area }[] = [
+    { id: 'Boiler A', label: 'Boiler A', icon: 'factory', area: 'boiler' },
+    { id: 'Boiler B', label: 'Boiler B', icon: 'factory', area: 'boiler' },
+    { id: 'Turbin', label: 'Turbin & Distribusi Steam', icon: 'mode_fan', area: 'steam' },
+    { id: 'Power', label: 'Generator', icon: 'bolt', area: 'power' },
+    { id: 'PIU', label: 'PIU', icon: 'electric_meter', area: 'power' },
+    { id: 'Handling', label: 'Handling', icon: 'local_shipping', area: 'coal' },
+    { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2', area: 'coal' },
+    { id: 'Chemical', label: 'Chemical', icon: 'science', area: 'water' },
+    { id: 'Stock BB', label: 'In/Out Batubara', icon: 'local_shipping', area: 'coal' },
+    { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt', area: 'ash' },
 ];
 
-// Satu gaya untuk semua tab: identitas tab cukup dari ikon & label, warna hanya
-// untuk status. Tab aktif ditandai garis aksen (kiri di desktop, bawah di HP).
+// Tab memakai warna kalem areanya (--area, dipasang per tombol lewat areaStyle):
+// ikon selalu berwarna area; tab aktif ber-tint + garis area (kiri desktop, bawah HP).
 const TAB_STYLE = {
-    active: 'font-bold bg-slate-800 text-white border-slate-700',
+    active: 'font-bold bg-(--area)/12 text-white border-(--area)/30',
     inactive: 'font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border-transparent',
-    icon: 'text-slate-200',
-    barSide: 'shadow-[inset_3px_0_0_var(--color-blue-500)]',
-    barBottom: 'shadow-[inset_0_-2px_0_var(--color-blue-500)]',
+    icon: 'text-(--area)',
+    barSide: 'shadow-[inset_3px_0_0_var(--area)]',
+    barBottom: 'shadow-[inset_0_-2px_0_var(--area)]',
 };
 
 interface InputHarianFormProps {
@@ -1433,10 +1434,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             return (
                                 <button
                                     key={tab.id}
+                                    style={areaStyle(tab.area)}
                                     onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
                                     className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barSide}` : TAB_STYLE.inactive}`}
                                 >
-                                    <span className={`material-symbols-outlined text-[20px] ${isActive ? TAB_STYLE.icon : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
+                                    <span className={`material-symbols-outlined text-[20px] ${TAB_STYLE.icon} ${isActive ? '' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
                                         {tab.icon}
                                     </span>
                                     <span className="flex-1">{tab.label}</span>
@@ -1460,10 +1462,11 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                 return (
                                     <button
                                         key={tab.id}
+                                        style={areaStyle(tab.area)}
                                         onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
                                         className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barBottom}` : TAB_STYLE.inactive}`}
                                     >
-                                        <span className={`material-symbols-outlined text-[18px] ${isActive ? TAB_STYLE.icon : 'opacity-70'}`}>
+                                        <span className={`material-symbols-outlined text-[18px] ${TAB_STYLE.icon} ${isActive ? '' : 'opacity-70'}`}>
                                             {tab.icon}
                                         </span>
                                         <span>{tab.label}</span>
@@ -1479,8 +1482,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                     </div>
                 </div>
 
-                {/* Tab Content Area */}
-                <div className="flex-1 min-w-0 flex flex-col gap-4">
+                {/* Tab Content Area — --area tab aktif mewarnai header & kartu di dalamnya */}
+                <div className="flex-1 min-w-0 flex flex-col gap-4" style={areaStyle(HARIAN_TABS.find(t => t.id === activeTab)?.area ?? 'note')}>
                     {/* Active Tab Header — disamakan dengan laporan shift (judul + status chip di kanan judul). */}
                     <div className="bg-surface-dark border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                         {(() => {
@@ -1491,7 +1494,7 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                             return (
                                 <>
                                     <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-bg-dark border border-slate-700/50 shadow-inner shrink-0`}>
-                                        <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-slate-300`}>{tab?.icon}</span>
+                                        <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-(--area)`}>{tab?.icon}</span>
                                     </div>
                                     <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide min-w-0 truncate">{tab?.label}</h2>
                                     {/* Status chip boiler — di kanan judul untuk tab Boiler A/B (sama spt shift). */}

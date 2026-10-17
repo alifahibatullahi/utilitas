@@ -11,6 +11,7 @@ import {
     type OperatorStation,
 } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
+import { areaStyle, shiftStyle, type Area } from '@/components/input-shift/area';
 
 export interface StationSetupSelection {
     mode: 'shift' | 'harian';
@@ -32,7 +33,8 @@ interface StationPickerModalProps {
 // Pilihan jenis laporan datar: 3 shift + harian dalam satu baris.
 // malam/pagi/sore → mode 'shift' + nomor shift; harian → mode 'harian'.
 const REPORT_CHOICE_INACTIVE = 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50';
-const REPORT_CHOICE_ACTIVE = 'bg-slate-700 text-white border-slate-600 shadow-[inset_0_-2px_0_var(--color-blue-500)]';
+// Pilihan aktif ber-tint warna shift-nya (--shift via shiftStyle) + garis bawah.
+const REPORT_CHOICE_ACTIVE = 'bg-(--shift)/15 text-white border-(--shift)/40 shadow-[inset_0_-2px_0_var(--shift)]';
 const REPORT_CHOICES: { id: 'malam' | 'pagi' | 'sore' | 'harian'; shift?: 1 | 2 | 3; label: string; time: string; icon: string }[] = [
     { id: 'malam', shift: 1, label: 'Malam', time: '23.00–07.00', icon: 'bedtime' },
     { id: 'pagi', shift: 2, label: 'Pagi', time: '07.00–15.00', icon: 'light_mode' },
@@ -61,18 +63,18 @@ function harianExpectedToday(): string {
     return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
 }
 
-// Ikon per station. Kartu station sengaja netral (tanpa warna per station) —
-// warna di modal ini hanya untuk status "sudah diisi".
-const STATION_ICONS: Record<OperatorStation, string> = {
-    panel_boiler: 'local_fire_department',
-    panel_boiler_a: 'local_fire_department',
-    panel_boiler_b: 'local_fire_department',
-    panel_turbin: 'toys_fan',
-    handling: 'precision_manufacturing',
-    esp: 'electric_bolt',
-    bunker: 'layers',
-    lapangan_boiler: 'science',
-    lapangan_turbin: 'engineering',
+// Ikon + area per station. Kotak ikon memakai warna kalem area kerjanya (sama dengan
+// tab di form); kartu yang "sudah diisi" tetap hijau (status).
+const STATION_ICONS: Record<OperatorStation, { icon: string; area: Area }> = {
+    panel_boiler: { icon: 'local_fire_department', area: 'boiler' },
+    panel_boiler_a: { icon: 'local_fire_department', area: 'boiler' },
+    panel_boiler_b: { icon: 'local_fire_department', area: 'boiler' },
+    panel_turbin: { icon: 'toys_fan', area: 'steam' },
+    handling: { icon: 'precision_manufacturing', area: 'coal' },
+    esp: { icon: 'electric_bolt', area: 'ash' },
+    bunker: { icon: 'layers', area: 'coal' },
+    lapangan_boiler: { icon: 'science', area: 'water' },
+    lapangan_turbin: { icon: 'engineering', area: 'steam' },
 };
 
 export default function StationPickerModal({
@@ -215,6 +217,7 @@ export default function StationPickerModal({
                                     <button
                                         key={c.id}
                                         type="button"
+                                        style={shiftStyle(c.id)}
                                         onClick={() => {
                                             if (c.id === 'harian') { setMode('harian'); return; }
                                             setMode('shift');
@@ -235,7 +238,7 @@ export default function StationPickerModal({
                                             </span>
                                         )}
                                         <span className="flex items-center justify-center gap-1.5">
-                                            <span className="material-symbols-outlined text-sm">{c.icon}</span>
+                                            <span className="material-symbols-outlined text-sm text-(--shift)">{c.icon}</span>
                                             <span>{c.label}</span>
                                         </span>
                                         <span className="text-[8px] sm:text-[9px] font-semibold normal-case tracking-normal opacity-70 whitespace-nowrap">
@@ -300,6 +303,7 @@ export default function StationPickerModal({
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                             {stations.map((s) => {
                                 const isFilled = filledStations.has(s);
+                                const st = STATION_ICONS[s] ?? { icon: 'tune', area: 'note' as const };
 
                                 return (
                                     <button
@@ -311,8 +315,8 @@ export default function StationPickerModal({
                                                 ? 'border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/15 hover:border-emerald-400/60'
                                                 : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60 hover:border-slate-600'}`}
                                     >
-                                        <div className="flex items-center justify-center p-2 rounded-xl bg-slate-800 text-slate-300 shrink-0">
-                                            <span className="material-symbols-outlined text-lg">{STATION_ICONS[s] ?? 'tune'}</span>
+                                        <div className="flex items-center justify-center p-2 rounded-xl bg-(--area)/15 text-(--area) shrink-0" style={areaStyle(st.area)}>
+                                            <span className="material-symbols-outlined text-lg">{st.icon}</span>
                                         </div>
                                         <h4 className={`min-w-0 flex-1 text-xs font-bold tracking-wide leading-tight transition-colors ${isFilled ? 'text-emerald-300 group-hover:text-emerald-200' : 'text-slate-200 group-hover:text-white'}`}>
                                             {STATION_LABELS[s]}

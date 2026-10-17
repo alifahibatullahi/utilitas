@@ -27,6 +27,7 @@ import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
+import { areaStyle, shiftStyle, type Area, type ShiftTone } from '@/components/input-shift/area';
 import {
     hitungPasanganRiset, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
     susunPatchRiset, type MeterTotalizer, type RisetState,
@@ -61,27 +62,27 @@ function getGroupMalamOnDate(dateStr: string): string {
 
 type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker' | 'Lab' | 'Catatan Operasional';
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
-    { id: 'Boiler A', label: 'Boiler A', icon: 'factory' },
-    { id: 'Boiler B', label: 'Boiler B', icon: 'factory' },
-    { id: 'Turbin', label: 'Turbin', icon: 'mode_fan' },
-    { id: 'Distribusi Steam', label: 'Distribusi Steam', icon: 'water_drop' },
-    { id: 'Generator', label: 'Generator', icon: 'bolt' },
-    { id: 'Handling', label: 'Coal Handling', icon: 'local_shipping' },
-    { id: 'ESP', label: 'ESP', icon: 'air' },
-    { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2' },
-    { id: 'Lab', label: 'Lab / QC', icon: 'science' },
-    { id: 'Catatan Operasional', label: 'Catatan Operasional', icon: 'sticky_note_2' },
+const TABS: { id: TabId; label: string; icon: string; area: Area }[] = [
+    { id: 'Boiler A', label: 'Boiler A', icon: 'factory', area: 'boiler' },
+    { id: 'Boiler B', label: 'Boiler B', icon: 'factory', area: 'boiler' },
+    { id: 'Turbin', label: 'Turbin', icon: 'mode_fan', area: 'steam' },
+    { id: 'Distribusi Steam', label: 'Distribusi Steam', icon: 'water_drop', area: 'steam' },
+    { id: 'Generator', label: 'Generator', icon: 'bolt', area: 'power' },
+    { id: 'Handling', label: 'Coal Handling', icon: 'local_shipping', area: 'coal' },
+    { id: 'ESP', label: 'ESP', icon: 'air', area: 'ash' },
+    { id: 'Coal Bunker', label: 'Coal Bunker', icon: 'inventory_2', area: 'coal' },
+    { id: 'Lab', label: 'Lab / QC', icon: 'science', area: 'water' },
+    { id: 'Catatan Operasional', label: 'Catatan Operasional', icon: 'sticky_note_2', area: 'note' },
 ];
 
-// Satu gaya untuk semua tab: identitas tab cukup dari ikon & label, warna hanya
-// untuk status. Tab aktif ditandai garis aksen (kiri di desktop, bawah di HP).
+// Tab memakai warna kalem areanya (--area, dipasang per tombol lewat areaStyle):
+// ikon selalu berwarna area; tab aktif ber-tint + garis area (kiri desktop, bawah HP).
 const TAB_STYLE = {
-    active: 'font-bold bg-slate-800 text-white border-slate-700',
+    active: 'font-bold bg-(--area)/12 text-white border-(--area)/30',
     inactive: 'font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border-transparent',
-    icon: 'text-slate-200',
-    barSide: 'shadow-[inset_3px_0_0_var(--color-blue-500)]',
-    barBottom: 'shadow-[inset_0_-2px_0_var(--color-blue-500)]',
+    icon: 'text-(--area)',
+    barSide: 'shadow-[inset_3px_0_0_var(--area)]',
+    barBottom: 'shadow-[inset_0_-2px_0_var(--area)]',
 };
 
 // Pilihan jenis laporan datar di header: 3 shift + harian dalam satu segmented control.
@@ -93,11 +94,14 @@ const REPORT_CHOICES: { id: ReportChoice; label: string; hint: string; icon: str
     { id: 'sore', label: 'Sore', hint: '(22)', icon: 'wb_twilight' },
     { id: 'harian', label: 'Harian', hint: '', icon: 'today' },
 ];
-// Pilihan aktif netral + garis aksen bawah (sama dengan StationPickerModal).
-const REPORT_CHOICE_ACTIVE = 'bg-slate-700 text-white shadow-[inset_0_-2px_0_var(--color-blue-500)]';
+// Pilihan aktif ber-tint warna shift-nya (--shift via shiftStyle) + garis bawah;
+// sama dengan StationPickerModal.
+const REPORT_CHOICE_ACTIVE = 'bg-(--shift)/15 text-white shadow-[inset_0_-2px_0_var(--shift)]';
 
-// Chip info di header (shift, grup, station) — netral; warna disimpan untuk status.
+// Chip info di header (grup, station) — netral. Chip shift ber-tint warna shift.
 const HEADER_CHIP = 'px-3 py-1 rounded-lg text-sm font-bold border uppercase tracking-widest bg-slate-800 border-slate-700';
+const SHIFT_CHIP = 'px-3 py-1 rounded-lg text-sm font-bold border uppercase tracking-widest bg-(--shift)/12 border-(--shift)/35 text-(--shift)';
+const SHIFT_TONE: Record<1 | 2 | 3, ShiftTone> = { 1: 'malam', 2: 'pagi', 3: 'sore' };
 
 export default function InputShiftPage() {
     return (
@@ -2008,11 +2012,11 @@ function InputShiftPageInner() {
                             {inputMode === 'shift' ? 'LAPORAN SHIFT' : 'LAPORAN HARIAN'}
                         </h2>
                         {inputMode === 'shift' ? (
-                            <span className={`${HEADER_CHIP} text-slate-200`}>
+                            <span className={SHIFT_CHIP} style={shiftStyle(SHIFT_TONE[selectedShift])}>
                                 {SHIFT_LABELS[selectedShift].toUpperCase()}
                             </span>
                         ) : (
-                            <span className={`${HEADER_CHIP} text-slate-200`}>
+                            <span className={SHIFT_CHIP} style={shiftStyle('harian')}>
                                 REPORT HARIAN
                             </span>
                         )}
@@ -2175,13 +2179,14 @@ function InputShiftPageInner() {
                             {REPORT_CHOICES.map(c => (
                                 <button
                                     key={c.id}
+                                    style={shiftStyle(c.id)}
                                     onClick={() => selectReportChoice(c.id)}
                                     className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[10px] sm:text-xs uppercase tracking-wider font-bold transition-colors duration-200 cursor-pointer active:scale-[0.98]
                                         ${reportChoice === c.id
                                             ? REPORT_CHOICE_ACTIVE
                                             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                                 >
-                                    <span className="material-symbols-outlined text-sm">{c.icon}</span>
+                                    <span className="material-symbols-outlined text-sm text-(--shift)">{c.icon}</span>
                                     <span>{c.label}{c.hint && <span className="hidden xl:inline"> {c.hint}</span>}</span>
                                 </button>
                             ))}
@@ -2340,10 +2345,11 @@ function InputShiftPageInner() {
                                 return (
                                     <button
                                         key={tab.id}
+                                        style={areaStyle(tab.area)}
                                         onClick={() => setActiveTab(tab.id as TabId)}
                                         className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barSide}` : TAB_STYLE.inactive}`}
                                     >
-                                        <span className={`material-symbols-outlined text-[20px] ${isActive ? TAB_STYLE.icon : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
+                                        <span className={`material-symbols-outlined text-[20px] ${TAB_STYLE.icon} ${isActive ? '' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
                                             {tab.icon}
                                         </span>
                                         <span className="flex-1">{tab.label}</span>
@@ -2367,10 +2373,11 @@ function InputShiftPageInner() {
                                     return (
                                         <button
                                             key={tab.id}
+                                            style={areaStyle(tab.area)}
                                             onClick={() => setActiveTab(tab.id as TabId)}
                                             className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barBottom}` : TAB_STYLE.inactive}`}
                                         >
-                                            <span className={`material-symbols-outlined text-[18px] ${isActive ? TAB_STYLE.icon : 'opacity-70'}`}>
+                                            <span className={`material-symbols-outlined text-[18px] ${TAB_STYLE.icon} ${isActive ? '' : 'opacity-70'}`}>
                                                 {tab.icon}
                                             </span>
                                             <span>{tab.label}</span>
@@ -2386,8 +2393,8 @@ function InputShiftPageInner() {
                         </div>
                     </div>
 
-                    {/* Tab Content Area */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-4">
+                    {/* Tab Content Area — --area tab aktif mewarnai header & kartu di dalamnya */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-4" style={areaStyle(TABS.find(t => t.id === activeTab)?.area ?? 'note')}>
                         {/* Active Tab Header */}
                         <div className="bg-surface-dark border border-slate-800/80 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4 shadow-lg overflow-hidden">
                             {(() => {
@@ -2399,7 +2406,7 @@ function InputShiftPageInner() {
                                 return (
                                     <>
                                         <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-bg-dark border border-slate-700/50 shadow-inner shrink-0`}>
-                                            <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-slate-300`}>{tab?.icon}</span>
+                                            <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-(--area)`}>{tab?.icon}</span>
                                         </div>
                                         <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide shrink-0">{tab?.label}</h2>
                                         {isBoilerTab && (() => {

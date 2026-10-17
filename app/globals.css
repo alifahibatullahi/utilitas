@@ -218,6 +218,21 @@ body:has(.light-canvas) {
 body:has(.graphite-canvas) {
   background-color: #121314;
 
+  /* Warna kalem per area kerja & shift (lihat components/input-shift/area.ts).
+     Container tab memasang --area / --shift; default --area netral (mis. di modal portal). */
+  --area-boiler: #d08a6a;
+  --area-steam: #7aa3d4;
+  --area-power: #cfb45f;
+  --area-coal: #b39b7d;
+  --area-ash: #9d9cc8;
+  --area-water: #6bb3ad;
+  --area-note: #9aa0a7;
+  --shift-malam: #8f9bd6;
+  --shift-pagi: #d9b45a;
+  --shift-sore: #d08a6a;
+  --shift-harian: #6fb08f;
+  --area: var(--area-note);
+
   --color-bg-dark: #121314;
   --color-surface-dark: #1a1c1f;
   --color-surface-highlight: #25282c;

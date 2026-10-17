@@ -214,8 +214,8 @@ export const SelectField = ({ label, options, size = "normal", value, onChange, 
 export const Card = ({ title, icon, children, isSidebar = false, className = '', headerRight }: {
     title: string;
     icon: string;
-    /** Tidak dipakai lagi — semua kartu netral; warna hanya untuk status. Dibiarkan
-     *  supaya pemanggil lama tetap valid. */
+    /** Tidak dipakai lagi — warna kartu mengikuti area tab tempatnya (`--area`, lihat
+     *  ./area.ts). Dibiarkan supaya pemanggil lama tetap valid. */
     color?: 'blue' | 'cyan' | 'orange' | 'emerald' | 'purple' | 'indigo' | 'slate' | 'amber' | 'rose' | 'teal' | 'sky';
     children: React.ReactNode;
     isSidebar?: boolean;
@@ -224,9 +224,9 @@ export const Card = ({ title, icon, children, isSidebar = false, className = '',
 }) => {
     return (
         <div className={`bg-surface-dark border border-slate-700/60 rounded-xl overflow-hidden flex flex-col ${className}`}>
-            <div className="p-4 border-b border-slate-800 flex items-center gap-3 shrink-0">
-                <div className="p-2 rounded-lg bg-slate-800">
-                    <span className="material-symbols-outlined text-slate-400">{icon}</span>
+            <div className="p-4 border-b border-slate-800 bg-(--area)/[8%] flex items-center gap-3 shrink-0">
+                <div className="p-2 rounded-lg bg-(--area)/15">
+                    <span className="material-symbols-outlined text-(--area)">{icon}</span>
                 </div>
                 <h3 className="text-white font-bold text-lg tracking-wide">{title}</h3>
                 {headerRight}
@@ -465,15 +465,16 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
     size?: 'large' | 'medium' | 'small';
 }) => {
     const variantStyles = {
+        // Hasil utama ber-tint warna area (--area, dipasang container tab).
         primary: {
-            bg: 'bg-slate-800/60 border-slate-700/70 p-3',
-            label: 'text-slate-400 text-xs font-bold uppercase tracking-wider',
+            bg: 'bg-(--area)/10 border-(--area)/30 p-3',
+            label: 'text-(--area) text-xs font-bold uppercase tracking-wider',
             value: 'text-white font-mono font-black text-2xl tracking-tighter',
             unit: 'text-slate-400 text-xs font-bold',
         },
         secondary: {
-            bg: 'bg-slate-800/30 border-slate-700/50 p-3',
-            label: 'text-slate-400 text-xs font-medium uppercase tracking-wider',
+            bg: 'bg-(--area)/5 border-(--area)/20 p-3',
+            label: 'text-slate-300 text-xs font-medium uppercase tracking-wider',
             value: 'text-slate-100 font-mono font-bold text-xl',
             unit: 'text-slate-500 text-xs font-medium',
         },

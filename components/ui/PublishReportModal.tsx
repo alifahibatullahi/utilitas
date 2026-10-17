@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useOperator } from '@/hooks/useOperator';
 import { createClient } from '@/lib/supabase/client';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import { areaStyle, type Area } from '@/components/input-shift/area';
 import Stepper from '@/components/ui/Stepper';
 import { parseSheetNumber } from '@/lib/utils';
 import { isForemanCandidate, type ShiftKey } from '@/lib/constants';
@@ -981,11 +982,12 @@ export function PublishReportModal({
 
 // ──────────── Review Summary Components — kartu mini per area ────────────
 
-function ReviewCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+/** Kartu ringkasan per area — judul & ikon memakai warna kalem area (sama dengan tab form). */
+function ReviewCard({ title, icon, area = 'note', children }: { title: string; icon: string; area?: Area; children: React.ReactNode }) {
     return (
-        <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between">
+        <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between" style={areaStyle(area)}>
             <div className="space-y-3">
-                <div className="text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 text-slate-400">
+                <div className="text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 text-(--area)">
                     <span className="material-symbols-outlined text-[16px]">{icon}</span>
                     {title}
                 </div>
@@ -1042,7 +1044,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Boiler A */}
-                <ReviewCard title="Boiler A" icon="factory">
+                <ReviewCard title="Boiler A" icon="factory" area="boiler">
                     <Row label="Flow Steam" value={fmt(summary.boilerA?.flow)} unit="t/h" />
                     <Row label="Press Steam" value={fmt(summary.boilerA?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.boilerA?.tempSteam)} unit="°C" />
@@ -1056,7 +1058,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Boiler B */}
-                <ReviewCard title="Boiler B" icon="factory">
+                <ReviewCard title="Boiler B" icon="factory" area="boiler">
                     <Row label="Flow Steam" value={fmt(summary.boilerB?.flow)} unit="t/h" />
                     <Row label="Press Steam" value={fmt(summary.boilerB?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.boilerB?.tempSteam)} unit="°C" />
@@ -1070,7 +1072,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Turbin */}
-                <ReviewCard title="Turbin" icon="mode_fan">
+                <ReviewCard title="Turbin" icon="mode_fan" area="steam">
                     <Row label="Flow Steam" value={fmt(summary.turbin?.flowSteam)} unit="t/h" />
                     <Row label="Press Steam" value={fmt(summary.turbin?.pressSteam)} unit="MPa" />
                     <Row label="Temp Steam" value={fmt(summary.turbin?.tempSteam)} unit="°C" />
@@ -1079,7 +1081,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Distribusi Steam */}
-                <ReviewCard title="Distribusi Steam" icon="water_drop">
+                <ReviewCard title="Distribusi Steam" icon="water_drop" area="steam">
                     <Row label="Pabrik 1" value={fmt(summary.steamDist?.pabrik1)} unit="t/h" />
                     <Row label="Pabrik 2" value={fmt(summary.steamDist?.pabrik2)} unit="t/h" />
                     <Row label="Pabrik 3A" value={fmt(summary.steamDist?.pabrik3a)} unit="t/h" />
@@ -1087,7 +1089,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Power */}
-                <ReviewCard title="Power" icon="bolt">
+                <ReviewCard title="Power" icon="bolt" area="power">
                     <Row label="STG UBB" value={fmt(summary.power?.stgUbb)} unit="MW" />
                     <Row label="Internal UBB" value={fmt(summary.power?.internalUbb)} unit="MW" />
                     <Row label="Pabrik 2" value={fmt(summary.power?.pabrik2)} unit="MW" />
@@ -1098,7 +1100,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                 </ReviewCard>
 
                 {/* Tank Levels */}
-                <ReviewCard title="Tank Level" icon="water">
+                <ReviewCard title="Tank Level" icon="water" area="water">
                     <Row label="RCW" value={fmt(summary.tankLevels?.rcw)} unit="m³" />
                     <Row label="Demin" value={fmt(summary.tankLevels?.demin)} unit="m³" />
                 </ReviewCard>
@@ -1159,7 +1161,7 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ReviewCard title="Boiler A" icon="factory">
+                <ReviewCard title="Boiler A" icon="factory" area="boiler">
                     <Row label="Flow Steam (00:00)" value={fmt(summary.boilerA?.flow)} unit="t/h" />
                     <Row label="Batubara 24h" value={fmt(summary.boilerA?.batubara)} unit="ton" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerA?.tempFurnace)} unit="°C" />
@@ -1168,7 +1170,7 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                         <StatusBadge value={summary.boilerA?.status ?? null} />
                     </div>
                 </ReviewCard>
-                <ReviewCard title="Boiler B" icon="factory">
+                <ReviewCard title="Boiler B" icon="factory" area="boiler">
                     <Row label="Flow Steam (00:00)" value={fmt(summary.boilerB?.flow)} unit="t/h" />
                     <Row label="Batubara 24h" value={fmt(summary.boilerB?.batubara)} unit="ton" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerB?.tempFurnace)} unit="°C" />
@@ -1177,15 +1179,15 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                         <StatusBadge value={summary.boilerB?.status ?? null} />
                     </div>
                 </ReviewCard>
-                <ReviewCard title="Turbin" icon="mode_fan">
+                <ReviewCard title="Turbin" icon="mode_fan" area="steam">
                     <Row label="Inlet Flow" value={fmt(summary.turbin?.inletFlow)} unit="t/h" />
                     <Row label="Thrust Bearing" value={fmt(summary.turbin?.thrustBearing)} unit="°C" />
                 </ReviewCard>
-                <ReviewCard title="Distribusi Steam" icon="water_drop">
+                <ReviewCard title="Distribusi Steam" icon="water_drop" area="steam">
                     <Row label="Pabrik 1" value={fmt(summary.steamDist?.pabrik1)} unit="t/h" />
                     <Row label="Pabrik 3" value={fmt(summary.steamDist?.pabrik3)} unit="t/h" />
                 </ReviewCard>
-                <ReviewCard title="Power" icon="bolt">
+                <ReviewCard title="Power" icon="bolt" area="power">
                     <Row label="STG UBB" value={fmt(summary.power?.stgUbb)} unit="MW" />
                     <Row label="Internal UBB" value={fmt(summary.power?.internalUbb)} unit="MW" />
                     <Row label="Pabrik 2" value={fmt(summary.power?.pabrik2)} unit="MW" />
@@ -1194,7 +1196,7 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                     <Row label="PIU" value={fmt(summary.power?.piu)} unit="MW" />
                     <Row label="PLN" value={fmt(summary.power?.pln)} unit="MW" />
                 </ReviewCard>
-                <ReviewCard title="Tank & Stock" icon="water">
+                <ReviewCard title="Tank & Stock" icon="water" area="water">
                     <Row label="RCW" value={fmt(summary.tankLevels?.rcw)} unit="m³" />
                     <Row label="Demin" value={fmt(summary.tankLevels?.demin)} unit="m³" />
                     <Row label="Stock Batubara" value={stockOverride && stockOverride.trim() ? stockOverride.trim() : fmt(summary.stockBatubara)} unit="ton" />

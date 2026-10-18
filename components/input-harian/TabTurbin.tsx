@@ -68,18 +68,18 @@ export default function TabTurbin({
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
 
             {/* ═══ Distribusi Steam — kiri ═══ */}
-            <Card title="Distribusi Steam" icon="fork_right" color="cyan">
+            <Card title="Distribusi Steam" icon="fork_right" area="steam">
                 {/* Header row */}
                 <div className="grid grid-cols-2 gap-3 mb-1 px-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Totalizer</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Flow (00.00)</span>
+                    <span className="text-[10px] font-bold text-(--area-ink) uppercase tracking-wider">Totalizer</span>
+                    <span className="text-[10px] font-bold text-(--area-ink) uppercase tracking-wider">Flow (00.00)</span>
                 </div>
 
                 {DIST_ITEMS.map(({ totKey, flowKey, label, totUnit, flowUnit, meter }) => {
                     const prev = prevSteam ? n(prevSteam[totKey]) : 0;
                     return (
                         <div key={totKey} className="bg-bg-dark/40 border border-slate-700/40 rounded-lg p-3 mb-2">
-                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">{label}</span>
+                            <span className="text-[10px] font-bold text-(--area-ink) uppercase tracking-wider block mb-2">{label}</span>
                             <div className="grid grid-cols-2 gap-3">
                                 <TotalizerField
                                     label={totUnit}
@@ -110,7 +110,7 @@ export default function TabTurbin({
             </Card>
 
             {/* ═══ Turbine Generator — kanan (mobile: row 2) ═══ */}
-            <Card title="Turbine Generator" icon="mode_fan" color="sky">
+            <Card title="Turbine Generator" icon="mode_fan" area="power">
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Steam Inlet Press"   name="steam_inlet_press"   value={turbineMisc.steam_inlet_press}   onChange={onTurbineMiscChange} unit="MPa" color="sky" readOnly={isTurbinShutdown} />
                     <InputField label="Steam Inlet Temp"    name="steam_inlet_temp"    value={turbineMisc.steam_inlet_temp}    onChange={onTurbineMiscChange} unit="°C"  color="sky" readOnly={isTurbinShutdown} />
@@ -120,7 +120,7 @@ export default function TabTurbin({
             </Card>
 
             {/* ═══ Calculated Steam — bawah (mobile: row 3, desktop: row 2 col 1 via col-span-2) ═══ */}
-            <Card title="Calculated Steam" icon="calculate" color="purple" className="lg:col-span-2">
+            <Card title="Calculated Steam" icon="calculate" className="lg:col-span-2">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <CalculatedField label="Total Inlet Turbin" value={fmt(totalInlet)}     unit="Ton" variant="primary"     />
                     <CalculatedField label="Total Pabrik 1"     value={fmt(totalPabrik1)}   unit="Ton" variant="secondary"   />

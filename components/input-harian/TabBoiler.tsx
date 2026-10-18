@@ -99,21 +99,21 @@ export default function TabBoiler({
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    <Card title="Steam Parameters" icon="waves" color="blue">
+                    <Card title="Steam Parameters" icon="waves" area="steam">
                         <InputField label="Pressure Steam" unit="MPa" color="blue" name={`press_steam_${x}`} value={turbineMisc[`press_steam_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                         <InputField label="Temp Steam" unit="°C" color="blue" name={`temp_steam_${x}`} value={turbineMisc[`temp_steam_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                         <InputField label="Flow Steam" unit="t/h" color="blue" name={`prod_boiler_${x}_00`} value={steam[`prod_boiler_${x}_00`]} onChange={onSteamChange} readOnly={isShutdown} />
                         <TotalizerInput label="Steam" name={`prod_boiler_${x}_24`} value={steam[`prod_boiler_${x}_24`]} prev={prevSteam24} onChange={onSteamChange} unit="ton" color="blue" meter={`steam_${x}`} />
                     </Card>
 
-                    <Card title="Boiler Feed Water" icon="water_drop" color="cyan">
+                    <Card title="Boiler Feed Water" icon="water_drop" area="water">
                         <InputField label="Pressure BFW" unit="MPa" color="cyan" name={`bfw_press_${x}`} value={turbineMisc[`bfw_press_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                         <InputField label="Temp BFW" unit="°C" color="cyan" name={`temp_bfw_${x}`} value={turbineMisc[`temp_bfw_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
                         <InputField label="Flow BFW" unit="t/h" color="cyan" name={`flow_bfw_${x}`} value={stockTank[`flow_bfw_${x}`]} onChange={onStockTankChange} readOnly={isShutdown} />
                         <TotalizerInput label="BFW" name={`bfw_boiler_${x}`} value={stockTank[`bfw_boiler_${x}`]} prev={prevBfw} onChange={onStockTankChange} unit="ton" color="cyan" meter={`bfw_${x}`} />
                     </Card>
 
-                    <Card title={`Coal Feeder ${feeders[0].toUpperCase()}-${feeders[2].toUpperCase()}`} icon="precision_manufacturing" color="emerald">
+                    <Card title={`Coal Feeder ${feeders[0].toUpperCase()}-${feeders[2].toUpperCase()}`} icon="precision_manufacturing" area="coal">
                         {feeders.map((f) => {
                             const prevF = prevCoal ? n(prevCoal[`coal_${f}_24`]) : 0;
                             const sk = feederStatusKey(f);
@@ -121,7 +121,7 @@ export default function TabBoiler({
                             return (
                                 <div key={f} className="space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <p className="text-xs font-bold text-white uppercase tracking-wider">Feeder {f.toUpperCase()}</p>
+                                        <p className="text-xs font-bold text-(--area-ink) uppercase tracking-wider">Feeder {f.toUpperCase()}</p>
                                         <FeederStatusChip sk={sk} value={(turbineMisc[sk] as string) ?? ''} onChange={onTurbineMiscChange} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
@@ -133,7 +133,7 @@ export default function TabBoiler({
                         })}
                     </Card>
 
-                    <Card title="Furnace & Air" icon="local_fire_department" color="orange">
+                    <Card title="Furnace & Air" icon="local_fire_department" area="boiler">
                         <div className="grid grid-cols-2 gap-3">
                             <InputField label="Temp Furnace" unit="°C" color="orange" name={`temp_furnace_${x}`} value={turbineMisc[`temp_furnace_${x}`]} onChange={onTurbineMiscChange} />
                             <InputField label="Air Heater TI113" unit="°C" color="orange" name={`air_heater_ti113_${x}`} value={turbineMisc[`air_heater_ti113_${x}`]} onChange={onTurbineMiscChange} readOnly={isShutdown} />
@@ -153,7 +153,7 @@ export default function TabBoiler({
             </div>
 
             <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
-                <Card title={`Produksi Boiler ${boilerId}`} icon="calculate" color="purple" isSidebar={true}>
+                <Card title={`Produksi Boiler ${boilerId}`} icon="calculate" isSidebar={true}>
                     <CalculatedField label="PRODUKSI STEAM" value={produksiSteam.toFixed(2)} unit="ton" variant="primary" />
                     <CalculatedField label="PRODUKSI BFW" value={produksiBfw.toFixed(2)} unit="ton" variant="secondary" />
                     {feeders.map((f, i) => (

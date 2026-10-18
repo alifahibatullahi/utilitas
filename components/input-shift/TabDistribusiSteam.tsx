@@ -33,7 +33,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
             <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    <Card title="Pabrik 1" icon="factory" color="blue">
+                    <Card title="Pabrik 1" icon="factory" area="steam">
                         <div className="flex flex-col gap-3">
                             <InputField label="Flow Steam" unit="t/h" color="blue" name="pabrik1_flow" value={values.pabrik1_flow} onChange={onFieldChange} />
                             <InputField label="Temperatur" unit="°C" color="blue" name="pabrik1_temp" value={values.pabrik1_temp} onChange={onFieldChange} />
@@ -41,7 +41,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                         </div>
                     </Card>
 
-                    <Card title="Pabrik 2" icon="factory" color="cyan">
+                    <Card title="Pabrik 2" icon="factory" area="mech">
                         <div className="flex flex-col gap-3">
                             <div className="grid grid-cols-2 gap-3">
                                 <InputField label="Flow Steam" unit="t/h" color="cyan" name="pabrik2_flow" value={values.pabrik2_flow ?? 0} onChange={onFieldChange} />
@@ -52,7 +52,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
                         </div>
                     </Card>
 
-                    <Card title="Pabrik 3" icon="factory" color="emerald">
+                    <Card title="Pabrik 3" icon="factory" area="coal">
                         <div className="flex flex-col gap-3">
                             <InputField label="Flow Steam" unit="t/h" color="emerald" name="pabrik3a_flow" value={values.pabrik3a_flow} onChange={onFieldChange} />
                             <InputField label="Temperatur" unit="°C" color="emerald" name="pabrik3a_temp" value={values.pabrik3a_temp} onChange={onFieldChange} />
@@ -64,7 +64,7 @@ export default function TabDistribusiSteam({ values = {}, onFieldChange, prevTot
             </div>
 
             <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
-                <Card title="Distribusi Shift" icon="calculate" color="purple" isSidebar={true}>
+                <Card title="Distribusi Shift" icon="calculate" isSidebar={true}>
                     <CalculatedField label="Steam Pabrik 1" value={produksiP1.toFixed(2)} unit="ton" variant="secondary" size="medium" />
                     <CalculatedField label="Steam Pabrik 2" value={produksiP2.toFixed(2)} unit="ton" variant="secondary" size="medium" />
                     <CalculatedField label="Steam Pabrik 3" value={produksiP3.toFixed(2)} unit="ton" variant="secondary" size="medium" />

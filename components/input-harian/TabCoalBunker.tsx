@@ -12,8 +12,8 @@ export default function TabCoalBunker({ stockTank, onStockTankChange }: DailyTab
     return (
         <div className="flex-1 w-full">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                <Card title="Boiler A" icon="inventory_2" color="blue">
-                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Level Bunker (Jam 24.00)</p>
+                <Card title="Boiler A" icon="inventory_2">
+                    <p className="text-[11px] text-(--area-ink) font-bold uppercase tracking-wider">Level Bunker (Jam 24.00)</p>
                     <div className="flex flex-col gap-3">
                         {['a', 'b', 'c'].map((k) => (
                             <InputField key={k} label={`Level Bunker ${k.toUpperCase()}`} unit="%" color="blue" name={`bunker_${k}`} value={stockTank[`bunker_${k}`]} onChange={onStockTankChange} />
@@ -21,8 +21,8 @@ export default function TabCoalBunker({ stockTank, onStockTankChange }: DailyTab
                     </div>
                 </Card>
 
-                <Card title="Boiler B" icon="inventory_2" color="cyan">
-                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Level Bunker (Jam 24.00)</p>
+                <Card title="Boiler B" icon="inventory_2">
+                    <p className="text-[11px] text-(--area-ink) font-bold uppercase tracking-wider">Level Bunker (Jam 24.00)</p>
                     <div className="flex flex-col gap-3">
                         {['d', 'e', 'f'].map((k) => (
                             <InputField key={k} label={`Level Bunker ${k.toUpperCase()}`} unit="%" color="cyan" name={`bunker_${k}`} value={stockTank[`bunker_${k}`]} onChange={onStockTankChange} />

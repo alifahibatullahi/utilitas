@@ -43,7 +43,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
             <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
-                    <Card title="Trafo A" icon="electrical_services" color="blue">
+                    <Card title="Trafo A" icon="electrical_services" area="power">
                         <div className="flex flex-col gap-3">
                             <InputField label="A1" unit="kV" color="blue" name="esp_a1" value={values.esp_a1} onChange={onFieldChange} />
                             <InputField label="A2" unit="kV" color="blue" name="esp_a2" value={values.esp_a2} onChange={onFieldChange} />
@@ -51,7 +51,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                         </div>
                     </Card>
 
-                    <Card title="Trafo B" icon="electrical_services" color="cyan">
+                    <Card title="Trafo B" icon="electrical_services" area="power">
                         <div className="flex flex-col gap-3">
                             <InputField label="B1" unit="kV" color="cyan" name="esp_b1" value={values.esp_b1} onChange={onFieldChange} />
                             <InputField label="B2" unit="kV" color="cyan" name="esp_b2" value={values.esp_b2} onChange={onFieldChange} />
@@ -59,14 +59,14 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                         </div>
                     </Card>
 
-                    <Card title="Ash Silo" icon="inventory_2" color="emerald">
+                    <Card title="Ash Silo" icon="inventory_2" area="ash">
                         <div className="grid grid-cols-2 gap-4">
                             <InputField label="Level Silo A" unit="%" color="emerald" name="silo_a" value={values.silo_a} onChange={onFieldChange} />
                             <InputField label="Level Silo B" unit="%" color="emerald" name="silo_b" value={values.silo_b} onChange={onFieldChange} />
                         </div>
                     </Card>
 
-                    <Card title="Unloading Fly Ash" icon="local_shipping" color="orange">
+                    <Card title="Unloading Fly Ash" icon="local_shipping" area="ash">
                         {allAshEntries.length > 0 && (
                             <div className="mb-1 flex flex-col gap-2">
                                 {savedAshEntries.map((e) => (
@@ -144,7 +144,7 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
             </div>
 
             <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
-                <Card title="Summary Fly Ash" icon="assessment" color="emerald" isSidebar={true}>
+                <Card title="Summary Fly Ash" icon="assessment" isSidebar={true}>
                     <CalculatedField label="TOTAL SILO A" value={totalAshSiloA.toLocaleString('id-ID')} unit="Rit" variant="primary" />
                     <CalculatedField label="TOTAL SILO B" value={totalAshSiloB.toLocaleString('id-ID')} unit="Rit" variant="transparent" />
                 </Card>
@@ -160,13 +160,13 @@ export default function TabESP({ values = {}, onFieldChange, ashEntries = [], on
                     placeholder="Pilih Silo..."
                 />
                 <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Truck Dari Perusahaan</label>
+                    <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Truck Dari Perusahaan</label>
                     <input type="text" value={form.perusahaan} onChange={e => setForm({ ...form, perusahaan: e.target.value })}
                         placeholder="Nama PT..."
                         className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
                 </div>
                 <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Tujuan</label>
+                    <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Tujuan</label>
                     <input type="text" value={form.tujuan} onChange={e => setForm({ ...form, tujuan: e.target.value })}
                         placeholder="Lokasi tujuan..."
                         className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />

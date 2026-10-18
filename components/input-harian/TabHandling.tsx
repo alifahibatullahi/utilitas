@@ -105,14 +105,14 @@ export default function TabHandling({
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
 
             {/* ═══ Tankyard ═══ */}
-            <Card title="Tankyard" icon="water_drop" color="blue">
+            <Card title="Tankyard" icon="water_drop" area="water">
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Level RCW" name="rcw_level_00" value={stockTank.rcw_level_00} onChange={onStockTankChange} unit="m³" color="blue" />
                     <InputField label="Level Demin" name="demin_level_00" value={stockTank.demin_level_00} onChange={onStockTankChange} unit="m³" color="blue" />
                 </div>
                 <div className="grid grid-cols-2 gap-3 items-end">
                     <div className="rounded-lg border border-slate-700/40 bg-bg-dark/40 px-3 py-2.5">
-                        <p className="text-[9px] text-slate-400 uppercase tracking-wider">Level Solar Kemarin</p>
+                        <p className="text-[9px] text-(--area-ink) uppercase tracking-wider">Level Solar Kemarin</p>
                         <p className="text-lg font-mono font-bold text-slate-300">{levelKemarin != null ? fmt(levelKemarin) : '—'} <span className="text-[10px] text-slate-500">m³</span></p>
                     </div>
                     <InputField label="Level Tank Solar (Hari Ini)" name="solar_tank_a" value={stockTank.solar_tank_a} onChange={onStockTankChange} unit="m³" color="orange" />
@@ -146,7 +146,7 @@ export default function TabHandling({
             </Card>
 
             {/* ═══ Konsumsi & Penerimaan ═══ */}
-            <Card title="Konsumsi & Penerimaan" icon="swap_vert" color="emerald">
+            <Card title="Konsumsi & Penerimaan" icon="swap_vert" area="coal">
                 <p className="text-[10px] text-slate-500 -mt-1 mb-2">Input totalizer — konsumsi dihitung otomatis (selisih hari ini − kemarin)</p>
                 <div className="grid grid-cols-2 gap-4">
                     {konsumsiRows.slice(0, 6).map(({ label, name }) => (
@@ -157,7 +157,7 @@ export default function TabHandling({
             </Card>
 
             {/* ═══ Summary ═══ */}
-            <Card title="Summary" icon="summarize" color="amber" className="lg:col-span-2">
+            <Card title="Summary" icon="summarize" className="lg:col-span-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     {/* Rekap Konsumsi */}
@@ -365,12 +365,12 @@ export default function TabHandling({
                 {editUn && (
                     <>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Jumlah (Liter)</label>
+                            <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Jumlah (Liter)</label>
                             <input type="number" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUn.liters} onChange={e => setEditUn({ ...editUn, liters: Number(e.target.value) || 0 })} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Supplier</label>
+                            <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Supplier</label>
                             <input type="text" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUn.supplier} onChange={e => setEditUn({ ...editUn, supplier: e.target.value })} />
                         </div>
@@ -387,12 +387,12 @@ export default function TabHandling({
                 {editUs && (
                     <>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Jumlah (Liter)</label>
+                            <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Jumlah (Liter)</label>
                             <input type="number" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUs.liters} onChange={e => setEditUs({ ...editUs, liters: Number(e.target.value) || 0 })} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Asal / Shift</label>
+                            <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Asal / Shift</label>
                             <select className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUs.shift} onChange={e => setEditUs({ ...editUs, shift: e.target.value })}>
                                 <option value="harian">Harian (ditambah di laporan harian)</option>
@@ -402,7 +402,7 @@ export default function TabHandling({
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Tujuan</label>
+                            <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Tujuan</label>
                             <select className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                 value={editUs.tujuanMode} onChange={e => {
                                     const mode = e.target.value as EditUs['tujuanMode'];

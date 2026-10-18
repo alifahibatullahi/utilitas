@@ -70,10 +70,10 @@ export default function TabSolarReview({
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
 
             {/* ═══ Level Solar ═══ */}
-            <Card title="Level Solar" icon="water_drop" color="orange">
+            <Card title="Level Solar" icon="water_drop" area="water">
                 <div className="grid grid-cols-2 gap-3 items-end">
                     <div className="rounded-lg border border-slate-700/40 bg-bg-dark/40 px-3 py-2.5">
-                        <p className="text-[9px] text-slate-400 uppercase tracking-wider">Level Kemarin</p>
+                        <p className="text-[9px] text-(--area-ink) uppercase tracking-wider">Level Kemarin</p>
                         <p className="text-lg font-mono font-bold text-slate-300">{levelKemarin != null ? fmt(levelKemarin) : '—'} <span className="text-[10px] text-slate-500">m³</span></p>
                     </div>
                     <InputField label="Level Sekarang" name="solar_tank_a" value={solarLevel} unit="m³" color="orange"
@@ -120,7 +120,7 @@ export default function TabSolarReview({
             </Card>
 
             {/* ═══ Kedatangan Solar ═══ */}
-            <Card title="Kedatangan Solar" icon="local_shipping" color="amber">
+            <Card title="Kedatangan Solar" icon="local_shipping" area="power">
                 <InputField label="Total Kedatangan (m³)" name="kedatangan_solar" value={kedatanganVal} unit="m³" color="amber"
                     onChange={(_, v) => onValueChange?.('kedatangan_solar', numOrNull(v))} />
                 <div className="pt-2 mt-1 border-t border-slate-700/50">
@@ -151,7 +151,7 @@ export default function TabSolarReview({
             </Card>
 
             {/* ═══ Pemakaian Solar ═══ */}
-            <Card title="Pemakaian Solar" icon="local_gas_station" color="rose" className="lg:col-span-2">
+            <Card title="Pemakaian Solar" icon="local_gas_station" area="power" className="lg:col-span-2">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <InputField label="Boiler A+B" name="solar_boiler" value={boilerVal} unit="m³" color="rose"
@@ -206,7 +206,7 @@ export default function TabSolarReview({
                         <InputField label="Jumlah" unit="L" color="amber" name="liters" thousands
                             value={editUn.liters} onChange={(_, v) => setEditUn({ ...editUn, liters: Number(v) || 0 })} />
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Supplier</label>
+                            <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Supplier</label>
                             <input type="text" value={editUn.supplier} onChange={e => setEditUn({ ...editUn, supplier: e.target.value })} placeholder="Nama supplier..."
                                 className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
                         </div>
@@ -225,7 +225,7 @@ export default function TabSolarReview({
                         <InputField label="Jumlah" unit="L" color="rose" name="liters" thousands
                             value={editUs.liters} onChange={(_, v) => setEditUs({ ...editUs, liters: Number(v) || 0 })} />
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Asal / Shift</label>
+                            <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Asal / Shift</label>
                             <select value={editUs.shift} onChange={e => setEditUs({ ...editUs, shift: e.target.value })}
                                 className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white focus:ring-1 focus:ring-blue-500 text-sm font-bold transition-all">
                                 <option value="harian" className="bg-bg-dark">Harian (ditambah di laporan harian)</option>
@@ -235,7 +235,7 @@ export default function TabSolarReview({
                             </select>
                         </div>
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Tujuan</label>
+                            <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Tujuan</label>
                             <select value={editUs.tujuanMode} onChange={e => {
                                 const mode = e.target.value as TujuanMode;
                                 setEditUs({ ...editUs, tujuanMode: mode, tujuan: mode !== 'Lainnya' ? mode : '' });

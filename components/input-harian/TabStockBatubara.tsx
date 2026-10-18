@@ -53,14 +53,14 @@ export default function TabStockBatubara({
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
 
             {/* ═══ Kedatangan Batubara (IN) ═══ */}
-            <Card title="Kedatangan Batubara" icon="download" color="amber">
+            <Card title="Kedatangan Batubara" icon="download" area="coal">
                 <div className="grid grid-cols-2 gap-3">
                     {[
                         { label: 'Via Laut · Tongkang', ton: laut, icon: 'directions_boat' },
                         { label: 'Via Darat', ton: darat, icon: 'local_shipping' },
                     ].map(k => (
                         <div key={k.label} className="rounded-lg border border-slate-700/40 bg-bg-dark/40 px-3 py-2.5">
-                            <p className="text-[9px] text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                            <p className="text-[9px] text-(--area-ink) uppercase tracking-wider flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[12px]">{k.icon}</span>{k.label}
                             </p>
                             <p className="text-lg font-mono font-bold text-amber-300">{formatTon(k.ton)} <span className="text-[10px] text-slate-500">ton</span></p>
@@ -123,7 +123,7 @@ export default function TabStockBatubara({
             </Card>
 
             {/* ═══ Pemindahan Batubara (OUT) ═══ */}
-            <Card title="Pemindahan Batubara" icon="upload" color="rose">
+            <Card title="Pemindahan Batubara" icon="upload" area="ash">
                 <p className="text-[10px] text-slate-500 -mt-1">Default 0 — isi bila ada pemindahan. Nilai 0 tetap tersimpan ke Sheets.</p>
                 <div className="space-y-3">
                     {OUT_CATS.map(c => (

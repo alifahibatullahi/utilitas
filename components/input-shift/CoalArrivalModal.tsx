@@ -91,7 +91,7 @@ const SHIFT_OPTIONS: { value: ShiftKey; label: string }[] = [
 const selectClass = (filled: boolean) =>
     `w-full bg-bg-dark border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-emerald-500 text-sm font-bold transition-all ${filled ? 'text-white' : 'text-slate-400'}`;
 
-const labelClass = 'font-medium text-white uppercase tracking-wider block text-left text-[10px]';
+const labelClass = 'font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]';
 
 /** Tombol pilihan besar (asal / metode / shift) — dua-tiga per baris, mudah diketuk di HP. */
 function PilihanTombol<T extends string>({ opsi, nilai, onPilih, terkunci, icon }: {

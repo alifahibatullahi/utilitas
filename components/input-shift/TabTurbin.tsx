@@ -59,14 +59,14 @@ export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChang
             <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    <Card title="Steam Inlet Turbin" icon="waves" color="blue">
+                    <Card title="Steam Inlet Turbin" icon="waves" area="steam">
                         <InputField label="Pressure Steam Inlet" unit="MPa" color="blue" name="press_steam" value={values.press_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <InputField label="Temp Steam" unit="°C" color="blue" name="temp_steam" value={values.temp_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <InputField label="Flow Steam" unit="t/h" color="blue" name="flow_steam" value={values.flow_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <TotalizerField label="Totalizer Steam Inlet" unit="ton" color="blue" name="totalizer_steam_inlet" value={values.totalizer_steam_inlet} onChange={onFieldChange} placeholder={prevSteamInlet > 0 ? String(prevSteamInlet) : '0.0'} prev={prevSteamInlet} meter="turbin_inlet" />
                     </Card>
 
-                    <Card title="Condenser" icon="water_drop" color="cyan">
+                    <Card title="Condenser" icon="water_drop" area="water">
                         <InputField label="Flow Condensate" unit="t/h" color="cyan" name="flow_cond" value={values.flow_cond} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                         <div className="grid grid-cols-2 gap-3">
                             <InputField label="Temp Exhaust Steam" unit="°C" color="cyan" name="exh_steam" value={values.exh_steam} onChange={onFieldChange} readOnly={isTurbinShutdown} />
@@ -78,7 +78,7 @@ export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChang
                         </div>
                         <TotalizerField label="Totalizer Condensate" unit="ton" color="cyan" name="totalizer_condensate" value={values.totalizer_condensate} onChange={onFieldChange} placeholder={prevCondensate > 0 ? String(prevCondensate) : '0.0'} prev={prevCondensate} meter="turbin_kondensat" />
                     </Card>
-                    <Card title="Bearings & Mechanical" icon="settings" color="orange">
+                    <Card title="Bearings & Mechanical" icon="settings" area="mech">
                         <div className="grid grid-cols-2 gap-3">
                             <InputField label="Temp Thrust Bearing" unit="°C" color="orange" name="thrust_bearing" value={values.thrust_bearing} onChange={onFieldChange} readOnly={isTurbinShutdown} />
                             <InputField label="Temp Metal Bearing" unit="°C" color="orange" name="metal_bearing" value={values.metal_bearing} onChange={onFieldChange} readOnly={isTurbinShutdown} />
@@ -90,7 +90,7 @@ export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChang
                         <InputField label="Axial Displacement" unit="mm" color="orange" name="axial_displacement" value={values.axial_displacement} onChange={onFieldChange} textMode readOnly={isTurbinShutdown} />
                     </Card>
 
-                    <Card title="Deaerator & Cooling Water" icon="opacity" color="emerald">
+                    <Card title="Deaerator & Cooling Water" icon="opacity" area="water">
                         <div className="grid grid-cols-2 gap-3">
                             <InputField label="Pressure Deaerator" unit="MPa" color="emerald" name="press_deaerator" value={values.press_deaerator} onChange={onFieldChange} />
                             <InputField label="Temp Deaerator" unit="°C" color="emerald" name="temp_deaerator" value={values.temp_deaerator} onChange={onFieldChange} />
@@ -105,7 +105,7 @@ export default function TabTurbin({ values = {}, onFieldChange, onAutoFieldChang
             </div>
 
             <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
-                <Card title="Produksi Shift" icon="calculate" color="purple" isSidebar={true}>
+                <Card title="Produksi Shift" icon="calculate" isSidebar={true}>
                     <CalculatedField label="PRODUKSI STEAM INLET" value={produksiSteamInlet.toFixed(2)} unit="ton" variant="primary" />
                     <CalculatedField label="PRODUKSI CONDENSATE" value={produksiCondensate.toFixed(2)} unit="ton" variant="secondary" />
 

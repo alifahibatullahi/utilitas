@@ -124,7 +124,7 @@ export default function TabChemical({ date }: TabChemicalProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full overflow-y-auto pr-1 scrollbar-hide">
             {/* Konsumsi Chemical 24 Jam */}
             <div>
-                <Card title="Konsumsi Chemical 24 Jam" icon="science" color="purple">
+                <Card title="Konsumsi Chemical 24 Jam" icon="science" area="chem">
                     {loading ? (
                         <p className="text-sm text-slate-500 py-4 text-center">Memuat data...</p>
                     ) : (
@@ -154,7 +154,7 @@ export default function TabChemical({ date }: TabChemicalProps) {
 
             {/* Stock Chemical */}
             <div>
-                <Card title="Stock Chemical" icon="inventory_2" color="emerald">
+                <Card title="Stock Chemical" icon="inventory_2" area="chem">
                     <div className="flex flex-col gap-4 h-full">
                         {[
                             { label: 'Phosphate', value: stock.phosphate },
@@ -162,7 +162,7 @@ export default function TabChemical({ date }: TabChemicalProps) {
                             { label: 'Hydrazine', value: stock.hydrazine },
                         ].map(({ label, value }) => (
                             <div key={label} className="rounded-xl bg-slate-800/40 border border-slate-700/60 p-5 flex flex-col items-center justify-center gap-2 flex-1">
-                                <span className="text-sm text-slate-300 uppercase tracking-wider font-bold">{label}</span>
+                                <span className="text-sm text-(--area-ink) uppercase tracking-wider font-bold">{label}</span>
                                 <span className={`text-4xl font-black font-mono ${value != null ? 'text-white' : 'text-slate-600'}`}>
                                     {value != null ? value : '—'}
                                 </span>

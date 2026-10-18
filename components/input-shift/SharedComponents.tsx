@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRisetContext } from './TotalizerRiset';
 import { kurangiTotalizer, pilihSaran } from '@/lib/totalizer-riset';
+import { areaStyle, type Area } from './area';
 
 export interface InputFieldProps {
     label?: string;
@@ -26,7 +27,8 @@ export interface InputFieldProps {
     autoFocus?: boolean;
 }
 
-const FIELD_LABEL = "font-bold text-white uppercase tracking-wider block text-left text-xs";
+// Label isian memakai tinta warna kartu (--area-ink, lihat ./area.ts).
+const FIELD_LABEL = "font-bold text-(--area-ink) uppercase tracking-wider block text-left text-xs";
 
 export const InputField = ({ label, placeholder = "0.0", unit, size = "small", value, onChange, name, negative, readOnly, textMode, thousands, plainInteger, highlight, autoFocus }: InputFieldProps) => {
     const border = highlight ? 'border-red-500 ring-1 ring-red-500/60' : 'border-slate-700/80';
@@ -192,7 +194,7 @@ export const SelectField = ({ label, options, size = "normal", value, onChange, 
 }) => (
     <div className="space-y-1.5 w-full">
         {label && (
-            <label className={`font-medium text-white uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
+            <label className={`font-medium text-(--area-ink) uppercase tracking-wider block text-left ${size === 'small' ? 'text-[10px]' : 'text-xs'}`}>
                 {label}
             </label>
         )}
@@ -211,19 +213,19 @@ export const SelectField = ({ label, options, size = "normal", value, onChange, 
     </div>
 );
 
-export const Card = ({ title, icon, children, isSidebar = false, className = '', headerRight }: {
+export const Card = ({ title, icon, area, children, isSidebar = false, className = '', headerRight }: {
     title: string;
     icon: string;
-    /** Tidak dipakai lagi — warna kartu mengikuti area tab tempatnya (`--area`, lihat
-     *  ./area.ts). Dibiarkan supaya pemanggil lama tetap valid. */
-    color?: 'blue' | 'cyan' | 'orange' | 'emerald' | 'purple' | 'indigo' | 'slate' | 'amber' | 'rose' | 'teal' | 'sky';
+    /** Warna kartu menurut isinya (uap, air, batubara, …; lihat ./area.ts). Kosong = ikut
+     *  warna tab tempatnya — dipakai kartu ringkasan. Label di dalamnya ikut warna ini. */
+    area?: Area;
     children: React.ReactNode;
     isSidebar?: boolean;
     className?: string;
     headerRight?: React.ReactNode;
 }) => {
     return (
-        <div className={`bg-surface-dark border border-slate-700/60 rounded-xl overflow-hidden flex flex-col ${className}`}>
+        <div className={`bg-surface-dark border border-slate-700/60 rounded-xl overflow-hidden flex flex-col ${className}`} style={area ? areaStyle(area) : undefined}>
             <div className="p-4 bg-(--area) flex items-center gap-3 shrink-0">
                 <div className="p-2 rounded-lg bg-white/15">
                     <span className="material-symbols-outlined text-white">{icon}</span>
@@ -240,7 +242,7 @@ export const Card = ({ title, icon, children, isSidebar = false, className = '',
 
 export const SectionLabel = ({ label, badge }: { label: string; badge?: string }) => (
     <div className="flex items-center gap-2 pt-3 pb-1 first:pt-0">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-(--area-ink)">{label}</span>
         {badge && <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-300 font-medium">{badge}</span>}
         <div className="flex-1 border-t border-slate-700/40" />
     </div>
@@ -487,13 +489,13 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
         },
         small: {
             bg: 'bg-surface-highlight/30 border-slate-700/30 p-2.5',
-            label: 'text-white text-[10px] font-medium uppercase tracking-wider',
+            label: 'text-(--area-ink) text-[10px] font-medium uppercase tracking-wider',
             value: 'text-white font-mono font-bold text-sm',
             unit: 'text-slate-500 text-[10px] font-medium',
         },
         transparent: {
             bg: 'bg-transparent border-slate-700/50 p-2.5',
-            label: 'text-white text-xs font-bold uppercase tracking-wider',
+            label: 'text-(--area-ink) text-xs font-bold uppercase tracking-wider',
             value: 'text-white font-mono font-black text-2xl',
             unit: 'text-slate-400 text-xs font-bold',
         }

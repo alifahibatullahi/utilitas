@@ -1000,7 +1000,7 @@ function ReviewCard({ title, icon, area = 'note', children }: { title: string; i
 function Row({ label, value, unit }: { label: string; value: string | number | null | undefined; unit?: string }) {
     return (
         <div className="flex items-baseline justify-between gap-2">
-            <span className="text-slate-400 text-[10px]">{label}</span>
+            <span className="text-(--area-ink) text-[10px]">{label}</span>
             <span className="font-mono font-bold text-slate-100">
                 {value == null || value === '' ? '—' : value}
                 {unit && value != null && value !== '' && <span className="ml-1 text-[10px] text-slate-400 font-normal">{unit}</span>}
@@ -1052,7 +1052,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                     <Row label="Batubara" value={fmt(summary.boilerA?.batubara)} unit="ton" />
                     <Row label="Cons. Rate" value={summary.boilerA?.consumptionRate != null ? summary.boilerA.consumptionRate.toFixed(3) : null} unit="ton/ton" />
                     <div className="flex items-center justify-between gap-2 pt-1">
-                        <span className="text-slate-400 text-[10px]">Status</span>
+                        <span className="text-(--area-ink) text-[10px]">Status</span>
                         <StatusBadge value={summary.boilerA?.status ?? null} />
                     </div>
                 </ReviewCard>
@@ -1066,7 +1066,7 @@ function ReviewSummaryShift({ summary }: { summary: ShiftReviewSummary }) {
                     <Row label="Batubara" value={fmt(summary.boilerB?.batubara)} unit="ton" />
                     <Row label="Cons. Rate" value={summary.boilerB?.consumptionRate != null ? summary.boilerB.consumptionRate.toFixed(3) : null} unit="ton/ton" />
                     <div className="flex items-center justify-between gap-2 pt-1">
-                        <span className="text-slate-400 text-[10px]">Status</span>
+                        <span className="text-(--area-ink) text-[10px]">Status</span>
                         <StatusBadge value={summary.boilerB?.status ?? null} />
                     </div>
                 </ReviewCard>
@@ -1166,7 +1166,7 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                     <Row label="Batubara 24h" value={fmt(summary.boilerA?.batubara)} unit="ton" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerA?.tempFurnace)} unit="°C" />
                     <div className="flex items-center justify-between gap-2 pt-1">
-                        <span className="text-slate-400 text-[10px]">Status</span>
+                        <span className="text-(--area-ink) text-[10px]">Status</span>
                         <StatusBadge value={summary.boilerA?.status ?? null} />
                     </div>
                 </ReviewCard>
@@ -1175,7 +1175,7 @@ function ReviewSummaryDaily({ summary, stockOverride }: { summary: DailyReviewSu
                     <Row label="Batubara 24h" value={fmt(summary.boilerB?.batubara)} unit="ton" />
                     <Row label="Temp Furnace" value={fmt(summary.boilerB?.tempFurnace)} unit="°C" />
                     <div className="flex items-center justify-between gap-2 pt-1">
-                        <span className="text-slate-400 text-[10px]">Status</span>
+                        <span className="text-(--area-ink) text-[10px]">Status</span>
                         <StatusBadge value={summary.boilerB?.status ?? null} />
                     </div>
                 </ReviewCard>

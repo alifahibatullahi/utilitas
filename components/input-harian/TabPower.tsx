@@ -56,7 +56,7 @@ export default function TabPower({
             <div className="flex-1 min-w-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    <Card title="Generator Output" icon="flash_on" color="blue">
+                    <Card title="Generator Output" icon="flash_on" area="power">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <InputField label="Load STG"      unit="MW"   color="blue" name="gen_00"        value={pv.gen_00}        onChange={onPowerChange} readOnly={isTurbinShutdown} />
                             <InputField label="Ampere"        unit="A"    color="blue" name="gen_ampere"    value={gv.gen_ampere}    onChange={onTurbineMiscChange} readOnly={isTurbinShutdown} />
@@ -67,14 +67,14 @@ export default function TabPower({
                         </div>
                     </Card>
 
-                    <Card title="Gardu Induk (PLN)" icon="electrical_services" color="orange">
+                    <Card title="Gardu Induk (PLN)" icon="electrical_services" area="mech">
                         <InputField label="Σ P"   unit="MW"   color="orange" name="gi_sum_p"  value={gv.gi_sum_p}  onChange={onTurbineMiscChange} />
                         <InputField label="Σ Q"   unit="MVAR" color="orange" name="gi_sum_q"  value={gv.gi_sum_q}  onChange={onTurbineMiscChange} />
                         <InputField label="Cos θ"             color="orange" name="gi_cos_phi" value={gv.gi_cos_phi} onChange={onTurbineMiscChange} />
                     </Card>
 
                     <div className="md:col-span-2">
-                        <Card title="Distribusi Power" icon="account_tree" color="emerald">
+                        <Card title="Distribusi Power" icon="account_tree" area="steam">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {DIST_ITEMS.map(({ key, label }) => {
                                     const mwName  = `power_${key}`;
@@ -113,7 +113,7 @@ export default function TabPower({
             </div>
 
             <div className="w-full xl:w-[240px] shrink-0 flex flex-col">
-                <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
+                <Card title="Power Summary" icon="calculate" isSidebar={true}>
                     {/* ── MWh totals (selisih totalizer) ── */}
                     {(() => {
                         // key = power_<x>_totalizer → kunci riset power_<x>.

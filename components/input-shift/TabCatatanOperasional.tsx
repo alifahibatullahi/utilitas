@@ -117,7 +117,7 @@ export default function TabCatatanOperasional({
 
     return (
         <div className="w-full max-w-3xl mx-auto space-y-4">
-            <Card title="Catatan Operasional" icon="sticky_note_2" color="amber">
+            <Card title="Catatan Operasional" icon="sticky_note_2" area="mech">
                 <textarea
                     value={catatan}
                     onChange={e => onCatatanChange(e.target.value)}
@@ -135,7 +135,7 @@ export default function TabCatatanOperasional({
                 currentStation null) kartu ini disembunyikan — semua catatan langsung di field
                 Catatan Operasional di atas. (permintaan user) */}
             {currentStation && otherText && (
-                <Card title="Catatan Station Lain" icon="notes" color="slate">
+                <Card title="Catatan Station Lain" icon="notes" area="note">
                     <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
                         Catatan dari station lain (read-only). Semua digabung jadi satu Catatan Operasional saat publish.
                     </p>

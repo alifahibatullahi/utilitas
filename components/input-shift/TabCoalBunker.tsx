@@ -61,7 +61,7 @@ export default function TabCoalBunker({ values = {}, onFieldChange, onStatusChan
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
-                <Card title="Boiler A" icon="inventory_2" color="blue">
+                <Card title="Boiler A" icon="inventory_2">
                     <div className="flex flex-col gap-5">
                         <div className="grid grid-cols-2 gap-3 pb-4 border-b border-slate-700/50">
                             <InputField label="Level Bunker A" unit="%" color="blue" name="bunker_a" value={values.bunker_a} onChange={onFieldChange} />
@@ -78,7 +78,7 @@ export default function TabCoalBunker({ values = {}, onFieldChange, onStatusChan
                     </div>
                 </Card>
 
-                <Card title="Boiler B" icon="inventory_2" color="cyan">
+                <Card title="Boiler B" icon="inventory_2">
                     <div className="flex flex-col gap-5">
                         <div className="grid grid-cols-2 gap-3 pb-4 border-b border-slate-700/50">
                             <InputField label="Level Bunker D" unit="%" color="cyan" name="bunker_d" value={values.bunker_d} onChange={onFieldChange} />

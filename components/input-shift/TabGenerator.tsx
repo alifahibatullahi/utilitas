@@ -58,7 +58,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
             <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    <Card title="Generator Output" icon="flash_on" color="blue">
+                    <Card title="Generator Output" icon="flash_on" area="power">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <InputField label="Load STG" unit="MW" color="blue" name="gen_load" value={gv.gen_load} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
                             <InputField label="Ampere" unit="A" color="blue" name="gen_ampere" value={gv.gen_ampere} onChange={onGeneratorChange} readOnly={isTurbinShutdown} />
@@ -69,14 +69,14 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
                         </div>
                     </Card>
 
-                    <Card title="Gardu Induk (PLN)" icon="electrical_services" color="orange">
+                    <Card title="Gardu Induk (PLN)" icon="electrical_services" area="mech">
                         <InputField label="Σ P" unit="MW" color="orange" name="gi_sum_p" value={gv.gi_sum_p} onChange={onGeneratorChange} />
                         <InputField label="Σ Q" unit="MVAR" color="orange" name="gi_sum_q" value={gv.gi_sum_q} onChange={onGeneratorChange} />
                         <InputField label="Cos θ" color="orange" name="gi_cos_phi" value={gv.gi_cos_phi} onChange={onGeneratorChange} />
                     </Card>
 
                     <div className="md:col-span-2">
-                        <Card title="Distribusi Power" icon="account_tree" color="emerald">
+                        <Card title="Distribusi Power" icon="account_tree" area="steam">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {DIST_ITEMS.map(({ key, label }) => {
                                     const mwName = `power_${key}`;
@@ -115,7 +115,7 @@ export default function TabGenerator({ generatorValues = {}, powerValues = {}, o
             </div>
 
             <div className="w-full xl:w-[240px] shrink-0 xl:h-full flex flex-col">
-                <Card title="Power Summary" icon="calculate" color="purple" isSidebar={true}>
+                <Card title="Power Summary" icon="calculate" isSidebar={true}>
                     <CalculatedField label="LOAD STG" value={fmt(gv.gen_load)} unit="MW" variant="primary" />
 
                     <div className="h-px bg-slate-700/80 w-full my-1" />

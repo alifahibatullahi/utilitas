@@ -228,7 +228,19 @@ body:has(.graphite-canvas) {
   --area-coal: #6a4429;    /* RAL 8011 coklat */
   --area-ash: #5e6658;     /* RAL 7033 abu semen */
   --area-water: #2f6b57;   /* RAL 6000 hijau patina */
+  --area-chem: #8f3f51;    /* RAL 4002 merah ungu */
+  --area-mech: #556b2f;    /* RAL 6003 hijau zaitun */
   --area-note: #3a3f45;    /* RAL 7016 antrasit */
+  /* "Tinta": versi terang tiap warna area untuk TEKS (label isian) di latar gelap. */
+  --area-boiler-ink: #eb9a86;
+  --area-steam-ink: #94bfe0;
+  --area-power-ink: #f0a874;
+  --area-coal-ink: #d6ad86;
+  --area-ash-ink: #bcc4b2;
+  --area-water-ink: #86cdb0;
+  --area-chem-ink: #e6a0b2;
+  --area-mech-ink: #c2d18e;
+  --area-note-ink: #c6cacf;
   --shift-malam: #1d3557;  /* RAL 5003 biru safir */
   --shift-pagi: #e0b000;   /* RAL 1003 kuning sinyal — teks gelap */
   --shift-sore: #b04a1c;   /* RAL 2001 oranye-merah */
@@ -242,6 +254,7 @@ body:has(.graphite-canvas) {
   --status-emergency: #b4531f;
   --status-stop: #b32821;  /* RAL 3020 merah lalu lintas */
   --area: var(--area-note);
+  --area-ink: var(--area-note-ink);
 
   --color-bg-dark: #121314;
   --color-surface-dark: #1a1c1f;

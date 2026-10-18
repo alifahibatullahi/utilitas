@@ -32,7 +32,7 @@ export default function TabSiloFlyAsh({
 
     return (
         <div className="flex-1 w-full">
-            <Card title="Silo & Fly Ash" icon="filter_alt" color="emerald">
+            <Card title="Silo & Fly Ash" icon="filter_alt">
                 {/* Level Silo */}
                 <div className="grid grid-cols-2 gap-4">
                     <InputField label="Level Silo A" name="silo_a_pct" value={stockTank.silo_a_pct} onChange={onStockTankChange} unit="%" color="emerald" />
@@ -54,11 +54,11 @@ export default function TabSiloFlyAsh({
                 {/* Summary Unloading */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="bg-slate-800/40 border border-slate-700/60 rounded-lg px-3 py-2 text-center">
-                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Total Unloading Silo A</p>
+                        <p className="text-[10px] text-(--area-ink) uppercase tracking-wider font-bold">Total Unloading Silo A</p>
                         <p className="text-white font-bold text-xl">{totalA} <span className="text-xs font-normal">Rit</span></p>
                     </div>
                     <div className="bg-slate-800/40 border border-slate-700/60 rounded-lg px-3 py-2 text-center">
-                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Total Unloading Silo B</p>
+                        <p className="text-[10px] text-(--area-ink) uppercase tracking-wider font-bold">Total Unloading Silo B</p>
                         <p className="text-white font-bold text-xl">{totalB} <span className="text-xs font-normal">Rit</span></p>
                     </div>
                 </div>
@@ -137,14 +137,14 @@ export default function TabSiloFlyAsh({
                     <>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="font-bold text-white uppercase tracking-wider block text-xs">Silo</label>
+                                <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Silo</label>
                                 <select className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 transition-all"
                                     value={editItem.silo} onChange={e => setEditItem({ ...editItem, silo: e.target.value })}>
                                     {SILO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="font-bold text-white uppercase tracking-wider block text-xs">Shift</label>
+                                <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Shift</label>
                                 <select className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 transition-all"
                                     value={editItem.shift} onChange={e => setEditItem({ ...editItem, shift: e.target.value })}>
                                     {SHIFT_OPTIONS.map(s => <option key={s} value={s}>{SHIFT_LABELS[s]}</option>)}
@@ -152,17 +152,17 @@ export default function TabSiloFlyAsh({
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Truck Dari Perusahaan</label>
+                            <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Truck Dari Perusahaan</label>
                             <input type="text" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 transition-all"
                                 value={editItem.perusahaan} onChange={e => setEditItem({ ...editItem, perusahaan: e.target.value })} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Tujuan</label>
+                            <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Tujuan</label>
                             <input type="text" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-sm focus:ring-1 focus:ring-blue-500 transition-all"
                                 value={editItem.tujuan} onChange={e => setEditItem({ ...editItem, tujuan: e.target.value })} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="font-bold text-white uppercase tracking-wider block text-xs">Ritase</label>
+                            <label className="font-bold text-(--area-ink) uppercase tracking-wider block text-xs">Ritase</label>
                             <input type="number" className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white text-lg font-mono focus:ring-1 focus:ring-blue-500 transition-all"
                                 value={editItem.ritase} onChange={e => setEditItem({ ...editItem, ritase: Number(e.target.value) || 0 })} />
                         </div>

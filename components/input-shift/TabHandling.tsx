@@ -166,7 +166,7 @@ function EntryList({ entries, savedEntries, accentColor, labelKey, valueKey, uni
 function timeInput(value: string, prev: string, onChange: (v: string) => void) {
     return (
         <div className="space-y-1.5 w-full">
-            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Jam</label>
+            <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Jam</label>
             <input
                 type="text" inputMode="numeric" placeholder="00:00" maxLength={5}
                 value={value}
@@ -258,10 +258,10 @@ export default function TabHandling({
             <div className="w-full xl:flex-1 xl:overflow-y-auto pr-1 sm:pr-2 scrollbar-hide">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    <Card title="Loading Batubara" icon="local_shipping" color="orange">
+                    <Card title="Loading Batubara" icon="local_shipping" area="coal">
                         <InputField label="Total Loading" unit="shovel" color="orange" name="loading" value={espValues.loading} onChange={onEspChange} />
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Hopper Aktif</label>
+                            <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Hopper Aktif</label>
                             <select className={`w-full bg-bg-dark border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-blue-500 text-sm font-bold transition-all ${!espValues.hopper ? 'text-slate-400' : 'text-white'}`}
                                 value={(espValues.hopper as string) || ''} onChange={e => onEspChange?.('hopper', e.target.value || null)}>
                                 <option value="" className="text-slate-400 bg-bg-dark">Pilih...</option>
@@ -271,7 +271,7 @@ export default function TabHandling({
                             </select>
                         </div>
                         <div className="space-y-1.5 w-full">
-                            <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Conveyor Status</label>
+                            <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Conveyor Status</label>
                             <select className={`w-full bg-bg-dark border border-slate-700/80 rounded-lg py-2.5 px-3 focus:ring-1 focus:ring-blue-500 text-sm font-bold transition-all ${!espValues.conveyor ? 'text-slate-400' : 'text-white'}`}
                                 value={(espValues.conveyor as string) || ''} onChange={e => onEspChange?.('conveyor', e.target.value || null)}>
                                 <option value="" className="text-slate-400 bg-bg-dark">Pilih...</option>
@@ -331,14 +331,14 @@ export default function TabHandling({
                         </div>
                     </Card>
 
-                    <Card title="Tankyard" icon="water_drop" color="blue">
+                    <Card title="Tankyard" icon="water_drop" area="water">
                         <InputField label="Level RCW" unit="m" color="blue" name="tk_rcw" value={tankyardValues.tk_rcw} onChange={onTankyardChange} />
                         <InputField label="Level Demin" unit="m" color="blue" name="tk_demin" value={tankyardValues.tk_demin} onChange={onTankyardChange} />
                         <InputField label="Level Tanki Solar" unit="m" color="blue" name="tk_solar_ab" value={tankyardValues.tk_solar_ab} onChange={onTankyardChange} />
                     </Card>
 
                     {/* Kedatangan Solar */}
-                    <Card title="Kedatangan Solar" icon="download" color="amber">
+                    <Card title="Kedatangan Solar" icon="download" area="power">
                         {allInSolar.length > 0 && (
                             <div className="mb-1">
                                 <EntryList
@@ -361,7 +361,7 @@ export default function TabHandling({
                     </Card>
 
                     {/* Permintaan Solar */}
-                    <Card title="Permintaan Solar" icon="upload" color="rose">
+                    <Card title="Permintaan Solar" icon="upload" area="power">
                         {allOutSolar.length > 0 && (
                             <div className="mb-1">
                                 <EntryList
@@ -384,7 +384,7 @@ export default function TabHandling({
                     </Card>
 
                     {/* Kedatangan Batubara — opsional, hanya diisi bila ada kedatangan */}
-                    <Card title="Kedatangan Batubara" icon="dock" color="emerald">
+                    <Card title="Kedatangan Batubara" icon="dock" area="coal">
                         {allArrivals.length > 0 && (
                             <div className="mb-1">
                                 <CoalEntryList
@@ -433,7 +433,7 @@ export default function TabHandling({
                 <InputField label="Jumlah" unit="Liter" color="amber" name="solar_jumlah" value={solarForm.jumlah} thousands
                     onChange={(_, v) => setSolarForm({ ...solarForm, jumlah: typeof v === 'string' ? parseFloat(v) || null : v as number | null })} />
                 <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Perusahaan</label>
+                    <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Perusahaan</label>
                     <input type="text" value={solarForm.perusahaan} onChange={e => setSolarForm({ ...solarForm, perusahaan: e.target.value })}
                         placeholder="Nama perusahaan..."
                         className="w-full bg-bg-dark/50 border border-slate-700/80 rounded-lg py-2.5 px-3 text-white placeholder-slate-600 focus:ring-1 focus:ring-blue-500 text-sm transition-all" />
@@ -451,7 +451,7 @@ export default function TabHandling({
                 <InputField label="Jumlah" unit="Liter" color="rose" name="out_solar_jumlah" value={outForm.jumlah} thousands
                     onChange={(_, v) => setOutForm({ ...outForm, jumlah: typeof v === 'string' ? parseFloat(v) || null : v as number | null })} />
                 <div className="space-y-1.5 w-full">
-                    <label className="font-medium text-white uppercase tracking-wider block text-left text-[10px]">Tujuan Permintaan</label>
+                    <label className="font-medium text-(--area-ink) uppercase tracking-wider block text-left text-[10px]">Tujuan Permintaan</label>
                     <select value={tujuanMode} onChange={e => {
                         const mode = e.target.value as typeof tujuanMode;
                         setTujuanMode(mode);

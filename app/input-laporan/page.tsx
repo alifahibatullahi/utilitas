@@ -27,6 +27,7 @@ import { nowWIB, todayWIB } from '@/lib/utils';
 import { checkConsumptionRate, checkMaxMW, checkSelisihNegatif } from '@/lib/report-validation';
 import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
+import { runStatusClass } from '@/components/input-shift/SharedComponents';
 import { areaStyle, shiftStyle, type Area, type ShiftTone } from '@/components/input-shift/area';
 import {
     hitungPasanganRiset, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
@@ -75,14 +76,14 @@ const TABS: { id: TabId; label: string; icon: string; area: Area }[] = [
     { id: 'Catatan Operasional', label: 'Catatan Operasional', icon: 'sticky_note_2', area: 'note' },
 ];
 
-// Tab memakai warna kalem areanya (--area, dipasang per tombol lewat areaStyle):
-// ikon selalu berwarna area; tab aktif ber-tint + garis area (kiri desktop, bawah HP).
+// Tab memakai warna solid areanya (--area, dipasang per tombol lewat areaStyle):
+// ikon dalam kotak kecil berwarna area; tab aktif terisi penuh warna area.
 const TAB_STYLE = {
-    active: 'font-bold bg-(--area)/12 text-white border-(--area)/30',
-    inactive: 'font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border-transparent',
-    icon: 'text-(--area)',
-    barSide: 'shadow-[inset_3px_0_0_var(--area)]',
-    barBottom: 'shadow-[inset_0_-2px_0_var(--area)]',
+    active: 'font-bold bg-(--area) text-white border-(--area)',
+    inactive: 'font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 border-transparent',
+    icon: 'rounded-md p-1 text-white',
+    iconActive: 'bg-white/20',
+    iconIdle: 'bg-(--area)',
 };
 
 // Pilihan jenis laporan datar di header: 3 shift + harian dalam satu segmented control.
@@ -94,13 +95,13 @@ const REPORT_CHOICES: { id: ReportChoice; label: string; hint: string; icon: str
     { id: 'sore', label: 'Sore', hint: '(22)', icon: 'wb_twilight' },
     { id: 'harian', label: 'Harian', hint: '', icon: 'today' },
 ];
-// Pilihan aktif ber-tint warna shift-nya (--shift via shiftStyle) + garis bawah;
+// Pilihan aktif terisi warna solid shift-nya (--shift/--shift-fg via shiftStyle);
 // sama dengan StationPickerModal.
-const REPORT_CHOICE_ACTIVE = 'bg-(--shift)/15 text-white shadow-[inset_0_-2px_0_var(--shift)]';
+const REPORT_CHOICE_ACTIVE = 'bg-(--shift) text-(--shift-fg)';
 
-// Chip info di header (grup, station) — netral. Chip shift ber-tint warna shift.
+// Chip info di header (grup, station) — netral. Chip shift terisi warna shift.
 const HEADER_CHIP = 'px-3 py-1 rounded-lg text-sm font-bold border uppercase tracking-widest bg-slate-800 border-slate-700';
-const SHIFT_CHIP = 'px-3 py-1 rounded-lg text-sm font-bold border uppercase tracking-widest bg-(--shift)/12 border-(--shift)/35 text-(--shift)';
+const SHIFT_CHIP = 'px-3 py-1 rounded-lg text-sm font-bold border uppercase tracking-widest bg-(--shift) border-(--shift) text-(--shift-fg)';
 const SHIFT_TONE: Record<1 | 2 | 3, ShiftTone> = { 1: 'malam', 2: 'pagi', 3: 'sore' };
 
 export default function InputShiftPage() {
@@ -2186,7 +2187,7 @@ function InputShiftPageInner() {
                                             ? REPORT_CHOICE_ACTIVE
                                             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'}`}
                                 >
-                                    <span className="material-symbols-outlined text-sm text-(--shift)">{c.icon}</span>
+                                    <span className="material-symbols-outlined text-sm">{c.icon}</span>
                                     <span>{c.label}{c.hint && <span className="hidden xl:inline"> {c.hint}</span>}</span>
                                 </button>
                             ))}
@@ -2347,9 +2348,9 @@ function InputShiftPageInner() {
                                         key={tab.id}
                                         style={areaStyle(tab.area)}
                                         onClick={() => setActiveTab(tab.id as TabId)}
-                                        className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barSide}` : TAB_STYLE.inactive}`}
+                                        className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? TAB_STYLE.active : TAB_STYLE.inactive}`}
                                     >
-                                        <span className={`material-symbols-outlined text-[20px] ${TAB_STYLE.icon} ${isActive ? '' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
+                                        <span className={`material-symbols-outlined text-[18px] ${TAB_STYLE.icon} ${isActive ? TAB_STYLE.iconActive : TAB_STYLE.iconIdle}`}>
                                             {tab.icon}
                                         </span>
                                         <span className="flex-1">{tab.label}</span>
@@ -2375,9 +2376,9 @@ function InputShiftPageInner() {
                                             key={tab.id}
                                             style={areaStyle(tab.area)}
                                             onClick={() => setActiveTab(tab.id as TabId)}
-                                            className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barBottom}` : TAB_STYLE.inactive}`}
+                                            className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? TAB_STYLE.active : TAB_STYLE.inactive}`}
                                         >
-                                            <span className={`material-symbols-outlined text-[18px] ${TAB_STYLE.icon} ${isActive ? '' : 'opacity-70'}`}>
+                                            <span className={`material-symbols-outlined text-[16px] ${TAB_STYLE.icon} ${isActive ? TAB_STYLE.iconActive : TAB_STYLE.iconIdle}`}>
                                                 {tab.icon}
                                             </span>
                                             <span>{tab.label}</span>
@@ -2405,16 +2406,14 @@ function InputShiftPageInner() {
                                 const boilerStatus = (currentBoilerState.status_boiler as string) ?? '';
                                 return (
                                     <>
-                                        <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-bg-dark border border-slate-700/50 shadow-inner shrink-0`}>
-                                            <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-(--area)`}>{tab?.icon}</span>
+                                        <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-(--area) border border-(--area) shrink-0`}>
+                                            <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-white`}>{tab?.icon}</span>
                                         </div>
                                         <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide shrink-0">{tab?.label}</h2>
                                         {isBoilerTab && (() => {
-                                            const boilerBorder = boilerStatus === 'running' ? 'border-emerald-500/50' : boilerStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
-                                            const boilerDot = boilerStatus === 'running' ? 'bg-emerald-500' : boilerStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                                             return (
-                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-bg-dark/60 border ${boilerBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
-                                                    <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${boilerDot} shrink-0`} />
+                                                <div className={`inline-flex items-center gap-2 sm:gap-3 border ${runStatusClass(boilerStatus)} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                    <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${boilerStatus ? 'bg-white/85' : 'bg-slate-500'} shrink-0`} />
                                                     <select
                                                         className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
                                                         value={boilerStatus}
@@ -2435,11 +2434,9 @@ function InputShiftPageInner() {
                                             (kecuali kartu deaerator + raw totalizer) dan gen output di tab Generator. */}
                                         {activeTab === 'Turbin' && (() => {
                                             const turbinStatus = (turbin.status_turbin as string) ?? '';
-                                            const tBorder = turbinStatus === 'running' ? 'border-emerald-500/50' : turbinStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
-                                            const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                                             return (
-                                                <div className={`inline-flex items-center gap-2 sm:gap-3 bg-bg-dark/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
-                                                    <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
+                                                <div className={`inline-flex items-center gap-2 sm:gap-3 border ${runStatusClass(turbinStatus)} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                    <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${turbinStatus ? 'bg-white/85' : 'bg-slate-500'} shrink-0`} />
                                                     <select
                                                         className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
                                                         value={turbinStatus}

@@ -218,19 +218,29 @@ body:has(.light-canvas) {
 body:has(.graphite-canvas) {
   background-color: #121314;
 
-  /* Warna kalem per area kerja & shift (lihat components/input-shift/area.ts).
-     Container tab memasang --area / --shift; default --area netral (mis. di modal portal). */
-  --area-boiler: #d08a6a;
-  --area-steam: #7aa3d4;
-  --area-power: #cfb45f;
-  --area-coal: #b39b7d;
-  --area-ash: #9d9cc8;
-  --area-water: #6bb3ad;
-  --area-note: #9aa0a7;
-  --shift-malam: #8f9bd6;
-  --shift-pagi: #d9b45a;
-  --shift-sore: #d08a6a;
-  --shift-harian: #6fb08f;
+  /* Warna solid per area kerja & shift — diambil dari warna cat mesin RAL (lihat
+     components/input-shift/area.ts). Dipakai sebagai blok berisi teks putih, BUKAN
+     tint/teks di latar gelap (terlalu gelap untuk itu). Container tab memasang
+     --area / --shift; default --area netral (mis. di modal portal). */
+  --area-boiler: #9b3426;  /* RAL 3009 merah oksida */
+  --area-steam: #2b5a7c;   /* RAL 5009 biru azure */
+  --area-power: #b4531f;   /* RAL 2010 oranye sinyal, digelapkan */
+  --area-coal: #6a4429;    /* RAL 8011 coklat */
+  --area-ash: #5e6658;     /* RAL 7033 abu semen */
+  --area-water: #2f6b57;   /* RAL 6000 hijau patina */
+  --area-note: #3a3f45;    /* RAL 7016 antrasit */
+  --shift-malam: #1d3557;  /* RAL 5003 biru safir */
+  --shift-pagi: #e0b000;   /* RAL 1003 kuning sinyal — teks gelap */
+  --shift-sore: #b04a1c;   /* RAL 2001 oranye-merah */
+  --shift-harian: #556b2f; /* RAL 6003 hijau zaitun */
+  --on-shift-malam: #fff;
+  --on-shift-pagi: #1c1606;
+  --on-shift-sore: #fff;
+  --on-shift-harian: #fff;
+  /* Chip status feeder/unit (running = emerald-600) */
+  --status-standby: #e0b000;
+  --status-emergency: #b4531f;
+  --status-stop: #b32821;  /* RAL 3020 merah lalu lintas */
   --area: var(--area-note);
 
   --color-bg-dark: #121314;

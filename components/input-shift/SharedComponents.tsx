@@ -224,9 +224,9 @@ export const Card = ({ title, icon, children, isSidebar = false, className = '',
 }) => {
     return (
         <div className={`bg-surface-dark border border-slate-700/60 rounded-xl overflow-hidden flex flex-col ${className}`}>
-            <div className="p-4 border-b border-slate-800 bg-(--area)/[8%] flex items-center gap-3 shrink-0">
-                <div className="p-2 rounded-lg bg-(--area)/15">
-                    <span className="material-symbols-outlined text-(--area)">{icon}</span>
+            <div className="p-4 bg-(--area) flex items-center gap-3 shrink-0">
+                <div className="p-2 rounded-lg bg-white/15">
+                    <span className="material-symbols-outlined text-white">{icon}</span>
                 </div>
                 <h3 className="text-white font-bold text-lg tracking-wide">{title}</h3>
                 {headerRight}
@@ -425,12 +425,19 @@ export const FEEDER_STATUS_OPTIONS = [
     { value: 'not standby', label: 'Not Standby' },
 ];
 
-export const FEEDER_STATUS_STYLE: Record<string, { border: string; dot: string }> = {
-    'running':          { border: 'border-emerald-500/50', dot: 'bg-emerald-500' },
-    'standby':          { border: 'border-amber-500/50',   dot: 'bg-amber-500' },
-    'emergency standby':{ border: 'border-orange-500/50',  dot: 'bg-orange-500' },
-    'not standby':      { border: 'border-red-500/50',     dot: 'bg-red-500' },
+// Chip status diisi warna penuh (bukan garis). Standby kuning → teks gelap.
+export const FEEDER_STATUS_STYLE: Record<string, { chip: string; dot: string }> = {
+    'running':          { chip: 'bg-emerald-600 border-emerald-600 text-white',                     dot: 'bg-white/80' },
+    'standby':          { chip: 'bg-(--status-standby) border-(--status-standby) text-[#1c1606]',     dot: 'bg-black/50' },
+    'emergency standby':{ chip: 'bg-(--status-emergency) border-(--status-emergency) text-white',     dot: 'bg-white/80' },
+    'not standby':      { chip: 'bg-(--status-stop) border-(--status-stop) text-white',               dot: 'bg-white/80' },
 };
+
+/** Chip status unit Running/Shutdown (header tab Boiler/Turbin) — warna penuh. */
+export const runStatusClass = (status: string): string =>
+    status === 'running' ? 'bg-emerald-600 border-emerald-600'
+    : status === 'shutdown' ? 'bg-(--status-stop) border-(--status-stop)'
+    : 'bg-bg-dark/60 border-slate-700/60';
 
 export function FeederStatusChip({ sk, value, onChange }: {
     sk: string;
@@ -438,13 +445,13 @@ export function FeederStatusChip({ sk, value, onChange }: {
     onChange?: (name: string, v: number | string | null) => void;
 }) {
     const style = FEEDER_STATUS_STYLE[value];
-    const border = style?.border ?? 'border-slate-700/60';
+    const chip = style?.chip ?? 'bg-bg-dark/60 border-slate-700/60 text-white';
     const dot = style?.dot ?? 'bg-slate-500';
     return (
-        <div className={`inline-flex items-center gap-1.5 bg-bg-dark/60 border ${border} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
+        <div className={`inline-flex items-center gap-1.5 border ${chip} rounded-lg pl-2 pr-1 py-1 transition-colors`}>
             <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
             <select
-                className="bg-transparent appearance-none text-sm text-white font-semibold pr-3 cursor-pointer outline-none"
+                className="bg-transparent appearance-none text-sm text-inherit font-semibold pr-3 cursor-pointer outline-none"
                 value={value}
                 onChange={e => onChange?.(sk, e.target.value === '' ? null : e.target.value)}
             >
@@ -465,15 +472,15 @@ export const CalculatedField = ({ label, value = "0.00", unit, variant = "primar
     size?: 'large' | 'medium' | 'small';
 }) => {
     const variantStyles = {
-        // Hasil utama ber-tint warna area (--area, dipasang container tab).
+        // Hasil utama = blok solid warna area (--area, dipasang container tab).
         primary: {
-            bg: 'bg-(--area)/10 border-(--area)/30 p-3',
-            label: 'text-(--area) text-xs font-bold uppercase tracking-wider',
+            bg: 'bg-(--area) border-(--area) p-3',
+            label: 'text-white/80 text-xs font-bold uppercase tracking-wider',
             value: 'text-white font-mono font-black text-2xl tracking-tighter',
-            unit: 'text-slate-400 text-xs font-bold',
+            unit: 'text-white/70 text-xs font-bold',
         },
         secondary: {
-            bg: 'bg-(--area)/5 border-(--area)/20 p-3',
+            bg: 'bg-slate-800 border-slate-700 p-3',
             label: 'text-slate-300 text-xs font-medium uppercase tracking-wider',
             value: 'text-slate-100 font-mono font-bold text-xl',
             unit: 'text-slate-500 text-xs font-medium',

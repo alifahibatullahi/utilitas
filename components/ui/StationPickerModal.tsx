@@ -33,8 +33,8 @@ interface StationPickerModalProps {
 // Pilihan jenis laporan datar: 3 shift + harian dalam satu baris.
 // malam/pagi/sore → mode 'shift' + nomor shift; harian → mode 'harian'.
 const REPORT_CHOICE_INACTIVE = 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50';
-// Pilihan aktif ber-tint warna shift-nya (--shift via shiftStyle) + garis bawah.
-const REPORT_CHOICE_ACTIVE = 'bg-(--shift)/15 text-white border-(--shift)/40 shadow-[inset_0_-2px_0_var(--shift)]';
+// Pilihan aktif terisi warna solid shift-nya (--shift/--shift-fg via shiftStyle).
+const REPORT_CHOICE_ACTIVE = 'bg-(--shift) text-(--shift-fg) border-(--shift)';
 const REPORT_CHOICES: { id: 'malam' | 'pagi' | 'sore' | 'harian'; shift?: 1 | 2 | 3; label: string; time: string; icon: string }[] = [
     { id: 'malam', shift: 1, label: 'Malam', time: '23.00–07.00', icon: 'bedtime' },
     { id: 'pagi', shift: 2, label: 'Pagi', time: '07.00–15.00', icon: 'light_mode' },
@@ -63,7 +63,7 @@ function harianExpectedToday(): string {
     return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
 }
 
-// Ikon + area per station. Kotak ikon memakai warna kalem area kerjanya (sama dengan
+// Ikon + area per station. Kotak ikon terisi warna solid area kerjanya (sama dengan
 // tab di form); kartu yang "sudah diisi" tetap hijau (status).
 const STATION_ICONS: Record<OperatorStation, { icon: string; area: Area }> = {
     panel_boiler: { icon: 'local_fire_department', area: 'boiler' },
@@ -238,7 +238,7 @@ export default function StationPickerModal({
                                             </span>
                                         )}
                                         <span className="flex items-center justify-center gap-1.5">
-                                            <span className="material-symbols-outlined text-sm text-(--shift)">{c.icon}</span>
+                                            <span className="material-symbols-outlined text-sm">{c.icon}</span>
                                             <span>{c.label}</span>
                                         </span>
                                         <span className="text-[8px] sm:text-[9px] font-semibold normal-case tracking-normal opacity-70 whitespace-nowrap">
@@ -315,7 +315,7 @@ export default function StationPickerModal({
                                                 ? 'border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/15 hover:border-emerald-400/60'
                                                 : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60 hover:border-slate-600'}`}
                                     >
-                                        <div className="flex items-center justify-center p-2 rounded-xl bg-(--area)/15 text-(--area) shrink-0" style={areaStyle(st.area)}>
+                                        <div className="flex items-center justify-center p-2 rounded-xl bg-(--area) text-white shrink-0" style={areaStyle(st.area)}>
                                             <span className="material-symbols-outlined text-lg">{st.icon}</span>
                                         </div>
                                         <h4 className={`min-w-0 flex-1 text-xs font-bold tracking-wide leading-tight transition-colors ${isFilled ? 'text-emerald-300 group-hover:text-emerald-200' : 'text-slate-200 group-hover:text-white'}`}>

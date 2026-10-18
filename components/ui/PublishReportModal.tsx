@@ -982,13 +982,13 @@ export function PublishReportModal({
 
 // ──────────── Review Summary Components — kartu mini per area ────────────
 
-/** Kartu ringkasan per area — judul & ikon memakai warna kalem area (sama dengan tab form). */
+/** Kartu ringkasan per area — ikon dalam kotak solid warna area (sama dengan tab form). */
 function ReviewCard({ title, icon, area = 'note', children }: { title: string; icon: string; area?: Area; children: React.ReactNode }) {
     return (
         <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between" style={areaStyle(area)}>
             <div className="space-y-3">
-                <div className="text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 text-(--area)">
-                    <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                <div className="text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 text-slate-200">
+                    <span className="material-symbols-outlined text-[14px] rounded-md p-1 bg-(--area) text-white">{icon}</span>
                     {title}
                 </div>
                 <div className="space-y-1.5 text-[11.5px] text-slate-200">{children}</div>

@@ -32,6 +32,7 @@ import { useWarningConfirm } from '@/components/ui/useWarningConfirm';
 import { KOLOM_COAL_ARRIVAL_HARIAN, keCoalArrivalHarian, type CoalArrivalHarian, type DailyTabProps } from './types';
 import { kedatanganHarianDariEntri } from '@/lib/coal-storage';
 import { RisetProvider, type RisetContextValue } from '@/components/input-shift/TotalizerRiset';
+import { runStatusClass } from '@/components/input-shift/SharedComponents';
 import { areaStyle, type Area } from '@/components/input-shift/area';
 import {
     hitungPasanganRiset, kurangiTotalizer, meterSeri, nilaiAkhirDariState, risetStateDariDb,
@@ -64,14 +65,14 @@ const HARIAN_TABS: { id: HarianTabId; label: string; icon: string; area: Area }[
     { id: 'Silo & Fly Ash', label: 'Silo & Fly Ash', icon: 'filter_alt', area: 'ash' },
 ];
 
-// Tab memakai warna kalem areanya (--area, dipasang per tombol lewat areaStyle):
-// ikon selalu berwarna area; tab aktif ber-tint + garis area (kiri desktop, bawah HP).
+// Tab memakai warna solid areanya (--area, dipasang per tombol lewat areaStyle):
+// ikon dalam kotak kecil berwarna area; tab aktif terisi penuh warna area.
 const TAB_STYLE = {
-    active: 'font-bold bg-(--area)/12 text-white border-(--area)/30',
-    inactive: 'font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border-transparent',
-    icon: 'text-(--area)',
-    barSide: 'shadow-[inset_3px_0_0_var(--area)]',
-    barBottom: 'shadow-[inset_0_-2px_0_var(--area)]',
+    active: 'font-bold bg-(--area) text-white border-(--area)',
+    inactive: 'font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 border-transparent',
+    icon: 'rounded-md p-1 text-white',
+    iconActive: 'bg-white/20',
+    iconIdle: 'bg-(--area)',
 };
 
 interface InputHarianFormProps {
@@ -1436,9 +1437,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     key={tab.id}
                                     style={areaStyle(tab.area)}
                                     onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
-                                    className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barSide}` : TAB_STYLE.inactive}`}
+                                    className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition-all border relative overflow-hidden group ${isActive ? TAB_STYLE.active : TAB_STYLE.inactive}`}
                                 >
-                                    <span className={`material-symbols-outlined text-[20px] ${TAB_STYLE.icon} ${isActive ? '' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`}>
+                                    <span className={`material-symbols-outlined text-[18px] ${TAB_STYLE.icon} ${isActive ? TAB_STYLE.iconActive : TAB_STYLE.iconIdle}`}>
                                         {tab.icon}
                                     </span>
                                     <span className="flex-1">{tab.label}</span>
@@ -1464,9 +1465,9 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                         key={tab.id}
                                         style={areaStyle(tab.area)}
                                         onClick={() => { setActiveTab(tab.id); setVisitedTabs(prev => new Set(prev).add(tab.id)); }}
-                                        className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? `${TAB_STYLE.active} ${TAB_STYLE.barBottom}` : TAB_STYLE.inactive}`}
+                                        className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-all whitespace-nowrap border relative overflow-hidden ${isActive ? TAB_STYLE.active : TAB_STYLE.inactive}`}
                                     >
-                                        <span className={`material-symbols-outlined text-[18px] ${TAB_STYLE.icon} ${isActive ? '' : 'opacity-70'}`}>
+                                        <span className={`material-symbols-outlined text-[16px] ${TAB_STYLE.icon} ${isActive ? TAB_STYLE.iconActive : TAB_STYLE.iconIdle}`}>
                                             {tab.icon}
                                         </span>
                                         <span>{tab.label}</span>
@@ -1489,23 +1490,19 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                         {(() => {
                             const tab = visibleTabs.find(t => t.id === activeTab);
                             const turbinStatus = (turbineMisc.status_turbin as string) ?? '';
-                            const tBorder = turbinStatus === 'running' ? 'border-emerald-500/50' : turbinStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
-                            const tDot = turbinStatus === 'running' ? 'bg-emerald-500' : turbinStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                             return (
                                 <>
-                                    <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-bg-dark border border-slate-700/50 shadow-inner shrink-0`}>
-                                        <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-(--area)`}>{tab?.icon}</span>
+                                    <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-(--area) border border-(--area) shrink-0`}>
+                                        <span className={`material-symbols-outlined text-[22px] sm:text-[30px] text-white`}>{tab?.icon}</span>
                                     </div>
                                     <h2 className="text-white font-bold text-xl sm:text-3xl tracking-wide min-w-0 truncate">{tab?.label}</h2>
                                     {/* Status chip boiler — di kanan judul untuk tab Boiler A/B (sama spt shift). */}
                                     {(activeTab === 'Boiler A' || activeTab === 'Boiler B') && (() => {
                                         const bx = activeTab === 'Boiler A' ? 'a' : 'b';
                                         const bStatus = (turbineMisc[`status_boiler_${bx}`] as string) ?? '';
-                                        const bBorder = bStatus === 'running' ? 'border-emerald-500/50' : bStatus === 'shutdown' ? 'border-red-500/50' : 'border-slate-700/60';
-                                        const bDot = bStatus === 'running' ? 'bg-emerald-500' : bStatus === 'shutdown' ? 'bg-red-500' : 'bg-slate-500';
                                         return (
-                                            <div className={`inline-flex items-center gap-2 sm:gap-3 bg-bg-dark/60 border ${bBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
-                                                <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${bDot} shrink-0`} />
+                                            <div className={`inline-flex items-center gap-2 sm:gap-3 border ${runStatusClass(bStatus)} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                                <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${bStatus ? 'bg-white/85' : 'bg-slate-500'} shrink-0`} />
                                                 <select
                                                     className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
                                                     value={bStatus}
@@ -1523,8 +1520,8 @@ export default function InputHarianForm({ date, operator, groupName, supervisorN
                                     })()}
                                     {/* Status chip turbin — di kanan judul, size sama seperti chip shift */}
                                     {activeTab === 'Turbin' && (
-                                        <div className={`inline-flex items-center gap-2 sm:gap-3 bg-bg-dark/60 border ${tBorder} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
-                                            <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${tDot} shrink-0`} />
+                                        <div className={`inline-flex items-center gap-2 sm:gap-3 border ${runStatusClass(turbinStatus)} rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 sm:py-2.5 transition-colors shrink-0`}>
+                                            <span className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${turbinStatus ? 'bg-white/85' : 'bg-slate-500'} shrink-0`} />
                                             <select
                                                 className="bg-transparent appearance-none text-base sm:text-xl text-white font-bold uppercase pr-4 sm:pr-6 cursor-pointer outline-none tracking-wide"
                                                 value={turbinStatus}

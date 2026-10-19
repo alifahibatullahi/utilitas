@@ -449,7 +449,7 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     // path absolut otomatis dibuka di tab baru oleh MenuCard. `id` tetap 'fitur-lanjutan'
     // (kunci tema kartu di app/home/page.tsx). /piping (gambar isometrik jalur pipa air)
     // tetap bisa dibuka lewat URL langsung.
-    { id: 'fitur-lanjutan', label: 'Cleaning UBB', description: 'Aplikasi CleanCheck untuk cleaning area UBB (dibuka di tab baru)', icon: 'cleaning', path: 'https://utiliclean.netlify.app/', roles: 'all', featured: true },
+    { id: 'fitur-lanjutan', label: 'Cleaning UBB', description: 'Aplikasi CleanCheck untuk cleaning area UBB', icon: 'cleaning', path: 'https://utiliclean.netlify.app/', roles: 'all', featured: true },
 ];
 
 // Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah

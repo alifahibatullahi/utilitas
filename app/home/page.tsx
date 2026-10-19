@@ -20,6 +20,7 @@ const ICON_MAP: Record<string, string> = {
     sync: 'sync',
     storage: 'inventory_2',
     locked: 'lock',
+    cleaning: 'cleaning_services',
 };
 
 const CARD_THEMES: Record<string, { iconBg: string; iconText: string; hoverBorder: string }> = {
@@ -49,7 +50,9 @@ const GROUP_DOT: Record<string, string> = {
 const pad = (n: number) => String(n).padStart(2, '0');
 
 function MenuCard({ item, delayMs }: { item: HomeMenuItem; delayMs: number }) {
-    const openNewTab = item.id === 'history';
+    // Aplikasi di luar web ini (path absolut) dibuka di tab baru.
+    const isExternal = /^https?:\/\//.test(item.path);
+    const openNewTab = item.id === 'history' || isExternal;
     const theme = CARD_THEMES[item.id] || DEFAULT_THEME;
 
     // Kartu "Coming Soon": tampil tapi belum bisa diklik.
@@ -95,7 +98,7 @@ function MenuCard({ item, delayMs }: { item: HomeMenuItem; delayMs: number }) {
                     </span>
                 </div>
                 <span aria-hidden="true" className="material-symbols-outlined text-lg text-slate-200 group-hover:text-slate-500 group-hover:translate-x-1 transition-all duration-300">
-                    arrow_forward
+                    {isExternal ? 'open_in_new' : 'arrow_forward'}
                 </span>
             </div>
             <p className="font-bold text-slate-800 mt-4">{item.label}</p>

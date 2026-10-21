@@ -11,16 +11,14 @@ import {
 } from '@/lib/ash-silo';
 import { AshUnloadingEntry, SiloLevelInfo, SiloTrendPoint } from '@/hooks/useAshSiloData';
 
-// Palet cat RAL solid, tanpa glow/gradient (sejalan dengan input laporan).
-// Isi silo abu seperti debunya; pembeda A/B cuma kotak label solid berteks
-// putih — biru/coklat RAL terlalu gelap untuk teks atau garis tipis.
-const SILO_LABEL: Record<SiloId, string> = {
-    A: '#2b5a7c', // RAL 5009 biru azur
-    B: '#6a4429', // RAL 8011 coklat kacang
+// Palet cat RAL solid per silo, tanpa glow/gradient (sejalan dengan input laporan).
+// solid = blok berteks putih (kepala kartu, kotak ikon); fill/surface = isi silo
+// (versi lebih terang agar kontras di badan silo gelap); ink = teks & garis tipis
+// di latar gelap — nilainya sama dgn --area-steam-ink/--area-coal-ink.
+const SILO_THEME: Record<SiloId, { solid: string; fill: string; surface: string; ink: string }> = {
+    A: { solid: '#2b5a7c', fill: '#3b83bd', surface: '#7fb2dc', ink: '#94bfe0' }, // RAL 5009 / isi RAL 5012
+    B: { solid: '#6a4429', fill: '#955f20', surface: '#c4904f', ink: '#d6ad86' }, // RAL 8011 / isi RAL 8001
 };
-const ASH_FILL = '#7d7f7d';      // RAL 7037 abu debu
-const ASH_SURFACE = '#a5a8a3';   // garis permukaan isi
-const TREND_LINE = '#b5b8b1';    // RAL 7038 abu agat — terbaca di latar gelap
 
 // Warna hanya untuk status: level tinggi = perlu unloading.
 const STATUS_STYLE = {
@@ -29,7 +27,8 @@ const STATUS_STYLE = {
     critical: { label: 'Kritis',          bg: '#b32821', fg: '#fff' },    // RAL 3020
 } as const;
 
-const NEUTRAL_BTN = 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700';
+// Tombol di atas pita warna solid (kepala kartu/modal).
+const ON_SOLID_BTN = 'bg-white/15 hover:bg-white/25 text-white border border-white/20';
 
 // Siluet silinder + kerucut bawah. Sambungan kerucut di 4,8 m dari 12,69 m
 // total → 62,2% dari atas kotak visual.
@@ -68,7 +67,7 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
         if (isTrendModalOpen) loadTrend();
     }, [isTrendModalOpen, loadTrend]);
 
-    const label = SILO_LABEL[siloId];
+    const t = SILO_THEME[siloId];
     const pct = level?.pct ?? null;
     const status = pct === null ? 'normal' : getSiloStatus(pct);
     // Semantik alarm TERBALIK dari tangki: level tinggi = perlu unloading.
@@ -85,13 +84,14 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
             <div key={entry.id ?? idx}
                 className="flex items-center justify-between px-5 py-4 xl:px-6 xl:py-5 rounded-xl bg-surface-highlight/30 border border-slate-800 hover:bg-surface-highlight/70 transition-colors relative overflow-hidden cursor-default">
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <div className="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 rounded-lg text-white flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: t.solid }}>
                         <span className="material-symbols-outlined text-[26px]">local_shipping</span>
                     </div>
                     <div className="flex flex-col min-w-0">
                         <span className="text-sm text-slate-300 font-bold uppercase tracking-wider leading-none mb-1.5">{lbl}</span>
                         <span className="text-lg xl:text-xl font-black text-white leading-snug break-words">
-                            <span className="font-mono text-white">{entry.ritase.toLocaleString('id-ID')} Rit</span>
+                            <span className="font-mono" style={{ color: t.ink }}>{entry.ritase.toLocaleString('id-ID')} Rit</span>
                             <span className="text-slate-300 font-bold"> Tujuan : </span>
                             {entry.tujuan || '—'}
                             <span className="text-slate-300 font-bold"> Truck : </span>
@@ -107,26 +107,25 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
         <div className="bg-surface-dark border border-slate-700/60 rounded-2xl overflow-hidden flex flex-col lg:h-full relative">
 
             {/* ── Card Header ── */}
-            <div className="flex-shrink-0 px-4 lg:px-6 py-3 lg:py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex-shrink-0 px-4 lg:px-6 py-3 lg:py-4 flex flex-wrap items-center justify-between gap-3"
+                style={{ backgroundColor: t.solid }}>
                 <div className="flex items-center gap-3 lg:gap-4">
-                    {/* label silo: blok solid berhuruf, satu-satunya pembeda A/B */}
-                    <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: label }}>
+                    <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
                         <span className="text-white font-black text-2xl lg:text-4xl leading-none">{siloId}</span>
                     </div>
                     <div>
                         <h3 className="text-white font-black text-xl lg:text-3xl uppercase tracking-tight leading-none">Ash Silo {siloId}</h3>
-                        <p className="text-slate-400 text-xs lg:text-sm font-semibold mt-0.5">Kapasitas {SILO_SPEC.totalM3.toLocaleString('id-ID')} m³ • {SILO_SPEC.totalTon.toLocaleString('id-ID')} ton</p>
+                        <p className="text-white/75 text-xs lg:text-sm font-semibold mt-0.5">Kapasitas {SILO_SPEC.totalM3.toLocaleString('id-ID')} m³ • {SILO_SPEC.totalTon.toLocaleString('id-ID')} ton</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 lg:gap-3 ml-auto">
                     <button onClick={() => setIsTrendModalOpen(true)}
-                        className={`${NEUTRAL_BTN} p-2 lg:px-4 lg:py-2 rounded-lg text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 cursor-pointer`}>
+                        className={`${ON_SOLID_BTN} p-2 lg:px-4 lg:py-2 rounded-lg text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 cursor-pointer`}>
                         <span className="material-symbols-outlined text-[16px] lg:text-[14px]">timeline</span>
                         <span className="hidden lg:inline">Trend</span>
                     </button>
                     <button onClick={() => { setHistoryPage(1); setIsHistoryModalOpen(true); }}
-                        className={`${NEUTRAL_BTN} p-2 lg:px-4 lg:py-2 rounded-lg text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 cursor-pointer`}>
+                        className={`${ON_SOLID_BTN} p-2 lg:px-4 lg:py-2 rounded-lg text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 cursor-pointer`}>
                         <span className="material-symbols-outlined text-[16px] lg:text-[14px]">history</span>
                         <span className="hidden lg:inline">History</span>
                     </button>
@@ -143,14 +142,14 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                 {/* Silo visual column — desktop only */}
                 <div className="hidden lg:flex flex-shrink-0 w-72 xl:w-80 flex-col items-center justify-between py-6 px-6 border-r border-slate-800/60">
                     <div className="w-full flex-1 relative min-h-[380px]">
-                        {/* badan silo ter-clip bentuk silinder+kerucut, isi abu datar */}
+                        {/* badan silo ter-clip bentuk silinder+kerucut, isi warna silo datar */}
                         <div className="bg-slate-800 overflow-hidden"
                             style={{ position: 'absolute', inset: 0, clipPath: SILO_CLIP_PATH, borderRadius: '14px 14px 0 0' }}>
                             <div className="transition-[height] duration-700"
                                 style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
                                     height: `${Math.min(Math.max(fillPct, 0), 100)}%`,
-                                    backgroundColor: ASH_FILL,
-                                    borderTop: fillPct > 0 ? `2px solid ${ASH_SURFACE}` : undefined }} />
+                                    backgroundColor: t.fill,
+                                    borderTop: fillPct > 0 ? `2px solid ${t.surface}` : undefined }} />
                         </div>
                         {/* penanda skala di posisi tinggi fisik */}
                         <div className="absolute inset-0 z-20 pointer-events-none">
@@ -165,7 +164,7 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                     </div>
                     {/* tonase di bawah silo — tukar posisi dengan % yang pindah ke hero */}
                     <div className="mt-6 flex flex-col items-center">
-                        <span className="text-xs text-slate-500 uppercase tracking-[0.2em] font-black mb-1.5">Estimasi Isi</span>
+                        <span className="text-xs uppercase tracking-[0.2em] font-black mb-1.5" style={{ color: t.ink }}>Estimasi Isi</span>
                         <div className="flex items-baseline gap-1.5">
                             <p className="text-4xl xl:text-5xl font-black font-mono leading-none tracking-tighter text-white">
                                 {ton === null ? '—' : ton.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
@@ -180,7 +179,7 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
 
                     {/* Berat fly ash — hero number */}
                     <div>
-                        <p className="text-xs lg:text-sm text-slate-500 uppercase tracking-[0.2em] font-black mb-2 flex items-center gap-2">
+                        <p className="text-xs lg:text-sm uppercase tracking-[0.2em] font-black mb-2 flex items-center gap-2" style={{ color: t.ink }}>
                             <span className="material-symbols-outlined text-sm">percent</span>
                             Level Fly Ash
                         </p>
@@ -208,7 +207,7 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                                     </div>
                                 </div>
                                 <div className="mt-3 bg-slate-800/50 border border-slate-700/60 px-3 py-2 rounded-xl w-full overflow-hidden">
-                                    <div className="text-xs xl:text-base text-slate-400 font-bold flex items-center gap-1.5 flex-wrap">
+                                    <div className="text-xs xl:text-base font-bold flex items-center gap-1.5 flex-wrap" style={{ color: t.ink }}>
                                         <span className="material-symbols-outlined text-sm shrink-0">deployed_code</span>
                                         <span className="shrink-0">Volume:</span>
                                         <span className="text-white font-black text-base xl:text-xl break-all">{m3!.toLocaleString('id-ID', { maximumFractionDigits: 1 })} m³</span>
@@ -217,7 +216,7 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                                 {/* Progress bar — mobile */}
                                 <div className="mt-4 lg:hidden h-3 rounded-full bg-slate-700/70 overflow-hidden">
                                     <div className="h-full rounded-full transition-[width] duration-700"
-                                        style={{ width: `${Math.min(fillPct, 100)}%`, backgroundColor: ASH_FILL }} />
+                                        style={{ width: `${Math.min(fillPct, 100)}%`, backgroundColor: t.fill }} />
                                 </div>
                             </>
                         )}
@@ -225,7 +224,7 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
 
                     {/* Unloading Fly Ash */}
                     <div className="flex flex-col gap-3 lg:gap-3 mt-2 xl:mt-3 pt-3 border-t border-slate-800/60 flex-1 lg:min-h-0">
-                        <p className="text-xs xl:text-sm text-slate-500 uppercase font-black tracking-[0.15em] flex items-center gap-2">
+                        <p className="text-xs xl:text-sm uppercase font-black tracking-[0.15em] flex items-center gap-2" style={{ color: t.ink }}>
                             <span className="material-symbols-outlined text-base xl:text-lg">local_shipping</span> Unloading Fly Ash
                         </p>
                         <div className={`${unloadings.length > 0 ? 'flex flex-col gap-2.5 xl:gap-3 mt-1.5 lg:flex-1 lg:min-h-0 lg:overflow-y-auto custom-scrollbar pr-1' : 'mt-1.5'}`}>
@@ -247,19 +246,19 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
                     <div className="bg-surface-dark border border-slate-700/60 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
                         {/* Header Modal */}
-                        <div className="flex items-center justify-between px-6 py-5 2xl:px-8 2xl:py-6 border-b border-slate-800">
+                        <div className="flex items-center justify-between px-6 py-5 2xl:px-8 2xl:py-6"
+                            style={{ backgroundColor: t.solid }}>
                             <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-xl text-white flex items-center justify-center"
-                                    style={{ backgroundColor: label }}>
+                                <div className="p-3 rounded-xl bg-white/15 text-white flex items-center justify-center">
                                     <span className="material-symbols-outlined text-2xl 2xl:text-3xl">history</span>
                                 </div>
                                 <div>
                                     <h3 className="text-xl 2xl:text-2xl font-black text-white leading-tight">History Unloading Silo {siloId}</h3>
-                                    <p className="text-[11px] 2xl:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Fly Ash Tracking</p>
+                                    <p className="text-[11px] 2xl:text-xs text-white/70 font-bold uppercase tracking-widest mt-1">Fly Ash Tracking</p>
                                 </div>
                             </div>
                             <button onClick={() => setIsHistoryModalOpen(false)}
-                                className="text-slate-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 transition-all cursor-pointer bg-slate-800/80 border border-slate-700 w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl flex items-center justify-center">
+                                className={`${ON_SOLID_BTN} transition-colors cursor-pointer w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl flex items-center justify-center`}>
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
@@ -282,7 +281,8 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                                     </button>
                                     <span className="text-xs font-bold text-slate-400">Page {historyPage} / {totalPages}</span>
                                     <button onClick={() => setHistoryPage(p => Math.min(totalPages, p + 1))} disabled={historyPage === totalPages}
-                                        className={`flex items-center gap-1.5 px-4 py-2 ${NEUTRAL_BTN} disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold rounded-xl transition-colors cursor-pointer`}>
+                                        style={{ backgroundColor: t.solid }}
+                                        className="flex items-center gap-1.5 px-4 py-2 text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold rounded-xl transition-colors cursor-pointer">
                                         Next <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                                     </button>
                                 </div>
@@ -297,19 +297,19 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8 bg-slate-950/85"
                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
                     <div className="bg-surface-dark border border-slate-700/60 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-5 2xl:px-8 2xl:py-6 border-b border-slate-800">
+                        <div className="flex items-center justify-between px-6 py-5 2xl:px-8 2xl:py-6"
+                            style={{ backgroundColor: t.solid }}>
                             <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-xl text-white flex items-center justify-center"
-                                    style={{ backgroundColor: label }}>
+                                <div className="p-3 rounded-xl bg-white/15 text-white flex items-center justify-center">
                                     <span className="material-symbols-outlined text-2xl 2xl:text-3xl">timeline</span>
                                 </div>
                                 <div>
                                     <h3 className="text-xl 2xl:text-2xl font-black text-white leading-tight">Trend Level Silo {siloId}</h3>
-                                    <p className="text-[11px] 2xl:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Level Fly Ash (%)</p>
+                                    <p className="text-[11px] 2xl:text-xs text-white/70 font-bold uppercase tracking-widest mt-1">Level Fly Ash (%)</p>
                                 </div>
                             </div>
                             <button onClick={() => setIsTrendModalOpen(false)}
-                                className="text-slate-400 hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 transition-all cursor-pointer bg-slate-800/80 border border-slate-700 w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl flex items-center justify-center">
+                                className={`${ON_SOLID_BTN} transition-colors cursor-pointer w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl flex items-center justify-center`}>
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
@@ -324,7 +324,7 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                                 ] as const).map(opt => (
                                     <button key={opt.key}
                                         onClick={() => setTrendRange(opt.key)}
-                                        style={trendRange === opt.key ? { backgroundColor: label } : undefined}
+                                        style={trendRange === opt.key ? { backgroundColor: t.solid } : undefined}
                                         className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-colors cursor-pointer border ${
                                             trendRange === opt.key
                                                 ? 'text-white border-transparent'
@@ -381,7 +381,7 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                                                                 <p className="text-[11px] text-slate-400 font-bold">
                                                                     {new Date(p.ts).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
                                                                 </p>
-                                                                <p className="text-base font-black font-mono text-white">{p.pct.toFixed(1)}%</p>
+                                                                <p className="text-base font-black font-mono" style={{ color: t.ink }}>{p.pct.toFixed(1)}%</p>
                                                             </div>
                                                         );
                                                     }} />
@@ -391,10 +391,10 @@ export default function SiloCard({ siloId, level, unloadings, trend, loadTrend, 
                                                     <ReferenceLine y={SILO_THRESHOLDS.critical_high} stroke="#ef4444" strokeDasharray="6 4"
                                                         label={{ value: `Kritis ${SILO_THRESHOLDS.critical_high}%`, fill: '#ef4444', fontSize: 11, fontWeight: 'bold', position: 'insideTopRight' }} />
                                                     <Area type="monotone" dataKey="pct"
-                                                        stroke={TREND_LINE} strokeWidth={2}
-                                                        fill={TREND_LINE} fillOpacity={0.12}
-                                                        dot={filtered.length <= 60 ? { r: 3, fill: '#0f172a', stroke: TREND_LINE, strokeWidth: 2 } : false}
-                                                        activeDot={{ r: 5, fill: TREND_LINE, stroke: '#0f172a', strokeWidth: 2 }} />
+                                                        stroke={t.ink} strokeWidth={2}
+                                                        fill={t.ink} fillOpacity={0.15}
+                                                        dot={filtered.length <= 60 ? { r: 3, fill: '#0f172a', stroke: t.ink, strokeWidth: 2 } : false}
+                                                        activeDot={{ r: 5, fill: t.ink, stroke: '#0f172a', strokeWidth: 2 }} />
                                                 </AreaChart>
                                             </ResponsiveContainer>
                                         </div>

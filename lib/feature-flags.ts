@@ -5,7 +5,7 @@
 // Reaktivasi = ubah flag ke false di sini. Alur review/publish laporan
 // (/laporan-shift*, /laporan-harian*) TETAP AKTIF karena bagian dari Input Laporan.
 export const DISABLED_FEATURES = {
-    dashboard: true,   // /dashboard + /dashboard/[tank]
+    dashboard: false,  // /dashboard (data E-Logsheet APM) + /dashboard/[tank]
     history: true,     // /history
     critical: true,    // /critical + /critical/broadcast (+ query maintenance di input laporan)
     kanban: true,      // /kanban

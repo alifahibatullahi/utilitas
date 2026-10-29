@@ -1,13 +1,16 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { TankDataProvider } from '@/hooks/useTankData';
 import { DISABLED_FEATURES } from '@/lib/feature-flags';
 
 // TankDataProvider scoped ke route ini saja (dipindah dari root layout).
-// /dashboard/[tank] memakai useTankData. Saat fitur dashboard dinonaktifkan
-// (lib/feature-flags.ts), provider ikut di-skip supaya halaman "dinonaktifkan"
-// benar-benar 0 query; saat flag dibuka lagi provider otomatis aktif kembali.
+// Hanya /dashboard/[tank] yang memakai useTankData; /dashboard sendiri membaca data APM
+// lewat /api/dashboard/apm, jadi provider (dan query tank-nya) dilewati di sana. Saat
+// fitur dashboard dinonaktifkan (lib/feature-flags.ts), provider juga di-skip supaya
+// halaman "dinonaktifkan" benar-benar 0 query.
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    if (DISABLED_FEATURES.dashboard) return <>{children}</>;
+    const pathname = usePathname();
+    if (DISABLED_FEATURES.dashboard || pathname === '/dashboard') return <>{children}</>;
     return <TankDataProvider>{children}</TankDataProvider>;
 }

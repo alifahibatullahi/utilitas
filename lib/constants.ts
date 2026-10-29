@@ -440,6 +440,8 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     // punya penjaga peran sama sekali, jadi tidak ada gunanya disaring di sini.
     { id: 'input-laporan', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-laporan', roles: 'all', featured: true },
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
+    // Nilai Boiler A/B & STG dari E-Logsheet APM (disalin tiap ±1 jam, lib/apm/sync.ts).
+    { id: 'dashboard', label: 'Dashboard', description: 'Data operasi Boiler & STG dari E-Logsheet APM', icon: 'dashboard', path: '/dashboard', roles: 'all', featured: true },
     // Viewer berbasis Google Sheets (input tetap di spreadsheet).
     { id: 'critical-maintenance', label: 'Critical Maintenance', description: 'Daftar critical equipment & riwayat maintenance', icon: 'warning', path: '/critical-maintenance', roles: 'all', featured: true },
     // Denah stok batubara dari Supabase; tiap operator bisa menyunting isi per zona

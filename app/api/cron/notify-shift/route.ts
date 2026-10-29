@@ -19,6 +19,7 @@ import { autopublishPastDeadline } from '@/lib/auto-publish';
 import { notifyAshSiloDaily } from '@/lib/ash-silo-notify';
 import { syncFullIfStale, syncTail } from '@/lib/critical-sheet-sync';
 import { repairMissingPhotoCells } from '@/lib/sheet-photo-sync';
+import { syncApmIfStale } from '@/lib/apm/sync';
 
 /**
  * Isi baris LAMA masih bisa berubah (Status / "Tanggal di OK" sering diisi belakangan),
@@ -27,6 +28,9 @@ import { repairMissingPhotoCells } from '@/lib/sheet-photo-sync';
  * Operator yang butuh seketika tinggal menekan "Perbarui data".
  */
 const SHEET_FULL_SYNC_MAX_AGE_MS = 30 * 60_000;
+
+/** Logsheet APM diisi operator tiap 2 jam; sejam sekali sudah cukup untuk dashboard. */
+const APM_SYNC_MAX_AGE_MS = 60 * 60_000;
 
 // Pesan lanjutan yang dikirim SETELAH reminder pribadi (grup A–C, mode personal):
 // minta penerima meneruskan reminder ke grup WA-nya supaya operator lain ikut mengisi.
@@ -160,7 +164,17 @@ export async function GET(req: NextRequest) {
         photoCells = { error: e instanceof Error ? e.message : String(e) };
     }
 
-    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish, ashSilo, sheetSync, photoCells });
+    // Salin logsheet APM untuk /dashboard. Paling akhir dan dibatasi anggaran waktunya
+    // sendiri (lib/apm/sync.ts), supaya APM yang lambat tidak menghabiskan jatah 60 detik
+    // milik reminder di atas.
+    let apm: unknown;
+    try {
+        apm = await syncApmIfStale(APM_SYNC_MAX_AGE_MS);
+    } catch (e) {
+        apm = { error: e instanceof Error ? e.message : String(e) };
+    }
+
+    return NextResponse.json({ now: nowWIB(), jobs: results, autopublish, ashSilo, sheetSync, photoCells, apm });
 }
 
 async function runJob(supabase: ReturnType<typeof createAdminClient>, job: ReminderJob) {

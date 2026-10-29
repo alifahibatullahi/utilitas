@@ -450,9 +450,8 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     // (kunci tema kartu di app/home/page.tsx). /piping (gambar isometrik jalur pipa air)
     // tetap bisa dibuka lewat URL langsung.
     { id: 'fitur-lanjutan', label: 'Cleaning UBB', description: 'Aplikasi CleanCheck untuk cleaning area UBB', icon: 'cleaning', path: 'https://utiliclean.netlify.app/', roles: 'all', featured: true },
-    // Fitur lanjutan, dikunci di /home (30 Okt 2026) sampai agen APM di PC kantor
-    // (scripts/apm-agent) rutin mengirim data. /dashboard tetap bisa dibuka lewat URL langsung.
-    { id: 'dashboard', label: 'Dashboard', description: 'Fitur lanjutan · data Boiler & STG dari E-Logsheet APM', icon: 'dashboard', path: '/dashboard', roles: 'all', featured: true, comingSoon: true },
+    // /dashboard (data E-Logsheet APM via agen PC kantor) sengaja tidak punya kartu di sini
+    // (30 Okt 2026); halamannya tetap bisa dibuka lewat URL langsung.
 ];
 
 // Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah

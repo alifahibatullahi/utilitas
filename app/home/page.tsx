@@ -27,7 +27,6 @@ const CARD_THEMES: Record<string, { iconBg: string; iconText: string; hoverBorde
     'tank-level': { iconBg: 'bg-sky-50', iconText: 'text-sky-500', hoverBorder: 'hover:border-sky-200' },
     'input-laporan': { iconBg: 'bg-emerald-50', iconText: 'text-emerald-500', hoverBorder: 'hover:border-emerald-200' },
     'logbook': { iconBg: 'bg-violet-50', iconText: 'text-violet-500', hoverBorder: 'hover:border-violet-200' },
-    'dashboard': { iconBg: 'bg-cyan-50', iconText: 'text-cyan-600', hoverBorder: 'hover:border-cyan-200' },
     'admin-wa-hub': { iconBg: 'bg-teal-50', iconText: 'text-teal-500', hoverBorder: 'hover:border-teal-200' },
     'admin-sync-sheets': { iconBg: 'bg-blue-50', iconText: 'text-blue-500', hoverBorder: 'hover:border-blue-200' },
     'admin-users': { iconBg: 'bg-amber-50', iconText: 'text-amber-500', hoverBorder: 'hover:border-amber-200' },

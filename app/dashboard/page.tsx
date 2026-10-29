@@ -9,7 +9,7 @@ import { getCurrentShift } from '@/lib/constants';
 import type { ApmDashboardData } from '@/lib/apm/dashboard';
 
 // ─── Data E-Logsheet APM ───
-// Sumber: /api/dashboard/apm (cermin `apm_readings`, diisi cron tiap ±1 jam dari APM).
+// Sumber: /api/dashboard/apm (cermin `apm_readings`, diisi agen APM di PC kantor tiap ±1 jam).
 // Pemetaan field → tag APM ada di lib/apm/tags.ts.
 
 const POLL_MS = 5 * 60_000;
@@ -385,7 +385,6 @@ function DashboardPageInner() {
     const currentShift = getCurrentShift();
     const [data, setData] = useState<ApmDashboardData | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const [refreshError, setRefreshError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
     const load = useCallback(async () => {
@@ -413,19 +412,11 @@ function DashboardPageInner() {
         return () => clearInterval(timer);
     }, [loading, operator, router, load]);
 
+    // Hanya membaca ulang cermin; APM sendiri disalin agen PC kantor tiap jam.
     const refresh = async () => {
         setRefreshing(true);
-        setRefreshError(null);
-        try {
-            const res = await fetch('/api/dashboard/apm', { method: 'POST' });
-            const json = await res.json().catch(() => ({}));
-            if (!res.ok) setRefreshError(json.error ?? `HTTP ${res.status}`);
-            await load();
-        } catch (e) {
-            setRefreshError(e instanceof Error ? e.message : String(e));
-        } finally {
-            setRefreshing(false);
-        }
+        await load();
+        setRefreshing(false);
     };
 
     if (!operator) return null;
@@ -439,12 +430,11 @@ function DashboardPageInner() {
 
     const peringatan: string[] = [];
     if (loadError) peringatan.push(`Gagal memuat data dashboard: ${loadError}`);
-    if (refreshError) peringatan.push(`Refresh gagal: ${refreshError}`);
     if (data) {
         if (data.lastError) peringatan.push(`Sync APM terakhir gagal: ${data.lastError}`);
-        if (!data.syncedAt) peringatan.push('Data belum pernah diambil dari APM.');
+        if (!data.syncedAt) peringatan.push('Data belum pernah dikirim agen APM di PC kantor.');
         else if (now - Date.parse(data.syncedAt) > SYNC_STALE_MS) {
-            peringatan.push(`Sync APM terakhir berhasil ${tanggalPendekWIB(data.syncedAt)} ${jamWIB(data.syncedAt)} — lebih dari 2 jam lalu.`);
+            peringatan.push(`Sync APM terakhir berhasil ${tanggalPendekWIB(data.syncedAt)} ${jamWIB(data.syncedAt)} — lebih dari 2 jam lalu. Cek PC agen APM di kantor (menyala & online?).`);
         }
         if (data.lastSlot && now - Date.parse(data.lastSlot) > SLOT_STALE_MS) {
             peringatan.push(`Slot logsheet terbaru ${tanggalPendekWIB(data.lastSlot)} ${jamWIB(data.lastSlot)} — logsheet APM mungkin belum diisi.`);
@@ -491,7 +481,7 @@ function DashboardPageInner() {
                         className="flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-60 disabled:cursor-wait text-white px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 cursor-pointer h-full"
                     >
                         <span className={`material-symbols-outlined text-base ${refreshing ? 'animate-spin' : ''}`}>refresh</span>
-                        {refreshing ? 'Mengambil…' : 'Refresh'}
+                        {refreshing ? 'Memuat…' : 'Refresh'}
                     </button>
                 </div>
             </header>

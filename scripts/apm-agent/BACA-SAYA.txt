@@ -1,0 +1,39 @@
+AGEN APM POWEROPS
+=================
+Menyalin E-Logsheet APM ke /dashboard PowerOps tiap jam. APM hanya bisa dibuka dari
+jaringan Indonesia, jadi server PowerOps (Vercel, di Tokyo) tidak bisa mengambilnya
+sendiri. Agen ini jalan di PC kantor yang menyala 24 jam dan mengirim hasilnya ke
+PowerOps.
+
+YANG DIBUTUHKAN
+- PC Windows yang menyala terus (tidak sleep) dan bisa membuka
+  apm.petrokimia-gresik.com serta utilitas.vercel.app.
+- Node.js LTS versi 20 ke atas: https://nodejs.org
+
+PEMASANGAN
+1. Salin folder ini ke PC kantor, misalnya ke C:\PowerOps-APM.
+2. Buat secret (sekali saja). Di Command Prompt jalankan:
+     node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   Simpan hasilnya sebagai APM_INGEST_SECRET di Vercel (Settings > Environment
+   Variables, Production), lalu Redeploy.
+3. Salin apm-agent.env.example menjadi apm-agent.env, buka dengan Notepad, lalu isi
+   APM_USERNAME, APM_PASSWORD, dan APM_INGEST_SECRET (sama persis dengan di Vercel).
+4. Klik dua kali uji-coba.cmd. Harus muncul "Uji coba OK" dan daftar steam flow
+   Boiler A. Langkah ini belum mengirim apa pun ke PowerOps.
+5. Klik dua kali jalankan-sekali.cmd. Harus muncul "OK: ... PowerOps {"ok":true,...}".
+   Buka /dashboard: angkanya harus sama dengan APM.
+6. Klik dua kali pasang-jadwal.cmd. Sejak itu agen jalan sendiri tiap jam (menit ke-10).
+
+PERAWATAN
+- Riwayat ada di apm-agent.log. Kegagalan juga tampil di banner kuning /dashboard.
+- Ganti password OneKey = perbarui APM_PASSWORD di apm-agent.env. Kalau password
+  ditolak OneKey, agen berhenti mencoba sampai APM_PASSWORD diganti, supaya akun
+  tidak terkunci.
+- Jadwal hanya jalan selama user Windows ini login. Supaya tetap jalan saat logout:
+  Task Scheduler > PowerOps APM Sync > Properties > "Run whether user is logged on
+  or not".
+- Muncul "fetch failed" padahal browser di PC ini bisa membuka APM? Kemungkinan
+  jaringan kantor memakai proxy. Hubungi pengembang PowerOps.
+- Hapus jadwal: schtasks /Delete /TN "PowerOps APM Sync" /F
+- apm-agent.env dan apm-agent-state.json berisi password dan sesi login: jangan
+  dibagikan.

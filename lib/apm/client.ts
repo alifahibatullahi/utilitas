@@ -1,5 +1,6 @@
 /**
- * Klien E-Logsheet APM (DILOC, apm.petrokimia-gresik.com) — sisi server saja.
+ * Klien E-Logsheet APM (DILOC, apm.petrokimia-gresik.com) — dijalankan agen PC kantor
+ * (scripts/apm-agent); APM menolak IP luar Indonesia, termasuk fungsi Vercel.
  *
  * APM adalah Laravel + Inertia: halaman `/elogsheet/{unitId}?date=YYYY-MM-DD` sudah memuat
  * SELURUH isi logsheet satu hari (slot tiap 2 jam, 00:00…22:00) sebagai JSON di atribut
@@ -10,7 +11,7 @@
  *   GET  /keycloak/redirect          → 302 ke form Keycloak
  *   POST form #kc-form-login         → 302 ke /keycloak/callback?code=…
  *   GET  /keycloak/callback          → APM memasang cookie sesi Laravel
- * Cookie disimpan (lihat lib/apm/sync.ts) supaya login hanya terjadi saat sesi habis.
+ * Cookie disimpan agen (apm-agent-state.json) supaya login hanya terjadi saat sesi habis.
  */
 
 export const APM_BASE = 'https://apm.petrokimia-gresik.com';
@@ -213,7 +214,7 @@ export class ApmClient {
         });
 
         // Kembali ke APM = Keycloak menerima kredensial. Sesinya dibuktikan oleh fetch
-        // berikutnya (lib/apm/sync.ts), bukan ditebak dari halaman tujuan redirect.
+        // berikutnya (lib/apm/collect.ts), bukan ditebak dari halaman tujuan redirect.
         if (hasil.url.origin === APM_BASE) {
             await hasil.res.body?.cancel();
             return;

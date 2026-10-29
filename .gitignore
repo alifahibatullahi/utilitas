@@ -45,3 +45,6 @@ TEMPLATE DARI STITCH/
 next-env.d.ts
 
 .claude/scheduled_tasks.lock
+
+# Bundel agen APM untuk PC kantor (npm run build:apm-agent)
+/dist/

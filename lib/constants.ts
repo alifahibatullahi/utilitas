@@ -440,8 +440,6 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     // punya penjaga peran sama sekali, jadi tidak ada gunanya disaring di sini.
     { id: 'input-laporan', label: 'Input Laporan', description: 'Isi laporan shift & harian per station', icon: 'edit', path: '/input-laporan', roles: 'all', featured: true },
     { id: 'logbook', label: 'e-Logbook', description: 'Logbook operasional shift & harian', icon: 'report', path: '/logbook', roles: 'all', featured: true },
-    // Nilai Boiler A/B & STG dari E-Logsheet APM (disalin tiap ±1 jam, lib/apm/sync.ts).
-    { id: 'dashboard', label: 'Dashboard', description: 'Data operasi Boiler & STG dari E-Logsheet APM', icon: 'dashboard', path: '/dashboard', roles: 'all', featured: true },
     // Viewer berbasis Google Sheets (input tetap di spreadsheet).
     { id: 'critical-maintenance', label: 'Critical Maintenance', description: 'Daftar critical equipment & riwayat maintenance', icon: 'warning', path: '/critical-maintenance', roles: 'all', featured: true },
     // Denah stok batubara dari Supabase; tiap operator bisa menyunting isi per zona
@@ -452,6 +450,9 @@ export const HOME_MENU_ITEMS: HomeMenuItem[] = [
     // (kunci tema kartu di app/home/page.tsx). /piping (gambar isometrik jalur pipa air)
     // tetap bisa dibuka lewat URL langsung.
     { id: 'fitur-lanjutan', label: 'Cleaning UBB', description: 'Aplikasi CleanCheck untuk cleaning area UBB', icon: 'cleaning', path: 'https://utiliclean.netlify.app/', roles: 'all', featured: true },
+    // Fitur lanjutan, dikunci di /home (30 Okt 2026) sampai agen APM di PC kantor
+    // (scripts/apm-agent) rutin mengirim data. /dashboard tetap bisa dibuka lewat URL langsung.
+    { id: 'dashboard', label: 'Dashboard', description: 'Fitur lanjutan · data Boiler & STG dari E-Logsheet APM', icon: 'dashboard', path: '/dashboard', roles: 'all', featured: true, comingSoon: true },
 ];
 
 // Section "Admin" di /home — hanya tampil untuk role admin. WhatsApp Hub sudah

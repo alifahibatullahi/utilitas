@@ -17,21 +17,47 @@ function tambahMenuBatubara_(e) {
   try {
     cfg = cfgBatubara_();
   } catch (err) {
+    console.log('Menu batubara disembunyikan: Script Properties tak terbaca (' + err + ')');
     return;
   }
-  if (!cfg.secret) return;
-  if (!cfg.rilis) {
-    var email = '';
-    try {
-      email = e && e.user ? String(e.user.getEmail() || '').toLowerCase() : '';
-    } catch (err) {
-    }
-    if (!email || cfg.penguji.indexOf(email) < 0) return;
+  if (!cfg.secret) {
+    console.log('Menu batubara disembunyikan: batubaraSecret kosong');
+    return;
   }
+  var alasan = cfg.rilis ? 'rilis' : alasanPenguji_(e, cfg);
+  if (!alasan) {
+    console.log('Menu batubara disembunyikan: bukan penguji');
+    return;
+  }
+  console.log('Menu batubara tampil: ' + alasan);
   SpreadsheetApp.getUi()
     .createMenu(BATUBARA_MENU)
     .addItem('Tambah kedatangan', 'bukaFormKedatangan')
     .addToUi();
+}
+
+function alasanPenguji_(e, cfg) {
+  try {
+    if (PropertiesService.getUserProperties().getProperty('ujiBatubara') === 'ya') return 'penanda uji akun ini';
+  } catch (err) {
+    console.log('User Properties tak terbaca: ' + err);
+  }
+  var email = '';
+  try {
+    email = e && e.user ? String(e.user.getEmail() || '').toLowerCase() : '';
+  } catch (err) {
+  }
+  return email && cfg.penguji.indexOf(email) >= 0 ? 'email penguji' : '';
+}
+
+function aktifkanUjiBatubara() {
+  PropertiesService.getUserProperties().setProperty('ujiBatubara', 'ya');
+  console.log('Menu batubara aktif untuk akun ini. Reload spreadsheet.');
+}
+
+function matikanUjiBatubara() {
+  PropertiesService.getUserProperties().deleteProperty('ujiBatubara');
+  console.log('Menu batubara dimatikan untuk akun ini. Reload spreadsheet.');
 }
 
 function bukaFormKedatangan() {

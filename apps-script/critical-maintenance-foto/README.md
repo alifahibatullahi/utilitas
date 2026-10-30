@@ -140,20 +140,25 @@ izin baru. Kalau scope project bertambah, semua pemakai menu Upload Foto diminta
    | Properti | Isi |
    |---|---|
    | `batubaraSecret` | sama persis dengan env Vercel `KEDATANGAN_SHEET_SECRET`. Kosong = menu tidak pernah muncul. |
-   | `pengujiBatubara` | email penguji, pisah koma. Selama uji, menu hanya muncul untuk mereka. |
+   | `pengujiBatubara` | opsional — email penguji, pisah koma (hanya berlaku bila Google memberi email ke `onOpen`, lihat bawah). |
    | `batubaraRilis` | `ya` = menu muncul untuk semua. Kosongkan/hapus selama uji. |
 
 3. Buka **Overview → Project OAuth Scopes** dan pastikan daftarnya **sama seperti sebelum
    menempel** (tidak ada tambahan `userinfo.email` / `script.external_request`). Kalau bertambah,
    jangan reload untuk operator — kembalikan berkas lama dulu.
-4. Reload spreadsheet → menu **🚢 Kedatangan Batubara** muncul di akun penguji saja.
+4. Penguji: di editor, pilih fungsi **`aktifkanUjiBatubara`** di dropdown toolbar → **Run**
+   (sekali per akun). Reload spreadsheet → menu **🚢 Kedatangan Batubara** muncul di akun itu saja.
+   `matikanUjiBatubara` mengembalikannya.
 
 ### Uji & rilis
 
-- Gerbang uji memakai email dari event `onOpen` (`e.user`). Google hanya memberikannya untuk
-  pemilik script / satu domain — operator lain mendapat email kosong, jadi menu tetap
-  tersembunyi. Kalau menu juga tidak muncul untuk penguji, berarti Google tidak memberi
-  email di akun itu; gerbangnya perlu diganti (jangan isi `batubaraRilis` hanya untuk uji).
+- Gerbang uji = **penanda per akun** (User Properties `ujiBatubara`), dipasang lewat
+  `aktifkanUjiBatubara`. Penanda ini hanya terbaca oleh akun yang menjalankannya, jadi operator
+  lain tidak melihat menu. Gerbang email dari event `onOpen` (`e.user`) tetap ada, tapi Google
+  hanya memberikan email itu untuk akun satu domain — di akun gmail biasa ia kosong (terbukti
+  30 Okt 2026: menu tidak muncul hanya dengan `pengujiBatubara`).
+- Kenapa menu tampil/tersembunyi tercatat di **Executions** (Eksekusi) → baris `onOpen`:
+  `Menu batubara tampil: …` atau `Menu batubara disembunyikan: …`.
 - Uji sebaiknya dengan **kedatangan sungguhan**: data masuk DB & sheet Catatan produksi. Entri
   uji bisa dihapus dari tab Handling laporan shift itu atau review harian, tapi blok di kolom H
   **tidak ikut hilang** (anti-wipe Catatan) — bersihkan selnya manual.

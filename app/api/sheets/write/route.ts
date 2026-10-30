@@ -10,8 +10,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift, upsertCatatanOperasional, upsertEvalCmAir, type EvalCmUpdateResult } from '@/lib/google-sheets';
-import { getShiftCatatanPerKolom } from '@/lib/shift-catatan';
+import { upsertShiftRow, upsertDailyRow, upsertRcwRows, buildRcwEntry, upsertTankLevelsShift, upsertEvalCmAir, type EvalCmUpdateResult } from '@/lib/google-sheets';
+import { tulisCatatanShift } from '@/lib/catatan-sheet-sync';
 import { kedatanganHarianDariEntri } from '@/lib/coal-storage';
 import { upsertLogsheetBoiler, type LogsheetShift, type LogsheetBunker, type LogsheetLab, type LogsheetPersonnel } from '@/lib/logsheet-boiler';
 import { shiftReportToRow, type ShiftReportForSheets, type PrevBoilerTotalizer } from '@/lib/sheets-mapper';
@@ -287,23 +287,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing/invalid date or shift' }, { status: 400 });
         }
         try {
-            const supabase = getSupabase();
-            const { data: row } = await supabase
-                .from('shift_reports')
-                .select('date, shift, catatan, station_catatan, shift_coal_bunker(*)')
-                .eq('date', date)
-                .eq('shift', shift)
-                .maybeSingle();
-            if (!row) {
-                return NextResponse.json({ action: 'skipped', reason: `shift report ${date}/${shift} tidak ditemukan` });
-            }
-            // Catatan kanonik dari DB (catatan utama + semua station + auto-lines),
-            // sudah dipartisi ke kolom sheet-nya: Operasional (D), Unloading Fly Ash
-            // (F), In-Out Solar (G), In-Out Batubara (H, dari coal_arrivals — tidak
-            // ikut WA). Skip-kosong & anti-wipe per kolom ditangani di
-            // upsertCatatanOperasional.
-            const perKolom = await getShiftCatatanPerKolom(supabase, row);
-            const result = await upsertCatatanOperasional(date, shift, perKolom);
+            // Laporan shift belum ada → hanya kolom H (kedatangan batubara) yang ditulis,
+            // atau skipped kalau shift itu tak punya kedatangan. Lihat lib/catatan-sheet-sync.
+            const result = await tulisCatatanShift(getSupabase(), date, shift);
             console.log(`[sheets/write] catatan_operasional ${date}/${shift} →`, result);
             return NextResponse.json(result);
         } catch (err) {

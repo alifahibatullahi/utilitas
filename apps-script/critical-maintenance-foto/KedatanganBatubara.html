@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: 'Google Sans', Roboto, Arial, sans-serif; color: #202124; background: #fff;
+      font-size: 14px; padding: 2px 4px 12px;
+    }
+    .grup { margin-bottom: 14px; }
+    .label {
+      display: block; font-size: 12px; font-weight: 600; color: #5f6368;
+      margin-bottom: 6px; letter-spacing: .2px;
+    }
+    input, select {
+      width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #dadce0;
+      border-radius: 8px; font: inherit; font-size: 15px; color: #202124; background: #fff;
+    }
+    input:focus, select:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
+    input:disabled, select:disabled { background: #f1f3f4; color: #5f6368; }
+    .pilihan { display: grid; gap: 8px; }
+    .pilihan button, .chips button {
+      border: 1px solid #dadce0; background: #fff; font: inherit; font-weight: 600;
+      color: #3c4043; cursor: pointer;
+    }
+    .pilihan button { min-height: 44px; border-radius: 8px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chips button { min-height: 32px; padding: 4px 12px; border-radius: 16px; font-size: 12px; }
+    .pilihan button:hover, .chips button:hover { border-color: #1a73e8; color: #1967d2; }
+    .pilihan button[aria-pressed="true"], .chips button[aria-pressed="true"] {
+      border-color: #1a73e8; background: #e8f0fe; color: #1967d2;
+    }
+    .pilihan button:disabled { cursor: not-allowed; opacity: .6; }
+    .satuan { position: relative; }
+    .satuan input { padding-right: 48px; }
+    .satuan span {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      color: #5f6368; font-size: 13px; pointer-events: none;
+    }
+    .bantu { font-size: 12px; color: #5f6368; margin: 6px 0 0; line-height: 1.5; }
+    .info {
+      font-size: 12px; line-height: 1.5; color: #3c4043; background: #f1f3f4;
+      border-radius: 8px; padding: 8px 10px; margin: 0 0 14px;
+    }
+    .galat {
+      font-size: 13px; line-height: 1.5; color: #c5221f; background: #fce8e6;
+      border-radius: 8px; padding: 8px 10px; margin: 0 0 12px;
+    }
+    button.utama {
+      width: 100%; min-height: 48px; border: 0; border-radius: 8px; background: #1a73e8;
+      color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    button.utama:hover { background: #1765cc; }
+    button.utama:disabled { background: #c6dafc; cursor: not-allowed; }
+    .kedua {
+      flex: 1; display: flex; align-items: center; justify-content: center; min-height: 44px;
+      border: 1px solid #dadce0; border-radius: 8px; background: #fff; color: #1a73e8;
+      font: inherit; font-weight: 700; text-decoration: none; cursor: pointer;
+    }
+    .kedua:hover { background: #f8fbff; border-color: #1a73e8; }
+    .aksi { display: flex; gap: 8px; margin-top: 10px; }
+    .aksi button.utama { flex: 1; width: auto; }
+    .layar {
+      min-height: 320px; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 14px; text-align: center; color: #5f6368;
+      font-size: 13px; font-weight: 600;
+    }
+    .layar .kedua { flex: none; padding: 0 20px; }
+    .sukses { font-size: 16px; font-weight: 700; color: #137333; margin: 4px 0 12px; }
+    .ringkas { margin: 0 0 14px; border: 1px solid #dadce0; border-radius: 8px; }
+    .ringkas div { display: flex; gap: 12px; padding: 9px 12px; border-top: 1px solid #f1f3f4; }
+    .ringkas div:first-child { border-top: 0; }
+    .ringkas dt { flex: 0 0 104px; font-size: 12px; font-weight: 600; color: #5f6368; }
+    .ringkas dd { margin: 0; font-weight: 600; }
+    .sembunyi { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="layar" id="memuat">Memuat data pengiriman&hellip;</div>
+
+  <div class="layar sembunyi" id="gagalMuat">
+    <div class="galat" id="gagalMuatPesan"></div>
+    <button type="button" class="kedua" id="cobaLagi">Coba lagi</button>
+  </div>
+
+  <form class="sembunyi" id="form" novalidate>
+    <div class="grup">
+      <label class="label" for="tanggal">Tanggal laporan</label>
+      <input type="date" id="tanggal">
+    </div>
+    <div class="grup">
+      <span class="label">Shift</span>
+      <div class="pilihan" id="pilihShift"></div>
+    </div>
+    <div class="grup sembunyi" id="grupPengiriman">
+      <label class="label" for="pengiriman">Pengiriman</label>
+      <select id="pengiriman"></select>
+    </div>
+    <p class="info sembunyi" id="infoLanjutan"></p>
+    <div class="grup">
+      <span class="label">Asal</span>
+      <div class="pilihan" id="pilihAsal"></div>
+    </div>
+    <div class="grup sembunyi" id="grupMetode">
+      <span class="label" id="labelMetode">Unloading via</span>
+      <div class="pilihan" id="pilihMetode"></div>
+    </div>
+    <div class="grup">
+      <label class="label" for="supplier" id="labelSupplier">Nama tongkang / supplier</label>
+      <input type="text" id="supplier" list="daftarSupplier" autocomplete="off">
+      <datalist id="daftarSupplier"></datalist>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="grup">
+      <label class="label" for="ton" id="labelTon">Tonase</label>
+      <div class="satuan">
+        <input type="text" id="ton" inputmode="decimal" autocomplete="off" placeholder="mis. 3.000">
+        <span>ton</span>
+      </div>
+      <p class="bantu" id="tonBaca"></p>
+    </div>
+    <div class="grup">
+      <label class="label" for="zona">Ditaruh di pilar</label>
+      <select id="zona"></select>
+    </div>
+    <div class="grup">
+      <label class="label" for="masuk">Mulai masuk storage</label>
+      <input type="date" id="masuk">
+    </div>
+    <div class="grup">
+      <label class="label" for="status">Status</label>
+      <select id="status">
+        <option value="progres">Masih progres — lanjut shift berikutnya</option>
+        <option value="selesai">Selesai</option>
+      </select>
+    </div>
+    <p class="galat sembunyi" id="galatSimpan"></p>
+    <button type="submit" class="utama" id="simpan" disabled>Simpan</button>
+  </form>
+
+  <div class="sembunyi" id="hasil">
+    <div class="sukses" id="hasilJudul">Tersimpan</div>
+    <dl class="ringkas" id="ringkas"></dl>
+    <p class="info" id="hasilCatatan"></p>
+    <p class="galat sembunyi" id="hasilPeringatan"></p>
+    <div class="aksi">
+      <button type="button" class="kedua sembunyi" id="keCatatan">Lihat di Catatan</button>
+      <a class="kedua" id="keDenah" href="#" target="_blank" rel="noopener">Lihat denah</a>
+    </div>
+    <div class="aksi">
+      <button type="button" class="kedua" id="tambahLagi">Tambah lagi</button>
+      <button type="button" class="utama" id="tutup">Tutup</button>
+    </div>
+  </div>
+
+  <script>
+    var cfg = JSON.parse(<?!= JSON.stringify(cfg) ?>);
+    var API = cfg.appUrl + '/api/sheets/kedatangan-batubara';
+    var SHIFT_OPSI = [
+      { value: 'malam', label: 'Malam' },
+      { value: 'pagi', label: 'Pagi' },
+      { value: 'sore', label: 'Sore' }
+    ];
+    var BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    var MAKS_CHIP = 8;
+
+    var el = function (id) { return document.getElementById(id); };
+    var st = { info: null, shift: null, asal: null, metode: null, induk: null, batchId: '', masukDisentuh: false, menyimpan: false, barisCatatan: null, pertahankan: null };
+
+    function tampil(id) {
+      ['memuat', 'gagalMuat', 'form', 'hasil'].forEach(function (x) {
+        el(x).classList.toggle('sembunyi', x !== id);
+      });
+    }
+
+    function uuid() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      var b = new Uint8Array(16);
+      crypto.getRandomValues(b);
+      b[6] = (b[6] & 0x0f) | 0x40;
+      b[8] = (b[8] & 0x3f) | 0x80;
+      var h = Array.prototype.map.call(b, function (x) { return (x + 0x100).toString(16).slice(1); }).join('');
+      return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+    }
+
+    function api(method, body) {
+      var opsi = { method: method, headers: { Authorization: 'Bearer ' + cfg.secret } };
+      if (body) {
+        opsi.headers['Content-Type'] = 'application/json';
+        opsi.body = JSON.stringify(body);
+      }
+      return fetch(API, opsi).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) throw new Error(j.error || ('Server membalas ' + r.status));
+          return j;
+        });
+      }, function () {
+        throw new Error('Tidak bisa menghubungi ' + cfg.appUrl + '. Periksa koneksi lalu coba lagi.');
+      });
+    }
+
+    function labelDari(daftar, nilai) {
+      for (var i = 0; i < daftar.length; i++) if (daftar[i].value === nilai) return daftar[i].label;
+      return nilai || '';
+    }
+
+    function fmtTon(n) { return Number(n || 0).toLocaleString('id-ID'); }
+
+    function fmtTanggal(iso) {
+      var p = String(iso || '').split('-');
+      if (p.length !== 3) return iso || '';
+      return parseInt(p[2], 10) + ' ' + BULAN[parseInt(p[1], 10) - 1] + ' ' + p[0];
+    }
+
+    function tanggalSah(s) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s || '')) return false;
+      var p = s.split('-').map(Number);
+      var d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+      return d.getUTCFullYear() === p[0] && d.getUTCMonth() === p[1] - 1 && d.getUTCDate() === p[2];
+    }
+
+    function parseTon(s) {
+      var t = String(s || '').replace(/\s/g, '');
+      if (!t) return null;
+      if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
+      else if (/^\d+(,\d+)?$/.test(t)) t = t.replace(',', '.');
+      else if (!/^\d+(\.\d+)?$/.test(t)) return NaN;
+      return parseFloat(t);
+    }
+
+    function pilihan(wadah, opsi, nilai, onPilih, terkunci) {
+      var w = el(wadah);
+      w.textContent = '';
+      w.style.gridTemplateColumns = 'repeat(' + opsi.length + ', 1fr)';
+      opsi.forEach(function (o) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = o.label;
+        b.setAttribute('aria-pressed', o.value === nilai ? 'true' : 'false');
+        b.disabled = !!terkunci;
+        b.addEventListener('click', function () { onPilih(o.value); });
+        w.appendChild(b);
+      });
+    }
+
+    function render() {
+      var info = st.info;
+      var lanjutan = !!st.induk;
+      pilihan('pilihShift', SHIFT_OPSI, st.shift, function (v) { st.shift = v; render(); });
+      pilihan('pilihAsal', info.asal, st.asal, function (v) {
+        st.asal = v;
+        if (v !== 'tongkang') st.metode = null;
+        render();
+      }, lanjutan && !!st.induk.asal);
+      el('grupMetode').classList.toggle('sembunyi', st.asal !== 'tongkang');
+      pilihan('pilihMetode', info.metode, st.metode, function (v) { st.metode = v; render(); });
+
+      el('labelSupplier').textContent = st.asal === 'darat' ? 'Supplier / PT' : 'Nama tongkang / supplier';
+      el('supplier').placeholder = st.asal === 'darat' ? 'Nama PT…' : 'Nama tongkang…';
+      el('supplier').disabled = lanjutan;
+      el('zona').disabled = lanjutan;
+      el('masuk').disabled = lanjutan;
+      renderChips();
+
+      var t = parseTon(el('ton').value);
+      var bolehKosong = lanjutan && el('status').value === 'selesai';
+      el('labelTon').textContent = bolehKosong ? 'Tonase (boleh kosong)' : 'Tonase';
+      el('labelMetode').textContent = penutup() ? 'Unloading via (boleh kosong)' : 'Unloading via';
+      el('tonBaca').textContent = t === null
+        ? (bolehKosong ? 'Tanpa tonase = sekadar menandai pengiriman ini sudah selesai; tumpukan di denah tidak berubah.' : '')
+        : isNaN(t) ? 'Format tonase tidak dikenali. Contoh: 3.000 atau 2.500,5'
+        : 'Terbaca: ' + fmtTon(t) + ' ton';
+
+      el('simpan').disabled = !valid() || st.menyimpan;
+      el('simpan').textContent = st.menyimpan ? 'Menyimpan…' : 'Simpan';
+    }
+
+    function renderChips() {
+      var w = el('chips');
+      w.textContent = '';
+      if (st.induk) return;
+      var cari = el('supplier').value.trim().toLowerCase();
+      st.info.suppliers.filter(function (s) { return s.toLowerCase().indexOf(cari) >= 0; })
+        .slice(0, MAKS_CHIP)
+        .forEach(function (s) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = s;
+          b.setAttribute('aria-pressed', s === el('supplier').value ? 'true' : 'false');
+          b.addEventListener('click', function () { el('supplier').value = s; render(); });
+          w.appendChild(b);
+        });
+    }
+
+    function penutup() {
+      var t = parseTon(el('ton').value);
+      return !!st.induk && el('status').value === 'selesai' && !(t > 0);
+    }
+
+    function valid() {
+      if (!tanggalSah(el('tanggal').value) || !st.shift || !st.asal) return false;
+      if (!el('supplier').value.trim() || !el('zona').value) return false;
+      if (!st.induk && !tanggalSah(el('masuk').value)) return false;
+      var t = parseTon(el('ton').value);
+      if (isNaN(t)) return false;
+      if (!(t > 0) && !penutup()) return false;
+      return st.asal !== 'tongkang' || !!st.metode || penutup();
+    }
+
+    function setInduk(batchId) {
+      var induk = null;
+      st.info.berjalan.forEach(function (b) { if (b.batch_id === batchId) induk = b; });
+      st.induk = induk;
+      st.batchId = induk ? induk.batch_id : uuid();
+      st.asal = induk ? induk.asal : null;
+      st.metode = null;
+      el('supplier').value = induk ? induk.supplier : '';
+      el('zona').value = induk ? induk.zona : '';
+      el('masuk').value = induk ? induk.tanggal_masuk : el('tanggal').value;
+      st.masukDisentuh = false;
+      el('ton').value = '';
+      el('status').value = 'progres';
+      var info = el('infoLanjutan');
+      info.classList.toggle('sembunyi', !induk);
+      info.textContent = induk
+        ? 'Melanjutkan pengiriman ' + induk.supplier + ' di ' + labelDari(st.info.zona, induk.zona)
+          + '. Supplier, pilar, tanggal masuk, dan asal dikunci supaya tetap terhitung satu tumpukan.'
+        : '';
+      render();
+    }
+
+    function isiForm(info) {
+      var awal = st.pertahankan || info.default;
+      st.pertahankan = null;
+      st.info = info;
+      st.shift = awal.shift;
+      el('tanggal').value = awal.date;
+
+      var sel = el('pengiriman');
+      sel.textContent = '';
+      var baru = document.createElement('option');
+      baru.value = '';
+      baru.textContent = 'Baru';
+      sel.appendChild(baru);
+      info.berjalan.forEach(function (b) {
+        var o = document.createElement('option');
+        o.value = b.batch_id;
+        o.textContent = 'Lanjutan — ' + (b.asal ? labelDari(info.asal, b.asal) + ' · ' : '') + b.supplier
+          + ' · ' + labelDari(info.zona, b.zona) + ' · ' + fmtTon(b.tonSejauhIni) + ' t sejauh ini';
+        sel.appendChild(o);
+      });
+      el('grupPengiriman').classList.toggle('sembunyi', info.berjalan.length === 0);
+
+      var zona = el('zona');
+      zona.textContent = '';
+      var kosong = document.createElement('option');
+      kosong.value = '';
+      kosong.textContent = 'Pilih pilar…';
+      zona.appendChild(kosong);
+      info.zona.forEach(function (z) {
+        var o = document.createElement('option');
+        o.value = z.value;
+        o.textContent = z.label;
+        zona.appendChild(o);
+      });
+
+      var dl = el('daftarSupplier');
+      dl.textContent = '';
+      info.suppliers.forEach(function (s) {
+        var o = document.createElement('option');
+        o.value = s;
+        dl.appendChild(o);
+      });
+
+      el('galatSimpan').classList.add('sembunyi');
+      sel.value = '';
+      setInduk('');
+      tampil('form');
+    }
+
+    function muat() {
+      tampil('memuat');
+      api('GET').then(isiForm, function (err) {
+        el('gagalMuatPesan').textContent = err.message;
+        tampil('gagalMuat');
+      });
+    }
+
+    function simpan(ev) {
+      ev.preventDefault();
+      if (!valid() || st.menyimpan) return;
+      st.menyimpan = true;
+      el('galatSimpan').classList.add('sembunyi');
+      render();
+      var t = parseTon(el('ton').value);
+      api('POST', {
+        date: el('tanggal').value,
+        shift: st.shift,
+        lanjutan_batch_id: st.induk ? st.induk.batch_id : null,
+        entry: {
+          batch_id: st.batchId,
+          supplier: el('supplier').value.trim(),
+          zona: el('zona').value,
+          ton: t > 0 ? t : 0,
+          tanggal_masuk: el('masuk').value,
+          status: el('status').value,
+          asal: st.asal,
+          metode_unloading: st.asal === 'tongkang' ? st.metode : null
+        }
+      }).then(tampilHasil, function (err) {
+        el('galatSimpan').textContent = err.message;
+        el('galatSimpan').classList.remove('sembunyi');
+      }).then(function () {
+        st.menyimpan = false;
+        if (st.info) render();
+      });
+    }
+
+    function baris(dl, label, isi) {
+      var d = document.createElement('div');
+      var dt = document.createElement('dt');
+      var dd = document.createElement('dd');
+      dt.textContent = label;
+      dd.textContent = isi;
+      d.appendChild(dt);
+      d.appendChild(dd);
+      dl.appendChild(d);
+    }
+
+    function tampilHasil(res) {
+      var r = res.ringkasan;
+      var shiftLabel = labelDari(SHIFT_OPSI, r.shift);
+      el('hasilJudul').textContent = res.dobel ? 'Sudah tersimpan sebelumnya' : 'Tersimpan';
+      var dl = el('ringkas');
+      dl.textContent = '';
+      baris(dl, 'Laporan', 'Shift ' + shiftLabel + ', ' + fmtTanggal(r.date));
+      baris(dl, 'Nama', r.supplier);
+      baris(dl, 'Via', r.asal === 'darat' ? 'Darat' : labelDari(st.info.metode, r.metode_unloading) || '-');
+      baris(dl, 'Letak', r.zonaLabel);
+      baris(dl, 'Tonase', '+' + fmtTon(r.ton) + ' ton (kumulatif ' + fmtTon(r.tonKumulatif) + ' ton)');
+      baris(dl, 'Status', r.status === 'selesai' ? 'Selesai' : 'IP');
+
+      st.barisCatatan = null;
+      var teks = (res.catatan || []).map(function (c) {
+        var siapa = 'Shift ' + labelDari(SHIFT_OPSI, c.shift) + ' ' + fmtTanggal(c.date);
+        if (c.date === r.date && c.shift === r.shift && c.rowIndex) st.barisCatatan = c.rowIndex;
+        if (c.action === 'created') return 'Kolom H Catatan: baris baru ' + c.rowIndex + ' dibuat (' + siapa + ').';
+        if (c.action === 'updated') return 'Kolom H Catatan baris ' + c.rowIndex + ' diperbarui (' + siapa + ').';
+        return 'Kolom H Catatan ' + siapa + ': tidak berubah' + (c.reason ? ' — ' + c.reason : '') + '.';
+      });
+      el('hasilCatatan').textContent = teks.join(' ');
+      el('hasilCatatan').classList.toggle('sembunyi', teks.length === 0);
+      el('hasilPeringatan').textContent = res.warning || '';
+      el('hasilPeringatan').classList.toggle('sembunyi', !res.warning);
+      el('keCatatan').classList.toggle('sembunyi', !st.barisCatatan);
+      el('keDenah').href = cfg.appUrl + '/coal-storage';
+      tampil('hasil');
+    }
+
+    el('form').addEventListener('submit', simpan);
+    el('cobaLagi').addEventListener('click', muat);
+    el('pengiriman').addEventListener('change', function () { setInduk(el('pengiriman').value); });
+    el('tanggal').addEventListener('change', function () {
+      if (!st.induk && !st.masukDisentuh) el('masuk').value = el('tanggal').value;
+      render();
+    });
+    el('masuk').addEventListener('change', function () { st.masukDisentuh = true; render(); });
+    ['supplier', 'ton'].forEach(function (id) { el(id).addEventListener('input', render); });
+    ['zona', 'status'].forEach(function (id) { el(id).addEventListener('change', render); });
+    el('tambahLagi').addEventListener('click', function () {
+      st.pertahankan = { date: el('tanggal').value, shift: st.shift };
+      muat();
+    });
+    el('tutup').addEventListener('click', function () { google.script.host.close(); });
+    el('keCatatan').addEventListener('click', function () {
+      el('keCatatan').disabled = true;
+      google.script.run
+        .withSuccessHandler(function () { google.script.host.close(); })
+        .withFailureHandler(function () { el('keCatatan').disabled = false; })
+        .bukaBarisCatatan(st.barisCatatan);
+    });
+
+    muat();
+  </script>
+</body>
+</html>

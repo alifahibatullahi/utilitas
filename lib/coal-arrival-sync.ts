@@ -20,14 +20,16 @@ export function syncCatatanSheet(date: string, shift: string) {
 }
 
 /**
- * Sync kolom H untuk shift `titik` DAN setiap shift yang lebih baru yang punya baris dari
- * salah satu `batchIds`. Gagal membaca daftar shift → cukup shift `titik` saja.
+ * Shift yang kolom H-nya harus ditulis ulang setelah baris `batchIds` berubah di shift
+ * `titik`: shift itu sendiri DAN setiap shift yang lebih baru yang punya baris dari
+ * salah satu batch. Urut kronologis. Gagal membaca daftar shift → cukup shift `titik`.
+ * Dipakai klien (di bawah) dan route menu spreadsheet (server).
  */
-export async function syncCatatanKedatangan(
+export async function shiftTerdampakKedatangan(
     supabase: SupabaseClient,
     titik: { date: string; shift: string },
     batchIds: string[],
-): Promise<void> {
+): Promise<{ date: string; shift: string }[]> {
     const target = new Map<string, { date: string; shift: string }>();
     target.set(`${titik.date}|${titik.shift}`, titik);
 
@@ -37,9 +39,19 @@ export async function syncCatatanKedatangan(
         if (error) console.warn('[coal-arrival-sync] daftar shift batch gagal dimuat:', error.message);
         const rankTitik = rankShift(titik.date, titik.shift as ShiftKey);
         for (const r of (data ?? []) as { date: string; shift: string }[]) {
-            if (rankShift(r.date, r.shift as ShiftKey) > rankTitik) target.set(`${r.date}|${r.shift}`, r);
+            if (rankShift(r.date, r.shift as ShiftKey) > rankTitik) target.set(`${r.date}|${r.shift}`, { date: r.date, shift: r.shift });
         }
     }
 
-    for (const t of target.values()) syncCatatanSheet(t.date, t.shift);
+    return [...target.values()].sort((a, b) =>
+        rankShift(a.date, a.shift as ShiftKey) - rankShift(b.date, b.shift as ShiftKey));
+}
+
+/** Sync kolom H untuk semua shift terdampak (lihat shiftTerdampakKedatangan). */
+export async function syncCatatanKedatangan(
+    supabase: SupabaseClient,
+    titik: { date: string; shift: string },
+    batchIds: string[],
+): Promise<void> {
+    for (const t of await shiftTerdampakKedatangan(supabase, titik, batchIds)) syncCatatanSheet(t.date, t.shift);
 }

@@ -78,13 +78,14 @@ spreadsheet cuma punya satu project container-bound, dan `onOpen` yang terdefini
 akan saling meniadakan. Tambahkan `Code.gs` ini sebagai berkas baru dan gabungkan isi
 `onOpen`-nya.
 
-### Kedua berkas sengaja tanpa komentar
+### Semua berkas sengaja tanpa komentar
 
 Selain agar ringkas saat ditempel, ini menghilangkan satu jebakan: mesin template Apps Script
 memindai **seluruh** berkas `.html`, termasuk bagian yang dikomentari — sebuah contoh
 scriptlet yang ditulis di dalam komentar pun ikut dievaluasi dan memunculkan
 `SyntaxError: Unexpected token ';'`. Satu-satunya scriptlet yang boleh ada di `OpenWeb.html`
-adalah `JSON.stringify(url)` dan `JSON.stringify(note)` yang force-print di awal `<script>`.
+adalah `JSON.stringify(url)` dan `JSON.stringify(note)` yang force-print di awal `<script>`;
+di `KedatanganBatubara.html` hanya `JSON.stringify(cfg)`.
 
 ## Prasyarat di spreadsheet
 
@@ -108,6 +109,55 @@ adalah `JSON.stringify(url)` dan `JSON.stringify(note)` yang force-print di awal
 Cek kapan saja dengan `npx tsx scripts/check-critical-sheet.ts` di repo web — script itu
 read-only dan melaporkan tab, baris header, posisi kolom `Dokumentasi`, jumlah baris
 berfoto, serta baris yang uid-nya tidak cocok dengan isinya.
+
+## Menu 🚢 Kedatangan Batubara
+
+Folder ini sekarang memuat **seluruh** project container-bound DATA OPERASIONAL, termasuk
+menu kedua: **🚢 Kedatangan Batubara → Tambah kedatangan**. Menu itu membuka **dialog form di
+dalam Sheets** (tanpa pindah tab). Simpan →
+
+- satu baris `coal_arrivals` (keterangan `Menu spreadsheet`) — tumpukannya muncul di denah
+  `/coal-storage` dan di tab Handling laporan shift itu;
+- blok kedatangan di **kolom H sheet Catatan** untuk tanggal + shift itu (dan shift sesudahnya
+  di pengiriman yang sama, karena tonasenya kumulatif). Kalau laporan shift itu belum ada,
+  barisnya tetap dibuat (B/C + H); kolom lain menyusul saat laporan disimpan.
+
+Isian & aturannya sama dengan form Kedatangan Batubara di web (asal, unloading via, nama,
+tonase, pilar, mulai masuk storage, status, lanjutan pengiriman). Tonase diketik gaya
+Indonesia: `3.000` = tiga ribu, `2.500,5` = dua ribu lima ratus koma lima.
+
+Berkas: `Batubara.gs` (menu, gerbang, pembuka dialog, lompat ke baris Catatan) dan
+`KedatanganBatubara.html` (form). Dialog memanggil `/api/sheets/kedatangan-batubara`
+**langsung dari browser** (fetch), bukan `UrlFetchApp` — sengaja, supaya project tidak butuh
+izin baru. Kalau scope project bertambah, semua pemakai menu Upload Foto diminta otorisasi ulang.
+
+### Pasang
+
+1. Tempel `Code.gs` (versi baru, `onOpen(e)`), lalu **File → + → Script** bernama `Batubara`
+   dan **File → + → HTML** bernama `KedatanganBatubara`, isi dari folder ini.
+2. **Project Settings → Script Properties**:
+
+   | Properti | Isi |
+   |---|---|
+   | `batubaraSecret` | sama persis dengan env Vercel `KEDATANGAN_SHEET_SECRET`. Kosong = menu tidak pernah muncul. |
+   | `pengujiBatubara` | email penguji, pisah koma. Selama uji, menu hanya muncul untuk mereka. |
+   | `batubaraRilis` | `ya` = menu muncul untuk semua. Kosongkan/hapus selama uji. |
+
+3. Buka **Overview → Project OAuth Scopes** dan pastikan daftarnya **sama seperti sebelum
+   menempel** (tidak ada tambahan `userinfo.email` / `script.external_request`). Kalau bertambah,
+   jangan reload untuk operator — kembalikan berkas lama dulu.
+4. Reload spreadsheet → menu **🚢 Kedatangan Batubara** muncul di akun penguji saja.
+
+### Uji & rilis
+
+- Gerbang uji memakai email dari event `onOpen` (`e.user`). Google hanya memberikannya untuk
+  pemilik script / satu domain — operator lain mendapat email kosong, jadi menu tetap
+  tersembunyi. Kalau menu juga tidak muncul untuk penguji, berarti Google tidak memberi
+  email di akun itu; gerbangnya perlu diganti (jangan isi `batubaraRilis` hanya untuk uji).
+- Uji sebaiknya dengan **kedatangan sungguhan**: data masuk DB & sheet Catatan produksi. Entri
+  uji bisa dihapus dari tab Handling laporan shift itu atau review harian, tapi blok di kolom H
+  **tidak ikut hilang** (anti-wipe Catatan) — bersihkan selnya manual.
+- Rilis: isi `batubaraRilis` = `ya`, lalu reload. Tidak perlu tempel ulang kode.
 
 ## Catatan
 

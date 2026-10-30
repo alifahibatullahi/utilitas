@@ -21,11 +21,12 @@ function angka_(v, bawaan) {
   return isNaN(n) ? bawaan : n;
 }
 
-function onOpen() {
+function onOpen(e) {
   SpreadsheetApp.getUi()
     .createMenu('📷 Upload Foto')
     .addItem('Upload foto baris terpilih', 'openUploadPage')
     .addToUi();
+  tambahMenuBatubara_(e);
 }
 
 function openUploadPage() {

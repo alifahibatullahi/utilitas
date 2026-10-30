@@ -325,12 +325,20 @@ export function partisiCatatanPerKolom(canonical: string, blokBatubara: string[]
  *  DI SINI saja (kolom H), bukan di teks kanonik — teks kanonik itulah yang ke WA. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getShiftCatatanPerKolom(supabase: SupabaseClient, shiftRow: any): Promise<CatatanPerKolom> {
-    const [canonical, { data: coalRows }] = await Promise.all([
+    const [canonical, blok] = await Promise.all([
         getShiftCatatanCanonical(supabase, shiftRow),
-        supabase.from('coal_arrivals').select(KOLOM_KEDATANGAN_CATATAN)
-            .eq('date', shiftRow.date).eq('shift', shiftRow.shift)
-            .order('created_at', { ascending: true }),
+        blokKedatanganShift(supabase, shiftRow.date as string, shiftRow.shift as string),
     ]);
+    return partisiCatatanPerKolom(canonical, blok);
+}
+
+/** Blok kolom H (kedatangan batubara) satu shift, langsung dari tabel coal_arrivals —
+ *  tidak butuh laporan shift. Dipakai getShiftCatatanPerKolom dan jalur Catatan untuk
+ *  shift yang laporannya belum ada (kedatangan dari menu spreadsheet). */
+export async function blokKedatanganShift(supabase: SupabaseClient, date: string, shift: string): Promise<string[]> {
+    const { data: coalRows } = await supabase.from('coal_arrivals').select(KOLOM_KEDATANGAN_CATATAN)
+        .eq('date', date).eq('shift', shift)
+        .order('created_at', { ascending: true });
     const barisShift = (coalRows ?? []) as unknown as BarisKedatanganCatatan[];
     // Tonase di blok = kumulatif per pengiriman, jadi butuh baris shift-shift lain dari
     // batch yang sama. Gagal muat → kumulatif cuma dari shift ini, blok tetap tertulis.
@@ -342,5 +350,5 @@ export async function getShiftCatatanPerKolom(supabase: SupabaseClient, shiftRow
         if (error) console.warn('[shift-catatan] baris batch kedatangan gagal dimuat:', error.message);
         else semuaBarisBatch = (data ?? []) as unknown as BarisKedatanganCatatan[];
     }
-    return partisiCatatanPerKolom(canonical, buildCoalArrivalBlocks(barisShift, semuaBarisBatch));
+    return buildCoalArrivalBlocks(barisShift, semuaBarisBatch);
 }

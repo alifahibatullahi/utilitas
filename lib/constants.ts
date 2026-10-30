@@ -533,8 +533,8 @@ export function getShiftWindow(date: string, shift: ShiftKey): { start: Date; en
     return { start: new Date(y, m - 1, d - 1, 23, 0, 0), end: new Date(y, m - 1, d, 7, 0, 0) };
 }
 
-export function detectCurrentShift(): { shift: ShiftKey; date: string } {
-    const now = new Date();
+// `now` dibaca lewat getter lokal — server (Vercel = UTC) mengirim nowWIB() dari lib/utils.
+export function detectCurrentShift(now: Date = new Date()): { shift: ShiftKey; date: string } {
     const h = now.getHours();
     const pad = (n: number) => String(n).padStart(2, '0');
     const fmt = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;

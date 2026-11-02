@@ -122,9 +122,14 @@ dalam Sheets** (tanpa pindah tab). Simpan →
   di pengiriman yang sama, karena tonasenya kumulatif). Kalau laporan shift itu belum ada,
   barisnya tetap dibuat (B/C + H); kolom lain menyusul saat laporan disimpan.
 
-Isian & aturannya sama dengan form Kedatangan Batubara di web (asal, unloading via, nama,
-tonase, pilar, mulai masuk storage, status, lanjutan pengiriman). Tonase diketik gaya
-Indonesia: `3.000` = tiga ribu, `2.500,5` = dua ribu lima ratus koma lima.
+Isian: tanggal laporan (tampil "3 November 2026"), shift, asal (Tongkang / Darat (Lokal)),
+unloading via, nama, tonase, pilar, status. Aturannya sama dengan form Kedatangan Batubara di
+web. Bedanya:
+- Tidak ada "mulai masuk storage" — pengiriman baru memakai tanggal laporan.
+- Di bawah kotak nama hanya tampil pengiriman yang **masih berjalan** (status progres). Klik
+  salah satunya = **lanjutan** pengiriman itu (nama, pilar, asal terkunci, tonase menyambung ke
+  tumpukan yang sama); klik lagi = kembali ke pengiriman baru. Riwayat nama lama tidak ditampilkan.
+- Tonase diberi pemisah ribuan otomatis saat diketik (`3000` → `3.000`, desimal pakai koma).
 
 Berkas: `Batubara.gs` (menu, gerbang, pembuka dialog, lompat ke baris Catatan) dan
 `KedatanganBatubara.html` (form). Dialog memanggil `/api/sheets/kedatangan-batubara`

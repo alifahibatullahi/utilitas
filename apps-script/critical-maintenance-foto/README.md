@@ -122,13 +122,18 @@ dalam Sheets** (tanpa pindah tab). Simpan →
   di pengiriman yang sama, karena tonasenya kumulatif). Kalau laporan shift itu belum ada,
   barisnya tetap dibuat (B/C + H); kolom lain menyusul saat laporan disimpan.
 
-Isian: tanggal laporan (tampil "3 November 2026"), shift, asal (Tongkang / Darat (Lokal)),
-unloading via, nama, tonase, pilar, status. Aturannya sama dengan form Kedatangan Batubara di
-web. Bedanya:
+Isian: tanggal laporan (tampil "Senin, 3 November 2026"), shift, asal (Tongkang / Darat (Lokal)),
+unloading via, nama, tonase, pilar, status (In Progress / Selesai). Aturannya sama dengan form
+Kedatangan Batubara di web. Bedanya:
+- Tanggal & shift otomatis = shift yang sedang berjalan (WIB, dari server) tiap form dibuka,
+  termasuk "Tambah lagi". Jam 23.00–24.00 itu sudah shift Malam bertanggal **besok** (aturan
+  laporan shift); keterangan "Shift malam: Senin 23.00 → Selasa 07.00" tampil di bawah tab shift.
 - Tidak ada "mulai masuk storage" — pengiriman baru memakai tanggal laporan.
-- Di bawah kotak nama hanya tampil pengiriman yang **masih berjalan** (status progres). Klik
+- Saat mengetik nama, muncul saran dari nama yang pernah dipakai. Nama bertanda
+  **masih berjalan** = memilihnya melanjutkan pengiriman itu.
+- Di bawah kotak nama juga tampil pengiriman yang **masih berjalan** (status In Progress). Klik
   salah satunya = **lanjutan** pengiriman itu (nama, pilar, asal terkunci, tonase menyambung ke
-  tumpukan yang sama); klik lagi = kembali ke pengiriman baru. Riwayat nama lama tidak ditampilkan.
+  tumpukan yang sama); klik lagi = kembali ke pengiriman baru.
 - Tonase diberi pemisah ribuan otomatis saat diketik (`3000` → `3.000`, desimal pakai koma).
 
 Berkas: `Batubara.gs` (menu, gerbang, pembuka dialog, lompat ke baris Catatan) dan

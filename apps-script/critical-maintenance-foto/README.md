@@ -122,6 +122,12 @@ dalam Sheets** (tanpa pindah tab). Simpan →
   di pengiriman yang sama, karena tonasenya kumulatif). Kalau laporan shift itu belum ada,
   barisnya tetap dibuat (B/C + H); kolom lain menyusul saat laporan disimpan.
 
+Dialog 760×600, tanpa scroll. Layar pertama = **daftar**: kedatangan **In Progress** (kartu dengan
+tombol **Lanjutkan** → form lanjutan pengiriman itu) dan **History Selesai** (4 terakhir), lalu tombol
+**+ Kedatangan baru**. History menggabungkan pengiriman yang ditutup lewat form dan tongkang hasil
+impor (kolom H Catatan / rekap bongkar, dibaca dari catatan impornya di `coal_lot_koreksi`).
+Form dua kolom; "← Kembali" kembali ke daftar, dan sesudah simpan ada "Kembali ke daftar".
+
 Isian: tanggal laporan (tampil "Senin, 3 November 2026"), shift, asal (Tongkang / Darat (Lokal)),
 unloading via, nama, tonase, pilar, status (In Progress / Selesai). Aturannya sama dengan form
 Kedatangan Batubara di web. Bedanya:

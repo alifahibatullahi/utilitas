@@ -21,7 +21,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CoalArrivalRow, CoalLoadingRow, CoalLotKoreksiRow } from './supabase/types';
 import { type ShiftKey } from './constants';
-import { type AsalKedatangan, type CoalLoading, type CoalLot, type HopperKey, rankShift, URUT_SHIFT } from './coal-storage';
+import { type AsalKedatangan, type CoalLoading, type CoalLot, type HopperKey, type MetodeUnloading, rankShift, URUT_SHIFT } from './coal-storage';
 
 /**
  * Lantai riwayat loading yang ditarik, dalam hari.
@@ -410,6 +410,170 @@ export async function fetchInfoKedatangan(
     ].map(s => (s ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
 
     return { berjalan, suppliers };
+}
+
+/** Satu pengiriman di layar daftar menu Kedatangan Batubara (dialog spreadsheet). */
+export interface RingkasanPengiriman {
+    /** batch_id coal_arrivals; null untuk tongkang hasil impor (tak punya baris kedatangan). */
+    batch_id: string | null;
+    supplier: string;
+    asal: AsalKedatangan | null;
+    metode: MetodeUnloading[];
+    /** Zona yang pernah diisi pengiriman ini, urut pertama kali dipakai. */
+    zona: string[];
+    /** Tanggal mulai masuk storage. */
+    mulai: string;
+    /** Tanggal pengiriman ditutup; null = masih berjalan, atau catatan impor tak menyebutnya. */
+    selesai: string | null;
+    /** Laporan shift terakhir yang mencatatnya; null untuk impor. */
+    terakhir: { date: string; shift: ShiftKey } | null;
+    /** Total tonase; null bila catatan impor tak bisa diurai. */
+    ton: number | null;
+    status: 'progres' | 'selesai';
+    sumber: 'form' | 'impor';
+}
+
+const normalMetode = (v: string | null | undefined): MetodeUnloading | null =>
+    v === 'conveyor' || v === 'dump_truck' ? v : null;
+
+/**
+ * Angka format Indonesia di catatan impor: '7.510,414', '7518,073', '7.562', juga salah
+ * ketik rekap '8.541.69' (titik terakhir yang tidak diikuti 3 digit = desimal).
+ */
+function angkaCatatan(s: string): number | null {
+    const t = s.trim();
+    let n: number;
+    if (t.includes(',')) {
+        n = Number(t.replace(/\./g, '').replace(',', '.'));
+    } else {
+        const bagian = t.split('.');
+        const ekor = bagian[bagian.length - 1];
+        n = bagian.length > 1 && ekor.length !== 3
+            ? Number(`${bagian.slice(0, -1).join('')}.${ekor}`)
+            : Number(bagian.join(''));
+    }
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+const tanggalCatatan = (dmy: string): string => {
+    const [d, m, y] = dmy.split('/');
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+};
+
+/**
+ * Total & tanggal selesai dari `keterangan` baris impor. Dua format yang pernah ditulis:
+ *   kolom H Catatan  'mulai 22/10/2026 11.31, finish 25/10/2026 20.45 total 7.562 Ton'
+ *                    'mulai 05/10/2026 17.34, final draught 7.513,306 Ton'
+ *   rekap bongkar    'Import rekap bongkar BatuBara.xlsx (No 4): 30/08/2026 (02.13), 7.510,523 Ton, …'
+ */
+function uraiCatatanImpor(ket: string): { ton: number | null; selesai: string | null } {
+    const total = ket.match(/(?:total|final draught)\s+([\d.,]+)\s*Ton/i)
+        ?? ket.match(/\(No \d+\):\s*\d{1,2}\/\d{1,2}\/\d{4}[^,]*,\s*([\d.,]+)\s*Ton/i);
+    const selesai = ket.match(/(?:finish|stop)\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+    return { ton: total ? angkaCatatan(total[1]) : null, selesai: selesai ? tanggalCatatan(selesai[1]) : null };
+}
+
+/**
+ * Layar daftar menu Kedatangan Batubara: pengiriman yang masih berjalan dan beberapa yang
+ * sudah selesai, terbaru dulu.
+ *
+ * Yang selesai digabung dari dua sumber, karena kedatangan sebelum menu & tab Handling dipakai
+ * hanya ada sebagai opname hasil impor (kolom H Catatan, rekap bongkar) di coal_lot_koreksi —
+ * total & tanggal selesainya diurai dari `keterangan` baris impor itu. Impor yang supplier &
+ * tanggal masuknya sudah ada sebagai batch form dilewati supaya tidak dobel.
+ */
+export async function fetchRingkasanKedatangan(
+    supabase: SupabaseClient,
+    { maksSelesai }: { maksSelesai: number },
+): Promise<{ berjalan: RingkasanPengiriman[]; selesai: RingkasanPengiriman[] }> {
+    const [kedatangan, koreksi] = await Promise.all([
+        supabase
+            .from('coal_arrivals')
+            .select('batch_id, date, shift, supplier, zona, ton, tanggal_masuk, status, asal, metode_unloading, created_at')
+            .order('created_at', { ascending: false })
+            .limit(JENDELA_KEDATANGAN),
+        supabase
+            .from('coal_lot_koreksi')
+            .select('lot_id, zona, supplier, tanggal_masuk, dihapus, operator_name, keterangan, created_at')
+            .order('created_at', { ascending: true }),
+    ]);
+    if (kedatangan.error) throw kedatangan.error;
+    if (koreksi.error) throw koreksi.error;
+    const barisKoreksi = (koreksi.data ?? []) as CoalLotKoreksiRow[];
+
+    // ── Dari form: satu ringkasan per batch, baris diurutkan kronologis ──────
+    const perBatch = new Map<string, CoalArrivalRow[]>();
+    for (const r of (kedatangan.data ?? []) as CoalArrivalRow[]) {
+        const daftar = perBatch.get(r.batch_id) ?? [];
+        daftar.push(r);
+        perBatch.set(r.batch_id, daftar);
+    }
+    const dariForm: RingkasanPengiriman[] = [...perBatch.entries()].map(([batchId, daftar]) => {
+        const urut = daftar.slice().sort((a, b) =>
+            rankShift(a.date, a.shift as ShiftKey) - rankShift(b.date, b.shift as ShiftKey)
+            || a.created_at.localeCompare(b.created_at));
+        const awal = urut[0];
+        const akhir = urut[urut.length - 1];
+        const selesai = akhir.status === 'selesai';
+        return {
+            batch_id: batchId,
+            supplier: awal.supplier,
+            asal: normalAsal(urut.find(r => r.asal)?.asal),
+            metode: [...new Set(urut.map(r => normalMetode(r.metode_unloading)).filter((m): m is MetodeUnloading => !!m))],
+            zona: [...new Set(urut.map(r => r.zona))],
+            mulai: awal.tanggal_masuk,
+            selesai: selesai ? akhir.date : null,
+            terakhir: { date: akhir.date, shift: akhir.shift as ShiftKey },
+            ton: urut.reduce((t, r) => t + Number(r.ton ?? 0), 0),
+            status: selesai ? 'selesai' : 'progres',
+            sumber: 'form',
+        };
+    });
+
+    // Lot yang dihapus di denah = pengirimannya tak bisa dilanjutkan (sama dgn fetchInfoKedatangan).
+    const dihapus = new Map<string, boolean>();
+    for (const k of barisKoreksi) dihapus.set(k.lot_id, k.dihapus);
+    const berjalan = dariForm
+        .filter(p => p.status === 'progres' && !dihapus.get(p.batch_id!))
+        .sort((a, b) => rankShift(b.terakhir!.date, b.terakhir!.shift) - rankShift(a.terakhir!.date, a.terakhir!.shift));
+
+    // ── Dari impor: satu ringkasan per (supplier, tanggal masuk) ─────────────
+    const kunci = (supplier: string, tanggal: string) => `${supplier.trim().toUpperCase()}|${tanggal}`;
+    const sudahDiForm = new Set(dariForm.map(p => kunci(p.supplier, p.mulai)));
+    const perImpor = new Map<string, CoalLotKoreksiRow[]>();
+    for (const k of barisKoreksi) {
+        const id = kunci(k.supplier, k.tanggal_masuk);
+        const daftar = perImpor.get(id) ?? [];
+        daftar.push(k);
+        perImpor.set(id, daftar);
+    }
+    const dariImpor: RingkasanPengiriman[] = [];
+    for (const [id, daftar] of perImpor) {
+        if (sudahDiForm.has(id) || !daftar.some(k => k.operator_name.startsWith('Import'))) continue;
+        const urai = daftar
+            .filter(k => k.operator_name.startsWith('Import') && k.keterangan)
+            .map(k => uraiCatatanImpor(k.keterangan!))
+            .find(u => u.ton !== null) ?? { ton: null, selesai: null };
+        dariImpor.push({
+            batch_id: null,
+            supplier: daftar[0].supplier,
+            asal: null,
+            metode: [],
+            zona: [...new Set(daftar.map(k => k.zona))],
+            mulai: daftar[0].tanggal_masuk,
+            selesai: urai.selesai,
+            terakhir: null,
+            ton: urai.ton,
+            status: 'selesai',
+            sumber: 'impor',
+        });
+    }
+
+    const selesai = [...dariForm.filter(p => p.status === 'selesai'), ...dariImpor]
+        .sort((a, b) => (b.selesai ?? b.mulai).localeCompare(a.selesai ?? a.mulai) || b.mulai.localeCompare(a.mulai))
+        .slice(0, maksSelesai);
+
+    return { berjalan, selesai };
 }
 
 /** Seluruh riwayat perubahan satu tumpukan, terbaru di atas. */

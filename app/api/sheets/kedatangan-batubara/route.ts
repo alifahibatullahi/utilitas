@@ -19,7 +19,7 @@
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/whatsapp';
-import { fetchInfoKedatangan } from '@/lib/coal-storage-query';
+import { fetchInfoKedatangan, fetchRingkasanKedatangan } from '@/lib/coal-storage-query';
 import {
     ASAL_KEDATANGAN, METODE_UNLOADING, TOTAL_KAPASITAS_TON, labelZonaPendek,
     type AsalKedatangan, type MetodeUnloading,
@@ -34,6 +34,8 @@ export const dynamic = 'force-dynamic';
 
 /** Penanda sumber di kolom keterangan (tak dipakai jalur lain) — jejak entri dari menu. */
 const KETERANGAN_SUMBER = 'Menu spreadsheet';
+/** Jumlah History Selesai di layar daftar dialog — sebanyak yang muat tanpa scroll. */
+const MAKS_RIWAYAT = 4;
 /** Kirim ulang yang identik dalam jendela ini dianggap klik/permintaan ganda, bukan entri baru. */
 const JENDELA_DOBEL_MS = 2 * 60_000;
 
@@ -94,7 +96,11 @@ export async function GET(req: NextRequest) {
     const ditolak = tolakAuth(req);
     if (ditolak) return ditolak;
     try {
-        const { berjalan, suppliers } = await fetchInfoKedatangan(createAdminClient());
+        const supabase = createAdminClient();
+        const [{ berjalan, suppliers }, ringkasan] = await Promise.all([
+            fetchInfoKedatangan(supabase),
+            fetchRingkasanKedatangan(supabase, { maksSelesai: MAKS_RIWAYAT }),
+        ]);
         return balas(req, {
             default: detectCurrentShift(nowWIB()),
             zona: ZONA_OPTIONS,
@@ -102,6 +108,7 @@ export async function GET(req: NextRequest) {
             metode: METODE_UNLOADING,
             berjalan,
             suppliers,
+            ringkasan,
         });
     } catch (err) {
         console.error('[kedatangan-batubara] GET gagal:', err);

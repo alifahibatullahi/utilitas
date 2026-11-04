@@ -10,30 +10,25 @@
       font-family: 'Google Sans', Roboto, Arial, sans-serif; color: #202124; background: #fff;
       font-size: 14px;
     }
-    .kepala {
-      position: sticky; top: 0; z-index: 4; background: #6a4429; color: #fff;
-      padding: 14px 16px;
-    }
+    .kepala { background: #6a4429; color: #fff; padding: 12px 18px; }
     .kepala .judul { font-size: 17px; font-weight: 700; letter-spacing: .2px; }
-    .isi { padding: 14px 16px; }
-    .grup { margin-bottom: 12px; }
-    .kaki {
-      position: sticky; bottom: 0; z-index: 2; margin: 4px -16px -14px; padding: 10px 16px 14px;
-      background: #fff; box-shadow: 0 -1px 0 #e8eaed;
-    }
+    .isi { padding: 14px 18px; }
+    .grup { margin-bottom: 10px; }
     .label {
       display: block; font-size: 12px; font-weight: 600; color: #5f6368;
-      margin-bottom: 6px; letter-spacing: .2px;
+      margin-bottom: 5px; letter-spacing: .2px;
     }
     input, select {
-      width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #dadce0;
+      width: 100%; min-height: 42px; padding: 9px 12px; border: 1px solid #dadce0;
       border-radius: 8px; font: inherit; font-size: 15px; color: #202124; background: #fff;
     }
     input:focus, select:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
     input:disabled, select:disabled { background: #f1f3f4; color: #5f6368; }
+    .kolom { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
+    .kolom > div { min-width: 0; }
     .tanggal {
       position: relative; display: flex; align-items: center; justify-content: space-between;
-      min-height: 44px; padding: 10px 12px; border: 1px solid #dadce0; border-radius: 8px;
+      min-height: 42px; padding: 9px 12px; border: 1px solid #dadce0; border-radius: 8px;
       font-size: 15px; background: #fff; cursor: pointer;
     }
     .tanggal:focus-within { border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
@@ -52,11 +47,11 @@
     }
     .pilihan button {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 1px; min-height: 44px; padding: 6px 4px; border-radius: 8px;
+      gap: 1px; min-height: 42px; padding: 5px 4px; border-radius: 8px;
     }
     .pilihan button small { font-size: 11px; font-weight: 500; opacity: .75; }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .chips button { min-height: 32px; padding: 4px 12px; border-radius: 16px; font-size: 12px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+    .chips button { min-height: 30px; padding: 4px 12px; border-radius: 16px; font-size: 12px; }
     .pilihan button:hover, .chips button:hover { border-color: #1a73e8; color: #1967d2; }
     .pilihan button[aria-pressed="true"], .chips button[aria-pressed="true"] {
       border-color: #1a73e8; background: #e8f0fe; color: #1967d2;
@@ -70,33 +65,39 @@
     }
     .saran button {
       display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
-      min-height: 38px; padding: 6px 12px; border: 0; background: none; font: inherit;
+      min-height: 36px; padding: 6px 12px; border: 0; background: none; font: inherit;
       color: #202124; text-align: left; cursor: pointer;
     }
     .saran button[aria-selected="true"], .saran button:hover { background: #f1f3f4; }
-    .saran .tag {
-      flex: none; font-size: 11px; font-weight: 600; color: #fff; background: #d35400;
-      border-radius: 10px; padding: 2px 8px;
+    .tag, .lencana {
+      flex: none; font-size: 11px; font-weight: 700; color: #fff; border-radius: 10px;
+      padding: 2px 8px; text-align: center; white-space: nowrap;
     }
-    .berjalan { margin-top: 8px; }
+    .tag, .lencana.progres { background: #d35400; }
+    .lencana.selesai { background: #188038; }
+    .berjalan { margin-top: 6px; }
     .satuan { position: relative; }
     .satuan input { padding-right: 48px; }
     .satuan span {
       position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
       color: #5f6368; font-size: 13px; pointer-events: none;
     }
-    .bantu { font-size: 12px; color: #5f6368; margin: 6px 0 0; line-height: 1.5; }
+    .bantu { font-size: 12px; color: #5f6368; margin: 5px 0 0; line-height: 1.45; }
     .berjalan .bantu { margin: 0; }
     .info {
-      font-size: 12px; line-height: 1.5; color: #3c4043; background: #f1f3f4;
-      border-radius: 8px; padding: 8px 10px; margin: 0 0 14px;
+      font-size: 12px; line-height: 1.45; color: #3c4043; background: #f1f3f4;
+      border-radius: 8px; padding: 7px 10px; margin: 8px 0 0;
+    }
+    .tautan {
+      border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: #1a73e8;
+      cursor: pointer; text-decoration: underline;
     }
     .galat {
       font-size: 13px; line-height: 1.5; color: #c5221f; background: #fce8e6;
-      border-radius: 8px; padding: 8px 10px; margin: 0 0 12px;
+      border-radius: 8px; padding: 8px 10px; margin: 0 0 10px;
     }
     button.utama {
-      width: 100%; min-height: 48px; border: 0; border-radius: 8px; background: #1a73e8;
+      width: 100%; min-height: 46px; border: 0; border-radius: 8px; background: #1a73e8;
       color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
     }
     button.utama:hover { background: #1765cc; }
@@ -109,15 +110,59 @@
     .kedua:hover { background: #f8fbff; border-color: #1a73e8; }
     .aksi { display: flex; gap: 8px; margin-top: 10px; }
     .aksi button.utama { flex: 1; width: auto; }
+    .kaki { margin-top: 6px; padding-top: 12px; border-top: 1px solid #e8eaed; }
+    .kaki .aksi { margin-top: 0; }
+    .kaki .kedua { flex: 0 0 150px; }
     .layar {
       min-height: 320px; display: flex; flex-direction: column; align-items: center;
       justify-content: center; gap: 14px; text-align: center; color: #5f6368;
       font-size: 13px; font-weight: 600;
     }
     .layar .kedua { flex: none; padding: 0 20px; }
-    .sukses { font-size: 16px; font-weight: 700; color: #137333; margin: 0 0 12px; }
-    .ringkas { margin: 0 0 14px; border: 1px solid #dadce0; border-radius: 8px; }
-    .ringkas div { display: flex; gap: 12px; padding: 9px 12px; border-top: 1px solid #f1f3f4; }
+    .bagian {
+      display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 12px;
+      font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #5f6368;
+    }
+    .bagian + .bagian, .jarak { margin-top: 14px; }
+    .kartu {
+      display: flex; align-items: center; gap: 14px; padding: 7px 12px; margin-bottom: 6px;
+      border: 1px solid #dadce0; border-left: 4px solid #d35400; border-radius: 8px;
+    }
+    .kartu .teks { flex: 1; min-width: 0; }
+    .baris1 { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+    .baris1 .nm { flex: none; font-weight: 700; }
+    .kartu .nm { font-size: 15px; }
+    .sub {
+      font-size: 12px; color: #5f6368; margin-top: 2px; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .baris1 .sub { flex: 1; margin-top: 0; }
+    .kartu .ton { flex: none; text-align: right; font-weight: 700; font-size: 15px; }
+    .kartu .ton small { display: block; font-size: 11px; font-weight: 500; color: #5f6368; }
+    .kartu button {
+      flex: none; min-height: 34px; padding: 0 16px; border: 0; border-radius: 8px;
+      background: #d35400; color: #fff; font: inherit; font-weight: 700; cursor: pointer;
+    }
+    .kartu button:hover { background: #b84a00; }
+    .kartu.padat { padding: 3px 12px; }
+    .kartu.padat .nm, .kartu.padat .ton { font-size: 14px; }
+    .kartu.padat button { min-height: 28px; padding: 0 12px; font-size: 13px; }
+    .riwayat { border: 1px solid #dadce0; border-radius: 8px; }
+    .baris-riwayat {
+      display: grid; grid-template-columns: minmax(0, 1fr) 140px 96px 64px; align-items: center;
+      gap: 12px; padding: 7px 12px; border-top: 1px solid #f1f3f4;
+    }
+    .baris-riwayat:first-child { border-top: 0; }
+    .baris-riwayat .tgl { font-size: 13px; color: #3c4043; }
+    .baris-riwayat .ton { font-weight: 700; text-align: right; }
+    .kosong {
+      font-size: 13px; color: #5f6368; padding: 10px 12px; margin-bottom: 8px;
+      border: 1px dashed #dadce0; border-radius: 8px;
+    }
+    .riwayat .kosong { border: 0; margin: 0; }
+    .sukses { font-size: 16px; font-weight: 700; color: #137333; margin: 0 0 10px; }
+    .ringkas { margin: 0; border: 1px solid #dadce0; border-radius: 8px; }
+    .ringkas div { display: flex; gap: 12px; padding: 8px 12px; border-top: 1px solid #f1f3f4; }
     .ringkas div:first-child { border-top: 0; }
     .ringkas dt { flex: 0 0 104px; font-size: 12px; font-weight: 600; color: #5f6368; }
     .ringkas dd { margin: 0; font-weight: 600; }
@@ -137,59 +182,78 @@
       <button type="button" class="kedua" id="cobaLagi">Coba lagi</button>
     </div>
 
+    <div class="sembunyi" id="beranda">
+      <div class="bagian">In Progress <span class="lencana progres" id="jumlahBerjalan">0</span></div>
+      <div id="daftarBerjalan"></div>
+      <div class="bagian jarak">History Selesai</div>
+      <div class="riwayat" id="daftarRiwayat"></div>
+      <div class="kaki jarak">
+        <button type="button" class="utama" id="baru">+ Kedatangan baru</button>
+      </div>
+    </div>
+
     <form class="sembunyi" id="form" novalidate>
-      <div class="grup">
-        <label class="label" for="tanggal">Tanggal laporan</label>
-        <div class="tanggal">
-          <span id="tanggalTeks"></span>
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#5f6368" d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
-          <input type="date" id="tanggal">
+      <div class="kolom">
+        <div>
+          <div class="grup">
+            <label class="label" for="tanggal">Tanggal laporan</label>
+            <div class="tanggal">
+              <span id="tanggalTeks"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#5f6368" d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+              <input type="date" id="tanggal">
+            </div>
+          </div>
+          <div class="grup">
+            <span class="label">Shift</span>
+            <div class="pilihan" id="pilihShift"></div>
+            <p class="bantu sembunyi" id="jendelaMalam"></p>
+          </div>
+          <div class="grup">
+            <span class="label">Asal</span>
+            <div class="pilihan" id="pilihAsal"></div>
+          </div>
+          <div class="grup sembunyi" id="grupMetode">
+            <span class="label" id="labelMetode">Unloading via</span>
+            <div class="pilihan" id="pilihMetode"></div>
+          </div>
         </div>
-      </div>
-      <div class="grup">
-        <span class="label">Shift</span>
-        <div class="pilihan" id="pilihShift"></div>
-        <p class="bantu sembunyi" id="jendelaMalam"></p>
-      </div>
-      <div class="grup">
-        <span class="label">Asal</span>
-        <div class="pilihan" id="pilihAsal"></div>
-      </div>
-      <div class="grup sembunyi" id="grupMetode">
-        <span class="label" id="labelMetode">Unloading via</span>
-        <div class="pilihan" id="pilihMetode"></div>
-      </div>
-      <div class="grup">
-        <label class="label" for="supplier" id="labelSupplier">Nama tongkang / supplier</label>
-        <div class="nama">
-          <input type="text" id="supplier" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="saran">
-          <div class="saran sembunyi" id="saran" role="listbox"></div>
+        <div>
+          <div class="grup">
+            <label class="label" for="supplier" id="labelSupplier">Nama tongkang / supplier</label>
+            <div class="nama">
+              <input type="text" id="supplier" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="saran">
+              <div class="saran sembunyi" id="saran" role="listbox"></div>
+            </div>
+            <div class="berjalan sembunyi" id="berjalan">
+              <p class="bantu">Masih berjalan — klik untuk melanjutkan:</p>
+              <div class="chips" id="chips"></div>
+            </div>
+            <p class="info sembunyi" id="infoLanjutan"><span id="infoLanjutanTeks"></span> <button type="button" class="tautan" id="batalLanjutan">Batal</button></p>
+          </div>
+          <div class="grup">
+            <label class="label" for="ton" id="labelTon">Tonase</label>
+            <div class="satuan">
+              <input type="text" id="ton" inputmode="decimal" autocomplete="off" placeholder="0">
+              <span>ton</span>
+            </div>
+            <p class="bantu sembunyi" id="tonBantu">Kosong = hanya menandai pengiriman selesai; denah tidak berubah.</p>
+          </div>
+          <div class="grup">
+            <label class="label" for="zona">Ditaruh di pilar</label>
+            <select id="zona"></select>
+          </div>
+          <div class="grup">
+            <span class="label">Status</span>
+            <div class="pilihan" id="pilihStatus"></div>
+          </div>
         </div>
-        <div class="berjalan sembunyi" id="berjalan">
-          <p class="bantu">Masih berjalan — klik untuk melanjutkan:</p>
-          <div class="chips" id="chips"></div>
-        </div>
-      </div>
-      <p class="info sembunyi" id="infoLanjutan"></p>
-      <div class="grup">
-        <label class="label" for="ton" id="labelTon">Tonase</label>
-        <div class="satuan">
-          <input type="text" id="ton" inputmode="decimal" autocomplete="off" placeholder="0">
-          <span>ton</span>
-        </div>
-        <p class="bantu sembunyi" id="tonBantu">Tanpa tonase = sekadar menandai pengiriman ini sudah selesai; tumpukan di denah tidak berubah.</p>
-      </div>
-      <div class="grup">
-        <label class="label" for="zona">Ditaruh di pilar</label>
-        <select id="zona"></select>
-      </div>
-      <div class="grup">
-        <span class="label">Status</span>
-        <div class="pilihan" id="pilihStatus"></div>
       </div>
       <div class="kaki">
         <p class="galat sembunyi" id="galatSimpan"></p>
-        <button type="submit" class="utama" id="simpan" disabled>Simpan</button>
+        <div class="aksi">
+          <button type="button" class="kedua" id="kembali">← Kembali</button>
+          <button type="submit" class="utama" id="simpan" disabled>Simpan</button>
+        </div>
       </div>
     </form>
 
@@ -197,13 +261,13 @@
       <div class="sukses" id="hasilJudul">Tersimpan</div>
       <dl class="ringkas" id="ringkas"></dl>
       <p class="info" id="hasilCatatan"></p>
-      <p class="galat sembunyi" id="hasilPeringatan"></p>
-      <div class="aksi">
+      <p class="galat sembunyi jarak" id="hasilPeringatan"></p>
+      <div class="aksi jarak">
         <button type="button" class="kedua sembunyi" id="keCatatan">Lihat di Catatan</button>
         <a class="kedua" id="keDenah" href="#" target="_blank" rel="noopener">Lihat denah</a>
       </div>
       <div class="aksi">
-        <button type="button" class="kedua" id="tambahLagi">Tambah lagi</button>
+        <button type="button" class="kedua" id="keDaftar">Kembali ke daftar</button>
         <button type="button" class="utama" id="tutup">Tutup</button>
       </div>
     </div>
@@ -224,13 +288,16 @@
     var ASAL_LABEL = { tongkang: 'Tongkang', darat: 'Darat (Lokal)' };
     var HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     var BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    var BULAN_PENDEK = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     var MAKS_SARAN = 6;
+    var MAKS_KARTU_LENGKAP = 3;
+    var MAKS_RIWAYAT_PADAT = 3;
 
     var el = function (id) { return document.getElementById(id); };
     var st = { info: null, shift: null, asal: null, metode: null, status: 'progres', induk: null, batchId: '', menyimpan: false, barisCatatan: null, saran: [], saranAktif: -1, saranTutup: false };
 
     function tampil(id) {
-      ['memuat', 'gagalMuat', 'form', 'hasil'].forEach(function (x) {
+      ['memuat', 'gagalMuat', 'beranda', 'form', 'hasil'].forEach(function (x) {
         el(x).classList.toggle('sembunyi', x !== id);
       });
     }
@@ -285,6 +352,36 @@
       return HARI[d.getUTCDay()] + ', ' + d.getUTCDate() + ' ' + BULAN[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
     }
 
+    function fmtPendek(iso, tanpaTahun) {
+      var d = keTanggal(iso);
+      if (!d) return '';
+      return d.getUTCDate() + ' ' + BULAN_PENDEK[d.getUTCMonth()] + (tanpaTahun ? '' : ' ' + d.getUTCFullYear());
+    }
+
+    function fmtRentang(mulai, selesai) {
+      var a = keTanggal(mulai);
+      var b = keTanggal(selesai);
+      if (!a) return '';
+      if (!b) return 'mulai ' + fmtPendek(mulai);
+      if (mulai === selesai) return fmtPendek(mulai);
+      if (a.getUTCFullYear() !== b.getUTCFullYear()) return fmtPendek(mulai) + ' – ' + fmtPendek(selesai);
+      if (a.getUTCMonth() !== b.getUTCMonth()) return fmtPendek(mulai, true) + ' – ' + fmtPendek(selesai);
+      return a.getUTCDate() + '–' + fmtPendek(selesai);
+    }
+
+    function pilarRingkas(zonas) {
+      var per = {};
+      var urutan = [];
+      var nomor = function (z) { return parseInt(String(z).slice(1), 10) || 0; };
+      (zonas || []).slice().sort(function (a, b) { return a.charAt(0).localeCompare(b.charAt(0)) || nomor(a) - nomor(b); }).forEach(function (z) {
+        var bagian = labelDari(st.info.zona, z).split(' · ');
+        var area = bagian[0];
+        if (!per[area]) { per[area] = []; urutan.push(area); }
+        per[area].push((bagian[1] || '').replace(/pilar /g, ''));
+      });
+      return urutan.map(function (a) { return a + ' ' + per[a].join(', '); }).join(' · ');
+    }
+
     function teksJendelaMalam(iso) {
       var d = keTanggal(iso);
       if (!d) return '';
@@ -320,6 +417,63 @@
       render();
     }
 
+    function buat(tag, kelas, teks) {
+      var e = document.createElement(tag);
+      if (kelas) e.className = kelas;
+      if (teks != null) e.textContent = teks;
+      return e;
+    }
+
+    function renderBeranda() {
+      var r = st.info.ringkasan || { berjalan: [], selesai: [] };
+      el('jumlahBerjalan').textContent = r.berjalan.length;
+      var wb = el('daftarBerjalan');
+      wb.textContent = '';
+      if (!r.berjalan.length) wb.appendChild(buat('div', 'kosong', 'Tidak ada kedatangan yang sedang berjalan.'));
+      var padat = r.berjalan.length > MAKS_KARTU_LENGKAP;
+      r.berjalan.forEach(function (p) {
+        var kartu = buat('div', 'kartu' + (padat ? ' padat' : ''));
+        var teks = buat('div', 'teks');
+        var asal = [labelAsal(p.asal), p.metode.map(function (m) { return labelDari(st.info.metode, m); }).join(' + '), pilarRingkas(p.zona)]
+          .filter(Boolean).join(' · ');
+        var baris1 = buat('div', 'baris1');
+        baris1.appendChild(buat('span', 'nm', p.supplier));
+        baris1.appendChild(buat('span', 'sub', padat ? asal + ' · mulai ' + fmtPendek(p.mulai) : asal));
+        teks.appendChild(baris1);
+        if (!padat) {
+          teks.appendChild(buat('div', 'sub', 'Mulai ' + fmtPendek(p.mulai) + ' · terakhir dicatat Shift '
+            + labelDari(SHIFT_OPSI, p.terakhir.shift) + ', ' + fmtPendek(p.terakhir.date)));
+        }
+        kartu.appendChild(teks);
+        var ton = buat('div', 'ton', fmtTon(p.ton) + ' t');
+        if (!padat) ton.appendChild(buat('small', '', 'sejauh ini'));
+        kartu.appendChild(ton);
+        var lanjut = buat('button', '', 'Lanjutkan');
+        lanjut.type = 'button';
+        lanjut.addEventListener('click', function () { bukaForm(p.batch_id); });
+        kartu.appendChild(lanjut);
+        wb.appendChild(kartu);
+      });
+
+      var wr = el('daftarRiwayat');
+      wr.textContent = '';
+      if (!r.selesai.length) wr.appendChild(buat('div', 'kosong', 'Belum ada riwayat.'));
+      r.selesai.slice(0, padat ? MAKS_RIWAYAT_PADAT : r.selesai.length).forEach(function (p) {
+        var baris = buat('div', 'baris-riwayat');
+        var teks = buat('div', 'baris1');
+        teks.appendChild(buat('span', 'nm', p.supplier));
+        var sub = [labelAsal(p.asal), pilarRingkas(p.zona)].filter(Boolean).join(' · ');
+        var subEl = buat('span', 'sub', sub);
+        subEl.title = sub;
+        teks.appendChild(subEl);
+        baris.appendChild(teks);
+        baris.appendChild(buat('div', 'tgl', fmtRentang(p.mulai, p.selesai)));
+        baris.appendChild(buat('div', 'ton', p.ton == null ? '—' : fmtTon(p.ton) + ' t'));
+        baris.appendChild(buat('span', 'lencana selesai', 'Selesai'));
+        wr.appendChild(baris);
+      });
+    }
+
     function pilihan(wadah, opsi, nilai, onPilih, terkunci) {
       var w = el(wadah);
       w.textContent = '';
@@ -329,11 +483,7 @@
         var aktif = o.value === nilai;
         b.type = 'button';
         b.appendChild(document.createTextNode(o.label));
-        if (o.jam) {
-          var jam = document.createElement('small');
-          jam.textContent = o.jam;
-          b.appendChild(jam);
-        }
+        if (o.jam) b.appendChild(buat('small', '', o.jam));
         b.setAttribute('aria-pressed', aktif ? 'true' : 'false');
         if (aktif && o.warna) {
           b.style.background = o.warna;
@@ -415,15 +565,8 @@
         b.tabIndex = -1;
         b.setAttribute('role', 'option');
         b.setAttribute('aria-selected', i === st.saranAktif ? 'true' : 'false');
-        var teks = document.createElement('span');
-        teks.textContent = s.nama;
-        b.appendChild(teks);
-        if (s.induk) {
-          var tag = document.createElement('span');
-          tag.className = 'tag';
-          tag.textContent = 'masih berjalan';
-          b.appendChild(tag);
-        }
+        b.appendChild(buat('span', '', s.nama));
+        if (s.induk) b.appendChild(buat('span', 'tag', 'masih berjalan'));
         b.addEventListener('mousedown', function (ev) {
           ev.preventDefault();
           pilihSaran(s);
@@ -465,7 +608,7 @@
 
     function renderChips() {
       var daftar = st.info.berjalan;
-      el('berjalan').classList.toggle('sembunyi', daftar.length === 0);
+      el('berjalan').classList.toggle('sembunyi', daftar.length === 0 || !!st.induk);
       var w = el('chips');
       w.textContent = '';
       var jumlahNama = {};
@@ -473,9 +616,8 @@
       daftar.forEach(function (b) {
         var dipilih = !!st.induk && st.induk.batch_id === b.batch_id;
         var zona = labelDari(st.info.zona, b.zona);
-        var c = document.createElement('button');
+        var c = buat('button', '', b.supplier + (jumlahNama[b.supplier] > 1 ? ' · ' + zona : ''));
         c.type = 'button';
-        c.textContent = b.supplier + (jumlahNama[b.supplier] > 1 ? ' · ' + zona : '');
         c.title = (b.asal ? labelAsal(b.asal) + ' · ' : '') + zona + ' · ' + fmtTon(b.tonSejauhIni) + ' t sejauh ini';
         c.setAttribute('aria-pressed', dipilih ? 'true' : 'false');
         c.addEventListener('click', function () { setInduk(dipilih ? '' : b.batch_id); });
@@ -508,13 +650,20 @@
       el('supplier').value = induk ? induk.supplier : '';
       el('zona').value = induk ? induk.zona : '';
       el('ton').value = '';
-      var info = el('infoLanjutan');
-      info.classList.toggle('sembunyi', !induk);
-      info.textContent = induk
-        ? 'Melanjutkan pengiriman ' + induk.supplier + ' di ' + labelDari(st.info.zona, induk.zona)
-          + ' (' + fmtTon(induk.tonSejauhIni) + ' t sejauh ini). Nama, pilar, dan asal mengikuti pengiriman ini supaya tetap satu tumpukan.'
+      el('infoLanjutan').classList.toggle('sembunyi', !induk);
+      el('infoLanjutanTeks').textContent = induk
+        ? 'Lanjutan ' + induk.supplier + ' · ' + labelDari(st.info.zona, induk.zona) + ' · ' + fmtTon(induk.tonSejauhIni)
+          + ' t sejauh ini. Nama, pilar & asal terkunci.'
         : '';
       render();
+    }
+
+    function bukaForm(batchId) {
+      st.shift = st.info.default.shift;
+      el('tanggal').value = st.info.default.date;
+      el('galatSimpan').classList.add('sembunyi');
+      setInduk(batchId || '');
+      tampil('form');
     }
 
     function isiForm(info) {
@@ -524,20 +673,18 @@
 
       var zona = el('zona');
       zona.textContent = '';
-      var kosong = document.createElement('option');
+      var kosong = buat('option', '', 'Pilih pilar…');
       kosong.value = '';
-      kosong.textContent = 'Pilih pilar…';
       zona.appendChild(kosong);
       info.zona.forEach(function (z) {
-        var o = document.createElement('option');
+        var o = buat('option', '', z.label);
         o.value = z.value;
-        o.textContent = z.label;
         zona.appendChild(o);
       });
 
-      el('galatSimpan').classList.add('sembunyi');
       setInduk('');
-      tampil('form');
+      renderBeranda();
+      tampil('beranda');
     }
 
     function muat() {
@@ -580,12 +727,8 @@
 
     function baris(dl, label, isi) {
       var d = document.createElement('div');
-      var dt = document.createElement('dt');
-      var dd = document.createElement('dd');
-      dt.textContent = label;
-      dd.textContent = isi;
-      d.appendChild(dt);
-      d.appendChild(dd);
+      d.appendChild(buat('dt', '', label));
+      d.appendChild(buat('dd', '', isi));
       dl.appendChild(d);
     }
 
@@ -620,6 +763,9 @@
 
     el('form').addEventListener('submit', simpan);
     el('cobaLagi').addEventListener('click', muat);
+    el('baru').addEventListener('click', function () { bukaForm(''); });
+    el('kembali').addEventListener('click', function () { tampil('beranda'); });
+    el('batalLanjutan').addEventListener('click', function () { setInduk(''); });
     el('tanggal').addEventListener('change', render);
     el('tanggal').addEventListener('input', render);
     el('supplier').addEventListener('input', function () {
@@ -632,7 +778,7 @@
     el('supplier').addEventListener('keydown', tombolSaran);
     el('ton').addEventListener('input', ketikTon);
     el('zona').addEventListener('change', render);
-    el('tambahLagi').addEventListener('click', muat);
+    el('keDaftar').addEventListener('click', muat);
     el('tutup').addEventListener('click', function () { google.script.host.close(); });
     el('keCatatan').addEventListener('click', function () {
       el('keCatatan').disabled = true;

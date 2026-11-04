@@ -64,7 +64,7 @@ function bukaFormKedatangan() {
   var cfg = cfgBatubara_();
   var tpl = HtmlService.createTemplateFromFile('KedatanganBatubara');
   tpl.cfg = JSON.stringify({ appUrl: cfg.appUrl, secret: cfg.secret });
-  var html = tpl.evaluate().setWidth(480).setHeight(700);
+  var html = tpl.evaluate().setWidth(760).setHeight(600);
   SpreadsheetApp.getUi().showModalDialog(html, 'Web Utilitas Batubara');
 }
 

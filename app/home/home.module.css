@@ -1,0 +1,46 @@
+.menuLink {
+    transition: transform 160ms ease-out, border-color 160ms, box-shadow 160ms;
+}
+
+.arrow {
+    transition: transform 160ms ease-out, background-color 160ms, color 160ms;
+}
+
+.menuLink:focus-visible {
+    outline: 2px solid #365448;
+    outline-offset: 3px;
+}
+
+.menuLink:focus-visible .arrow {
+    background: #365448;
+    color: white;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .menuLink:hover {
+        transform: translateY(-2px);
+        border-color: #adafa8;
+        box-shadow: 0 5px 14px rgb(30 32 28 / 7%);
+    }
+
+    .menuLink:hover .arrow {
+        transform: translateX(2px);
+        background: #365448;
+        color: white;
+    }
+}
+
+.menuLink:active {
+    transform: scale(.99);
+    background: #f5f5f2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .menuLink, .arrow {
+        transition: none;
+    }
+
+    .menuLink:hover, .menuLink:active, .menuLink:hover .arrow {
+        transform: none;
+    }
+}

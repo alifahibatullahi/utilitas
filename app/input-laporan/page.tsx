@@ -63,6 +63,8 @@ function getGroupMalamOnDate(dateStr: string): string {
 
 type TabId = 'Boiler A' | 'Boiler B' | 'Turbin' | 'Generator' | 'Distribusi Steam' | 'Handling' | 'ESP' | 'Coal Bunker' | 'Lab' | 'Catatan Operasional';
 
+const CHEMICAL_STOCK_COLUMNS = ['stock_phosphate', 'stock_amine', 'stock_hydrazine'] as const;
+
 const TABS: { id: TabId; label: string; icon: string; area: Area }[] = [
     { id: 'Boiler A', label: 'Boiler A', icon: 'factory', area: 'boiler' },
     { id: 'Boiler B', label: 'Boiler B', icon: 'factory', area: 'boiler' },
@@ -391,6 +393,7 @@ function InputShiftPageInner() {
     const [openArrivals, setOpenArrivals] = useState<OpenArrival[]>([]);
     const [coalSupplierOptions, setCoalSupplierOptions] = useState<string[]>([]);
     const [lastStock, setLastStock] = useState<{ phosphate: number | null; amine: number | null; hydrazine: number | null }>({ phosphate: null, amine: null, hydrazine: null });
+    const [chemicalStockRevision, setChemicalStockRevision] = useState(0);
     const [catatan, setCatatan] = useState<string>('');
 
     // Tracker auto-inject Catatan Operasional. Diisi tiap kali auto-line baru muncul.
@@ -698,27 +701,31 @@ function InputShiftPageInner() {
         return () => { aktif = false; };
     }, [selectedDate, selectedShift, shiftGate, needsCoal, muatInfoKedatangan]);
 
-    // Fetch last known chemical stock (latest shift report with non-null stock).
-    // Konsumennya hanya tab Lab → skip untuk station tanpa tab Lab & di mode harian.
+    // Ambil stok terakhir per bahan karena ketiganya bisa dicatat pada shift berbeda.
     useEffect(() => {
         if (shiftGate || !needsChemStock) return;
+        let active = true;
         const supabase = createClient();
-        supabase
-            .from('shift_water_quality')
-            .select('stock_phosphate, stock_amine, stock_hydrazine')
-            .not('stock_phosphate', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .then(({ data }) => {
-                if (data && data[0]) {
-                    setLastStock({
-                        phosphate: data[0].stock_phosphate as number | null,
-                        amine: data[0].stock_amine as number | null,
-                        hydrazine: data[0].stock_hydrazine as number | null,
-                    });
-                }
-            });
-    }, [shiftGate, needsChemStock]);
+        const fetchStock = async (column: typeof CHEMICAL_STOCK_COLUMNS[number]) => {
+            const { data, error } = await supabase
+                .from('shift_water_quality')
+                .select('stock_phosphate, stock_amine, stock_hydrazine')
+                .not(column, 'is', null)
+                .order('created_at', { ascending: false })
+                .limit(1);
+            return { value: (data?.[0]?.[column] as number | null | undefined) ?? null, error };
+        };
+
+        Promise.all(CHEMICAL_STOCK_COLUMNS.map(fetchStock)).then(([phosphate, amine, hydrazine]) => {
+            if (!active) return;
+            setLastStock(previous => ({
+                phosphate: phosphate.error ? previous.phosphate : phosphate.value,
+                amine: amine.error ? previous.amine : amine.value,
+                hydrazine: hydrazine.error ? previous.hydrazine : hydrazine.value,
+            }));
+        });
+        return () => { active = false; };
+    }, [shiftGate, needsChemStock, chemicalStockRevision]);
 
     // ─── Delete handlers untuk entri yang sudah tersimpan di DB ───
     const handleDeleteSavedAsh = async (id: string) => {
@@ -1670,6 +1677,9 @@ function InputShiftPageInner() {
                 setRisetOtomatis(new Set());
                 lastSubmittedReportId.current = result?.reportId || null;
                 refetch();
+                if (needsChemStock && CHEMICAL_STOCK_COLUMNS.some(column => column in chemicalDosing)) {
+                    setChemicalStockRevision(revision => revision + 1);
+                }
 
                 // Notif "siap dipublish ke Washift": fire-and-forget. Endpoint cek
                 // apakah semua parameter washift sudah lengkap + dedup (1x per shift),
